@@ -97,3 +97,56 @@ ARTIFACT is an AI-powered arcade fortune-telling machine built on Raspberry Pi 4
 - [ ] Party themes
 - [ ] Performance optimization
 - [ ] Error recovery
+
+---
+
+## Known Issues & Priority TODOs
+
+### HIGH PRIORITY - Text Display Issues
+**All text must be fully visible with no overlapping, cropping, or cutoff anywhere.**
+
+- [ ] Audit ALL modes for text cutoff issues:
+  - Fortune mode
+  - Zodiac mode
+  - Roulette mode
+  - Quiz mode
+  - AI Prophet mode
+  - Mode selection screen
+  - Result screens
+  - Printing screens
+
+- [ ] Check all three display types:
+  - Main display (128x128) - adjust scale and positioning
+  - Ticker (48x8) - ensure scroll includes full text
+  - LCD (16 chars) - truncate gracefully if needed
+
+- [ ] Text rendering guidelines:
+  - Use `scale=1` for text > 10 characters
+  - Center text: `x = (128 - text_width * scale) // 2`
+  - Word wrap at ~12 chars per line for scale=2
+  - Test both Latin and Cyrillic characters
+
+### Camera Features
+- [ ] **Live camera preview on main display**
+  - Real-time camera feed rendered as dithered silhouette
+  - 1-bit or limited color palette for retro aesthetic
+  - Active during photo capture countdown in AI Prophet mode
+  - Floyd-Steinberg dithering or similar algorithm
+
+### Printer Visualization
+- [ ] **Print preview in simulator**
+  - Visual preview window showing thermal receipt layout
+  - Display components:
+    - Caricature image (dithered for thermal)
+    - Prediction/fortune text
+    - Date and time stamp
+    - ARTIFACT logo/branding
+  - Animate printing process (paper scroll effect)
+  - Match actual EM5820 thermal printer output width
+
+### Caricature Generation
+- [ ] Fix caricature prompts to generate likeness of ACTUAL PERSON
+  - Current issue: generates generic characters
+  - Required: capture distinctive facial features from photo
+  - Style: black and white sketch, thick outlines, pure white background
+  - Must recognize and represent the photographed individual
