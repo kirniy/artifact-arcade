@@ -5,6 +5,8 @@ from artifact.modes.manager import ModeManager
 from artifact.modes.fortune import FortuneMode
 from artifact.modes.zodiac import ZodiacMode
 from artifact.modes.ai_prophet import AIProphetMode
+from artifact.modes.roulette import RouletteMode
+from artifact.modes.quiz import QuizMode
 
 __all__ = [
     # Base
@@ -18,4 +20,6 @@ __all__ = [
     "FortuneMode",
     "ZodiacMode",
     "AIProphetMode",
+    "RouletteMode",
+    "QuizMode",
 ]
