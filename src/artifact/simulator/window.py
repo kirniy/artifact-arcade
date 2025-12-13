@@ -15,6 +15,7 @@ from ..core.state import StateMachine, State
 from ..core.events import EventBus, EventType, Event
 from .mock_hardware.display import SimulatedHUB75, SimulatedWS2812B, SimulatedLCD
 from .mock_hardware.input import SimulatedButton, SimulatedKeypad, SimulatedArcade
+from .printer_preview import ThermalPrinterPreview, PrintJob
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,9 @@ class WindowConfig:
     fps: int = 60
 
     # Display scale factors
+    # According to design: Ticker is WIDER than main (480mm vs 384mm)
     main_scale: int = 3     # 128x128 * 3 = 384x384
-    ticker_scale: int = 6   # 48x8 * 6 = 288x48
+    ticker_scale: int = 10  # 48x8 * 10 = 480x80 (wider than main!)
     lcd_scale: int = 2
 
     # Colors
@@ -93,7 +95,37 @@ class SimulatorWindow:
         self._font: pygame.font.Font | None = None
         self._small_font: pygame.font.Font | None = None
 
+        # Log viewer
+        self._show_log = False
+        self._log_buffer: list[str] = []
+        self._max_log_lines = 20
+
+        # Thermal printer preview
+        self._show_printer = False
+        self._printer_preview = ThermalPrinterPreview()
+
+        # Setup log handler to capture logs
+        self._setup_log_capture()
+
         logger.info("SimulatorWindow created")
+
+    def _setup_log_capture(self) -> None:
+        """Setup log capturing for the log viewer."""
+        class SimulatorLogHandler(logging.Handler):
+            def __init__(self, window: 'SimulatorWindow'):
+                super().__init__()
+                self.window = window
+
+            def emit(self, record):
+                msg = self.format(record)
+                self.window._log_buffer.append(msg)
+                # Keep buffer size limited
+                if len(self.window._log_buffer) > self.window._max_log_lines * 2:
+                    self.window._log_buffer = self.window._log_buffer[-self.window._max_log_lines:]
+
+        handler = SimulatorLogHandler(self)
+        handler.setFormatter(logging.Formatter('%(levelname).1s %(name)s: %(message)s'))
+        logging.getLogger().addHandler(handler)
 
     def _init_pygame(self) -> None:
         """Initialize pygame and create window."""
@@ -167,13 +199,13 @@ class SimulatorWindow:
         ticker_w = 48 * self.config.ticker_scale
         ticker_h = 8 * self.config.ticker_scale
 
-        # Center main display
-        main_x = (w - main_size) // 2
-        main_y = 120  # Below ticker
-
-        # Ticker above main display
+        # Ticker at top with margin
         ticker_x = (w - ticker_w) // 2
-        ticker_y = 50
+        ticker_y = 30
+
+        # Main display below ticker with proper gap (like physical machine)
+        main_x = (w - main_size) // 2
+        main_y = ticker_y + ticker_h + 25  # Gap between displays
 
         # LCD below main display
         lcd_w = 16 * 12  # Approximate character width
@@ -215,17 +247,28 @@ class SimulatorWindow:
         """Handle key press."""
         key = event.key
 
-        # System keys
-        if key == pygame.K_ESCAPE:
+        # System keys (Mac-friendly - no F-keys required)
+        if key == pygame.K_ESCAPE or key == pygame.K_q:
             self._running = False
-        elif key == pygame.K_F1:
+        elif key == pygame.K_d:
+            # D for Debug
             self._show_debug = not self._show_debug
-        elif key == pygame.K_F2:
+        elif key == pygame.K_s:
+            # S for Screenshot
             self._capture_screenshot()
+        elif key == pygame.K_f:
+            # F for Fullscreen
+            self._toggle_fullscreen()
+        elif key == pygame.K_l:
+            # L for Log viewer
+            self._show_log = not getattr(self, '_show_log', False)
+        elif key == pygame.K_p:
+            # P for Printer preview
+            self._show_printer = not self._show_printer
         elif key == pygame.K_r:
-            # Reboot/restart system
+            # R for Reboot/restart system
             self.event_bus.emit(Event(EventType.REBOOT, source="keyboard"))
-        elif key == pygame.K_BACKSPACE or key == pygame.K_b:
+        elif key == pygame.K_BACKSPACE:
             # Go back
             self.event_bus.emit(Event(EventType.BACK, source="keyboard"))
 
@@ -288,6 +331,10 @@ class SimulatorWindow:
         self._render_input_panel()
         if self._show_debug:
             self._render_debug_panel()
+        if self._show_log:
+            self._render_log_panel()
+        if self._show_printer:
+            self._render_printer_panel()
 
         # Render title bar
         self._render_title_bar()
@@ -329,39 +376,52 @@ class SimulatorWindow:
             self._screen.blit(text_surface, text_rect)
 
     def _render_input_panel(self) -> None:
-        """Render the input status panel."""
+        """Render the input status panel with arcade-style buttons."""
         rect = self._layout["input"]
 
-        # Background
-        pygame.draw.rect(self._screen, self.config.panel_color, rect, border_radius=5)
+        # Background with gradient effect
+        pygame.draw.rect(self._screen, self.config.panel_color, rect, border_radius=8)
+        pygame.draw.rect(self._screen, (60, 60, 80), rect, 2, border_radius=8)
 
         if not self._font:
             return
 
-        # Button states
-        states = [
-            ("LEFT", self.left_button.is_pressed()),
-            ("CENTER", self.center_button.is_pressed()),
-            ("RIGHT", self.right_button.is_pressed()),
+        # Arcade button visualization using symbols
+        buttons = [
+            ("←", self.left_button.is_pressed(), (231, 76, 60)),    # Red
+            ("●", self.center_button.is_pressed(), (46, 204, 113)), # Green
+            ("→", self.right_button.is_pressed(), (52, 152, 219)),  # Blue
         ]
 
         spacing = rect.width // 4
-        for i, (name, pressed) in enumerate(states):
+        for i, (symbol, pressed, active_color) in enumerate(buttons):
             x = rect.x + spacing * (i + 1)
             y = rect.centery
 
-            color = (100, 255, 100) if pressed else self.config.text_color
-            text = f"[{name}]" if pressed else name
-            text_surface = self._font.render(text, True, color)
+            # Draw button circle
+            radius = 22
+            btn_color = active_color if pressed else (60, 60, 80)
+            glow_color = tuple(min(255, c + 50) for c in active_color) if pressed else (40, 40, 60)
+
+            # Glow effect when pressed
+            if pressed:
+                pygame.draw.circle(self._screen, glow_color, (x, y), radius + 4)
+
+            pygame.draw.circle(self._screen, btn_color, (x, y), radius)
+            pygame.draw.circle(self._screen, (100, 100, 120), (x, y), radius, 2)
+
+            # Symbol
+            color = (255, 255, 255) if pressed else (150, 150, 170)
+            text_surface = self._font.render(symbol, True, color)
             text_rect = text_surface.get_rect(center=(x, y))
             self._screen.blit(text_surface, text_rect)
 
-        # Keypad status
+        # Keypad status with better formatting
         last_key = self.keypad.get_last_key()
         if last_key:
-            key_text = f"Key: {last_key}"
+            key_text = f"⌨ {last_key}"
             key_surface = self._small_font.render(key_text, True, self.config.accent_color)
-            self._screen.blit(key_surface, (rect.right - 80, rect.centery - 6))
+            self._screen.blit(key_surface, (rect.right - 60, rect.centery - 6))
 
     def _render_debug_panel(self) -> None:
         """Render the debug information panel."""
@@ -379,14 +439,19 @@ class SimulatorWindow:
             f"State: {self.state_machine.state.name}",
             f"Mode: {self.state_machine.context.current_mode or 'None'}",
             "",
-            "Controls:",
-            "SPACE - Start/Confirm",
-            "LEFT/RIGHT - Select",
-            "B/BACKSPACE - Back",
-            "R - Reboot",
-            "0-9 - Keypad",
-            "F1 - Debug",
-            "ESC - Exit",
+            "---- CONTROLS ----",
+            "SPACE   Start/OK",
+            "ARROWS  Select",
+            "0-9,*,# Keypad",
+            "R       Restart",
+            "",
+            "---- SYSTEM ----",
+            "F  Fullscreen",
+            "D  Debug panel",
+            "L  Log viewer",
+            "P  Printer preview",
+            "S  Screenshot",
+            "Q  Quit",
         ]
 
         y = rect.y + 10
@@ -397,14 +462,101 @@ class SimulatorWindow:
             self._screen.blit(text_surface, (rect.x + 10, y))
             y += 18
 
+    def _render_log_panel(self) -> None:
+        """Render the log viewer panel."""
+        if not self._show_log or not self._small_font:
+            return
+
+        # Log panel on the left side
+        rect = pygame.Rect(10, 50, 300, self.config.height - 150)
+
+        # Semi-transparent background
+        surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        surf.fill((20, 25, 35, 230))
+        self._screen.blit(surf, rect.topleft)
+        pygame.draw.rect(self._screen, (60, 80, 100), rect, 1, border_radius=5)
+
+        # Title
+        title_surf = self._font.render("═══ LOG VIEWER ═══", True, (100, 200, 255))
+        self._screen.blit(title_surf, (rect.x + 10, rect.y + 5))
+
+        # Log lines
+        y = rect.y + 28
+        visible_lines = self._log_buffer[-self._max_log_lines:]
+
+        for line in visible_lines:
+            # Color code by level
+            if line.startswith('E'):
+                color = (255, 100, 100)  # Error - red
+            elif line.startswith('W'):
+                color = (255, 200, 100)  # Warning - yellow
+            elif line.startswith('I'):
+                color = (150, 200, 150)  # Info - green
+            else:
+                color = (150, 150, 170)  # Debug - gray
+
+            # Truncate long lines
+            display_line = line[:45] + "..." if len(line) > 48 else line
+            text_surf = self._small_font.render(display_line, True, color)
+            self._screen.blit(text_surf, (rect.x + 8, y))
+            y += 14
+
+            if y > rect.bottom - 10:
+                break
+
+    def _render_printer_panel(self) -> None:
+        """Render the thermal printer preview panel."""
+        if not self._show_printer:
+            return
+
+        # Update printer animation
+        self._printer_preview.update(16)  # ~60fps
+
+        # Position on the right side
+        panel_width = 280
+        panel_height = self.config.height - 100
+        panel_x = self.config.width - panel_width - 10
+        panel_y = 50
+
+        self._printer_preview.render(
+            self._screen,
+            panel_x, panel_y,
+            panel_width, panel_height
+        )
+
+    def trigger_print(self, result_data: dict) -> None:
+        """Trigger a print job from mode result data."""
+        from .printer_preview import create_print_job_from_result
+
+        job = create_print_job_from_result(result_data)
+        self._printer_preview.set_print_job(job)
+        self._show_printer = True
+
     def _render_title_bar(self) -> None:
-        """Render the title bar."""
+        """Render the title bar with stylish header."""
         if not self._font:
             return
 
-        title = f"ARTIFACT Simulator | {self.state_machine.state.name}"
+        # Main title
+        title = f"◆ ARTIFACT Simulator ◆ | {self.state_machine.state.name}"
         text_surface = self._font.render(title, True, self.config.accent_color)
         self._screen.blit(text_surface, (20, 15))
+
+        # Status indicators on the right
+        indicators = []
+        if self.config.fullscreen:
+            indicators.append("⛶ FULL")
+        if self._show_debug:
+            indicators.append("◉ DBG")
+        if self._show_log:
+            indicators.append("◎ LOG")
+        if self._show_printer:
+            indicators.append("⎙ PRINT")
+
+        if indicators:
+            status = " │ ".join(indicators)
+            status_surf = self._small_font.render(status, True, (100, 150, 200))
+            self._screen.blit(status_surf, (self.config.width - 200, 18))
 
     def _capture_screenshot(self) -> None:
         """Capture and save a screenshot."""
@@ -412,6 +564,32 @@ class SimulatorWindow:
             filename = f"screenshot_{self._frame_count}.png"
             pygame.image.save(self._screen, filename)
             logger.info(f"Screenshot saved: {filename}")
+
+    def _toggle_fullscreen(self) -> None:
+        """Toggle fullscreen mode."""
+        self.config.fullscreen = not self.config.fullscreen
+
+        if self.config.fullscreen:
+            # Get display info for fullscreen resolution
+            info = pygame.display.Info()
+            self._screen = pygame.display.set_mode(
+                (info.current_w, info.current_h),
+                pygame.FULLSCREEN | pygame.DOUBLEBUF
+            )
+            self.config.width = info.current_w
+            self.config.height = info.current_h
+        else:
+            # Return to windowed mode
+            self.config.width = 1280
+            self.config.height = 720
+            self._screen = pygame.display.set_mode(
+                (self.config.width, self.config.height),
+                pygame.DOUBLEBUF
+            )
+
+        # Recalculate layout for new resolution
+        self._calculate_layout()
+        logger.info(f"Fullscreen: {self.config.fullscreen}")
 
     async def run(self) -> None:
         """Main simulator loop."""

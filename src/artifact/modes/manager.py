@@ -9,7 +9,7 @@ import random
 from artifact.core.events import EventBus, Event, EventType
 from artifact.core.state import StateMachine, State
 from artifact.animation.engine import AnimationEngine
-from artifact.animation.idle import create_idle_animation, IdleAnimationConfig
+from artifact.animation.idle_scenes import RotatingIdleAnimation
 from artifact.graphics.renderer import Renderer
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 
@@ -81,15 +81,8 @@ class ModeManager:
         self._current_mode: Optional[BaseMode] = None
         self._last_result: Optional[ModeResult] = None
 
-        # Idle animation
-        idle_config = IdleAnimationConfig(
-            style=theme,
-            main_width=128,
-            main_height=128,
-            ticker_width=48,
-            ticker_height=8
-        )
-        self._idle_animation = create_idle_animation(theme, idle_config)
+        # Idle animation - uses the new rotating scene system
+        self._idle_animation = RotatingIdleAnimation()
 
         # Admin menu detection
         self._key_buffer: List[str] = []
@@ -219,7 +212,10 @@ class ModeManager:
         """Handle left arcade button."""
         self._last_input_time = self._time_in_state
 
-        if self._state == ManagerState.MODE_SELECT:
+        if self._state == ManagerState.IDLE:
+            # Switch to previous idle scene
+            self._idle_animation.prev_scene()
+        elif self._state == ManagerState.MODE_SELECT:
             self._select_previous_mode()
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
@@ -231,7 +227,10 @@ class ModeManager:
         """Handle right arcade button."""
         self._last_input_time = self._time_in_state
 
-        if self._state == ManagerState.MODE_SELECT:
+        if self._state == ManagerState.IDLE:
+            # Switch to next idle scene
+            self._idle_animation.next_scene()
+        elif self._state == ManagerState.MODE_SELECT:
             self._select_next_mode()
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
@@ -364,8 +363,21 @@ class ModeManager:
     def _start_printing(self) -> None:
         """Start printing process."""
         self._change_state(ManagerState.PRINTING)
-        # Actual printing handled by print system
-        # For now, simulate with timeout
+
+        # Emit print event with result data for printer preview
+        if self._last_result:
+            print_data = {
+                "type": self._last_result.mode_name,
+                "prediction": self._last_result.display_text,
+                "display_text": self._last_result.display_text,
+                **(self._last_result.print_data or {})
+            }
+            self.event_bus.emit(Event(
+                EventType.PRINT_START,
+                data=print_data,
+                source="mode_manager"
+            ))
+
         logger.info("Printing started...")
 
     # Navigation
@@ -415,7 +427,7 @@ class ModeManager:
         """Render main display."""
         if self._state == ManagerState.IDLE:
             self._idle_animation.render_main(buffer)
-            self._render_start_prompt(buffer)
+            # Note: Start prompt is now integrated into idle_scenes.py
 
         elif self._state == ManagerState.MODE_SELECT:
             self._render_mode_select(buffer)
@@ -451,78 +463,79 @@ class ModeManager:
         elif self._state == ManagerState.MODE_SELECT:
             mode = self.get_selected_mode()
             if mode:
-                return mode.display_name[:16].center(16)
-            return "ВЫБЕРИ РЕЖИМ".center(16)
+                # Fun LCD with arrows for navigation
+                return f"◄ {mode.display_name[:10]} ►".center(16)[:16]
+            return "◄► РЕЖИМ ◄►".center(16)
 
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             return self._current_mode.get_lcd_text()
 
         elif self._state == ManagerState.RESULT:
-            return "ПЕЧАТЬ? L=НЕТ R=ДА"[:16]
+            # Use arrow symbols instead of L/R
+            return "← НЕТ ★ → ДА".center(16)[:16]
 
         elif self._state == ManagerState.PRINTING:
-            return "ПЕЧАТАЮ...".center(16)
+            # Fun animated printing
+            dots = "●" * (int(self._time_in_state / 300) % 4)
+            return f" ПЕЧАТЬ{dots} ".center(16)[:16]
 
         elif self._state == ManagerState.ADMIN_MENU:
-            return "АДМИН МЕНЮ".center(16)
+            return "★ ADMIN ★".center(16)
 
-        return "АРТЕФАКТ".center(16)
+        return "★ VNVNC ★".center(16)
 
     def _render_start_prompt(self, buffer) -> None:
         """Render 'press start' prompt with arrow."""
-        from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import draw_centered_text
         from artifact.graphics.primitives import draw_rect
 
-        font = load_font("cyrillic")
-
-        # Blinking "НАЖМИ СТАРТ" at bottom
+        # Blinking "НАЖМИ" at bottom - positioned to not get cut off
         if int(self._time_in_state / 500) % 2 == 0:
-            text = "НАЖМИ"
-            text_w, text_h = font.measure_text(text)
-            x = (128 - text_w * 2) // 2
-            draw_text_bitmap(buffer, text, x, 110, (255, 200, 0), font, scale=2)
+            draw_centered_text(buffer, "НАЖМИ", 100, (255, 200, 0), scale=2)
 
         # Arrow pointing down (to button) - wide at top, point at bottom
-        base_y = 120
-        bounce = int((self._time_in_state / 200) % 5)
+        # Position adjusted to stay within 128px height
+        base_y = 115
+        bounce = int((self._time_in_state / 200) % 3)  # Reduced bounce range
         cx = 64
         # Down arrow: starts wide, ends in point
-        for i in range(5):
-            width = (5 - i) * 2 - 1  # 9, 7, 5, 3, 1
+        for i in range(4):  # Reduced height to fit
+            width = (4 - i) * 2 - 1  # 7, 5, 3, 1
             x_start = cx - width // 2
             draw_rect(buffer, x_start, base_y + bounce + i, width, 1, (255, 100, 100))
 
     def _render_mode_select(self, buffer) -> None:
         """Render mode selection carousel."""
         from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import draw_centered_text
         from artifact.graphics.primitives import fill, draw_rect, draw_circle
 
         fill(buffer, (20, 20, 30))
         font = load_font("cyrillic")
 
-        # Title - use scale=1 to fit "ВЫБЕРИ РЕЖИМ" on 128px display
-        draw_text_bitmap(buffer, "ВЫБЕРИ РЕЖИМ", 25, 10, (200, 200, 200), font, scale=1)
+        # Title - centered with scale=1
+        draw_centered_text(buffer, "ВЫБЕРИ РЕЖИМ", 8, (200, 200, 200), scale=1)
 
         # Current mode
         mode = self.get_selected_mode()
         if mode:
-            # Mode icon (large)
-            draw_text_bitmap(buffer, mode.icon, 55, 40, (255, 200, 0), font, scale=4)
+            # Mode icon (large) - centered
+            draw_centered_text(buffer, mode.icon, 35, (255, 200, 0), scale=4)
 
-            # Mode name
+            # Mode name - centered with auto-scaling for long names
             name = mode.display_name
-            name_w, _ = font.measure_text(name)
-            x = (128 - name_w * 2) // 2
-            draw_text_bitmap(buffer, name, x, 85, (255, 255, 255), font, scale=2)
+            # Use scale=2, but scale=1 for names longer than 10 chars
+            name_scale = 1 if len(name) > 10 else 2
+            draw_centered_text(buffer, name, 75, (255, 255, 255), scale=name_scale)
 
         # Left/right arrows
         if len(self._mode_order) > 1:
-            # Left arrow
-            draw_text_bitmap(buffer, "<", 5, 55, (100, 150, 255), font, scale=3)
+            # Left arrow - positioned to not overlap with content
+            draw_text_bitmap(buffer, "<", 3, 50, (100, 150, 255), font, scale=2)
             # Right arrow
-            draw_text_bitmap(buffer, ">", 110, 55, (100, 150, 255), font, scale=3)
+            draw_text_bitmap(buffer, ">", 115, 50, (100, 150, 255), font, scale=2)
 
-        # Dots indicator
+        # Dots indicator - positioned higher to make room for prompt
         num_modes = len(self._mode_order)
         if num_modes > 1:
             dot_spacing = 10
@@ -530,84 +543,141 @@ class ModeManager:
             for i in range(num_modes):
                 x = start_x + i * dot_spacing
                 color = (255, 200, 0) if i == self._selected_index else (80, 80, 80)
-                draw_circle(buffer, x, 105, 3, color)
+                draw_circle(buffer, x, 95, 3, color)
 
-        # Confirm prompt
-        draw_text_bitmap(buffer, "НАЖМИ СТАРТ", 25, 115, (150, 150, 150), font, scale=1)
+        # Confirm prompt - positioned to not get cut off
+        draw_centered_text(buffer, "НАЖМИ СТАРТ", 110, (150, 150, 150), scale=1)
 
     def _render_mode_select_ticker(self, buffer) -> None:
-        """Render ticker during mode select."""
+        """Render ticker during mode select with smooth scrolling."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import render_ticker_animated, TickerEffect
 
         clear(buffer)
-        font = load_font("cyrillic")
 
         mode = self.get_selected_mode()
         if mode:
-            # Scrolling description
-            desc = mode.display_name
-            scroll = int(self._time_in_state / 100) % (len(desc) * 4 + 48)
-            draw_text_bitmap(buffer, desc, 48 - scroll, 1, (255, 200, 0), font, scale=1)
+            # Mode name with rainbow scroll effect
+            render_ticker_animated(
+                buffer, f"ВЫБРАНО: {mode.display_name}",
+                self._time_in_state, (255, 200, 0),
+                TickerEffect.RAINBOW_SCROLL, speed=0.025
+            )
 
     def _render_result(self, buffer) -> None:
-        """Render result screen."""
-        from artifact.graphics.fonts import load_font, draw_text_bitmap
+        """Render result screen with cycling views."""
+        from artifact.graphics.text_utils import draw_centered_text, draw_wrapped_text, smart_wrap_text
+        from artifact.graphics.fonts import load_font
         from artifact.graphics.primitives import fill
+        from io import BytesIO
 
         fill(buffer, (20, 30, 40))
-        font = load_font("cyrillic")
 
-        if self._last_result:
-            # Result text
-            text = self._last_result.display_text[:50] or "ГОТОВО!"
-            lines = [text[i:i+15] for i in range(0, len(text), 15)]
+        if not self._last_result:
+            draw_centered_text(buffer, "ГОТОВО!", 50, (255, 255, 200), scale=2)
+            return
 
-            y = 30
-            for line in lines[:4]:
-                line_w, _ = font.measure_text(line)
-                x = (128 - line_w * 2) // 2
-                draw_text_bitmap(buffer, line, x, y, (255, 255, 200), font, scale=2)
-                y += 20
+        # Cycle through views every 4 seconds: 0=print prompt, 1=prediction, 2=caricature
+        cycle_time = 4000
+        has_caricature = (self._last_result.print_data and
+                         self._last_result.print_data.get("caricature"))
+        num_views = 3 if has_caricature else 2
+        view = int(self._time_in_state / cycle_time) % num_views
 
-            # Print prompt
+        if view == 0:
+            # Print prompt view
+            draw_centered_text(buffer, "С ТАКОЙ", 15, (150, 180, 200), scale=2)
+            draw_centered_text(buffer, "ДЕРЗОСТЬЮ", 35, (150, 180, 200), scale=2)
+            draw_centered_text(buffer, "И", 55, (150, 180, 200), scale=2)
+            draw_centered_text(buffer, "ПЕЧАТЬ?", 75, (255, 255, 100), scale=2)
+
+            # Print options at bottom
             if self._last_result.should_print:
-                draw_text_bitmap(buffer, "ПЕЧАТЬ?", 35, 90, (200, 200, 200), font, scale=2)
-                draw_text_bitmap(buffer, "L=НЕТ  R=ДА", 25, 110, (150, 200, 150), font, scale=1)
+                draw_centered_text(buffer, "< НЕТ  > ДА", 110, (150, 200, 150), scale=1)
             else:
-                draw_text_bitmap(buffer, "НАЖМИ КНОПКУ", 15, 105, (150, 150, 150), font, scale=1)
+                draw_centered_text(buffer, "НАЖМИ КНОПКУ", 110, (150, 150, 150), scale=1)
+
+        elif view == 1:
+            # Prediction text view
+            text = self._last_result.display_text or "..."
+            font = load_font("cyrillic")
+
+            # Title
+            draw_centered_text(buffer, "ПРОРОЧЕСТВО", 3, (255, 200, 100), scale=1)
+
+            # Auto-scale prediction text
+            lines = smart_wrap_text(text, 120, font, scale=1)
+            y = 16
+            for i, line in enumerate(lines[:9]):  # Max 9 lines at scale=1
+                draw_centered_text(buffer, line, y, (255, 255, 255), scale=1)
+                y += 11
+
+            # Print hint at bottom
+            if self._last_result.should_print:
+                draw_centered_text(buffer, "< НЕТ  > ДА", 118, (100, 150, 100), scale=1)
+
+        elif view == 2 and has_caricature:
+            # Caricature view
+            try:
+                from PIL import Image
+                import numpy as np
+
+                caricature_data = self._last_result.print_data.get("caricature")
+                img = Image.open(BytesIO(caricature_data))
+                img = img.convert("RGB")
+                img = img.resize((100, 100), Image.Resampling.NEAREST)
+
+                # Center on screen
+                img_array = np.array(img)
+                x_offset = (128 - 100) // 2
+                y_offset = 5
+                buffer[y_offset:y_offset+100, x_offset:x_offset+100] = img_array
+
+                # Title at bottom
+                draw_centered_text(buffer, "ТВОЙ ШАРЖ", 110, (255, 200, 100), scale=1)
+            except Exception:
+                # Fallback to prediction
+                draw_centered_text(buffer, "ШАРЖ", 50, (200, 200, 200), scale=2)
+
+            # Print hint
+            if self._last_result.should_print:
+                draw_centered_text(buffer, "< НЕТ  > ДА", 118, (100, 150, 100), scale=1)
 
     def _render_printing(self, buffer) -> None:
         """Render printing progress."""
-        from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import draw_centered_text
         from artifact.graphics.primitives import fill, draw_rect
 
         fill(buffer, (30, 30, 30))
-        font = load_font("cyrillic")
 
-        draw_text_bitmap(buffer, "ПЕЧАТАЮ", 25, 40, (255, 255, 255), font, scale=2)
+        # Title centered
+        draw_centered_text(buffer, "ПЕЧАТАЮ", 35, (255, 255, 255), scale=2)
 
-        # Progress bar
+        # Progress bar - centered
         progress = min(1.0, self._time_in_state / 10000)
         bar_width = int(100 * progress)
-        draw_rect(buffer, 14, 70, 100, 10, (50, 50, 50))
-        draw_rect(buffer, 14, 70, bar_width, 10, (0, 200, 100))
+        bar_x = (128 - 100) // 2  # Center the bar
+        draw_rect(buffer, bar_x, 60, 100, 10, (50, 50, 50))
+        draw_rect(buffer, bar_x, 60, bar_width, 10, (0, 200, 100))
 
-        # Dots animation
+        # Dots animation - centered below progress bar
         dots = "." * (int(self._time_in_state / 300) % 4)
-        draw_text_bitmap(buffer, dots, 75, 90, (200, 200, 200), font, scale=2)
+        if dots:
+            draw_centered_text(buffer, dots, 80, (200, 200, 200), scale=2)
 
     def _render_admin_menu(self, buffer) -> None:
         """Render admin menu."""
         from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import draw_centered_text
         from artifact.graphics.primitives import fill
 
         fill(buffer, (40, 20, 20))
         font = load_font("cyrillic")
 
-        draw_text_bitmap(buffer, "ADMIN", 45, 10, (255, 100, 100), font, scale=2)
+        # Title centered
+        draw_centered_text(buffer, "ADMIN", 10, (255, 100, 100), scale=2)
 
-        # Menu options
+        # Menu options - left aligned with proper margin
         options = [
             "1. Theme",
             "2. Stats",
@@ -616,7 +686,7 @@ class ModeManager:
         ]
         y = 40
         for opt in options:
-            draw_text_bitmap(buffer, opt, 20, y, (200, 200, 200), font, scale=1)
+            draw_text_bitmap(buffer, opt, 25, y, (200, 200, 200), font, scale=1)
             y += 15
 
     # Callbacks

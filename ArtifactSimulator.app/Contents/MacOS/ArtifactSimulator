@@ -1,0 +1,9 @@
+#!/bin/bash
+# ARTIFACT Simulator Launcher
+# Runs the simulator as a proper macOS app with its own camera permissions
+
+cd "$(dirname "$0")/../../.."
+export PYTHONPATH="$PWD/src:$PYTHONPATH"
+
+# Run the simulator
+exec "$PWD/.venv/bin/python3" -m artifact.simulator.main "$@"

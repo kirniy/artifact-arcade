@@ -9,7 +9,7 @@ arcade fortune-telling use case.
 
 import logging
 import asyncio
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
@@ -107,6 +107,7 @@ class CaricatureService:
         reference_photo: bytes,
         style: CaricatureStyle = CaricatureStyle.MYSTICAL,
         size: Tuple[int, int] = (384, 384),
+        personality_context: Optional[str] = None,
     ) -> Optional[Caricature]:
         """Generate a caricature based on a reference photo.
 
@@ -117,6 +118,7 @@ class CaricatureService:
             reference_photo: User's photo as bytes
             style: Caricature style to use
             size: Output size (width, height)
+            personality_context: Optional personality traits from questions
 
         Returns:
             Caricature object or None on error
@@ -129,6 +131,17 @@ class CaricatureService:
             # Build the caricature prompt
             style_prompt = STYLE_PROMPTS.get(style, STYLE_PROMPTS[CaricatureStyle.SKETCH])
 
+            # Build personality-aware prompt
+            personality_hint = ""
+            if personality_context:
+                personality_hint = f"""
+PERSONALITY INSIGHT (use to inform the caricature's expression/vibe):
+{personality_context}
+
+Express their personality through the caricature - confident people get confident poses,
+introverts get gentle expressions, risk-takers get dynamic poses, etc.
+"""
+
             prompt = f"""Create a caricature portrait OF THIS EXACT PERSON from the reference photo.
 
 CRITICAL REQUIREMENTS:
@@ -137,7 +150,7 @@ CRITICAL REQUIREMENTS:
 - THICK bold black outlines only
 - Pure white background - no shading, no gradients, no gray
 - Black and white only - suitable for thermal receipt printer
-
+{personality_hint}
 Style: {style_prompt}
 
 The result should be recognizable as THIS specific person, but as a fun caricature.

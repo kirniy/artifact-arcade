@@ -6,6 +6,9 @@ from artifact.graphics.fonts.pixel_font import (
     get_default_font,
     get_cyrillic_font,
     draw_text_bitmap,
+    center_text_x,
+    wrap_text,
+    draw_text_centered,
 )
 
 __all__ = [
@@ -14,4 +17,7 @@ __all__ = [
     "get_default_font",
     "get_cyrillic_font",
     "draw_text_bitmap",
+    "center_text_x",
+    "wrap_text",
+    "draw_text_centered",
 ]

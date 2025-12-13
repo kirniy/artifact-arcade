@@ -18,6 +18,11 @@ from artifact.animation.idle import (
     ModernIdleAnimation,
     create_idle_animation,
 )
+from artifact.animation.idle_scenes import (
+    RotatingIdleAnimation,
+    IdleScene,
+    SceneState,
+)
 
 __all__ = [
     # Easing
@@ -46,4 +51,8 @@ __all__ = [
     "ArcadeIdleAnimation",
     "ModernIdleAnimation",
     "create_idle_animation",
+    # New rotating scenes
+    "RotatingIdleAnimation",
+    "IdleScene",
+    "SceneState",
 ]

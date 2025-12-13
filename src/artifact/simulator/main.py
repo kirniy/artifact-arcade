@@ -27,6 +27,7 @@ from artifact.modes.zodiac import ZodiacMode
 from artifact.modes.roulette import RouletteMode
 from artifact.modes.quiz import QuizMode
 from artifact.modes.ai_prophet import AIProphetMode
+from artifact.audio.engine import AudioEngine, get_audio_engine
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,10 @@ class ArtifactSimulator:
         self.event_bus = EventBus()
         self.renderer = Renderer()
         self.animation_engine = AnimationEngine()
+
+        # Audio system - synthwave arcade sounds!
+        self.audio = get_audio_engine()
+        self.audio.init()
 
         # Window
         self.window_config = WindowConfig(
@@ -107,6 +112,38 @@ class ArtifactSimulator:
         # We just need tick for updates
         self.event_bus.subscribe(EventType.TICK, self._on_tick)
 
+        # Audio event handlers - play sounds on UI events
+        self.event_bus.subscribe(EventType.BUTTON_PRESS, self._on_button_sound)
+        self.event_bus.subscribe(EventType.ARCADE_LEFT, self._on_nav_sound)
+        self.event_bus.subscribe(EventType.ARCADE_RIGHT, self._on_nav_sound)
+        self.event_bus.subscribe(EventType.BACK, self._on_back_sound)
+
+        # Printer preview - show receipt when printing starts
+        self.event_bus.subscribe(EventType.PRINT_START, self._on_print_start)
+
+    def _on_button_sound(self, event: Event) -> None:
+        """Play button press sound."""
+        self.audio.play_ui_confirm()
+
+    def _on_nav_sound(self, event: Event) -> None:
+        """Play navigation sound."""
+        self.audio.play_ui_move()
+
+    def _on_back_sound(self, event: Event) -> None:
+        """Play back sound."""
+        self.audio.play_ui_back()
+
+    def _on_print_start(self, event: Event) -> None:
+        """Handle print start - show printer preview with receipt content."""
+        print_data = event.data if event.data else {}
+        logger.info(f"Print started with data: {print_data.get('type', 'unknown')}")
+
+        # Trigger the printer preview in the simulator window
+        self.window.trigger_print(print_data)
+
+        # Play printer sound effect
+        self.audio.play_reward()
+
     def _on_tick(self, event: Event) -> None:
         """Handle frame tick - update and render."""
         delta = event.data.get("delta", 0.016)  # Default 60fps
@@ -141,8 +178,17 @@ class ArtifactSimulator:
         """Run the simulator."""
         logger.info("Starting ARTIFACT Simulator...")
 
+        # Play startup fanfare!
+        self.audio.play_startup()
+
+        # Start idle ambient loop
+        self.audio.start_idle_ambient()
+
         # Run the window (main loop)
         await self.window.run()
+
+        # Cleanup audio
+        self.audio.cleanup()
 
 
 async def run() -> None:
@@ -161,11 +207,18 @@ def main() -> None:
     logger.info("=" * 50)
     logger.info("")
     logger.info("Controls:")
-    logger.info("  SPACE      - Center button (start/confirm)")
-    logger.info("  LEFT/RIGHT - Arcade buttons (select/answer)")
-    logger.info("  0-9, *, #  - Keypad input")
-    logger.info("  F1         - Toggle debug panel")
-    logger.info("  ESC        - Exit")
+    logger.info("  SPACE/ENTER  - Center button (start/confirm)")
+    logger.info("  LEFT/RIGHT   - Arcade buttons (select/answer)")
+    logger.info("  0-9, *, #    - Keypad input")
+    logger.info("  R            - Restart")
+    logger.info("")
+    logger.info("System (Mac-friendly):")
+    logger.info("  F  - Toggle fullscreen")
+    logger.info("  D  - Toggle debug panel")
+    logger.info("  L  - Toggle log viewer")
+    logger.info("  P  - Toggle printer preview")
+    logger.info("  S  - Screenshot")
+    logger.info("  Q  - Quit")
     logger.info("")
 
     try:

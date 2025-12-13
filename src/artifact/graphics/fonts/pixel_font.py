@@ -955,6 +955,225 @@ def get_cyrillic_font() -> PixelFont:
             [0,0,0,0,0],
             [0,0,0,0,0],
         ],
+        # Angle brackets (5x7)
+        '<': [
+            [0,0,0,0,1],
+            [0,0,0,1,0],
+            [0,0,1,0,0],
+            [0,1,0,0,0],
+            [0,0,1,0,0],
+            [0,0,0,1,0],
+            [0,0,0,0,1],
+        ],
+        '>': [
+            [1,0,0,0,0],
+            [0,1,0,0,0],
+            [0,0,1,0,0],
+            [0,0,0,1,0],
+            [0,0,1,0,0],
+            [0,1,0,0,0],
+            [1,0,0,0,0],
+        ],
+        # Arrow symbols (critical for UI!)
+        '←': [
+            [0,0,1,0,0],
+            [0,1,0,0,0],
+            [1,1,1,1,1],
+            [0,1,0,0,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '→': [
+            [0,0,1,0,0],
+            [0,0,0,1,0],
+            [1,1,1,1,1],
+            [0,0,0,1,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '▲': [
+            [0,0,1,0,0],
+            [0,1,1,1,0],
+            [1,1,1,1,1],
+            [0,0,1,0,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '▼': [
+            [0,0,1,0,0],
+            [0,0,1,0,0],
+            [1,1,1,1,1],
+            [0,1,1,1,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '◄': [
+            [0,0,1,0,0],
+            [0,1,1,0,0],
+            [1,1,1,0,0],
+            [0,1,1,0,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '►': [
+            [0,0,1,0,0],
+            [0,0,1,1,0],
+            [0,0,1,1,1],
+            [0,0,1,1,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        # Additional useful symbols
+        '●': [
+            [0,0,0,0,0],
+            [0,1,1,1,0],
+            [1,1,1,1,1],
+            [1,1,1,1,1],
+            [0,1,1,1,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '○': [
+            [0,0,0,0,0],
+            [0,1,1,1,0],
+            [1,0,0,0,1],
+            [1,0,0,0,1],
+            [0,1,1,1,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '★': [
+            [0,0,1,0,0],
+            [0,1,1,1,0],
+            [1,1,1,1,1],
+            [0,1,1,1,0],
+            [0,1,0,1,0],
+            [1,0,0,0,1],
+            [0,0,0,0,0],
+        ],
+        '☆': [
+            [0,0,1,0,0],
+            [0,0,1,0,0],
+            [1,1,1,1,1],
+            [0,1,0,1,0],
+            [0,1,0,1,0],
+            [1,0,0,0,1],
+            [0,0,0,0,0],
+        ],
+        '◆': [
+            [0,0,1,0,0],
+            [0,1,1,1,0],
+            [1,1,1,1,1],
+            [0,1,1,1,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '◇': [
+            [0,0,1,0,0],
+            [0,1,0,1,0],
+            [1,0,0,0,1],
+            [0,1,0,1,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '♥': [
+            [0,0,0,0,0],
+            [0,1,0,1,0],
+            [1,1,1,1,1],
+            [0,1,1,1,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '✓': [
+            [0,0,0,0,0],
+            [0,0,0,0,1],
+            [0,0,0,1,0],
+            [1,0,1,0,0],
+            [0,1,0,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '✗': [
+            [0,0,0,0,0],
+            [1,0,0,0,1],
+            [0,1,0,1,0],
+            [0,0,1,0,0],
+            [0,1,0,1,0],
+            [1,0,0,0,1],
+            [0,0,0,0,0],
+        ],
+        '%': [
+            [1,1,0,0,1],
+            [1,1,0,1,0],
+            [0,0,1,0,0],
+            [0,1,0,1,1],
+            [1,0,0,1,1],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '/': [
+            [0,0,0,0,1],
+            [0,0,0,1,0],
+            [0,0,1,0,0],
+            [0,1,0,0,0],
+            [1,0,0,0,0],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
+        '(': [
+            [0,0,0,1,0],
+            [0,0,1,0,0],
+            [0,1,0,0,0],
+            [0,1,0,0,0],
+            [0,1,0,0,0],
+            [0,0,1,0,0],
+            [0,0,0,1,0],
+        ],
+        ')': [
+            [0,1,0,0,0],
+            [0,0,1,0,0],
+            [0,0,0,1,0],
+            [0,0,0,1,0],
+            [0,0,0,1,0],
+            [0,0,1,0,0],
+            [0,1,0,0,0],
+        ],
+        '#': [
+            [0,1,0,1,0],
+            [0,1,0,1,0],
+            [1,1,1,1,1],
+            [0,1,0,1,0],
+            [1,1,1,1,1],
+            [0,1,0,1,0],
+            [0,1,0,1,0],
+        ],
+        '+': [
+            [0,0,0,0,0],
+            [0,0,1,0,0],
+            [0,0,1,0,0],
+            [1,1,1,1,1],
+            [0,0,1,0,0],
+            [0,0,1,0,0],
+            [0,0,0,0,0],
+        ],
+        '=': [
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+            [1,1,1,1,1],
+            [0,0,0,0,0],
+            [1,1,1,1,1],
+            [0,0,0,0,0],
+            [0,0,0,0,0],
+        ],
     }
 
     # Add all glyphs to font
@@ -1003,3 +1222,75 @@ def load_font(name: str) -> PixelFont:
 
     _font_cache[name] = font
     return font
+
+
+def center_text_x(text: str, font: PixelFont, scale: int = 1, display_width: int = 128) -> int:
+    """Calculate X position to center text on display.
+
+    Args:
+        text: Text string to center
+        font: PixelFont instance
+        scale: Scale factor
+        display_width: Width of display in pixels
+
+    Returns:
+        X coordinate for centered text
+    """
+    text_w, _ = font.measure_text(text)
+    return max(0, (display_width - text_w * scale) // 2)
+
+
+def wrap_text(text: str, max_chars: int) -> List[str]:
+    """Word-wrap text to fit within character limit.
+
+    Args:
+        text: Text to wrap
+        max_chars: Maximum characters per line
+
+    Returns:
+        List of wrapped lines
+    """
+    words = text.split()
+    lines: List[str] = []
+    current_line = ""
+
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        if len(test_line) <= max_chars:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+
+    if current_line:
+        lines.append(current_line)
+
+    return lines
+
+
+def draw_text_centered(
+    buffer: NDArray[np.uint8],
+    text: str,
+    y: int,
+    color: Tuple[int, int, int],
+    font: PixelFont,
+    scale: int = 1,
+    display_width: int = 128,
+) -> Tuple[int, int]:
+    """Draw centered text on buffer.
+
+    Args:
+        buffer: Target numpy array
+        text: Text to draw
+        y: Y coordinate
+        color: RGB color
+        font: PixelFont instance
+        scale: Scale factor
+        display_width: Width of display
+
+    Returns:
+        Tuple of (width, height) of rendered text
+    """
+    x = center_text_x(text, font, scale, display_width)
+    return draw_text_bitmap(buffer, text, x, y, color, font, scale)

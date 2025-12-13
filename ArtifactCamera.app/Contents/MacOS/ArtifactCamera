@@ -1,0 +1,9 @@
+#!/bin/bash
+# ARTIFACT Camera Permission Request
+# This app bundle requests camera permission as "ARTIFACT Camera" not as Terminal
+
+cd "$(dirname "$0")/../../.."
+export PYTHONPATH="$PWD/src:$PYTHONPATH"
+
+# Run the camera permission script using the venv Python
+exec "$PWD/.venv/bin/python3" "$PWD/request_camera_permission.py"

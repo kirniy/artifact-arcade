@@ -261,45 +261,44 @@ class QuizMode(BaseMode):
 
     def _render_intro(self, buffer, font) -> None:
         """Render intro screen."""
-        from artifact.graphics.fonts import draw_text_bitmap
+        from artifact.graphics.text_utils import draw_centered_text
 
-        # Title
-        draw_text_bitmap(buffer, "ВИКТОРИНА!", 20, 40, self._primary, font, scale=2)
+        # Title - centered
+        draw_centered_text(buffer, "ВИКТОРИНА!", 35, self._primary, scale=2)
 
-        # Question count
-        draw_text_bitmap(
-            buffer, f"{self.QUESTIONS_COUNT} Вопросов",
-            35, 70, (150, 150, 180), font, scale=1
-        )
+        # Question count - centered
+        draw_centered_text(buffer, f"{self.QUESTIONS_COUNT} Вопросов", 60, (150, 150, 180), scale=1)
 
-        # Countdown
+        # Countdown - centered
         countdown = max(0, 3 - int(self._time_in_phase / 1000))
         if countdown > 0:
-            draw_text_bitmap(buffer, str(countdown), 58, 95, self._secondary, font, scale=3)
+            draw_centered_text(buffer, str(countdown), 85, self._secondary, scale=3)
         else:
-            draw_text_bitmap(buffer, "СТАРТ!", 40, 95, self._secondary, font, scale=2)
+            draw_centered_text(buffer, "СТАРТ!", 85, self._secondary, scale=2)
 
     def _render_question(self, buffer, font) -> None:
         """Render current question."""
         from artifact.graphics.primitives import draw_rect
         from artifact.graphics.fonts import draw_text_bitmap
+        from artifact.graphics.text_utils import draw_wrapped_text, fit_text_in_rect
 
         question = self._questions[self._current_question]
         q_text, opt_left, opt_right, _ = question
 
-        # Score display
+        # Score display - left aligned at top
         score_color = self._secondary if self._score_pop > 0 else (100, 100, 120)
-        score_scale = 2 if self._score_pop > 0 else 1
-        draw_text_bitmap(buffer, f"Счёт: {self._score}", 5, 3, score_color, font, scale=score_scale)
+        score_scale = 1 if self._score_pop == 0 else 2
+        draw_text_bitmap(buffer, f"Счёт:{self._score}", 3, 2, score_color, font, scale=score_scale)
 
-        # Question number
-        q_num = f"Q{self._current_question + 1}/{len(self._questions)}"
-        draw_text_bitmap(buffer, q_num, 95, 3, (100, 100, 120), font, scale=1)
+        # Question number - right aligned at top
+        q_num = f"{self._current_question + 1}/{len(self._questions)}"
+        draw_text_bitmap(buffer, q_num, 100, 2, (100, 100, 120), font, scale=1)
 
-        # Timer bar
-        timer_y = 15
-        timer_w = 118
-        timer_h = 6
+        # Timer bar - centered with margin
+        timer_y = 12
+        timer_w = 116
+        timer_h = 5
+        timer_x = (128 - timer_w) // 2
         timer_fill = int(timer_w * (self._time_remaining / self.TIME_PER_QUESTION))
 
         # Timer color based on remaining time
@@ -310,55 +309,33 @@ class QuizMode(BaseMode):
         else:
             timer_color = self._error
 
-        draw_rect(buffer, 5, timer_y, timer_w, timer_h, (40, 40, 60))
+        draw_rect(buffer, timer_x, timer_y, timer_w, timer_h, (40, 40, 60))
         if timer_fill > 0:
-            draw_rect(buffer, 5, timer_y, timer_fill, timer_h, timer_color)
+            draw_rect(buffer, timer_x, timer_y, timer_fill, timer_h, timer_color)
 
-        # Question text (word wrap)
-        words = q_text.split()
-        lines = []
-        current_line = ""
-        for word in words:
-            test_line = current_line + " " + word if current_line else word
-            if len(test_line) <= 14:
-                current_line = test_line
-            else:
-                if current_line:
-                    lines.append(current_line)
-                current_line = word
-        if current_line:
-            lines.append(current_line)
+        # Question text - smart wrapped, positioned lower
+        draw_wrapped_text(buffer, q_text, 22, (255, 255, 255), scale=1, max_lines=3, line_spacing=3)
 
-        y = 30
-        for line in lines[:3]:
-            line_w = len(line) * 8
-            x = (128 - line_w) // 2
-            draw_text_bitmap(buffer, line, x, y, (255, 255, 255), font, scale=2)
-            y += 16
-
-        # Answer options
-        btn_y = 90
+        # Answer options - positioned to fit within screen
+        btn_y = 85
+        btn_h = 28
 
         # Left option
         left_color = self._secondary if self._last_answer_correct == True and not question[3] else (60, 80, 100)
         if self._last_answer_correct == False and not question[3]:
             left_color = self._error
 
-        draw_rect(buffer, 5, btn_y, 55, 30, left_color)
-        # Word wrap option
-        opt_lines = self._wrap_text(opt_left, 8)
-        for i, line in enumerate(opt_lines[:2]):
-            draw_text_bitmap(buffer, line, 8, btn_y + 5 + i * 12, (255, 255, 255), font, scale=1)
+        draw_rect(buffer, 3, btn_y, 58, btn_h, left_color)
+        # Fit text within button
+        fit_text_in_rect(buffer, opt_left, (3, btn_y, 58, btn_h), (255, 255, 255), font, max_scale=1, padding=3)
 
         # Right option
         right_color = self._secondary if self._last_answer_correct == True and question[3] else (60, 80, 100)
         if self._last_answer_correct == False and question[3]:
             right_color = self._error
 
-        draw_rect(buffer, 68, btn_y, 55, 30, right_color)
-        opt_lines = self._wrap_text(opt_right, 8)
-        for i, line in enumerate(opt_lines[:2]):
-            draw_text_bitmap(buffer, line, 71, btn_y + 5 + i * 12, (255, 255, 255), font, scale=1)
+        draw_rect(buffer, 67, btn_y, 58, btn_h, right_color)
+        fit_text_in_rect(buffer, opt_right, (67, btn_y, 58, btn_h), (255, 255, 255), font, max_scale=1, padding=3)
 
         # Answer flash
         if self._answer_flash > 0:
@@ -370,30 +347,26 @@ class QuizMode(BaseMode):
 
     def _render_result(self, buffer, font) -> None:
         """Render final results."""
-        from artifact.graphics.primitives import draw_rect
-        from artifact.graphics.fonts import draw_text_bitmap
+        from artifact.graphics.text_utils import draw_centered_text
 
-        # Title
-        draw_text_bitmap(buffer, "ИТОГИ", 40, 10, self._primary, font, scale=2)
+        # Title - centered
+        draw_centered_text(buffer, "ИТОГИ", 8, self._primary, scale=2)
 
-        # Score
-        draw_text_bitmap(
-            buffer, f"{self._score}/{len(self._questions)}",
-            45, 40, self._secondary, font, scale=3
-        )
+        # Score - centered with large font
+        draw_centered_text(buffer, f"{self._score}/{len(self._questions)}", 35, self._secondary, scale=3)
 
-        # Percentage
+        # Percentage - centered
         percentage = int(self._score / len(self._questions) * 100)
-        draw_text_bitmap(buffer, f"{percentage}%", 55, 70, (150, 150, 180), font, scale=2)
+        draw_centered_text(buffer, f"{percentage}%", 65, (150, 150, 180), scale=2)
 
-        # Rank
+        # Rank - centered
         rank = self._get_rank()
         rank_color = self._secondary if self._score >= 7 else self._primary
-        draw_text_bitmap(buffer, rank, (128 - len(rank) * 8) // 2, 95, rank_color, font, scale=2)
+        draw_centered_text(buffer, rank, 88, rank_color, scale=2)
 
-        # Press to continue
+        # Press to continue - blinking, positioned safely
         if int(self._time_in_phase / 500) % 2 == 0:
-            draw_text_bitmap(buffer, "НАЖМИ КНОПКУ", 15, 115, (100, 100, 120), font, scale=1)
+            draw_centered_text(buffer, "НАЖМИ КНОПКУ", 110, (100, 100, 120), scale=1)
 
     def _wrap_text(self, text: str, max_chars: int) -> List[str]:
         """Simple text wrapping."""
@@ -412,31 +385,49 @@ class QuizMode(BaseMode):
         return lines
 
     def render_ticker(self, buffer) -> None:
-        """Render ticker."""
+        """Render ticker with smooth seamless scrolling."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import render_ticker_animated, render_ticker_static, TickerEffect, TextEffect
 
         clear(buffer)
-        font = load_font("cyrillic")
 
-        if self.phase == ModePhase.ACTIVE:
-            # Show timer
+        if self.phase == ModePhase.INTRO:
+            # Intro scrolling text
+            render_ticker_animated(
+                buffer, "ВИКТОРИНА - ПРОВЕРЬ СВОИ ЗНАНИЯ",
+                self._time_in_phase, self._primary,
+                TickerEffect.RAINBOW_SCROLL, speed=0.025
+            )
+
+        elif self.phase == ModePhase.ACTIVE:
+            # Show timer and score as static centered text with glow
             secs = int(self._time_remaining)
-            draw_text_bitmap(buffer, f"ВРЕМЯ:{secs}с СЧЁТ:{self._score}", 2, 1, self._primary, font, scale=1)
+            status = f"ВРЕМЯ:{secs}с СЧЁТ:{self._score}"
+            render_ticker_static(
+                buffer, status,
+                self._time_in_phase, self._primary,
+                TextEffect.GLOW
+            )
 
         elif self.phase == ModePhase.RESULT:
+            # Result with wave effect
             rank = self._get_rank()
-            text = f"{rank} - {self._score}/{len(self._questions)} "
-            scroll = int(self._time_in_phase / 100) % (len(text) * 4 + 48)
-            draw_text_bitmap(buffer, text * 2, 48 - scroll, 1, self._secondary, font, scale=1)
-
-        else:
-            draw_text_bitmap(buffer, "ВИКТОРИНА!", 5, 1, self._primary, font, scale=1)
+            text = f"{rank} - {self._score}/{len(self._questions)} ПРАВИЛЬНО"
+            render_ticker_animated(
+                buffer, text,
+                self._time_in_phase, self._secondary,
+                TickerEffect.WAVE_SCROLL, speed=0.022
+            )
 
     def get_lcd_text(self) -> str:
-        """Get LCD text."""
+        """Get LCD text with fun timer bar."""
         if self.phase == ModePhase.ACTIVE:
-            return f"В{self._current_question + 1} ВРЕМЯ:{int(self._time_remaining)}с"[:16].center(16)
+            # Visual timer bar
+            time_left = int(self._time_remaining)
+            bar = "█" * min(5, time_left // 2) + "░" * (5 - min(5, time_left // 2))
+            return f"← → Q{self._current_question + 1} {bar}"[:16]
         elif self.phase == ModePhase.RESULT:
-            return f"СЧЁТ:{self._score}/{len(self._questions)}"[:16].center(16)
-        return "ВИКТОРИНА!".center(16)
+            pct = int(self._score / len(self._questions) * 100)
+            star = "★" if pct >= 70 else "◆" if pct >= 40 else "○"
+            return f"{star} {self._score}/{len(self._questions)} {pct}% {star}"[:16].center(16)
+        return " ◆ ВИКТОРИНА ◆ ".center(16)

@@ -244,14 +244,19 @@ class ZodiacMode(BaseMode):
         # Animation state
         self._constellation_angle: float = 0.0
         self._star_twinkle: List[float] = []
+        self._glow_phase: float = 0.0
+        self._orbit_angle: float = 0.0
+        self._symbol_pulse: float = 0.0
+        self._input_glow: float = 0.0  # Glow effect for valid input
 
         # Particles
         self._particles = ParticleSystem()
 
-        # Colors
-        self._primary = (107, 33, 168)   # Purple
-        self._secondary = (59, 130, 246)  # Blue
-        self._accent = (245, 158, 11)     # Gold
+        # Colors - richer mystical palette
+        self._primary = (138, 43, 226)    # Purple (BlueViolet)
+        self._secondary = (100, 149, 237)  # Cornflower blue
+        self._accent = (255, 215, 0)       # Gold
+        self._star_color = (255, 250, 205) # Lemon chiffon (stars)
 
     def on_enter(self) -> None:
         """Initialize zodiac mode."""
@@ -263,14 +268,25 @@ class ZodiacMode(BaseMode):
         self._zodiac_symbol = ""
         self._horoscope = ""
         self._reveal_progress = 0.0
+        self._glow_phase = 0.0
+        self._orbit_angle = 0.0
+        self._symbol_pulse = 0.0
+        self._input_glow = 0.0
 
-        # Initialize star twinkle phases
-        self._star_twinkle = [random.random() * 6.28 for _ in range(20)]
+        # Initialize star twinkle phases - more stars for richer effect
+        self._star_twinkle = [random.random() * 6.28 for _ in range(30)]
 
-        # Setup particles
+        # Setup particles - multiple emitters for layered effect
         star_config = ParticlePresets.stars(x=64, y=64)
-        star_config.color = self._secondary
+        star_config.color = self._star_color
+        star_config.emission_rate = 3.0
         self._particles.add_emitter("stars", star_config)
+
+        # Add magic sparkles
+        magic_config = ParticlePresets.sparkle(x=64, y=64)
+        magic_config.color = self._accent
+        magic_config.emission_rate = 0.5
+        self._particles.add_emitter("magic", magic_config)
 
         self.change_phase(ModePhase.INTRO)
 
@@ -278,31 +294,79 @@ class ZodiacMode(BaseMode):
         """Update zodiac mode."""
         self._particles.update(delta_ms)
 
-        # Rotate constellation
-        self._constellation_angle += delta_ms * 0.01
+        # Animation updates
+        self._constellation_angle += delta_ms * 0.008  # Slower rotation
+        self._glow_phase += delta_ms * 0.005
+        self._orbit_angle += delta_ms * 0.003
+        self._symbol_pulse += delta_ms * 0.01
+
+        # Input glow animation (fades out when invalid)
+        if self._input_valid:
+            self._input_glow = min(1.0, self._input_glow + delta_ms / 200)
+        else:
+            self._input_glow = max(0.0, self._input_glow - delta_ms / 300)
 
         if self.phase == ModePhase.INTRO:
-            # Intro lasts 2 seconds
-            if self._time_in_phase > 2000:
+            # Longer, more dramatic intro - 3 seconds
+            if self._time_in_phase > 3000:
                 self.change_phase(ModePhase.ACTIVE)
 
         elif self.phase == ModePhase.PROCESSING:
-            # Calculation animation
-            self._reveal_progress = min(1.0, self._time_in_phase / 2000)
+            # Slower reveal for more drama - 3 seconds
+            self._reveal_progress = min(1.0, self._time_in_phase / 3000)
+
+            # Burst more particles during reveal
+            if int(self._time_in_phase / 500) > int((self._time_in_phase - delta_ms) / 500):
+                magic = self._particles.get_emitter("magic")
+                if magic:
+                    magic.burst(10)
 
             if self._reveal_progress >= 1.0:
                 self.change_phase(ModePhase.RESULT)
+                # Final burst
+                stars = self._particles.get_emitter("stars")
+                if stars:
+                    stars.burst(50)
 
         elif self.phase == ModePhase.RESULT:
-            # Auto-complete after 15 seconds
-            if self._time_in_phase > 15000:
+            # Auto-complete after 20 seconds (longer to admire)
+            if self._time_in_phase > 20000:
                 self._finish()
 
     def on_input(self, event: Event) -> bool:
-        """Handle input."""
+        """Handle input.
+
+        Accepts:
+        - BUTTON_PRESS (center button): Confirm date / finish result
+        - ARCADE_LEFT: Navigate left in date (if implemented) or clear
+        - ARCADE_RIGHT: Navigate right in date (if implemented)
+        - KEYPAD_INPUT: Direct digit entry
+        """
         if event.type == EventType.BUTTON_PRESS:
-            if self.phase == ModePhase.RESULT:
+            # Center button - confirm action
+            if self.phase == ModePhase.ACTIVE:
+                # Confirm date entry with center button
+                if self._validate_date():
+                    self._process_date()
+                    return True
+            elif self.phase == ModePhase.RESULT:
                 self._finish()
+                return True
+
+        elif event.type == EventType.ARCADE_LEFT:
+            if self.phase == ModePhase.ACTIVE:
+                # Backspace - delete last digit
+                if self._input_buffer:
+                    self._input_buffer = self._input_buffer[:-1]
+                    self._input_position = len(self._input_buffer)
+                    self._input_valid = False
+                return True
+
+        elif event.type == EventType.ARCADE_RIGHT:
+            if self.phase == ModePhase.ACTIVE:
+                # Right arrow - confirm when valid
+                if self._validate_date():
+                    self._process_date()
                 return True
 
         elif event.type == EventType.KEYPAD_INPUT:
@@ -407,7 +471,7 @@ class ZodiacMode(BaseMode):
         self.complete(result)
 
     def _draw_constellation(self, buffer, cx: int, cy: int, radius: int) -> None:
-        """Draw a rotating constellation pattern."""
+        """Draw a rotating constellation pattern with orbiting elements."""
         from artifact.graphics.primitives import draw_circle, draw_line
 
         # Star positions in constellation (normalized -1 to 1)
@@ -437,29 +501,65 @@ class ZodiacMode(BaseMode):
             sy = int(cy + ry * radius)
             transformed.append((sx, sy))
 
-        # Draw connections
+        # Draw glowing connections with gradient
         for i, j in connections:
             x1, y1 = transformed[i]
             x2, y2 = transformed[j]
-            draw_line(buffer, x1, y1, x2, y2, (60, 60, 120))
+            # Outer glow
+            glow_intensity = int(30 + 20 * math.sin(self._glow_phase + i * 0.5))
+            draw_line(buffer, x1, y1, x2, y2, (glow_intensity, glow_intensity, glow_intensity + 40))
+            # Inner line
+            draw_line(buffer, x1, y1, x2, y2, (80, 80, 140))
 
-        # Draw stars with twinkle
+        # Draw stars with enhanced twinkle
         for i, (sx, sy) in enumerate(transformed):
             twinkle = 0.5 + 0.5 * math.sin(self._time_in_mode / 200 + self._star_twinkle[i % len(self._star_twinkle)])
             brightness = int(150 + 105 * twinkle)
+
+            # Outer glow for each star
+            glow_size = 3 + int(twinkle * 2)
+            for r in range(glow_size, 1, -1):
+                glow_alpha = (glow_size - r) / glow_size * 0.4
+                glow_color = (int(brightness * glow_alpha), int(brightness * glow_alpha), int(brightness * 0.9 * glow_alpha))
+                draw_circle(buffer, sx, sy, r, glow_color, filled=False)
+
+            # Core star
             color = (brightness, brightness, int(brightness * 0.9))
             draw_circle(buffer, sx, sy, 2, color)
 
+        # Draw orbiting planets/moons
+        for i in range(3):
+            orbit_radius = radius + 8 + i * 6
+            orbit_angle = self._orbit_angle + i * 2.1
+            ox = int(cx + orbit_radius * math.cos(orbit_angle))
+            oy = int(cy + orbit_radius * math.sin(orbit_angle))
+
+            # Small orbiting dot with trail
+            planet_brightness = int(100 + 50 * math.sin(self._glow_phase + i))
+            draw_circle(buffer, ox, oy, 1, (planet_brightness, planet_brightness, int(planet_brightness * 0.7)))
+
     def render_main(self, buffer) -> None:
-        """Render main display."""
+        """Render main display with enhanced animations."""
         from artifact.graphics.primitives import fill, draw_circle, draw_rect
         from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import draw_centered_text, draw_wrapped_text, draw_animated_text, TextEffect
 
-        # Background - deep space
-        fill(buffer, (10, 10, 30))
+        # Background - deep space with gradient
+        fill(buffer, (5, 5, 20))
 
-        # Draw constellation
-        self._draw_constellation(buffer, 64, 60, 40)
+        # Add some background stars
+        for i in range(10):
+            star_x = (i * 17 + int(self._time_in_mode / 100)) % 128
+            star_y = (i * 23) % 128
+            twinkle = 0.5 + 0.5 * math.sin(self._time_in_mode / 300 + i)
+            brightness = int(40 + 30 * twinkle)
+            draw_circle(buffer, star_x, star_y, 1, (brightness, brightness, brightness + 10))
+
+        # Draw constellation - adjust position based on phase
+        if self.phase == ModePhase.ACTIVE:
+            self._draw_constellation(buffer, 64, 45, 30)
+        else:
+            self._draw_constellation(buffer, 64, 50, 38)
 
         # Render particles
         self._particles.render(buffer)
@@ -467,147 +567,180 @@ class ZodiacMode(BaseMode):
         font = load_font("cyrillic")
 
         if self.phase == ModePhase.INTRO:
-            # Title - Russian
-            draw_text_bitmap(buffer, "ЗОДИАК", 40, 10, self._accent, font, scale=2)
-            draw_text_bitmap(buffer, "ОРАКУЛ", 40, 28, self._accent, font, scale=2)
+            # Animated title with glow effect
+            pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 200)
+            title_color = tuple(int(c * pulse) for c in self._accent)
+
+            draw_animated_text(buffer, "ЗОДИАК", 8, title_color, self._time_in_phase, TextEffect.GLOW, scale=2)
+            draw_animated_text(buffer, "ОРАКУЛ", 28, self._secondary, self._time_in_phase, TextEffect.WAVE, scale=2)
+
+            # Subtitle fading in
+            if self._time_in_phase > 1500:
+                fade = min(1.0, (self._time_in_phase - 1500) / 500)
+                sub_color = tuple(int(150 * fade) for _ in range(3))
+                draw_centered_text(buffer, "Введи дату рождения", 100, sub_color, scale=1)
 
         elif self.phase == ModePhase.ACTIVE:
-            # Date input prompt - Russian
-            draw_text_bitmap(buffer, "ВВЕДИ ДАТУ", 30, 8, self._accent, font, scale=1)
+            # Date input prompt - with animation
+            draw_animated_text(buffer, "ДАТА РОЖДЕНИЯ", 4, self._accent, self._time_in_phase, TextEffect.GLOW, scale=1)
 
             # Format: DD.MM
             display_date = ""
-            if len(self._input_buffer) >= 1:
-                display_date += self._input_buffer[0]
-            else:
-                display_date += "_"
+            for i in range(4):
+                if len(self._input_buffer) > i:
+                    display_date += self._input_buffer[i]
+                else:
+                    display_date += "_"
+                if i == 1:
+                    display_date += "."
 
-            if len(self._input_buffer) >= 2:
-                display_date += self._input_buffer[1]
-            else:
-                display_date += "_"
+            # Draw date input box - centered with glow effect when valid
+            box_w, box_h = 70, 24
+            box_x = (128 - box_w) // 2
+            box_y = 88
 
-            display_date += "."
+            # Glow effect when input is valid
+            if self._input_glow > 0:
+                glow_color = tuple(int(c * self._input_glow * 0.3) for c in (0, 255, 100))
+                for offset in range(3, 0, -1):
+                    draw_rect(buffer, box_x - offset, box_y - offset,
+                             box_w + offset * 2, box_h + offset * 2,
+                             glow_color, filled=False)
 
-            if len(self._input_buffer) >= 3:
-                display_date += self._input_buffer[2]
-            else:
-                display_date += "_"
+            # Box border
+            border_color = (0, 255, 100) if self._input_valid else (60, 60, 100)
+            draw_rect(buffer, box_x, box_y, box_w, box_h, border_color, filled=False)
 
-            if len(self._input_buffer) >= 4:
-                display_date += self._input_buffer[3]
-            else:
-                display_date += "_"
-
-            # Draw date input box
-            box_x, box_y = 34, 100
-            box_w, box_h = 60, 20
-            draw_rect(buffer, box_x, box_y, box_w, box_h, (40, 40, 80), filled=False)
-
-            # Draw date text
-            draw_text_bitmap(buffer, display_date, box_x + 8, box_y + 6, (255, 255, 255), font, scale=2)
+            # Draw date text - centered within box
+            text_x = box_x + (box_w - 60) // 2
+            draw_text_bitmap(buffer, display_date, text_x, box_y + 5, (255, 255, 255), font, scale=2)
 
             # Cursor blink
-            if int(self._time_in_phase / 400) % 2 == 0:
-                cursor_x = box_x + 8 + len(self._input_buffer.replace(".", "")) * 12
-                if len(self._input_buffer) >= 2:
+            if int(self._time_in_phase / 400) % 2 == 0 and not self._input_valid:
+                cursor_pos = len(self._input_buffer)
+                cursor_x = text_x + cursor_pos * 12
+                if cursor_pos >= 2:
                     cursor_x += 6  # Account for dot
-                draw_rect(buffer, cursor_x, box_y + 6, 2, 12, self._accent)
+                draw_rect(buffer, cursor_x, box_y + 5, 2, 14, self._accent)
 
-            # Instructions - Russian
+            # Instructions - clear and helpful
             if self._input_valid:
-                draw_text_bitmap(buffer, "НАЖМИ # ОК", 35, 122, (0, 255, 0), font, scale=1)
+                # Pulsing confirmation prompt
+                pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
+                confirm_color = tuple(int(c * pulse) for c in (0, 255, 100))
+                draw_centered_text(buffer, "ЖМИSPACE/→ОК", 118, confirm_color, scale=1)
             else:
-                draw_text_bitmap(buffer, "* УД  # ОК", 35, 122, (150, 150, 150), font, scale=1)
+                draw_centered_text(buffer, "← УД   →/SPACE ОК", 118, (120, 120, 140), scale=1)
 
         elif self.phase == ModePhase.PROCESSING:
-            # Zodiac symbol reveal
+            # Dramatic zodiac symbol reveal
             progress = self._reveal_progress
 
-            # Draw symbol with growing size
-            symbol_scale = int(3 + progress * 2)
-            symbol_alpha = int(255 * progress)
-            draw_text_bitmap(
-                buffer, self._zodiac_symbol,
-                64 - symbol_scale * 3, 40,
-                (symbol_alpha, symbol_alpha, int(symbol_alpha * 0.8)),
-                font, scale=symbol_scale
+            # Rotating glow rings during reveal
+            for ring in range(3):
+                ring_radius = 20 + ring * 15 + int(progress * 10)
+                ring_alpha = int(60 * (1 - progress) * (1 - ring / 3))
+                ring_angle = self._constellation_angle * (2 - ring * 0.3)
+                for angle_deg in range(0, 360, 30):
+                    angle = math.radians(angle_deg) + ring_angle
+                    rx = int(64 + ring_radius * math.cos(angle))
+                    ry = int(55 + ring_radius * math.sin(angle))
+                    draw_circle(buffer, rx, ry, 2, (ring_alpha, ring_alpha, ring_alpha + 30))
+
+            # Draw symbol with growing size and glow
+            symbol_scale = int(2 + progress * 3)
+            symbol_alpha = int(255 * min(1.0, progress * 1.5))
+
+            # Symbol glow
+            glow_intensity = int(50 * progress)
+            for glow_offset in range(5, 0, -1):
+                glow_color = (glow_intensity // glow_offset, glow_intensity // glow_offset, glow_intensity // glow_offset)
+                # Note: glow effect approximation
+
+            draw_centered_text(
+                buffer, self._zodiac_symbol, 35,
+                (symbol_alpha, int(symbol_alpha * 0.9), int(symbol_alpha * 0.7)),
+                scale=symbol_scale
             )
 
-            # Sign name fading in
+            # Sign name fading in with effect
             if progress > 0.5:
-                name_alpha = int(255 * (progress - 0.5) * 2)
-                draw_text_bitmap(
-                    buffer, self._zodiac_ru,
-                    64 - len(self._zodiac_ru) * 4, 90,
+                name_progress = (progress - 0.5) * 2
+                name_alpha = int(255 * name_progress)
+                draw_animated_text(
+                    buffer, self._zodiac_ru, 90,
                     (name_alpha, name_alpha, name_alpha),
-                    font, scale=2
+                    self._time_in_phase, TextEffect.TYPING, scale=2
                 )
 
         elif self.phase == ModePhase.RESULT:
-            # Display zodiac sign and horoscope
+            # Display zodiac sign and horoscope with pulsing effects
 
-            # Symbol
-            draw_text_bitmap(buffer, self._zodiac_symbol, 54, 5, self._accent, font, scale=3)
+            # Symbol with glow - pulsing
+            pulse = 0.85 + 0.15 * math.sin(self._symbol_pulse)
+            symbol_color = tuple(int(c * pulse) for c in self._accent)
+            draw_centered_text(buffer, self._zodiac_symbol, 3, symbol_color, scale=3)
 
-            # Sign name
-            name_x = 64 - len(self._zodiac_ru) * 4
-            draw_text_bitmap(buffer, self._zodiac_ru, name_x, 35, self._secondary, font, scale=2)
+            # Sign name with wave effect
+            draw_animated_text(buffer, self._zodiac_ru, 28, self._secondary, self._time_in_phase, TextEffect.WAVE, scale=2)
 
-            # Horoscope text (word wrap)
-            words = self._horoscope.split()
-            lines = []
-            current_line = ""
+            # Horoscope text - smart wrapped and centered
+            draw_wrapped_text(
+                buffer, self._horoscope, 52, (255, 255, 255),
+                scale=1, max_lines=4, line_spacing=4
+            )
 
-            for word in words:
-                test_line = current_line + " " + word if current_line else word
-                if len(test_line) <= 14:
-                    current_line = test_line
-                else:
-                    if current_line:
-                        lines.append(current_line)
-                    current_line = word
-            if current_line:
-                lines.append(current_line)
-
-            y = 60
-            for line in lines[:4]:
-                line_w, _ = font.measure_text(line)
-                x = (128 - line_w * 2) // 2
-                draw_text_bitmap(buffer, line, x, y, (255, 255, 255), font, scale=2)
-                y += 16
+            # Footer hint
+            if int(self._time_in_phase / 500) % 2 == 0:
+                draw_centered_text(buffer, "НАЖМИ ДЛЯ ВЫХОДА", 118, (80, 80, 100), scale=1)
 
     def render_ticker(self, buffer) -> None:
-        """Render ticker."""
+        """Render ticker with smooth seamless scrolling."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.fonts import load_font, draw_text_bitmap
+        from artifact.graphics.text_utils import render_ticker_animated, TickerEffect
 
         clear(buffer)
-        font = load_font("cyrillic")
 
         if self.phase in (ModePhase.INTRO, ModePhase.ACTIVE):
-            # Scrolling mystical text - Russian
-            text = "ЗОДИАК ОРАКУЛ... ВВЕДИ ДАТУ... "
-            scroll = int(self._time_in_phase / 80) % (len(text) * 4 + 48)
-            draw_text_bitmap(buffer, text, 48 - scroll, 1, self._secondary, font, scale=1)
+            # Scrolling mystical text with rainbow effect
+            render_ticker_animated(
+                buffer, "ЗОДИАК ОРАКУЛ - ВВЕДИ ДАТУ РОЖДЕНИЯ",
+                self._time_in_phase, self._secondary,
+                TickerEffect.RAINBOW_SCROLL, speed=0.025
+            )
+
+        elif self.phase == ModePhase.PROCESSING:
+            # Processing animation
+            render_ticker_animated(
+                buffer, "ЧИТАЮ ЗВЁЗДЫ",
+                self._time_in_phase, self._primary,
+                TickerEffect.PULSE_SCROLL, speed=0.03
+            )
 
         elif self.phase == ModePhase.RESULT:
-            # Show zodiac and horoscope
-            text = f"{self._zodiac_symbol} {self._zodiac_ru}: {self._horoscope} "
-            scroll = int(self._time_in_phase / 100) % (len(text) * 4 + 48)
-            draw_text_bitmap(buffer, text, 48 - scroll, 1, self._accent, font, scale=1)
+            # Show zodiac and horoscope with wave effect
+            text = f"{self._zodiac_symbol} {self._zodiac_ru}: {self._horoscope}"
+            render_ticker_animated(
+                buffer, text,
+                self._time_in_phase, self._accent,
+                TickerEffect.WAVE_SCROLL, speed=0.022
+            )
 
     def get_lcd_text(self) -> str:
-        """Get LCD text."""
+        """Get LCD text with zodiac symbols."""
         if self.phase == ModePhase.ACTIVE:
             if self._input_buffer:
-                display = self._input_buffer[:2]
-                if len(self._input_buffer) > 2:
-                    display += "." + self._input_buffer[2:]
-                return f"DATE: {display}".center(16)[:16]
-            return "ENTER BIRTHDAY".center(16)
+                # Format date input nicely
+                dd = self._input_buffer[:2] if len(self._input_buffer) >= 2 else self._input_buffer + "_" * (2 - len(self._input_buffer))
+                mm = self._input_buffer[2:4] if len(self._input_buffer) >= 4 else self._input_buffer[2:] + "_" * (4 - len(self._input_buffer))
+                return f" ☆ {dd}.{mm} ☆ ".center(16)[:16]
+            return " ☆ ДД.ММ ☆ ".center(16)
         elif self.phase == ModePhase.PROCESSING:
-            return "READING STARS...".center(16)
+            # Animated star reading
+            stars = "★☆★☆★☆"
+            offset = int(self._time_in_phase / 200) % 3
+            return f" {stars[offset:offset+3]} ЧИТАЮ {stars[offset:offset+3]} "[:16]
         elif self.phase == ModePhase.RESULT:
-            return self._zodiac_ru.center(16)[:16]
-        return "ZODIAC ORACLE".center(16)[:16]
+            # Show zodiac symbol + name
+            return f" {self._zodiac_symbol} {self._zodiac_ru} {self._zodiac_symbol} ".center(16)[:16]
+        return " ☆ ЗОДИАК ☆ ".center(16)[:16]

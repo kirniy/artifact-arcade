@@ -65,34 +65,47 @@ PERSONALITY_QUESTIONS_EN = [
     ("Do you embrace change?", "change"),
 ]
 
-# System prompt for the fortune teller AI
-FORTUNE_TELLER_SYSTEM_PROMPT = """You are a mystical fortune teller at an arcade machine called ARTIFACT.
-You speak in a mysterious, prophetic style - dramatic but warm and positive.
-Your predictions should be:
-- Personalized based on the photo analysis and personality answers
-- Hopeful and encouraging (this is entertainment)
-- Mystical in tone with references to stars, fate, destiny
-- Specific enough to feel personal, vague enough to be universal
-- In Russian language by default
+# System prompt for the fortune teller AI - FUN Gen-Z style!
+FORTUNE_TELLER_SYSTEM_PROMPT = """Ты - весёлый ИИ-пророк в аркадном автомате VNVNC на вечеринке.
+Твои предсказания должны быть ПРИКОЛЬНЫМИ, ЗАБАВНЫМИ и чуть-чуть дерзкими!
 
-Keep predictions concise (2-3 sentences max) for display on a small screen.
-Include a lucky number (1-99) and lucky color in your response.
+ОЧЕНЬ ВАЖНО - Предсказание должно быть ПЕРСОНАЛЬНЫМ:
+1. ОБЯЗАТЕЛЬНО учитывай анализ фото (внешность, стиль, выражение лица, одежда)
+2. ОБЯЗАТЕЛЬНО учитывай ответы на вопросы (что они говорят о человеке)
+3. Связывай всё вместе - внешность + характер = уникальное предсказание
+
+Стиль предсказаний:
+- Используй молодёжный сленг (но не перебарщивай)
+- Можно добавить немного иронии и юмора
+- Отсылки к соцсетям, мемам, современной жизни - ДА!
+- Скучные банальности типа "звёзды благосклонны" - НЕТ!
+- Предсказание должно вызывать улыбку или смех
+
+Примеры хороших предсказаний:
+- "С такой энергией ты сегодня явно украдёшь чей-то crush. Не забудь потом сторис выложить!"
+- "Вижу в твоих глазах дикую жажду приключений... и скорее всего кебаба в 4 утра"
+- "Твоя аура кричит 'главный герой'. Вселенная готовит тебе сюжетный поворот!"
+
+ВСЕГДА пиши на русском языке.
+Длина: 2-3 предложения максимум (для маленького экрана).
 
 Format your response as:
-PREDICTION: [Your mystical prediction]
-LUCKY_NUMBER: [Number]
-LUCKY_COLOR: [Color in Russian]
-TRAITS: [Comma-separated personality traits you detected]
+PREDICTION: [Твоё прикольное предсказание на русском]
+TRAITS: [Черты характера через запятую]
 """
 
-PHOTO_ANALYSIS_PROMPT = """Analyze this photo of a person seeking their fortune.
-Describe in 2-3 sentences:
-- Their general energy/aura (warm, mysterious, energetic, calm, etc.)
-- Any notable features that might inform a fortune (expression, style, etc.)
-- A mystical impression of their personality
+PHOTO_ANALYSIS_PROMPT = """Проанализируй фото человека, который пришёл за предсказанием.
 
-Keep it positive and suitable for entertainment fortune-telling.
-Respond in Russian."""
+Опиши КОНКРЕТНО (2-3 предложения):
+- Выражение лица (улыбается? серьёзный? игривый? уставший? тусовщик?)
+- Стиль одежды/аксессуары (если видно) - это говорит о характере!
+- Общий вайб/энергия (как бы ты описал этого человека другу?)
+- Возможные черты характера, которые видны по внешности
+
+Будь конкретным! Не пиши общие фразы типа "приятная внешность".
+Пиши так, будто описываешь друга.
+
+Отвечай на русском."""
 
 
 class PredictionService:
@@ -154,7 +167,7 @@ class PredictionService:
                 prompt=PHOTO_ANALYSIS_PROMPT,
                 image_data=image_data,
                 mime_type=mime_type,
-                model=GeminiModel.PRO_IMAGE,
+                model=GeminiModel.FLASH_VISION,
             )
 
             if analysis:
@@ -170,6 +183,7 @@ class PredictionService:
     async def generate_prediction(
         self,
         category: PredictionCategory = PredictionCategory.MYSTICAL,
+        extra_context: Optional[str] = None,
     ) -> Optional[Prediction]:
         """Generate a personalized prediction.
 
@@ -178,6 +192,7 @@ class PredictionService:
 
         Args:
             category: Type of prediction to generate
+            extra_context: Additional personality context from Gen-Z questions
 
         Returns:
             Prediction object or None on error
@@ -188,11 +203,11 @@ class PredictionService:
 
         try:
             # Build the prompt with user profile
-            prompt = self._build_prediction_prompt(category)
+            prompt = self._build_prediction_prompt(category, extra_context)
 
             response = await self._client.generate_text(
                 prompt=prompt,
-                model=GeminiModel.FLASH_2_5,
+                model=GeminiModel.FLASH,
                 system_instruction=FORTUNE_TELLER_SYSTEM_PROMPT,
                 temperature=0.9,
             )
@@ -205,7 +220,7 @@ class PredictionService:
 
         return self._fallback_prediction()
 
-    def _build_prediction_prompt(self, category: PredictionCategory) -> str:
+    def _build_prediction_prompt(self, category: PredictionCategory, extra_context: Optional[str] = None) -> str:
         """Build the prediction prompt from user profile."""
         parts = ["A seeker approaches for their fortune.\n"]
 
@@ -213,8 +228,12 @@ class PredictionService:
         if self._profile.photo_analysis:
             parts.append(f"Photo impression: {self._profile.photo_analysis}\n")
 
-        # Add personality answers
-        if self._profile.answers:
+        # Add rich personality context from Gen-Z questions (if provided)
+        if extra_context:
+            parts.append(f"\n{extra_context}\n")
+
+        # Add personality answers (legacy format, for backward compatibility)
+        elif self._profile.answers:
             answers_text = []
             for q, a in zip(self._profile.questions_asked, self._profile.answers):
                 answer_word = "Да" if a else "Нет"
