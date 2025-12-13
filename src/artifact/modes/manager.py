@@ -497,8 +497,8 @@ class ModeManager:
         fill(buffer, (20, 20, 30))
         font = load_font("cyrillic")
 
-        # Title
-        draw_text_bitmap(buffer, "ВЫБЕРИ РЕЖИМ", 10, 10, (200, 200, 200), font, scale=2)
+        # Title - use scale=1 to fit "ВЫБЕРИ РЕЖИМ" on 128px display
+        draw_text_bitmap(buffer, "ВЫБЕРИ РЕЖИМ", 25, 10, (200, 200, 200), font, scale=1)
 
         # Current mode
         mode = self.get_selected_mode()

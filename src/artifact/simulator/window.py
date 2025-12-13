@@ -112,21 +112,44 @@ class SimulatorWindow:
 
         # Initialize fonts - use fonts that support Cyrillic
         pygame.font.init()
-        # Try to use a Cyrillic-capable font
-        cyrillic_fonts = ["DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Consolas", "monospace"]
+
+        # Try to load Arial Unicode directly (has full Cyrillic support)
+        cyrillic_font_paths = [
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/Library/Fonts/Arial Unicode.ttf",
+        ]
+
         self._font = None
         self._small_font = None
-        for font_name in cyrillic_fonts:
+
+        for font_path in cyrillic_font_paths:
             try:
-                test_font = pygame.font.SysFont(font_name, 16)
-                # Test if it can render Cyrillic
-                test_font.render("ТЕСТ", True, (255, 255, 255))
-                self._font = test_font
-                self._small_font = pygame.font.SysFont(font_name, 12)
-                logger.info(f"Using font: {font_name}")
-                break
-            except:
+                import os
+                if os.path.exists(font_path):
+                    self._font = pygame.font.Font(font_path, 16)
+                    self._small_font = pygame.font.Font(font_path, 12)
+                    # Test Cyrillic rendering
+                    self._font.render("ТЕСТ", True, (255, 255, 255))
+                    logger.info(f"Using font: {font_path}")
+                    break
+            except Exception as e:
+                logger.debug(f"Font {font_path} failed: {e}")
                 continue
+
+        # Fallback to system fonts
+        if not self._font:
+            cyrillic_fonts = ["Arial Unicode MS", "DejaVu Sans", "Noto Sans", "Helvetica"]
+            for font_name in cyrillic_fonts:
+                try:
+                    self._font = pygame.font.SysFont(font_name, 16)
+                    self._small_font = pygame.font.SysFont(font_name, 12)
+                    self._font.render("ТЕСТ", True, (255, 255, 255))
+                    logger.info(f"Using system font: {font_name}")
+                    break
+                except:
+                    continue
+
         if not self._font:
             self._font = pygame.font.SysFont(None, 16)
             self._small_font = pygame.font.SysFont(None, 12)
