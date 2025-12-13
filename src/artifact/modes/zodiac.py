@@ -467,13 +467,13 @@ class ZodiacMode(BaseMode):
         font = load_font("cyrillic")
 
         if self.phase == ModePhase.INTRO:
-            # Title
-            draw_text_bitmap(buffer, "ZODIAC", 35, 10, self._accent, font, scale=2)
-            draw_text_bitmap(buffer, "ORACLE", 35, 28, self._accent, font, scale=2)
+            # Title - Russian
+            draw_text_bitmap(buffer, "ЗОДИАК", 40, 10, self._accent, font, scale=2)
+            draw_text_bitmap(buffer, "ОРАКУЛ", 40, 28, self._accent, font, scale=2)
 
         elif self.phase == ModePhase.ACTIVE:
-            # Date input prompt
-            draw_text_bitmap(buffer, "ENTER BIRTHDAY", 15, 8, self._accent, font, scale=1)
+            # Date input prompt - Russian
+            draw_text_bitmap(buffer, "ВВЕДИ ДАТУ", 30, 8, self._accent, font, scale=1)
 
             # Format: DD.MM
             display_date = ""
@@ -514,11 +514,11 @@ class ZodiacMode(BaseMode):
                     cursor_x += 6  # Account for dot
                 draw_rect(buffer, cursor_x, box_y + 6, 2, 12, self._accent)
 
-            # Instructions
+            # Instructions - Russian
             if self._input_valid:
-                draw_text_bitmap(buffer, "PRESS # OK", 35, 122, (0, 255, 0), font, scale=1)
+                draw_text_bitmap(buffer, "НАЖМИ # ОК", 35, 122, (0, 255, 0), font, scale=1)
             else:
-                draw_text_bitmap(buffer, "* DEL  # OK", 32, 122, (150, 150, 150), font, scale=1)
+                draw_text_bitmap(buffer, "* УД  # ОК", 35, 122, (150, 150, 150), font, scale=1)
 
         elif self.phase == ModePhase.PROCESSING:
             # Zodiac symbol reveal
@@ -586,8 +586,8 @@ class ZodiacMode(BaseMode):
         font = load_font("cyrillic")
 
         if self.phase in (ModePhase.INTRO, ModePhase.ACTIVE):
-            # Scrolling mystical text
-            text = "ZODIAC ORACLE... ENTER YOUR BIRTHDAY... "
+            # Scrolling mystical text - Russian
+            text = "ЗОДИАК ОРАКУЛ... ВВЕДИ ДАТУ... "
             scroll = int(self._time_in_phase / 80) % (len(text) * 4 + 48)
             draw_text_bitmap(buffer, text, 48 - scroll, 1, self._secondary, font, scale=1)
 

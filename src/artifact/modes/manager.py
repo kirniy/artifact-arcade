@@ -482,12 +482,15 @@ class ModeManager:
             x = (128 - text_w * 2) // 2
             draw_text_bitmap(buffer, text, x, 110, (255, 200, 0), font, scale=2)
 
-        # Arrow pointing down (to button)
-        arrow_y = 118 + int((self._time_in_state / 200) % 5)
+        # Arrow pointing down (to button) - wide at top, point at bottom
+        base_y = 120
+        bounce = int((self._time_in_state / 200) % 5)
         cx = 64
-        # Simple down arrow
+        # Down arrow: starts wide, ends in point
         for i in range(5):
-            draw_rect(buffer, cx - i, arrow_y + i, 1 + i * 2, 1, (255, 100, 100))
+            width = (5 - i) * 2 - 1  # 9, 7, 5, 3, 1
+            x_start = cx - width // 2
+            draw_rect(buffer, x_start, base_y + bounce + i, width, 1, (255, 100, 100))
 
     def _render_mode_select(self, buffer) -> None:
         """Render mode selection carousel."""
