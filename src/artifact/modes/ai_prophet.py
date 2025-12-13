@@ -71,8 +71,8 @@ class AIProphetMode(BaseMode):
     """
 
     name = "ai_prophet"
-    display_name = "PROPHET"
-    description = "AI-powered personalized fortune"
+    display_name = "ПРОРОК"
+    description = "ИИ предсказание судьбы"
     icon = "@"
     style = "modern"
     requires_camera = True
@@ -385,7 +385,7 @@ class AIProphetMode(BaseMode):
             success=True,
             display_text=prediction_text,
             ticker_text=prediction_text,
-            lcd_text="AI PROPHET".center(16),
+            lcd_text="ИИ ПРОРОК".center(16),
             should_print=True,
             print_data={
                 "prediction": prediction_text,
@@ -408,7 +408,7 @@ class AIProphetMode(BaseMode):
         # Dark tech background
         fill(buffer, (5, 10, 20))
 
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self._sub_phase == ProphetPhase.INTRO:
             self._render_intro(buffer, font)
@@ -459,8 +459,8 @@ class AIProphetMode(BaseMode):
         draw_circle(buffer, 58, 44, 8, (100, 150, 200))
 
         # Title
-        draw_text_bitmap(buffer, "AI PROPHET", 25, 95, self._accent, font, scale=2)
-        draw_text_bitmap(buffer, "Your fate awaits", 20, 115, (100, 100, 120), font, scale=1)
+        draw_text_bitmap(buffer, "ИИ ПРОРОК", 30, 95, self._accent, font, scale=2)
+        draw_text_bitmap(buffer, "Судьба ждёт тебя", 15, 115, (100, 100, 120), font, scale=1)
 
     def _render_camera_prep(self, buffer, font) -> None:
         """Render camera preparation screen."""
@@ -493,8 +493,8 @@ class AIProphetMode(BaseMode):
         draw_rect(buffer, frame_x + frame_w - 2, frame_y + frame_h - corner_len, 2, corner_len, color)
 
         # Text
-        draw_text_bitmap(buffer, "LOOK AT CAMERA", 15, 100, self._accent, font, scale=1)
-        draw_text_bitmap(buffer, "GET READY...", 30, 115, self._secondary, font, scale=1)
+        draw_text_bitmap(buffer, "СМОТРИ В КАМЕРУ", 10, 100, self._accent, font, scale=1)
+        draw_text_bitmap(buffer, "ПРИГОТОВЬСЯ...", 20, 115, self._secondary, font, scale=1)
 
     def _render_camera_capture(self, buffer, font) -> None:
         """Render camera capture with countdown."""
@@ -579,7 +579,7 @@ class AIProphetMode(BaseMode):
 
         # Processing text
         dots = "." * (int(self._time_in_phase / 500) % 4)
-        draw_text_bitmap(buffer, f"READING{dots}", 30, 50, self._accent, font, scale=2)
+        draw_text_bitmap(buffer, f"ЧТЕНИЕ{dots}", 35, 50, self._accent, font, scale=2)
 
         # Progress bar
         bar_x, bar_y = 20, 75
@@ -591,8 +591,8 @@ class AIProphetMode(BaseMode):
             draw_rect(buffer, bar_x, bar_y, progress_w, bar_h, self._accent)
 
         # Status text
-        status = "Analyzing your destiny..."
-        draw_text_bitmap(buffer, status, 10, 95, (100, 100, 120), font, scale=1)
+        status = "Анализ судьбы..."
+        draw_text_bitmap(buffer, status, 20, 95, (100, 100, 120), font, scale=1)
 
     def _render_result(self, buffer, font) -> None:
         """Render prediction result."""
@@ -653,37 +653,37 @@ class AIProphetMode(BaseMode):
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self._sub_phase == ProphetPhase.QUESTIONS:
-            text = f"QUESTION {self._current_question + 1}/{len(self._questions)}"
+            text = f"ВОПРОС {self._current_question + 1}/{len(self._questions)}"
             draw_text_bitmap(buffer, text, 2, 1, self._accent, font, scale=1)
 
         elif self._sub_phase == ProphetPhase.PROCESSING:
-            text = "AI ANALYZING... "
-            scroll = int(self._time_in_phase / 80) % (len(text) * 4 + 48)
+            text = "ИИ АНАЛИЗИРУЕТ... "
+            scroll = int(self._time_in_phase / 80) % (len(text) * 6 + 48)
             draw_text_bitmap(buffer, text * 2, 48 - scroll, 1, self._secondary, font, scale=1)
 
         elif self._sub_phase == ProphetPhase.RESULT and self._prediction:
             text = self._prediction.text + " "
-            scroll = int(self._time_in_phase / 100) % (len(text) * 4 + 48)
+            scroll = int(self._time_in_phase / 100) % (len(text) * 6 + 48)
             draw_text_bitmap(buffer, text, 48 - scroll, 1, self._accent, font, scale=1)
 
         else:
-            text = "AI PROPHET - YOUR DESTINY AWAITS "
-            scroll = int(self._time_in_phase / 80) % (len(text) * 4 + 48)
+            text = "ИИ ПРОРОК - СУДЬБА ЖДЁТ "
+            scroll = int(self._time_in_phase / 80) % (len(text) * 6 + 48)
             draw_text_bitmap(buffer, text, 48 - scroll, 1, self._primary, font, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""
         if self._sub_phase == ProphetPhase.CAMERA_PREP:
-            return "LOOK AT CAMERA".center(16)
+            return "СМОТРИ В КАМЕРУ".center(16)[:16]
         elif self._sub_phase == ProphetPhase.CAMERA_CAPTURE:
-            return f"PHOTO IN {int(self._camera_countdown) + 1}...".center(16)
+            return f"ФОТО ЧЕРЕЗ {int(self._camera_countdown) + 1}...".center(16)[:16]
         elif self._sub_phase == ProphetPhase.QUESTIONS:
-            return f"Q{self._current_question + 1}: L=NO R=YES".center(16)[:16]
+            return f"В{self._current_question + 1}: Л=НЕТ П=ДА".center(16)[:16]
         elif self._sub_phase == ProphetPhase.PROCESSING:
-            return "AI THINKING...".center(16)
+            return "ИИ ДУМАЕТ...".center(16)
         elif self._sub_phase == ProphetPhase.RESULT:
-            return "YOUR PROPHECY".center(16)
-        return "AI PROPHET".center(16)
+            return "ТВОЁ ПРОРОЧЕСТВО".center(16)[:16]
+        return "ИИ ПРОРОК".center(16)

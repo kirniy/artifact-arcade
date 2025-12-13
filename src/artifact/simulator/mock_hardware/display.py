@@ -236,6 +236,10 @@ class SimulatedLCD(TextDisplay):
         """Get current display text."""
         return self._text
 
+    def set_text(self, text: str) -> None:
+        """Set full display text (convenience method)."""
+        self._text = text[:self._cols].ljust(self._cols)
+
     def render(self, font: pygame.font.Font) -> pygame.Surface:
         """Render LCD to pygame surface."""
         # Calculate size based on font

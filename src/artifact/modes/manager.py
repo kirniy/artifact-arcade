@@ -110,10 +110,12 @@ class ModeManager:
 
     def _setup_event_handlers(self) -> None:
         """Register event handlers."""
-        self.event_bus.register(EventType.BUTTON_PRESS, self._on_button_press)
-        self.event_bus.register(EventType.ARCADE_LEFT, self._on_arcade_left)
-        self.event_bus.register(EventType.ARCADE_RIGHT, self._on_arcade_right)
-        self.event_bus.register(EventType.KEYPAD_INPUT, self._on_keypad_input)
+        self.event_bus.subscribe(EventType.BUTTON_PRESS, self._on_button_press)
+        self.event_bus.subscribe(EventType.ARCADE_LEFT, self._on_arcade_left)
+        self.event_bus.subscribe(EventType.ARCADE_RIGHT, self._on_arcade_right)
+        self.event_bus.subscribe(EventType.KEYPAD_INPUT, self._on_keypad_input)
+        self.event_bus.subscribe(EventType.BACK, self._on_back)
+        self.event_bus.subscribe(EventType.REBOOT, self._on_reboot)
 
     # Mode registration
     def register_mode(self, mode_cls: Type[BaseMode], enabled: bool = True) -> None:
@@ -182,7 +184,7 @@ class ModeManager:
             ManagerState.PRINTING: State.PRINTING,
         }
         if new_state in state_map:
-            self.state_machine.transition_to(state_map[new_state])
+            self.state_machine.transition(state_map[new_state])
 
     # Event handlers
     def _on_button_press(self, event: Event) -> None:
@@ -256,6 +258,57 @@ class ModeManager:
         # Pass to active mode
         if self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
+
+    def _on_back(self, event: Event) -> None:
+        """Handle back/cancel button - go back one step."""
+        self._last_input_time = self._time_in_state
+
+        if self._state == ManagerState.MODE_SELECT:
+            # Go back to idle from mode select
+            self._return_to_idle()
+
+        elif self._state == ManagerState.MODE_ACTIVE:
+            # Cancel current mode and return to mode select
+            if self._current_mode:
+                self._current_mode.exit()
+                self._current_mode = None
+            self._change_state(ManagerState.MODE_SELECT)
+
+        elif self._state == ManagerState.RESULT:
+            # Go back to idle
+            self._return_to_idle()
+
+        elif self._state == ManagerState.PRINTING:
+            # Cancel printing and go to idle
+            self._return_to_idle()
+
+        elif self._state == ManagerState.ADMIN_MENU:
+            # Exit admin menu
+            self._return_to_idle()
+
+        logger.debug(f"Back pressed, now in state: {self._state.name}")
+
+    def _on_reboot(self, event: Event) -> None:
+        """Handle reboot/restart - return to idle and reset everything."""
+        logger.info("System reboot requested")
+
+        # Clean up current mode if any
+        if self._current_mode:
+            self._current_mode.exit()
+            self._current_mode = None
+
+        # Reset state
+        self._last_result = None
+        self._selected_index = 0
+        self._key_buffer.clear()
+        self._time_in_state = 0.0
+        self._last_input_time = 0.0
+
+        # Return to idle
+        self._change_state(ManagerState.IDLE)
+        self._idle_animation.reset()
+
+        logger.info("System rebooted - returned to idle")
 
     # Mode selection
     def _enter_mode_select(self) -> None:
@@ -399,32 +452,32 @@ class ModeManager:
             mode = self.get_selected_mode()
             if mode:
                 return mode.display_name[:16].center(16)
-            return "SELECT MODE".center(16)
+            return "ВЫБЕРИ РЕЖИМ".center(16)
 
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             return self._current_mode.get_lcd_text()
 
         elif self._state == ManagerState.RESULT:
-            return "PRINT? L=NO R=YES"[:16]
+            return "ПЕЧАТЬ? L=НЕТ R=ДА"[:16]
 
         elif self._state == ManagerState.PRINTING:
-            return "PRINTING...".center(16)
+            return "ПЕЧАТАЮ...".center(16)
 
         elif self._state == ManagerState.ADMIN_MENU:
-            return "ADMIN MENU".center(16)
+            return "АДМИН МЕНЮ".center(16)
 
-        return "ARTIFACT".center(16)
+        return "АРТЕФАКТ".center(16)
 
     def _render_start_prompt(self, buffer) -> None:
         """Render 'press start' prompt with arrow."""
         from artifact.graphics.fonts import load_font, draw_text_bitmap
         from artifact.graphics.primitives import draw_rect
 
-        font = load_font("default")
+        font = load_font("cyrillic")
 
-        # Blinking "PRESS START" at bottom
+        # Blinking "НАЖМИ СТАРТ" at bottom
         if int(self._time_in_state / 500) % 2 == 0:
-            text = "PRESS START"
+            text = "НАЖМИ"
             text_w, text_h = font.measure_text(text)
             x = (128 - text_w * 2) // 2
             draw_text_bitmap(buffer, text, x, 110, (255, 200, 0), font, scale=2)
@@ -442,10 +495,10 @@ class ModeManager:
         from artifact.graphics.primitives import fill, draw_rect, draw_circle
 
         fill(buffer, (20, 20, 30))
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         # Title
-        draw_text_bitmap(buffer, "SELECT MODE", 20, 10, (200, 200, 200), font, scale=2)
+        draw_text_bitmap(buffer, "ВЫБЕРИ РЕЖИМ", 10, 10, (200, 200, 200), font, scale=2)
 
         # Current mode
         mode = self.get_selected_mode()
@@ -477,7 +530,7 @@ class ModeManager:
                 draw_circle(buffer, x, 105, 3, color)
 
         # Confirm prompt
-        draw_text_bitmap(buffer, "PRESS TO START", 15, 115, (150, 150, 150), font, scale=1)
+        draw_text_bitmap(buffer, "НАЖМИ СТАРТ", 25, 115, (150, 150, 150), font, scale=1)
 
     def _render_mode_select_ticker(self, buffer) -> None:
         """Render ticker during mode select."""
@@ -485,7 +538,7 @@ class ModeManager:
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         mode = self.get_selected_mode()
         if mode:
@@ -500,11 +553,11 @@ class ModeManager:
         from artifact.graphics.primitives import fill
 
         fill(buffer, (20, 30, 40))
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self._last_result:
             # Result text
-            text = self._last_result.display_text[:50] or "COMPLETE!"
+            text = self._last_result.display_text[:50] or "ГОТОВО!"
             lines = [text[i:i+15] for i in range(0, len(text), 15)]
 
             y = 30
@@ -516,10 +569,10 @@ class ModeManager:
 
             # Print prompt
             if self._last_result.should_print:
-                draw_text_bitmap(buffer, "PRINT?", 40, 90, (200, 200, 200), font, scale=2)
-                draw_text_bitmap(buffer, "L=NO  R=YES", 25, 110, (150, 200, 150), font, scale=1)
+                draw_text_bitmap(buffer, "ПЕЧАТЬ?", 35, 90, (200, 200, 200), font, scale=2)
+                draw_text_bitmap(buffer, "L=НЕТ  R=ДА", 25, 110, (150, 200, 150), font, scale=1)
             else:
-                draw_text_bitmap(buffer, "PRESS BUTTON", 20, 105, (150, 150, 150), font, scale=1)
+                draw_text_bitmap(buffer, "НАЖМИ КНОПКУ", 15, 105, (150, 150, 150), font, scale=1)
 
     def _render_printing(self, buffer) -> None:
         """Render printing progress."""
@@ -527,9 +580,9 @@ class ModeManager:
         from artifact.graphics.primitives import fill, draw_rect
 
         fill(buffer, (30, 30, 30))
-        font = load_font("default")
+        font = load_font("cyrillic")
 
-        draw_text_bitmap(buffer, "PRINTING", 25, 40, (255, 255, 255), font, scale=2)
+        draw_text_bitmap(buffer, "ПЕЧАТАЮ", 25, 40, (255, 255, 255), font, scale=2)
 
         # Progress bar
         progress = min(1.0, self._time_in_state / 10000)
@@ -547,7 +600,7 @@ class ModeManager:
         from artifact.graphics.primitives import fill
 
         fill(buffer, (40, 20, 20))
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         draw_text_bitmap(buffer, "ADMIN", 45, 10, (255, 100, 100), font, scale=2)
 

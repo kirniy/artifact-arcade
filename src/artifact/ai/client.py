@@ -17,12 +17,14 @@ logger = logging.getLogger(__name__)
 class GeminiModel(Enum):
     """Available Gemini models."""
 
-    # Text generation (predictions)
-    FLASH_2_5 = "gemini-2.5-flash-preview-05-20"
+    # Text generation (predictions) - Gemini 2.5 Flash with thinking
+    FLASH = "gemini-2.5-flash"
 
-    # Image generation (caricatures)
-    PRO_IMAGE = "gemini-2.0-flash-exp"  # For image understanding
-    IMAGEN = "imagen-3.0-generate-002"  # For image generation
+    # Image understanding (photo analysis) - Gemini 2.5 Flash supports vision
+    FLASH_VISION = "gemini-2.5-flash"
+
+    # Image generation (caricatures) - Gemini 3 Pro Image Preview
+    IMAGEN = "gemini-3-pro-image-preview"
 
 
 @dataclass
@@ -66,15 +68,25 @@ class GeminiClient:
             config = GeminiConfig(api_key=api_key)
 
         self.config = config
-        self._client = None
+        self._client = None  # Default client (v1)
+        self._client_beta = None  # v1beta client for image generation
         self._initialized = True
 
         logger.info("GeminiClient initialized")
 
-    async def _ensure_client(self) -> bool:
-        """Ensure the API client is initialized."""
-        if self._client is not None:
-            return True
+    async def _ensure_client(self, api_version: str = "v1") -> bool:
+        """Ensure the API client is initialized.
+
+        Args:
+            api_version: API version to use ('v1' or 'v1beta')
+        """
+        # Check if already initialized
+        if api_version == "v1beta":
+            if self._client_beta is not None:
+                return True
+        else:
+            if self._client is not None:
+                return True
 
         if not self.config.api_key:
             logger.error("Cannot initialize client: no API key")
@@ -84,8 +96,15 @@ class GeminiClient:
             # Import google-genai SDK
             from google import genai
 
-            self._client = genai.Client(api_key=self.config.api_key)
-            logger.info("Gemini API client connected")
+            if api_version == "v1beta":
+                self._client_beta = genai.Client(
+                    api_key=self.config.api_key,
+                    http_options={'api_version': 'v1beta'}
+                )
+                logger.info("Gemini API client connected (v1beta)")
+            else:
+                self._client = genai.Client(api_key=self.config.api_key)
+                logger.info("Gemini API client connected (v1)")
             return True
 
         except ImportError:
@@ -98,7 +117,7 @@ class GeminiClient:
     async def generate_text(
         self,
         prompt: str,
-        model: GeminiModel = GeminiModel.FLASH_2_5,
+        model: GeminiModel = GeminiModel.FLASH,
         system_instruction: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -164,7 +183,7 @@ class GeminiClient:
         prompt: str,
         image_data: bytes,
         mime_type: str = "image/jpeg",
-        model: GeminiModel = GeminiModel.PRO_IMAGE,
+        model: GeminiModel = GeminiModel.FLASH_VISION,
         system_instruction: Optional[str] = None,
     ) -> Optional[str]:
         """Generate text based on an image.
@@ -236,54 +255,126 @@ class GeminiClient:
     async def generate_image(
         self,
         prompt: str,
+        reference_photo: Optional[bytes] = None,
+        photo_mime_type: str = "image/jpeg",
         aspect_ratio: str = "1:1",
-        negative_prompt: Optional[str] = None,
+        image_size: str = "1K",
+        style: Optional[str] = None,
     ) -> Optional[bytes]:
-        """Generate an image using Imagen 3.
+        """Generate an image using Gemini 3 Pro Image Preview.
+
+        Can optionally take a reference photo to generate personalized
+        caricatures or styled portraits.
 
         Args:
             prompt: Description of the image to generate
-            aspect_ratio: Image aspect ratio (1:1, 16:9, etc.)
-            negative_prompt: What to avoid in the image
+            reference_photo: Optional photo bytes to use as reference
+            photo_mime_type: MIME type of reference photo
+            aspect_ratio: Image aspect ratio (1:1, 9:16, 16:9, etc.)
+            image_size: Output resolution ("1K", "2K", or "4K")
+            style: Optional style guidance
 
         Returns:
             Image bytes (PNG) or None on error
         """
-        if not await self._ensure_client():
+        if not self.config.api_key:
+            logger.error("Cannot generate image: no API key")
             return None
 
         try:
-            from google.genai import types
+            import base64
+            import aiohttp
 
-            # Imagen 3 configuration
-            config = types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio=aspect_ratio,
-                negative_prompt=negative_prompt,
-                output_mime_type="image/png",
+            # Build the full prompt with style if provided
+            full_prompt = prompt
+            if style:
+                full_prompt = f"{style}. {prompt}"
+
+            # Build parts array
+            parts = [{"text": full_prompt}]
+
+            # Add reference photo if provided
+            if reference_photo:
+                photo_b64 = base64.b64encode(reference_photo).decode("utf-8")
+                parts.append({
+                    "inlineData": {
+                        "mimeType": photo_mime_type,
+                        "data": photo_b64,
+                    }
+                })
+
+            # Build request payload for Gemini 3 Pro Image Preview
+            # Uses REST API directly for better control
+            payload = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": parts,
+                    }
+                ],
+                "generationConfig": {
+                    "responseModalities": ["TEXT", "IMAGE"],
+                    "imageConfig": {
+                        "aspectRatio": aspect_ratio,
+                        "imageSize": image_size,  # "1K", "2K", "4K"
+                    },
+                },
+            }
+
+            # REST API endpoint for Gemini 3 Pro Image Preview
+            endpoint = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{GeminiModel.IMAGEN.value}:generateContent"
+                f"?key={self.config.api_key}"
             )
 
             for attempt in range(self.config.max_retries):
                 try:
-                    response = await asyncio.wait_for(
-                        asyncio.to_thread(
-                            self._client.models.generate_images,
-                            model=GeminiModel.IMAGEN.value,
-                            prompt=prompt,
-                            config=config,
-                        ),
-                        timeout=self.config.timeout * 2,  # Longer timeout for images
-                    )
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(
+                            endpoint,
+                            json=payload,
+                            headers={
+                                "Content-Type": "application/json",
+                                "x-goog-api-key": self.config.api_key,
+                            },
+                            timeout=aiohttp.ClientTimeout(total=self.config.timeout * 2),
+                        ) as response:
+                            if response.status == 503:
+                                logger.warning(f"Service unavailable, retry {attempt + 1}")
+                                await asyncio.sleep(self.config.retry_delay * (attempt + 1))
+                                continue
 
-                    if response and response.generated_images:
-                        image = response.generated_images[0]
-                        if hasattr(image, "image") and hasattr(image.image, "image_bytes"):
-                            return image.image.image_bytes
+                            if not response.ok:
+                                error_text = await response.text()
+                                logger.error(f"API error {response.status}: {error_text}")
+                                if attempt < self.config.max_retries - 1:
+                                    await asyncio.sleep(self.config.retry_delay * (attempt + 1))
+                                    continue
+                                return None
+
+                            data = await response.json()
+
+                            # Extract image from response
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                content = candidates[0].get("content", {})
+                                parts = content.get("parts", [])
+                                for part in parts:
+                                    inline_data = part.get("inlineData") or part.get("inline_data")
+                                    if inline_data:
+                                        image_data = inline_data.get("data")
+                                        if image_data:
+                                            return base64.b64decode(image_data)
+
+                            logger.warning(f"No image in response, attempt {attempt + 1}")
 
                 except asyncio.TimeoutError:
                     logger.warning(f"Image generation timeout, attempt {attempt + 1}")
                 except Exception as e:
-                    if "503" in str(e):
+                    error_str = str(e).lower()
+                    if "503" in error_str or "overloaded" in error_str:
+                        logger.warning(f"Service overloaded, retry {attempt + 1}")
                         await asyncio.sleep(self.config.retry_delay * (attempt + 1))
                     else:
                         raise

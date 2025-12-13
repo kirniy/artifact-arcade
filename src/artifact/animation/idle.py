@@ -87,6 +87,15 @@ class MysticalIdleAnimation(IdleAnimation):
         self.ball_radius = 35
         self.glow_radius = 45
 
+        # Mystical eye properties
+        self.eye_offset_x = 0.0  # Current eye position offset
+        self.eye_offset_y = 0.0
+        self.eye_target_x = 0.0  # Target eye position
+        self.eye_target_y = 0.0
+        self.eye_change_time = 0.0  # When to change target
+        self.blink_time = 0.0
+        self.is_blinking = False
+
         # Setup particle effects
         self._setup_particles()
 
@@ -123,6 +132,30 @@ class MysticalIdleAnimation(IdleAnimation):
         )
         self.engine.play(glow_timeline, group="idle")
 
+    def update(self, delta_ms: float) -> None:
+        """Update mystical animation including eye movement."""
+        super().update(delta_ms)
+
+        # Update eye target position every 2-4 seconds
+        if self._time > self.eye_change_time:
+            self.eye_target_x = random.uniform(-8, 8)
+            self.eye_target_y = random.uniform(-5, 5)
+            self.eye_change_time = self._time + random.uniform(1500, 3500)
+
+        # Smoothly move eye toward target
+        lerp_speed = 0.03
+        self.eye_offset_x += (self.eye_target_x - self.eye_offset_x) * lerp_speed
+        self.eye_offset_y += (self.eye_target_y - self.eye_offset_y) * lerp_speed
+
+        # Handle blinking
+        if not self.is_blinking and self._time > self.blink_time:
+            self.is_blinking = True
+            self.blink_time = self._time + 150  # Blink duration
+
+        if self.is_blinking and self._time > self.blink_time:
+            self.is_blinking = False
+            self.blink_time = self._time + random.uniform(3000, 6000)  # Time until next blink
+
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
         """Render mystical idle animation to main display."""
         # Background
@@ -147,17 +180,21 @@ class MysticalIdleAnimation(IdleAnimation):
             color = tuple(int(c * factor + 20) for c in self.primary)
             draw_circle(buffer, cx, cy, r, color)
 
-        # Ball highlight
+        # Mystical eye inside the crystal ball
+        self._render_mystical_eye(buffer, cx, cy)
+
+        # Ball highlight (glass reflection)
         highlight_x = cx - self.ball_radius // 3
         highlight_y = cy - self.ball_radius // 3
-        draw_circle(buffer, highlight_x, highlight_y, 5, (180, 150, 200))
+        draw_circle(buffer, highlight_x, highlight_y, 6, (120, 100, 150))
+        draw_circle(buffer, highlight_x, highlight_y, 3, (180, 160, 200))
 
         # Render particles on top
         self.particles.render(buffer)
 
         # Draw title text
-        font = load_font("default")
-        text = "ARTIFACT"
+        font = load_font("cyrillic")
+        text = "АРТЕФАКТ"
         text_width, text_height = font.measure_text(text)
         text_x = (self.config.main_width - text_width * 2) // 2
         draw_text_bitmap(buffer, text, text_x, 15, self.secondary, font, scale=2)
@@ -167,7 +204,7 @@ class MysticalIdleAnimation(IdleAnimation):
         clear(buffer)
 
         # Scrolling mystical message
-        messages = ["DISCOVER YOUR FATE", "UNVEIL YOUR DESTINY", "THE STARS AWAIT"]
+        messages = ["УЗНАЙ СВОЮ СУДЬБУ", "ТАЙНЫ ЗВЁЗД", "ТВОЁ БУДУЩЕЕ"]
         msg_idx = int(self._time / 5000) % len(messages)
         message = messages[msg_idx]
 
@@ -175,14 +212,74 @@ class MysticalIdleAnimation(IdleAnimation):
         scroll_offset = int(self._time / 50) % (len(message) * 6 + self.config.ticker_width)
         x_pos = self.config.ticker_width - scroll_offset
 
-        font = load_font("default")
+        font = load_font("cyrillic")
         draw_text_bitmap(buffer, message, x_pos, 1, self.secondary, font, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""
-        texts = ["PRESS START", "ARTIFACT", "YOUR FATE?"]
+        texts = ["НАЖМИ СТАРТ", "АРТЕФАКТ", "ТВОЯ СУДЬБА?"]
         idx = int(self._time / 2000) % len(texts)
         return texts[idx].center(16)
+
+    def _render_mystical_eye(self, buffer: NDArray[np.uint8], cx: int, cy: int) -> None:
+        """Render an animated mystical eye inside the crystal ball."""
+        # Eye dimensions
+        eye_width = 24
+        eye_height = 14
+
+        # Don't render if blinking
+        if self.is_blinking:
+            # Draw closed eye (horizontal line)
+            for x in range(-eye_width // 2, eye_width // 2 + 1):
+                px = cx + x
+                if 0 <= px < buffer.shape[1]:
+                    buffer[cy, px] = self.secondary
+            return
+
+        # Eye shape (almond) - top arc
+        for angle in range(-90, 91, 5):
+            rad = math.radians(angle)
+            x = int(cx + eye_width // 2 * math.cos(rad))
+            y = int(cy - eye_height // 2 * math.sin(rad) * (1 if angle != 0 else 0.5))
+            if 0 <= x < buffer.shape[1] and 0 <= y < buffer.shape[0]:
+                buffer[y, x] = self.secondary
+
+        # Bottom arc
+        for angle in range(-90, 91, 5):
+            rad = math.radians(angle)
+            x = int(cx + eye_width // 2 * math.cos(rad))
+            y = int(cy + eye_height // 2 * math.sin(rad) * (1 if angle != 0 else 0.5))
+            if 0 <= x < buffer.shape[1] and 0 <= y < buffer.shape[0]:
+                buffer[y, x] = self.secondary
+
+        # Eyeball (white) - smaller than eye shape
+        iris_radius = 8
+        for r in range(iris_radius, 0, -1):
+            brightness = 0.5 + 0.5 * (r / iris_radius)
+            color = tuple(int(200 * brightness) for _ in range(3))
+            draw_circle(buffer, cx, cy, r, color)
+
+        # Iris (colored) with movement
+        iris_x = int(cx + self.eye_offset_x)
+        iris_y = int(cy + self.eye_offset_y)
+        iris_size = 6
+
+        # Iris gradient (golden to purple)
+        for r in range(iris_size, 0, -1):
+            factor = r / iris_size
+            color = self._interpolate_color(self.primary, self.secondary, factor)
+            draw_circle(buffer, iris_x, iris_y, r, color)
+
+        # Pupil (black with glow)
+        pupil_x = int(iris_x + self.eye_offset_x * 0.3)
+        pupil_y = int(iris_y + self.eye_offset_y * 0.3)
+        draw_circle(buffer, pupil_x, pupil_y, 3, (10, 10, 20))
+
+        # Pupil highlight (makes it look alive)
+        highlight_x = pupil_x - 1
+        highlight_y = pupil_y - 1
+        if 0 <= highlight_x < buffer.shape[1] and 0 <= highlight_y < buffer.shape[0]:
+            buffer[highlight_y, highlight_x] = (255, 255, 255)
 
     def _interpolate_color(
         self,
@@ -276,12 +373,12 @@ class ArcadeIdleAnimation(IdleAnimation):
                 color = tuple(int(c * brightness) for c in self.primary)
                 draw_rect(buffer, x - 2, y - 2, 4, 4, color)
 
-        # Flashing "INSERT COIN" or logo
+        # Flashing "ARTIFACT" logo
         if self._frame % 60 < 40:
-            font = load_font("default")
-            text = "ARTIFACT"
-            text_width = len(text) * 4 * 3  # Approx
-            x = (self.config.main_width - text_width) // 2
+            font = load_font("cyrillic")
+            text = "АРТЕФАКТ"
+            text_width, _ = font.measure_text(text)
+            x = (self.config.main_width - text_width * 3) // 2
             y = int(self.logo_bounce_y)
 
             # Shadow
@@ -290,8 +387,8 @@ class ArcadeIdleAnimation(IdleAnimation):
             draw_text_bitmap(buffer, text, x, y, self.accent, font, scale=3)
 
         # High score display
-        font = load_font("default")
-        draw_text_bitmap(buffer, "HI-SCORE", 30, 90, self.secondary, font, scale=1)
+        font = load_font("cyrillic")
+        draw_text_bitmap(buffer, "РЕКОРД", 35, 90, self.secondary, font, scale=1)
         draw_text_bitmap(buffer, "999999", 35, 100, self.primary, font, scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
@@ -310,9 +407,9 @@ class ArcadeIdleAnimation(IdleAnimation):
     def get_lcd_text(self) -> str:
         """Get LCD text."""
         if self._frame % 120 < 60:
-            return "INSERT COIN".center(16)
+            return "АРТЕФАКТ".center(16)
         else:
-            return "PRESS START".center(16)
+            return "НАЖМИ СТАРТ".center(16)
 
 
 class ModernIdleAnimation(IdleAnimation):
@@ -401,14 +498,14 @@ class ModernIdleAnimation(IdleAnimation):
             draw_circle(buffer, x, y, 2, self.accent)
 
         # Central text
-        font = load_font("default")
-        text = "ARTIFACT"
+        font = load_font("cyrillic")
+        text = "АРТЕФАКТ"
         text_width, _ = font.measure_text(text)
         x = (self.config.main_width - text_width * 2) // 2
         draw_text_bitmap(buffer, text, x, 55, self.primary, font, scale=2)
 
         # Subtitle
-        sub = "AI FORTUNE"
+        sub = "ИИ ПРОРОК"
         sub_width, _ = font.measure_text(sub)
         x = (self.config.main_width - sub_width) // 2
         draw_text_bitmap(buffer, sub, x, 75, self.secondary, font, scale=1)
@@ -424,7 +521,7 @@ class ModernIdleAnimation(IdleAnimation):
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""
-        return "TOUCH TO START".center(16)[:16]
+        return "НАЖМИ СТАРТ".center(16)[:16]
 
     def _draw_line(
         self,

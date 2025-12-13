@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
 
-from artifact.ai.client import get_gemini_client, GeminiModel
+from artifact.ai.client import get_gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -41,45 +41,46 @@ class Caricature:
 
 
 # Prompt templates for different caricature styles
+# All prompts emphasize: caricature OF THIS PERSON, thick black outlines, pure white background
 STYLE_PROMPTS = {
     CaricatureStyle.MYSTICAL: """
-Black and white sketch caricature portrait in mystical fortune teller style.
-The subject should be surrounded by stars, moons, and cosmic elements.
-Hand-drawn doodle style with bold outlines, high contrast for thermal printing.
-Simple white background, no complex shading.
-Exaggerated friendly features in whimsical style.
+Create a caricature portrait OF THIS PERSON from the reference photo.
+Black and white hand-drawn sketch style with THICK bold black outlines.
+Pure white background, no shading or gradients.
+Exaggerate their distinctive facial features in a fun, flattering way.
+High contrast suitable for thermal printer.
 """,
 
     CaricatureStyle.FORTUNE: """
-Black and white caricature portrait in vintage carnival fortune teller style.
-Include subtle mystical elements like a crystal ball reflection or tarot symbols.
-Hand-drawn sketch style with bold black lines on white background.
+Create a caricature portrait OF THIS PERSON from the reference photo.
+Black and white hand-drawn style with THICK bold black outlines.
+Pure white background, clean and simple.
+Exaggerate their distinctive features in a charming way.
 High contrast suitable for thermal receipt printer.
-Friendly exaggerated features, not unflattering.
 """,
 
     CaricatureStyle.SKETCH: """
-Simple black and white line drawing caricature portrait.
-Clean hand-drawn sketch style with minimal shading.
-Bold outlines on pure white background.
-High contrast suitable for thermal printer output.
-Friendly caricature with exaggerated but flattering features.
+Create a caricature portrait OF THIS PERSON from the reference photo.
+Simple black and white line drawing with THICK bold outlines.
+Pure white background, minimal detail.
+Exaggerate their distinctive features in a friendly way.
+High contrast suitable for thermal printer.
 """,
 
     CaricatureStyle.CARTOON: """
-Black and white cartoon style caricature portrait.
-Exaggerated friendly features in comic book style.
-Bold black outlines, no grayscale, pure black and white.
-Simple white background, high contrast for thermal printing.
-Fun and whimsical, not realistic.
+Create a caricature portrait OF THIS PERSON from the reference photo.
+Black and white cartoon style with THICK bold black outlines.
+Pure white background, no grayscale.
+Exaggerate their distinctive features in a fun comic style.
+High contrast suitable for thermal printing.
 """,
 
     CaricatureStyle.VINTAGE: """
-Black and white caricature portrait in vintage 1920s carnival style.
-Hand-drawn illustration style with decorative border elements.
-Bold lines, high contrast, no halftones.
-White background suitable for thermal receipt printer.
-Charming old-timey carnival atmosphere.
+Create a caricature portrait OF THIS PERSON from the reference photo.
+Black and white hand-drawn illustration with THICK bold outlines.
+Pure white background, clean lines.
+Exaggerate their distinctive features in a charming vintage style.
+High contrast suitable for thermal receipt printer.
 """,
 }
 
@@ -109,6 +110,9 @@ class CaricatureService:
     ) -> Optional[Caricature]:
         """Generate a caricature based on a reference photo.
 
+        Sends the photo directly to Gemini 3 Pro Image Preview which
+        can generate styled images based on reference photos.
+
         Args:
             reference_photo: User's photo as bytes
             style: Caricature style to use
@@ -122,20 +126,32 @@ class CaricatureService:
             return None
 
         try:
-            # First, analyze the photo to get a description
-            description = await self._analyze_for_caricature(reference_photo)
-            if not description:
-                logger.error("Failed to analyze photo for caricature")
-                return None
-
             # Build the caricature prompt
-            prompt = self._build_caricature_prompt(description, style)
+            style_prompt = STYLE_PROMPTS.get(style, STYLE_PROMPTS[CaricatureStyle.SKETCH])
 
-            # Generate the image
+            prompt = f"""Create a caricature portrait OF THIS EXACT PERSON from the reference photo.
+
+CRITICAL REQUIREMENTS:
+- This must be a caricature of THE PERSON IN THE PHOTO - capture their likeness
+- Exaggerate their distinctive facial features (nose, eyes, chin, hair, etc.)
+- THICK bold black outlines only
+- Pure white background - no shading, no gradients, no gray
+- Black and white only - suitable for thermal receipt printer
+
+Style: {style_prompt}
+
+The result should be recognizable as THIS specific person, but as a fun caricature.
+"""
+
+            # Send photo directly to Gemini 3 Pro Image Preview
+            # The model understands to use the photo as reference
             image_data = await self._client.generate_image(
                 prompt=prompt,
+                reference_photo=reference_photo,
+                photo_mime_type="image/jpeg",
                 aspect_ratio="1:1",
-                negative_prompt=NEGATIVE_PROMPT,
+                image_size="1K",  # Use 1K resolution
+                style="Black and white sketch caricature, hand-drawn style, high contrast",
             )
 
             if image_data:
@@ -153,37 +169,6 @@ class CaricatureService:
             logger.error(f"Caricature generation failed: {e}")
 
         return None
-
-    async def _analyze_for_caricature(self, photo: bytes) -> Optional[str]:
-        """Analyze a photo to extract features for caricature.
-
-        Args:
-            photo: Photo bytes
-
-        Returns:
-            Description of features for caricature generation
-        """
-        prompt = """Describe this person's key facial features for creating a friendly caricature:
-- Face shape (round, oval, square, etc.)
-- Notable features to exaggerate (big smile, expressive eyes, etc.)
-- Hair style and any distinctive elements
-- Overall expression and energy
-
-Keep it brief (2-3 sentences) and focus on features that make good caricatures.
-Be positive and flattering in your descriptions."""
-
-        try:
-            response = await self._client.generate_with_image(
-                prompt=prompt,
-                image_data=photo,
-                mime_type="image/jpeg",
-                model=GeminiModel.PRO_IMAGE,
-            )
-            return response
-
-        except Exception as e:
-            logger.error(f"Photo analysis for caricature failed: {e}")
-            return None
 
     def _build_caricature_prompt(self, description: str, style: CaricatureStyle) -> str:
         """Build the full prompt for caricature generation.
@@ -271,21 +256,24 @@ Output should be optimized for thermal printer (pure black and white, high contr
         if not self._client.is_available:
             return None
 
-        generic_description = """
-A friendly mystical fortune teller character with:
+        style_prompt = STYLE_PROMPTS.get(style, STYLE_PROMPTS[CaricatureStyle.SKETCH])
+
+        prompt = f"""Create a caricature portrait of a friendly mystical fortune teller character with:
 - Warm, welcoming expression
 - Mysterious yet approachable eyes
 - Slight knowing smile
 - Perhaps a headscarf or mystical accessory
-"""
 
-        prompt = self._build_caricature_prompt(generic_description, style)
+Style requirements:
+{style_prompt}
+"""
 
         try:
             image_data = await self._client.generate_image(
                 prompt=prompt,
                 aspect_ratio="1:1",
-                negative_prompt=NEGATIVE_PROMPT,
+                image_size="1K",
+                style="Black and white sketch caricature, hand-drawn style, high contrast",
             )
 
             if image_data:

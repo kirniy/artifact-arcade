@@ -81,8 +81,8 @@ class RouletteMode(BaseMode):
     """
 
     name = "roulette"
-    display_name = "ROULETTE"
-    description = "Spin the wheel of fortune"
+    display_name = "РУЛЕТКА"
+    description = "Крути колесо судьбы"
     icon = "O"
     style = "arcade"
     requires_camera = False
@@ -249,7 +249,7 @@ class RouletteMode(BaseMode):
         # Background
         fill(buffer, self._background)
 
-        font = load_font("default")
+        font = load_font("cyrillic")
         cx, cy = 64, 64
         wheel_radius = 50
 
@@ -262,20 +262,20 @@ class RouletteMode(BaseMode):
             self._draw_wheel(buffer, cx, cy, wheel_radius, alpha)
 
             # Title
-            draw_text_bitmap(buffer, "ROULETTE", 30, 8, self._primary, font, scale=2)
+            draw_text_bitmap(buffer, "РУЛЕТКА", 35, 8, self._primary, font, scale=2)
 
         elif self.phase == ModePhase.ACTIVE:
             self._draw_wheel(buffer, cx, cy, wheel_radius, 1.0)
 
             # Prompt
             if int(self._time_in_phase / 400) % 2 == 0:
-                draw_text_bitmap(buffer, "SPIN!", 48, 118, self._primary, font, scale=2)
+                draw_text_bitmap(buffer, "КРУТИ!", 40, 118, self._primary, font, scale=2)
 
         elif self.phase == ModePhase.PROCESSING:
             self._draw_wheel(buffer, cx, cy, wheel_radius, 1.0)
 
             # "Spinning" text
-            draw_text_bitmap(buffer, "SPINNING...", 30, 118, self._secondary, font, scale=1)
+            draw_text_bitmap(buffer, "КРУЧУ...", 40, 118, self._secondary, font, scale=1)
 
         elif self.phase == ModePhase.RESULT:
             self._draw_wheel(buffer, cx, cy, wheel_radius, 1.0)
@@ -387,10 +387,10 @@ class RouletteMode(BaseMode):
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self.phase == ModePhase.ACTIVE:
-            text = "PRESS TO SPIN THE WHEEL! "
+            text = "НАЖМИ ЧТОБЫ КРУТИТЬ! "
             scroll = int(self._time_in_phase / 80) % (len(text) * 4 + 48)
             draw_text_bitmap(buffer, text * 2, 48 - scroll, 1, self._primary, font, scale=1)
 
@@ -398,7 +398,7 @@ class RouletteMode(BaseMode):
             # Spinning indicator
             bars = "|/-\\"
             bar_idx = int(self._time_in_phase / 100) % 4
-            draw_text_bitmap(buffer, f"SPINNING {bars[bar_idx]}", 2, 1, self._secondary, font, scale=1)
+            draw_text_bitmap(buffer, f"КРУЧУ {bars[bar_idx]}", 10, 1, self._secondary, font, scale=1)
 
         elif self.phase == ModePhase.RESULT:
             text = self._result_outcome + " "
@@ -407,14 +407,14 @@ class RouletteMode(BaseMode):
             draw_text_bitmap(buffer, text, 48 - scroll, 1, color, font, scale=1)
 
         else:
-            draw_text_bitmap(buffer, "ROULETTE", 8, 1, self._primary, font, scale=1)
+            draw_text_bitmap(buffer, "РУЛЕТКА", 10, 1, self._primary, font, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""
         if self.phase == ModePhase.ACTIVE:
-            return "PRESS TO SPIN!".center(16)
+            return "НАЖМИ КРУТИТЬ!".center(16)
         elif self.phase == ModePhase.PROCESSING:
-            return "SPINNING...".center(16)
+            return "КРУЧУ...".center(16)
         elif self.phase == ModePhase.RESULT:
             return self._result_segment.center(16)[:16]
-        return "ROULETTE".center(16)
+        return "РУЛЕТКА".center(16)

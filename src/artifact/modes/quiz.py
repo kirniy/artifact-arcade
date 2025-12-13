@@ -54,8 +54,8 @@ class QuizMode(BaseMode):
     """
 
     name = "quiz"
-    display_name = "QUIZ"
-    description = "Test your knowledge"
+    display_name = "ВИКТОРИНА"
+    description = "Проверь свои знания"
     icon = "?"
     style = "arcade"
     requires_camera = False
@@ -247,7 +247,7 @@ class QuizMode(BaseMode):
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         fill(buffer, self._background)
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self.phase == ModePhase.INTRO:
             self._render_intro(buffer, font)
@@ -264,11 +264,11 @@ class QuizMode(BaseMode):
         from artifact.graphics.fonts import draw_text_bitmap
 
         # Title
-        draw_text_bitmap(buffer, "QUIZ TIME!", 25, 40, self._primary, font, scale=2)
+        draw_text_bitmap(buffer, "ВИКТОРИНА!", 20, 40, self._primary, font, scale=2)
 
         # Question count
         draw_text_bitmap(
-            buffer, f"{self.QUESTIONS_COUNT} Questions",
+            buffer, f"{self.QUESTIONS_COUNT} Вопросов",
             35, 70, (150, 150, 180), font, scale=1
         )
 
@@ -277,7 +277,7 @@ class QuizMode(BaseMode):
         if countdown > 0:
             draw_text_bitmap(buffer, str(countdown), 58, 95, self._secondary, font, scale=3)
         else:
-            draw_text_bitmap(buffer, "GO!", 50, 95, self._secondary, font, scale=2)
+            draw_text_bitmap(buffer, "СТАРТ!", 40, 95, self._secondary, font, scale=2)
 
     def _render_question(self, buffer, font) -> None:
         """Render current question."""
@@ -290,7 +290,7 @@ class QuizMode(BaseMode):
         # Score display
         score_color = self._secondary if self._score_pop > 0 else (100, 100, 120)
         score_scale = 2 if self._score_pop > 0 else 1
-        draw_text_bitmap(buffer, f"Score: {self._score}", 5, 3, score_color, font, scale=score_scale)
+        draw_text_bitmap(buffer, f"Счёт: {self._score}", 5, 3, score_color, font, scale=score_scale)
 
         # Question number
         q_num = f"Q{self._current_question + 1}/{len(self._questions)}"
@@ -374,7 +374,7 @@ class QuizMode(BaseMode):
         from artifact.graphics.fonts import draw_text_bitmap
 
         # Title
-        draw_text_bitmap(buffer, "RESULTS", 35, 10, self._primary, font, scale=2)
+        draw_text_bitmap(buffer, "ИТОГИ", 40, 10, self._primary, font, scale=2)
 
         # Score
         draw_text_bitmap(
@@ -393,7 +393,7 @@ class QuizMode(BaseMode):
 
         # Press to continue
         if int(self._time_in_phase / 500) % 2 == 0:
-            draw_text_bitmap(buffer, "PRESS BUTTON", 20, 115, (100, 100, 120), font, scale=1)
+            draw_text_bitmap(buffer, "НАЖМИ КНОПКУ", 15, 115, (100, 100, 120), font, scale=1)
 
     def _wrap_text(self, text: str, max_chars: int) -> List[str]:
         """Simple text wrapping."""
@@ -417,12 +417,12 @@ class QuizMode(BaseMode):
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self.phase == ModePhase.ACTIVE:
             # Show timer
             secs = int(self._time_remaining)
-            draw_text_bitmap(buffer, f"TIME:{secs}s SCORE:{self._score}", 2, 1, self._primary, font, scale=1)
+            draw_text_bitmap(buffer, f"ВРЕМЯ:{secs}с СЧЁТ:{self._score}", 2, 1, self._primary, font, scale=1)
 
         elif self.phase == ModePhase.RESULT:
             rank = self._get_rank()
@@ -431,12 +431,12 @@ class QuizMode(BaseMode):
             draw_text_bitmap(buffer, text * 2, 48 - scroll, 1, self._secondary, font, scale=1)
 
         else:
-            draw_text_bitmap(buffer, "QUIZ TIME!", 8, 1, self._primary, font, scale=1)
+            draw_text_bitmap(buffer, "ВИКТОРИНА!", 5, 1, self._primary, font, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""
         if self.phase == ModePhase.ACTIVE:
-            return f"Q{self._current_question + 1} TIME:{int(self._time_remaining)}s"[:16].center(16)
+            return f"В{self._current_question + 1} ВРЕМЯ:{int(self._time_remaining)}с"[:16].center(16)
         elif self.phase == ModePhase.RESULT:
-            return f"SCORE:{self._score}/{len(self._questions)}"[:16].center(16)
-        return "QUIZ TIME!".center(16)
+            return f"СЧЁТ:{self._score}/{len(self._questions)}"[:16].center(16)
+        return "ВИКТОРИНА!".center(16)

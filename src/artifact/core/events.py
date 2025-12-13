@@ -22,6 +22,8 @@ class EventType(Enum):
     KEYPAD_INPUT = auto()
     ARCADE_LEFT = auto()
     ARCADE_RIGHT = auto()
+    BACK = auto()  # Go back/cancel
+    REBOOT = auto()  # System reboot/restart
 
     # State events
     STATE_CHANGED = auto()

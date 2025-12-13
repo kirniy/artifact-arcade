@@ -218,8 +218,8 @@ class ZodiacMode(BaseMode):
     """
 
     name = "zodiac"
-    display_name = "ZODIAC"
-    description = "Discover your zodiac horoscope"
+    display_name = "ГОРОСКОП"
+    description = "Узнай свой гороскоп"
     icon = "*"
     style = "mystical"
     requires_camera = False
@@ -464,7 +464,7 @@ class ZodiacMode(BaseMode):
         # Render particles
         self._particles.render(buffer)
 
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self.phase == ModePhase.INTRO:
             # Title
@@ -583,7 +583,7 @@ class ZodiacMode(BaseMode):
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self.phase in (ModePhase.INTRO, ModePhase.ACTIVE):
             # Scrolling mystical text

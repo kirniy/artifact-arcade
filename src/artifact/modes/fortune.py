@@ -69,8 +69,8 @@ class FortuneMode(BaseMode):
     """
 
     name = "fortune"
-    display_name = "FORTUNE"
-    description = "Discover your mystical fortune"
+    display_name = "ГАДАЛКА"
+    description = "Узнай свою судьбу"
     icon = "*"
     style = "mystical"
     requires_camera = False
@@ -219,18 +219,17 @@ class FortuneMode(BaseMode):
         # Render particles
         self._particles.render(buffer)
 
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self.phase == ModePhase.INTRO:
             # Title
-            draw_text_bitmap(buffer, "FORTUNE", 30, 10, self._secondary, font, scale=2)
-            draw_text_bitmap(buffer, "TELLER", 35, 28, self._secondary, font, scale=2)
+            draw_text_bitmap(buffer, "ГАДАЛКА", 30, 10, self._secondary, font, scale=2)
 
         elif self.phase == ModePhase.ACTIVE:
             # Prompt
             if int(self._time_in_phase / 500) % 2 == 0:
-                draw_text_bitmap(buffer, "PRESS TO", 35, 100, self._secondary, font, scale=1)
-                draw_text_bitmap(buffer, "REVEAL FATE", 25, 112, self._secondary, font, scale=1)
+                draw_text_bitmap(buffer, "НАЖМИ", 40, 100, self._secondary, font, scale=1)
+                draw_text_bitmap(buffer, "КНОПКУ", 40, 112, self._secondary, font, scale=1)
 
         elif self.phase == ModePhase.PROCESSING:
             # Swirling animation inside ball
@@ -272,11 +271,11 @@ class FortuneMode(BaseMode):
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
-        font = load_font("default")
+        font = load_font("cyrillic")
 
         if self.phase in (ModePhase.INTRO, ModePhase.ACTIVE):
             # Scrolling mystical text
-            text = "DISCOVER YOUR FATE... "
+            text = "УЗНАЙ СВОЮ СУДЬБУ... "
             scroll = int(self._time_in_phase / 80) % (len(text) * 4 + 48)
             draw_text_bitmap(buffer, text * 2, 48 - scroll, 1, self._secondary, font, scale=1)
 
@@ -288,9 +287,9 @@ class FortuneMode(BaseMode):
     def get_lcd_text(self) -> str:
         """Get LCD text."""
         if self.phase == ModePhase.ACTIVE:
-            return "PRESS BUTTON".center(16)
+            return "НАЖМИ КНОПКУ".center(16)
         elif self.phase == ModePhase.PROCESSING:
-            return "REVEALING...".center(16)
+            return "ГАДАЮ...".center(16)
         elif self.phase == ModePhase.RESULT:
-            return "YOUR FORTUNE".center(16)
-        return "FORTUNE TELLER".center(16)[:16]
+            return "ТВОЯ СУДЬБА".center(16)
+        return "ГАДАЛКА".center(16)[:16]

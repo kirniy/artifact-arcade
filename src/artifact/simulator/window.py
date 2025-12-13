@@ -108,12 +108,29 @@ class SimulatorWindow:
             (self.config.width, self.config.height),
             flags
         )
-        self._clock = pygame.Clock()
+        self._clock = pygame.time.Clock()
 
-        # Initialize fonts
+        # Initialize fonts - use fonts that support Cyrillic
         pygame.font.init()
-        self._font = pygame.font.SysFont("monospace", 16)
-        self._small_font = pygame.font.SysFont("monospace", 12)
+        # Try to use a Cyrillic-capable font
+        cyrillic_fonts = ["DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Consolas", "monospace"]
+        self._font = None
+        self._small_font = None
+        for font_name in cyrillic_fonts:
+            try:
+                test_font = pygame.font.SysFont(font_name, 16)
+                # Test if it can render Cyrillic
+                test_font.render("ТЕСТ", True, (255, 255, 255))
+                self._font = test_font
+                self._small_font = pygame.font.SysFont(font_name, 12)
+                logger.info(f"Using font: {font_name}")
+                break
+            except:
+                continue
+        if not self._font:
+            self._font = pygame.font.SysFont(None, 16)
+            self._small_font = pygame.font.SysFont(None, 12)
+            logger.warning("No Cyrillic font found, using default")
 
         # Calculate layout
         self._calculate_layout()
@@ -182,6 +199,12 @@ class SimulatorWindow:
             self._show_debug = not self._show_debug
         elif key == pygame.K_F2:
             self._capture_screenshot()
+        elif key == pygame.K_r:
+            # Reboot/restart system
+            self.event_bus.emit(Event(EventType.REBOOT, source="keyboard"))
+        elif key == pygame.K_BACKSPACE or key == pygame.K_b:
+            # Go back
+            self.event_bus.emit(Event(EventType.BACK, source="keyboard"))
 
         # Center button (SPACE or RETURN)
         elif key in (pygame.K_SPACE, pygame.K_RETURN):
@@ -334,10 +357,12 @@ class SimulatorWindow:
             f"Mode: {self.state_machine.context.current_mode or 'None'}",
             "",
             "Controls:",
-            "SPACE - Center Button",
-            "LEFT/RIGHT - Arcade",
+            "SPACE - Start/Confirm",
+            "LEFT/RIGHT - Select",
+            "B/BACKSPACE - Back",
+            "R - Reboot",
             "0-9 - Keypad",
-            "F1 - Toggle Debug",
+            "F1 - Debug",
             "ESC - Exit",
         ]
 
