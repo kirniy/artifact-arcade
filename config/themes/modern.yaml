@@ -1,0 +1,62 @@
+name: "Modern"
+description: "Clean, modern AI-powered interface"
+style: "modern"
+
+colors:
+  primary: "#4A90D9"      # Blue
+  secondary: "#2ECC71"    # Green
+  background: "#121218"   # Almost black
+  text: "#F0F0F5"         # Off-white
+  accent: "#E74C3C"       # Red accent
+  error: "#E74C3C"
+  success: "#2ECC71"
+
+animations:
+  idle:
+    type: "scan_lines"
+    speed: 0.5
+    params:
+      line_color: "#4A90D9"
+      opacity: 0.3
+  transition:
+    type: "fade"
+    duration: 300
+    params:
+      ease: "ease_out"
+  reveal:
+    type: "neural_network"
+    duration: 2500
+    params:
+      node_count: 12
+      connection_color: "#4A90D9"
+  processing:
+    type: "pulse_ring"
+    speed: 1.5
+    params:
+      ring_count: 3
+      color: "#2ECC71"
+
+sounds:
+  button_press: "modern/click.wav"
+  mode_enter: "modern/swoosh.wav"
+  result_reveal: "modern/success.wav"
+  error: "modern/error.wav"
+  success: "modern/complete.wav"
+  ambient: null
+
+fonts:
+  main: "pixel_8x8"
+  accent: "pixel_5x7"
+  title: "pixel_8x8"
+
+sprites:
+  folder: "modern"
+  idle_bg: null
+  border: null
+
+messages:
+  welcome: "AI PROPHET"
+  fortune_prefix: "Анализ завершен:"
+  processing: "АНАЛИЗИРУЮ..."
+  ready: "ГОТОВ К СКАНИРОВАНИЮ"
+  error: "Ошибка анализа"

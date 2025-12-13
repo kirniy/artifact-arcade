@@ -1,0 +1,61 @@
+name: "Mystical"
+description: "Ethereal fortune-telling theme with magical elements"
+style: "mystical"
+
+colors:
+  primary: "#7B2D8E"      # Deep purple
+  secondary: "#FFD700"    # Gold
+  background: "#0D0D1A"   # Dark blue-black
+  text: "#E0E0FF"         # Light lavender
+  accent: "#00FF88"       # Mystic green
+  error: "#FF4444"
+  success: "#44FF88"
+
+animations:
+  idle:
+    type: "crystal_ball_glow"
+    speed: 1.0
+    particle_count: 50
+    params:
+      glow_intensity: 0.8
+      particle_colors: ["#FFD700", "#7B2D8E", "#00FF88"]
+  transition:
+    type: "star_wipe"
+    duration: 1000
+    params:
+      direction: "center"
+  reveal:
+    type: "mist_dissolve"
+    duration: 2000
+    params:
+      mist_color: "#7B2D8E"
+  processing:
+    type: "crystal_spin"
+    speed: 2.0
+    params:
+      rotation_speed: 360
+
+sounds:
+  button_press: "mystical/chime.wav"
+  mode_enter: "mystical/whoosh.wav"
+  result_reveal: "mystical/magic.wav"
+  error: "shared/error.wav"
+  success: "mystical/success.wav"
+  ambient: "mystical/ambient.wav"
+
+fonts:
+  main: "pixel_8x8"
+  accent: "cyrillic_6x8"
+  title: "pixel_8x8"
+
+sprites:
+  folder: "mystical"
+  idle_bg: "crystal_ball.png"
+  border: "ornate_frame.png"
+
+messages:
+  welcome: "УЗНАЙ СУДЬБУ"
+  fortune_prefix: "Духи говорят:"
+  processing: "ВЫЧИСЛЯЮ..."
+  ready: "НАЖМИ КНОПКУ"
+  error: "Духи молчат"

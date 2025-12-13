@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "artifact"
+version = "0.1.0"
+description = "AI-powered arcade fortune-telling machine"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "VNVNC" }
+]
+keywords = ["arcade", "fortune", "ai", "raspberry-pi", "led-matrix"]
+
+dependencies = [
+    # Core
+    "pygame>=2.5.0",
+    "numpy>=1.24.0",
+    "pillow>=10.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    # AI
+    "google-genai>=0.3.0",
+    "aiohttp>=3.9.0",
+]
+
+[project.optional-dependencies]
+hardware = [
+    "rpi_ws281x>=5.0.0",
+    "RPLCD>=1.4.0",
+    "smbus2>=0.4.0",
+    "python-escpos>=3.0",
+    "gpiozero>=2.0",
+    "evdev>=1.6.0",
+    "picamera2>=0.3.12",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+artifact = "artifact.main:main"
+artifact-sim = "artifact.simulator.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/artifact"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

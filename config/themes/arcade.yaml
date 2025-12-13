@@ -1,0 +1,61 @@
+name: "Arcade"
+description: "Classic 8-bit arcade game style"
+style: "arcade"
+
+colors:
+  primary: "#FF0066"      # Hot pink
+  secondary: "#00FFFF"    # Cyan
+  background: "#0A0A14"   # Dark navy
+  text: "#FFFFFF"         # White
+  accent: "#FFFF00"       # Yellow
+  error: "#FF0000"
+  success: "#00FF00"
+
+animations:
+  idle:
+    type: "pixel_rain"
+    speed: 1.5
+    particle_count: 30
+    params:
+      colors: ["#FF0066", "#00FFFF", "#FFFF00"]
+      trail_length: 5
+  transition:
+    type: "pixel_wipe"
+    duration: 500
+    params:
+      block_size: 8
+  reveal:
+    type: "slot_reveal"
+    duration: 1500
+    params:
+      spin_count: 3
+  processing:
+    type: "loading_bar"
+    speed: 1.0
+    params:
+      bar_color: "#00FFFF"
+
+sounds:
+  button_press: "arcade/bleep.wav"
+  mode_enter: "arcade/powerup.wav"
+  result_reveal: "arcade/fanfare.wav"
+  error: "arcade/buzzer.wav"
+  success: "arcade/coin.wav"
+  ambient: null
+
+fonts:
+  main: "pixel_8x8"
+  accent: "pixel_5x7"
+  title: "pixel_8x8"
+
+sprites:
+  folder: "arcade"
+  idle_bg: null
+  border: "pixel_border.png"
+
+messages:
+  welcome: "PRESS START"
+  fortune_prefix: "RESULT:"
+  processing: "LOADING..."
+  ready: "INSERT COIN"
+  error: "GAME OVER"
