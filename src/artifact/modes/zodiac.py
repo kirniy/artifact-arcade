@@ -300,12 +300,12 @@ class ZodiacMode(BaseMode):
 
     def on_input(self, event: Event) -> bool:
         """Handle input."""
-        if event.event_type == EventType.BUTTON_PRESS:
+        if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.RESULT:
                 self._finish()
                 return True
 
-        elif event.event_type == EventType.KEYPAD_PRESS:
+        elif event.type == EventType.KEYPAD_INPUT:
             key = event.data.get("key", "")
 
             if self.phase == ModePhase.ACTIVE:

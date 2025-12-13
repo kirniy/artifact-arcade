@@ -147,15 +147,15 @@ class QuizMode(BaseMode):
     def on_input(self, event: Event) -> bool:
         """Handle input."""
         if self.phase == ModePhase.ACTIVE and not self._answered:
-            if event.event_type == EventType.ARCADE_LEFT:
+            if event.type == EventType.ARCADE_LEFT:
                 self._answer_question(False)  # Left option
                 return True
-            elif event.event_type == EventType.ARCADE_RIGHT:
+            elif event.type == EventType.ARCADE_RIGHT:
                 self._answer_question(True)   # Right option
                 return True
 
         elif self.phase == ModePhase.RESULT:
-            if event.event_type == EventType.BUTTON_PRESS:
+            if event.type == EventType.BUTTON_PRESS:
                 self._finish()
                 return True
 

@@ -140,7 +140,7 @@ class FortuneMode(BaseMode):
 
     def on_input(self, event: Event) -> bool:
         """Handle input."""
-        if event.event_type == EventType.BUTTON_PRESS:
+        if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.ACTIVE and self._waiting_for_reveal:
                 self._reveal_fortune()
                 return True

@@ -217,17 +217,17 @@ class AIProphetMode(BaseMode):
 
     def on_input(self, event: Event) -> bool:
         """Handle input."""
-        if event.event_type == EventType.BUTTON_PRESS:
+        if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.RESULT:
                 self._finish()
                 return True
 
-        elif event.event_type == EventType.ARCADE_LEFT:
+        elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(False)  # No
                 return True
 
-        elif event.event_type == EventType.ARCADE_RIGHT:
+        elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(True)  # Yes
                 return True
