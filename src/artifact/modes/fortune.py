@@ -123,43 +123,61 @@ def calculate_age(day: int, month: int, year: int) -> int:
 # AI PROMPTS FOR FORTUNE TELLING
 # =============================================================================
 
-FORTUNE_TELLER_SYSTEM_PROMPT = """Ты - мистическая гадалка в аркадном автомате VNVNC на вечеринке.
-Твои предсказания ОБЯЗАТЕЛЬНО должны быть связаны с датой рождения и внешностью человека!
+# The key insight: AI is smart enough to figure out zodiac, Chinese zodiac,
+# numerology, and everything else from just the birthdate. We delegate!
 
-ВАЖНО - Предсказание должно быть ПЕРСОНАЛЬНЫМ:
-1. ОБЯЗАТЕЛЬНО учитывай знак зодиака и его характеристики
-2. ОБЯЗАТЕЛЬНО учитывай китайский гороскоп
-3. ОБЯЗАТЕЛЬНО учитывай возраст человека (юный, молодой, зрелый)
-4. ОБЯЗАТЕЛЬНО учитывай внешность (если есть анализ фото)
-5. Число судьбы (нумерология) - добавь мистики!
+FORTUNE_TELLER_SYSTEM_PROMPT = """Ты - мистическая гадалка-астролог в аркадном автомате VNVNC на вечеринке.
+Тебе дают ДАТУ РОЖДЕНИЯ и ФОТО человека. Твоя задача - создать прикольное персональное предсказание!
 
-Стиль предсказаний:
-- Молодёжный сленг (но не перебарщивай)
-- Ирония и юмор приветствуются
+ЧТО ТЫ ДОЛЖЕН СДЕЛАТЬ (ты это умеешь!):
+1. По дате рождения определи знак зодиака (Овен, Телец, Близнецы и т.д.)
+2. По году рождения определи китайский гороскоп (Крыса, Бык, Тигр и т.д.)
+3. Посчитай нумерологическое число судьбы (сумма всех цифр даты до однозначного)
+4. Вычисли возраст человека (сегодня декабрь 2024)
+5. По фото определи вайб человека - его энергию, стиль, характер
+
+ЗАТЕМ создай ОДНО персональное предсказание, которое:
+- Упоминает знак зодиака или китайский гороскоп
+- Связано с внешностью или вайбом человека
+- Смешное, дерзкое, но не обидное
+- Использует молодёжный сленг (не перебарщивай)
 - Отсылки к соцсетям, мемам, современной жизни - ДА!
-- Скучные банальности типа "звёзды благосклонны" - НЕТ!
-- Предсказание должно вызывать улыбку
+- 2-3 предложения максимум!
 
 Примеры хороших предсказаний:
-- "Типичный Лев - харизма зашкаливает! В 23 года пора уже захватывать мир, не?"
-- "С такой энергией Крысы и лицом победителя, ретроградный Меркурий тебе не страшен"
-- "Водолей в год Дракона? Ты явно тот самый уникальный персонаж в любой компании"
+- "Типичный Лев с лицом победителя! В 23 года твоя харизма уже должна захватывать мир"
+- "Крыса + Водолей + этот уверенный взгляд = комбо для успеха. Ретроградный Меркурий? Не твоя проблема"
+- "Число судьбы 7 плюс такие глаза - вижу, как люди сами к тебе тянутся. Пользуйся!"
 
-ВСЕГДА пиши на русском языке.
-Длина: 2-3 предложения максимум (для маленького экрана).
+ВСЕГДА пиши на русском.
 
 Format your response as:
-PREDICTION: [Твоё прикольное предсказание]
-LUCKY_COLOR: [цвет на русском]
+PREDICTION: [предсказание]
+ZODIAC: [знак зодиака]
+CHINESE: [китайский зодиак]
+LUCKY_COLOR: [счастливый цвет]
 """
 
-PHOTO_ANALYSIS_PROMPT = """Опиши человека на фото для гадалки (2-3 предложения):
-- Выражение лица и вайб (весёлый? серьёзный? загадочный?)
-- Стиль (если видно одежду/аксессуары)
-- Какие черты характера можно предположить?
+# Combined prompt that includes both photo analysis and prediction
+COMBINED_FORTUNE_PROMPT = """Перед тобой фото человека. Его дата рождения: {birthdate}
 
-Будь конкретным, не используй общие фразы.
-Отвечай на русском."""
+1. Сначала кратко опиши человека на фото (вайб, выражение лица, стиль)
+2. Затем создай персональное предсказание на основе даты рождения И внешности
+
+Помни:
+- Определи знак зодиака и китайский гороскоп по дате
+- Свяжи внешность с предсказанием
+- Будь смешным и дерзким, но не обидным
+- Молодёжный сленг ОК
+- 2-3 предложения для предсказания!
+
+Format:
+PHOTO_ANALYSIS: [краткое описание человека]
+PREDICTION: [твоё прикольное предсказание]
+ZODIAC: [знак зодиака]
+CHINESE: [китайский зодиак]
+LUCKY_COLOR: [счастливый цвет]
+"""
 
 
 class FortuneMode(BaseMode):
@@ -512,58 +530,40 @@ class FortuneMode(BaseMode):
 
         logger.info("AI processing started")
 
-    def _build_astro_context(self) -> str:
-        """Build astrology context for AI prediction."""
-        if not self._birthdate:
-            return ""
-
-        day, month, year = self._birthdate
-
-        context_parts = [
-            f"Дата рождения: {day:02d}.{month:02d}.{year}",
-            f"Возраст: {self._age} лет",
-            f"Знак зодиака: {self._zodiac_sign} {self._zodiac_symbol} (стихия: {self._zodiac_element})",
-            f"Китайский гороскоп: {self._chinese_zodiac} {self._chinese_emoji} - {self._chinese_trait}",
-            f"Число судьбы (нумерология): {self._life_path}",
-        ]
-
-        return "\n".join(context_parts)
-
     async def _run_ai_generation(self) -> None:
-        """Run AI generation tasks in parallel."""
+        """Run AI generation - send photo + birthdate together, let AI do all the work."""
         try:
-            # Build astro context
-            astro_context = self._build_astro_context()
-            logger.info(f"Astro context:\n{astro_context}")
+            if not self._birthdate:
+                raise ValueError("No birthdate")
 
-            # Analyze photo if available
-            if self._photo_data and self._gemini_client.is_available:
-                self._photo_analysis = await self._gemini_client.generate_with_image(
-                    prompt=PHOTO_ANALYSIS_PROMPT,
-                    image_data=self._photo_data,
-                    mime_type="image/jpeg",
-                    model=GeminiModel.FLASH_VISION,
-                ) or ""
-                logger.info(f"Photo analysis: {self._photo_analysis}")
+            day, month, year = self._birthdate
+            birthdate_str = f"{day:02d}.{month:02d}.{year}"
 
-            # Build prediction prompt
-            prediction_prompt = f"""{astro_context}
-
-Анализ внешности: {self._photo_analysis if self._photo_analysis else 'фото недоступно'}
-
-Создай персональное мистическое предсказание для этого человека!"""
-
-            # Generate prediction
+            # Generate prediction - send photo + birthdate together in ONE call
             async def generate_prediction():
                 if not self._gemini_client.is_available:
                     return self._fallback_prediction()
 
-                response = await self._gemini_client.generate_text(
-                    prompt=prediction_prompt,
-                    model=GeminiModel.FLASH,
-                    system_instruction=FORTUNE_TELLER_SYSTEM_PROMPT,
-                    temperature=0.9,
-                )
+                # Format the combined prompt with birthdate
+                prompt = COMBINED_FORTUNE_PROMPT.format(birthdate=birthdate_str)
+
+                # If we have photo, use vision model with photo + prompt
+                if self._photo_data:
+                    response = await self._gemini_client.generate_with_image(
+                        prompt=prompt,
+                        image_data=self._photo_data,
+                        mime_type="image/jpeg",
+                        model=GeminiModel.FLASH_VISION,
+                        system_instruction=FORTUNE_TELLER_SYSTEM_PROMPT,
+                    )
+                else:
+                    # No photo - text only
+                    response = await self._gemini_client.generate_text(
+                        prompt=f"Дата рождения: {birthdate_str}\n\nСоздай предсказание!",
+                        model=GeminiModel.FLASH,
+                        system_instruction=FORTUNE_TELLER_SYSTEM_PROMPT,
+                        temperature=0.9,
+                    )
 
                 if response:
                     return self._parse_prediction_response(response)
@@ -575,7 +575,7 @@ class FortuneMode(BaseMode):
                     return await self._caricature_service.generate_caricature(
                         reference_photo=self._photo_data,
                         style=CaricatureStyle.MYSTICAL,
-                        personality_context=astro_context,
+                        personality_context=f"Дата рождения: {birthdate_str}",
                     )
                 return None
 
@@ -588,6 +588,11 @@ class FortuneMode(BaseMode):
                 result = await asyncio.wait_for(prediction_task, timeout=60.0)
                 self._prediction = result[0]
                 self._lucky_color = result[1]
+                # Also extract zodiac info from AI response if available
+                if len(result) > 2:
+                    self._zodiac_sign = result[2]
+                if len(result) > 3:
+                    self._chinese_zodiac = result[3]
             except asyncio.TimeoutError:
                 logger.warning("Prediction generation timed out")
                 fallback = self._fallback_prediction()

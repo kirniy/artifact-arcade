@@ -27,6 +27,7 @@ from artifact.modes.zodiac import ZodiacMode
 from artifact.modes.roulette import RouletteMode
 from artifact.modes.quiz import QuizMode
 from artifact.modes.ai_prophet import AIProphetMode
+from artifact.modes.squid_game import SquidGameMode
 from artifact.audio.engine import AudioEngine, get_audio_engine
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,9 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(ZodiacMode)
         self.mode_manager.register_mode(RouletteMode)
         self.mode_manager.register_mode(QuizMode)
+
+        # Squid Game mode - uses webcam for motion detection
+        self.mode_manager.register_mode(SquidGameMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os

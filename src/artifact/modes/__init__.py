@@ -7,6 +7,7 @@ from artifact.modes.zodiac import ZodiacMode
 from artifact.modes.ai_prophet import AIProphetMode
 from artifact.modes.roulette import RouletteMode
 from artifact.modes.quiz import QuizMode
+from artifact.modes.squid_game import SquidGameMode
 
 __all__ = [
     # Base
@@ -22,4 +23,5 @@ __all__ = [
     "AIProphetMode",
     "RouletteMode",
     "QuizMode",
+    "SquidGameMode",
 ]
