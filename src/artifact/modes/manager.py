@@ -586,10 +586,9 @@ class ModeManager:
 
         if view == 0:
             # Print prompt view
-            draw_centered_text(buffer, "С ТАКОЙ", 15, (150, 180, 200), scale=2)
-            draw_centered_text(buffer, "ДЕРЗОСТЬЮ", 35, (150, 180, 200), scale=2)
-            draw_centered_text(buffer, "И", 55, (150, 180, 200), scale=2)
-            draw_centered_text(buffer, "ПЕЧАТЬ?", 75, (255, 255, 100), scale=2)
+            draw_centered_text(buffer, "СОХРАНИТЬ", 25, (150, 180, 200), scale=2)
+            draw_centered_text(buffer, "НА ПАМЯТЬ?", 50, (150, 180, 200), scale=2)
+            draw_centered_text(buffer, "ПЕЧАТЬ", 80, (255, 255, 100), scale=2)
 
             # Print options at bottom
             if self._last_result.should_print:
