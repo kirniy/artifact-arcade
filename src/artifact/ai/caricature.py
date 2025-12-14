@@ -27,6 +27,9 @@ class CaricatureStyle(Enum):
     SKETCH = "sketch"          # Simple black and white sketch
     CARTOON = "cartoon"        # Exaggerated cartoon style
     VINTAGE = "vintage"        # Old-timey carnival style
+    GUESS = "guess"            # Illustration with text annotations
+    MEDICAL = "medical"        # X-ray/Dissection style
+    ROAST = "roast"            # Mean doodle with arrows/labels
 
 
 @dataclass
@@ -81,6 +84,34 @@ Black and white hand-drawn illustration with THICK bold outlines.
 Pure white background, clean lines.
 Exaggerate their distinctive features in a charming vintage style.
 High contrast suitable for thermal receipt printer.
+""",
+
+    CaricatureStyle.GUESS: """
+Create a fun loose sketch OF THIS PERSON with annotations/labels pointing to features.
+Style: Hand-drawn doodle with handwritten notes/arrows around the head.
+Black and white line art, THICK outlines.
+Pure white background.
+The labels should be abstract scribbles or fun icons (stars, question marks).
+Capture the person's vibe in a sketchy, artistic way.
+""",
+
+    CaricatureStyle.MEDICAL: """
+Create a stylized "medical scan" or "anatomy study" OF THIS PERSON.
+Style: Scientific illustration / X-ray vibe but drawn as line art.
+Black and white, high contrast.
+Show "internal mechanics" or "brain gear" or "heart" in a fun metaphorical way.
+Pure white background.
+Thick outlines, no complex shading.
+Creepy but fun/cute.
+""",
+
+    CaricatureStyle.ROAST: """
+Create a "mean" doodle caricature OF THIS PERSON.
+Style: Messy scribbly drawing, like a graffiti tag or school desk doodle.
+Exaggerate flaws hilariously (big nose, funny hair) but keep it lighthearted.
+Add arrows pointing to features with scribble text.
+Black and white line art, pure white background.
+High contrast.
 """,
 }
 

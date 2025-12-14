@@ -8,20 +8,23 @@ from artifact.modes.ai_prophet import AIProphetMode
 from artifact.modes.roulette import RouletteMode
 from artifact.modes.quiz import QuizMode
 from artifact.modes.squid_game import SquidGameMode
+from artifact.modes.guess_me import GuessMeMode
+from artifact.modes.autopsy import AutopsyMode
+from artifact.modes.roast import RoastMeMode
 
 __all__ = [
-    # Base
     "BaseMode",
     "ModeContext",
     "ModeResult",
-    "ModePhase",
-    # Manager
-    "ModeManager",
-    # Modes
+    "IdleMode",
+    "PhotoBoothMode",
     "FortuneMode",
-    "ZodiacMode",
-    "AIProphetMode",
     "RouletteMode",
-    "QuizMode",
+    "KaraokeMode", 
     "SquidGameMode",
+    "GuessMeMode",
+    "AutopsyMode",
+    "RoastMeMode",
+    "AIProphetMode",
+    "QuizMode",
 ]

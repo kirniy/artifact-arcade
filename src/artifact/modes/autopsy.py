@@ -1,0 +1,288 @@
+"""Autopsy Mode - Medical X-ray style dissection.
+
+The AI analyzes user "anatomy" and generates a medical report + X-ray illustration.
+Style: Clinical, green/black, medical scan animations.
+"""
+
+import asyncio
+import logging
+from typing import Optional, Tuple
+from datetime import datetime
+import random
+import math
+
+from artifact.core.events import Event, EventType
+from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
+from artifact.animation.particles import ParticleSystem
+from artifact.ai.client import get_gemini_client, GeminiModel
+from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
+from artifact.simulator.mock_hardware.camera import SimulatorCamera, create_camera
+
+logger = logging.getLogger(__name__)
+
+
+class AutopsyPhase:
+    INTRO = "intro"
+    SCAN_PREP = "scan_prep"   # "Stand still for scan"
+    SCANNING = "scanning"     # Moving bar animation over camera feed
+    PROCESSING = "processing" # "Analysing organs..."
+    RESULT = "result"
+
+
+# =============================================================================
+# AI PROMPTS
+# =============================================================================
+
+AUTOPSY_SYSTEM_PROMPT = """Ты - медицинский ИИ-диагност в киберпанк-клинике.
+Твоя задача - провести шуточный "анализ организма" по фото.
+
+Придумай смешные, абсурдные диагнозы или особенности строения тела.
+Примеры:
+- "Обнаружен избыток кофеина в крови (99%). Сердце работает на чистом энтузиазме."
+- "В мозгу найден чип 5G. Связь с космосом стабильная."
+- "Скелет состоит из адамантия. Рекомендуется смазка суставов WD-40."
+
+Format:
+DIAGNOSIS: [Твой весёлый диагноз]
+ID_CODE: [Случайный код, типа SUBJ-8392]
+"""
+
+class AutopsyMode(BaseMode):
+    """Medical Dissection Mode."""
+
+    name = "autopsy"
+    display_name = "ВСКРЫТИЕ"
+    description = "Медицинский скан"
+    icon = "+"
+    style = "medical"
+    requires_camera = True
+    requires_ai = True
+    estimated_duration = 55
+
+    def __init__(self, context: ModeContext):
+        super().__init__(context)
+        self._gemini_client = get_gemini_client()
+        self._caricature_service = CaricatureService()
+        self._sub_phase = AutopsyPhase.INTRO
+        
+        # Camera
+        self._camera: Optional[SimulatorCamera] = None
+        self._camera_frame: Optional[bytes] = None
+        self._photo_data: Optional[bytes] = None
+        
+        # Data
+        self._diagnosis: str = ""
+        self._id_code: str = ""
+        self._xray_image: Optional[Caricature] = None
+        
+        # Animation
+        self._scan_line_y: float = 0.0
+        self._processing_text: str = "INIT SYSTEM..."
+        self._ai_task: Optional[asyncio.Task] = None
+
+        # Colors
+        self._green = (0, 255, 50)
+        self._dark_green = (0, 50, 10)
+
+    @property
+    def is_ai_available(self) -> bool:
+        return self._gemini_client.is_available
+
+    def on_enter(self) -> None:
+        self._sub_phase = AutopsyPhase.INTRO
+        self._photo_data = None
+        self._diagnosis = ""
+        self._id_code = "UNKNOWN"
+        self._xray_image = None
+        self._scan_line_y = 0.0
+        
+        self._camera = create_camera(resolution=(640, 480))
+        if self._camera.open():
+            logger.info("Camera opened for Autopsy")
+
+        self.change_phase(ModePhase.INTRO)
+
+    def on_update(self, delta_ms: float) -> None:
+        if self._sub_phase in (AutopsyPhase.SCAN_PREP, AutopsyPhase.SCANNING):
+            self._update_camera_preview()
+
+        if self.phase == ModePhase.INTRO:
+            if self._time_in_phase > 2000:
+                self._sub_phase = AutopsyPhase.SCAN_PREP
+                self.change_phase(ModePhase.ACTIVE)
+                self._time_in_phase = 0
+
+        elif self.phase == ModePhase.ACTIVE:
+            if self._sub_phase == AutopsyPhase.SCAN_PREP:
+                if self._time_in_phase > 2000:
+                    self._start_scan()
+
+            elif self._sub_phase == AutopsyPhase.SCANNING:
+                # Animate scan line
+                self._scan_line_y = (self._time_in_phase / 3000) * 128
+                if self._time_in_phase > 3000:
+                    self._do_capture()
+                    self._start_processing()
+
+        elif self.phase == ModePhase.PROCESSING:
+            if int(self._time_in_phase / 500) % 2 == 0:
+                self._processing_text = "ANALYZING..."
+            else:
+                self._processing_text = "PROCESSING..."
+
+            if self._ai_task and self._ai_task.done():
+                self._on_ai_complete()
+
+        elif self.phase == ModePhase.RESULT:
+            if self._time_in_phase > 15000:
+                self._finish()
+
+    def on_input(self, event: Event) -> bool:
+        if event.type == EventType.BUTTON_PRESS:
+            if self.phase == ModePhase.RESULT:
+                self._finish()
+                return True
+        return False
+
+    def _start_scan(self) -> None:
+        self._sub_phase = AutopsyPhase.SCANNING
+        self._time_in_phase = 0
+        logger.info("Scanning started")
+
+    def _do_capture(self) -> None:
+        if self._camera and self._camera.is_open:
+            self._photo_data = self._camera.capture_jpeg(quality=90)
+            logger.info("Scan capture complete")
+
+    def _update_camera_preview(self) -> None:
+        if not self._camera: return
+        try:
+            from artifact.simulator.mock_hardware.camera import floyd_steinberg_dither
+            frame = self._camera.capture_frame()
+            if frame is not None:
+                # Green tint for medical look? Handled in render usually
+                # Just use standard dither for now
+                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
+                self._camera_frame = dithered
+        except Exception:
+            pass
+
+    def _start_processing(self) -> None:
+        self._sub_phase = AutopsyPhase.PROCESSING
+        self.change_phase(ModePhase.PROCESSING)
+        self._ai_task = asyncio.create_task(self._run_ai())
+
+    async def _run_ai(self) -> None:
+        try:
+            if not self._photo_data:
+                self._diagnosis = "ERROR: SUBJECT NOT FOUND"
+                return
+
+            async def get_text():
+                res = await self._gemini_client.generate_with_image(
+                    prompt="Medical scan analysis. Be funny and sci-fi.",
+                    image_data=self._photo_data,
+                    model=GeminiModel.FLASH_VISION,
+                    system_instruction=AUTOPSY_SYSTEM_PROMPT
+                )
+                return self._parse_response(res) if res else ("Unknown Organism", "ERR-404")
+
+            async def get_image():
+                return await self._caricature_service.generate_caricature(
+                    reference_photo=self._photo_data,
+                    style=CaricatureStyle.MEDICAL,
+                    personality_context="X-ray medical scan"
+                )
+
+            self._diagnosis, self._id_code = await get_text()
+            self._xray_image = await get_image()
+
+        except Exception as e:
+            logger.error(f"AI Failure: {e}")
+            self._diagnosis = "SYSTEM FAILURE"
+
+    def _parse_response(self, text: str) -> Tuple[str, str]:
+        diag = ""
+        code = "SUBJ-001"
+        for line in text.strip().split("\n"):
+            if line.startswith("DIAGNOSIS:"): diag = line[10:].strip()
+            elif line.startswith("ID_CODE:"): code = line[8:].strip()
+        if not diag: diag = text[:100]
+        return diag, code
+
+    def _on_ai_complete(self) -> None:
+        self._sub_phase = AutopsyPhase.RESULT
+        self.change_phase(ModePhase.RESULT)
+
+    def on_exit(self) -> None:
+        if self._camera: self._camera.close()
+        if self._ai_task: self._ai_task.cancel()
+
+    def _finish(self) -> None:
+        result = ModeResult(
+            mode_name=self.name,
+            success=True,
+            display_text=self._diagnosis,
+            ticker_text=f"SUBJECT: {self._id_code}",
+            lcd_text=" SCAN COMPLETE ".center(16),
+            should_print=True,
+            print_data={
+                "type": "autopsy",
+                "diagnosis": self._diagnosis,
+                "id": self._id_code,
+                "scan_image": self._xray_image.image_data if self._xray_image else None,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        self.complete(result)
+
+    def render_main(self, buffer) -> None:
+        from artifact.graphics.primitives import fill, draw_line, draw_rect
+        from artifact.graphics.text_utils import draw_centered_text, wrap_text
+
+        # Background - dark medical green
+        fill(buffer, (0, 20, 5))
+
+        # Grid lines
+        for i in range(0, 128, 16):
+            draw_line(buffer, 0, i, 128, i, (0, 50, 20))
+            draw_line(buffer, i, 0, i, 128, (0, 50, 20))
+
+        if self._sub_phase == AutopsyPhase.INTRO:
+            draw_centered_text(buffer, "MEDICAL SCAN", 50, self._green, scale=1)
+            draw_centered_text(buffer, "INITIALIZING...", 70, self._green)
+
+        elif self._sub_phase in (AutopsyPhase.SCAN_PREP, AutopsyPhase.SCANNING):
+            if self._camera_frame is not None:
+                # Render frame with green tint
+                import numpy as np
+                # Check shape
+                if self._camera_frame.shape == (128, 128, 3):
+                    # Manual tint copy
+                    # For performance in sim, maybe just direct copy and trust simulator dither
+                    np.copyto(buffer, self._camera_frame)
+            
+            # Scan line overlay
+            if self._sub_phase == AutopsyPhase.SCANNING:
+                y = int(self._scan_line_y)
+                draw_line(buffer, 0, y, 128, y, self._green)
+                # Glow area
+                for i in range(1, 5):
+                     if 0 <= y-i < 128: draw_line(buffer, 0, y-i, 128, y-i, (0, 100, 20))
+
+        elif self._sub_phase == AutopsyPhase.PROCESSING:
+            draw_centered_text(buffer, self._processing_text, 64, self._green, scale=1)
+            # Pulse
+            r = 20 + int(math.sin(self._time_in_phase/200)*5)
+            from artifact.graphics.primitives import draw_circle
+            draw_circle(buffer, 64, 40, r, self._green, filled=False)
+
+        elif self._sub_phase == AutopsyPhase.RESULT:
+            draw_centered_text(buffer, self._id_code, 10, self._green)
+            lines = wrap_text(self._diagnosis, 18)
+            y = 30
+            for line in lines[:6]:
+                draw_centered_text(buffer, line, y, (200, 255, 200))
+                y += 12
+            
+            draw_centered_text(buffer, "PRINTING REPORT", 110, self._green)

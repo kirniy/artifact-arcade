@@ -404,269 +404,155 @@ class RouletteMode(BaseMode):
         self.complete(result)
 
     def render_main(self, buffer) -> None:
-        """Render main display with enhanced effects."""
-        from artifact.graphics.primitives import fill, draw_circle, draw_line, draw_rect
+        """Render main display with fullscreen wheel."""
+        from artifact.graphics.primitives import fill, draw_circle, draw_line
         from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
 
-        # Background with subtle gradient effect
+        # Background
         fill(buffer, self._background)
 
-        # Add shake offset
+        # Shake effect
         shake_x = int(random.uniform(-1, 1) * self._shake_amount * 3) if self._shake_amount > 0 else 0
         shake_y = int(random.uniform(-1, 1) * self._shake_amount * 3) if self._shake_amount > 0 else 0
 
-        # Position wheel in center but leave room for text
-        cx, cy = 64 + shake_x, 55 + shake_y
-        wheel_radius = 42
+        # Fullscreen wheel centered
+        cx, cy = 64 + shake_x, 64 + shake_y
+        wheel_radius = 60  # Maximum size (128x128 screen)
 
-        # Draw animated border lights
-        self._draw_border_lights(buffer)
-
-        # Draw outer glow around wheel
+        # Draw outer glow
         if self._glow_intensity > 0:
-            for r in range(wheel_radius + 12, wheel_radius + 3, -2):
-                glow_alpha = self._glow_intensity * (wheel_radius + 12 - r) / 9 * 0.5
+            for r in range(wheel_radius + 4, wheel_radius, -1):
+                glow_alpha = self._glow_intensity * 0.5
                 glow_color = tuple(int(c * glow_alpha) for c in self._glow_color)
                 draw_circle(buffer, cx, cy, r, glow_color, filled=False)
 
+        # Draw Scale logic (fade in/out or 1.0)
+        alpha = 1.0
         if self.phase == ModePhase.INTRO:
-            # Wheel fade in with glow
             alpha = min(1.0, self._time_in_phase / 1000)
-            self._draw_wheel(buffer, cx, cy, wheel_radius, alpha)
 
-            # Animated title
-            draw_animated_text(buffer, "РУЛЕТКА", 3, self._primary, self._time_in_phase, TextEffect.GLOW, scale=2)
+        self._draw_wheel(buffer, cx, cy, wheel_radius, alpha)
 
-        elif self.phase == ModePhase.ACTIVE:
-            self._draw_wheel(buffer, cx, cy, wheel_radius, 1.0)
+        # Draw pointer at the TOP (12 o'clock)
+        # Wheel is rendered, now pointer overlays it
+        # Tip at (64, 4), pointing down to (64, 14)
+        self._draw_pointer(buffer, 64, 0)
 
-            # Pulsing prompt
-            pulse = 0.7 + 0.3 * math.sin(self._pulse_phase * 2)
-            prompt_color = tuple(int(c * pulse) for c in self._primary)
+        # Result Overlay
+        if self.phase == ModePhase.RESULT:
+            # Result text over the wheel with shadow/bg
+            # Semi-transparent bar
+            from artifact.graphics.primitives import draw_rect
+            bar_height = 30
+            bar_y = 49
+            
+            # Dark transparent bg for readability
+            for y in range(bar_y, bar_y + bar_height):
+                for x in range(0, 128):
+                    buffer[y, x] = tuple(int(c*0.8) for c in buffer[y, x])
 
-            if int(self._time_in_phase / 500) % 2 == 0:
-                draw_centered_text(buffer, "КРУТИ!", 108, prompt_color, scale=2)
-            else:
-                draw_centered_text(buffer, "ЖМИКНОПКУ", 108, (150, 150, 150), scale=1)
-
-        elif self.phase == ModePhase.PROCESSING:
-            self._draw_wheel(buffer, cx, cy, wheel_radius, 1.0)
-
-            # Animated spinning text with glitch
-            draw_animated_text(buffer, "КРУЧУ", 108, self._secondary, self._time_in_phase, TextEffect.GLITCH, scale=2)
-
-        elif self.phase == ModePhase.RESULT:
-            self._draw_wheel(buffer, cx, cy, wheel_radius, 1.0)
-
-            # Flash effect with rarity-based color
+            # Draw flashing win animation
             if self._flash_alpha > 0:
                 segment_color = self._get_segment_color(self._result_segment)
-                flash_color = tuple(int(c * self._flash_alpha) for c in segment_color)
-                for r in range(wheel_radius + 15, wheel_radius, -2):
-                    draw_circle(buffer, cx, cy, r, flash_color, filled=False)
+                draw_rect(buffer, 0, bar_y, 128, bar_height, segment_color, filled=False)
+            
+            # Text
+            draw_centered_text(buffer, self._result_segment, 55, (255, 255, 255), scale=1)
+            # Rarity stars
+            stars = "★" * self._result_rarity
+            draw_centered_text(buffer, stars, 68, (255, 215, 0), scale=1)
 
-            # Result text with rarity-based effects
-            segment_color = self._get_segment_color(self._result_segment)
-
-            if self._result_rarity >= 4:  # Legendary - rainbow effect
-                draw_animated_text(buffer, self._result_segment, 108, segment_color, self._time_in_phase, TextEffect.RAINBOW, scale=2)
-            elif self._result_rarity >= 3:  # Rare - glow effect
-                draw_animated_text(buffer, self._result_segment, 108, segment_color, self._time_in_phase, TextEffect.GLOW, scale=2)
-            else:
-                draw_centered_text(buffer, self._result_segment, 108, segment_color, scale=2)
-
-        # Draw pointer (above wheel)
-        self._draw_pointer(buffer, 64, 55 - wheel_radius - 3)
-
-        # Render particles
+        # Render particles (on top of everything)
         self._particles.render(buffer)
 
     def _draw_wheel(self, buffer, cx: int, cy: int, radius: int, alpha: float) -> None:
-        """Draw an improved roulette wheel with filled segments."""
-        from artifact.graphics.primitives import draw_circle, draw_line
-
+        """Draw filled wheel segments."""
+        from artifact.graphics.primitives import draw_line, draw_circle
+        
         segment_count = len(WHEEL_SEGMENTS)
         segment_angle = 360 / segment_count
-
-        # Draw filled segments using radial fill technique
+        
+        # Optimize rendering by pre-calculating or using larger steps
+        # For simulator performance, we might want to be careful with pixel-by-pixel
+        # But let's keep the quality high as requested.
+        
         for i, (name_ru, symbol, color, rarity) in enumerate(WHEEL_SEGMENTS):
             start_angle = i * segment_angle + self._wheel_angle
             end_angle = start_angle + segment_angle
+            
+            # Adjust color brightness based on spin/rarity
+            rad_color = tuple(int(c * alpha) for c in color)
+            
+            # Draw segment arc
+            # Using simple ray-sweeping for filling wedge
+            for a in range(int(start_angle), int(end_angle) + 1, 2): # Step 2 for speed
+                rad = math.radians(a)
+                cos_a = math.cos(rad)
+                sin_a = math.sin(rad)
+                
+                # Draw rays from center to edge
+                for r in range(0, radius + 1, 2): # Step 2 for speed
+                    px = int(cx + r * cos_a)
+                    py = int(cy + r * sin_a)
+                    if 0 <= px < 128 and 0 <= py < 128:
+                        buffer[py, px] = rad_color
 
-            adjusted_color = tuple(int(c * alpha) for c in color)
-            darker_color = tuple(int(c * alpha * 0.6) for c in color)
-
-            # Fill segment with concentric arcs
-            for r in range(radius, 15, -2):
-                # Gradient from edge to center
-                gradient = r / radius
-                fill_color = tuple(int(c * gradient + darker_color[j] * (1 - gradient))
-                                 for j, c in enumerate(adjusted_color))
-
-                for angle in range(int(start_angle), int(end_angle) + 1, 3):
-                    rad = math.radians(angle)
-                    x = int(cx + r * math.cos(rad))
-                    y = int(cy + r * math.sin(rad))
-                    if 0 <= x < 128 and 0 <= y < 128:
-                        buffer[y, x] = fill_color
-
-            # Draw segment divider lines
-            rad1 = math.radians(start_angle)
-            x1 = int(cx + radius * math.cos(rad1))
-            y1 = int(cy + radius * math.sin(rad1))
-            draw_line(buffer, cx, cy, x1, y1, (30, 30, 50))
-
-        # Draw outer rim
-        for angle in range(0, 360, 2):
-            rad = math.radians(angle + self._wheel_angle)
-            x = int(cx + radius * math.cos(rad))
-            y = int(cy + radius * math.sin(rad))
-            # Alternating colors on rim
-            if int(angle / (360 / segment_count)) % 2 == 0:
-                rim_color = (200, 180, 100)
-            else:
-                rim_color = (150, 130, 80)
-            draw_circle(buffer, x, y, 2, tuple(int(c * alpha) for c in rim_color))
-
-        # Draw inner rim with pegs/notches
-        inner_radius = radius - 5
-        for i in range(segment_count):
-            angle = i * segment_angle + self._wheel_angle + segment_angle / 2
-            rad = math.radians(angle)
-            peg_x = int(cx + inner_radius * math.cos(rad))
-            peg_y = int(cy + inner_radius * math.sin(rad))
-            draw_circle(buffer, peg_x, peg_y, 2, (255, 215, 0))  # Gold pegs
-
-        # Center hub with gradient
-        for r in range(16, 0, -1):
-            hub_brightness = 40 + int(60 * (1 - r / 16))
-            hub_color = (hub_brightness, hub_brightness, hub_brightness + 20)
-            draw_circle(buffer, cx, cy, r, tuple(int(c * alpha) for c in hub_color), filled=False)
-
-        # Hub shine effect
-        draw_circle(buffer, cx - 3, cy - 3, 4, tuple(int(c * alpha) for c in (120, 120, 140)))
-        draw_circle(buffer, cx, cy, 5, tuple(int(c * alpha) for c in (80, 80, 100)))
+        # Wheel Hub
+        draw_circle(buffer, cx, cy, 10, (50, 50, 50))
+        draw_circle(buffer, cx, cy, 8, (200, 180, 50)) # Gold hub
 
     def _draw_pointer(self, buffer, x: int, y: int) -> None:
-        """Draw an improved wheel pointer."""
-        from artifact.graphics.primitives import draw_line, draw_circle
-
-        # Larger, more visible pointer
-        pointer_size = 10
-
-        # Outer glow
-        for offset in range(3, 0, -1):
-            glow_color = tuple(int(c * (0.3 / offset)) for c in self._primary)
-            draw_line(buffer, x, y + pointer_size + offset, x - 6 - offset, y - 2, glow_color)
-            draw_line(buffer, x, y + pointer_size + offset, x + 6 + offset, y - 2, glow_color)
-
-        # Main pointer body - filled triangle pointing down
-        for py in range(pointer_size):
-            width = int((pointer_size - py) * 0.6)
-            for px in range(-width, width + 1):
-                bx = x + px
-                by = y + py
-                if 0 <= bx < 128 and 0 <= by < 128:
-                    buffer[by, bx] = self._primary
-
+        """Draw pointer triangular arrow at top center."""
+        # Simple red triangle pointing down
+        # x is center, y is top edge
+        
+        w = 8
+        h = 12
+        
+        color = (255, 50, 50)
+        outline = (255, 255, 255)
+        
+        # Scanline triangle fill
+        for i in range(h):
+            row_w = int(w * (1 - i/h))
+            py = y + i
+            for px in range(x - row_w, x + row_w + 1):
+                if 0 <= px < 128 and 0 <= py < 128:
+                    buffer[py, px] = color
+                    
         # Highlight
-        draw_line(buffer, x - 2, y + 2, x, y + pointer_size - 2, (255, 255, 200))
-
-        # Bottom tip accent
-        draw_circle(buffer, x, y + pointer_size, 2, self._secondary)
-
-    def _draw_border_lights(self, buffer) -> None:
-        """Draw animated border lights - casino style."""
-        from artifact.graphics.primitives import draw_circle
-
-        # More lights for better effect
-        light_count = 24
-        for i in range(light_count):
-            # Calculate position along border
-            t = i / light_count
-            if t < 0.25:  # Top
-                lx = int(t * 4 * 124) + 2
-                ly = 2
-            elif t < 0.5:  # Right
-                lx = 125
-                ly = int((t - 0.25) * 4 * 124) + 2
-            elif t < 0.75:  # Bottom
-                lx = int((1 - (t - 0.5) * 4) * 124) + 2
-                ly = 125
-            else:  # Left
-                lx = 2
-                ly = int((1 - (t - 0.75) * 4) * 124) + 2
-
-            # Chase pattern when spinning, alternate when not
-            if self._spinning:
-                # Chase light effect
-                chase_pos = int(self._light_phase * 3) % light_count
-                distance = min(abs(i - chase_pos), light_count - abs(i - chase_pos))
-                brightness = max(0.2, 1.0 - distance * 0.15)
-            else:
-                # Gentle pulse
-                phase = (self._light_phase * 2 + i * 0.4) % (math.pi * 2)
-                brightness = 0.4 + 0.6 * max(0, math.sin(phase))
-
-            # Color based on position and phase
-            if i % 3 == 0:
-                color = tuple(int(c * brightness) for c in self._primary)
-            elif i % 3 == 1:
-                color = tuple(int(c * brightness) for c in self._secondary)
-            else:
-                color = tuple(int(c * brightness) for c in (100, 200, 255))  # Cyan
-
-            draw_circle(buffer, lx, ly, 3, color)
-            # Inner bright spot
-            if brightness > 0.7:
-                draw_circle(buffer, lx, ly, 1, (255, 255, 255))
-
-    def _get_segment_color(self, segment_name: str) -> Tuple[int, int, int]:
-        """Get the color for a segment name."""
-        for name_ru, symbol, color, rarity in WHEEL_SEGMENTS:
-            if name_ru == segment_name:
-                return color
-        return (255, 255, 255)
+        buffer[y, x] = outline
 
     def render_ticker(self, buffer) -> None:
-        """Render ticker with smooth seamless scrolling."""
+        """Render ticker with STATIC instructions and arrows."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.text_utils import render_ticker_animated, render_ticker_static, TickerEffect, TextEffect
+        from artifact.graphics.text_utils import draw_centered_text, TickerEffect, TextEffect
 
-        clear(buffer)
-
-        if self.phase == ModePhase.INTRO:
-            # Intro scrolling text
-            render_ticker_animated(
-                buffer, "КОЛЕСО ФОРТУНЫ",
-                self._time_in_phase, self._primary,
-                TickerEffect.RAINBOW_SCROLL, speed=0.025
-            )
-
-        elif self.phase == ModePhase.ACTIVE:
-            # Action prompt with sparkle
-            render_ticker_animated(
-                buffer, "НАЖМИ ЧТОБЫ КРУТИТЬ",
-                self._time_in_phase, self._primary,
-                TickerEffect.SPARKLE_SCROLL, speed=0.028
-            )
-
+        clear(buffer) # Black background
+        
+        # Static text centered
+        # "LOOK HERE" with arrows pointing down to screen? 
+        # Or arrows pointing up to wheel?
+        # Assuming ticker is below screen, "LOOK UP" or just "LOOK HERE"
+        
+        if self.phase == ModePhase.ACTIVE:
+            # Arrows pointing UP to the screen
+            # ^^^ LOOK HERE ^^^
+            
+            # Blink arrows
+            if int(self._time_in_phase / 500) % 2 == 0:
+                 draw_centered_text(buffer, "▲ LOOK HERE ▲", 2, self._secondary)
+            else:
+                 draw_centered_text(buffer, "  LOOK HERE  ", 2, self._secondary)
+                 
         elif self.phase == ModePhase.PROCESSING:
-            # Spinning animation with glitch effect
-            render_ticker_animated(
-                buffer, "КРУЧУ КОЛЕСО",
-                self._time_in_phase, self._secondary,
-                TickerEffect.GLITCH_SCROLL, speed=0.04
-            )
-
+             draw_centered_text(buffer, "▲ SPINNING ▲", 2, self._primary)
+             
         elif self.phase == ModePhase.RESULT:
-            # Result with wave effect
-            color = self._get_segment_color(self._result_segment)
-            render_ticker_animated(
-                buffer, self._result_outcome,
-                self._time_in_phase, color,
-                TickerEffect.WAVE_SCROLL, speed=0.022
-            )
+             draw_centered_text(buffer, f"▲ {self._result_outcome[:10]} ▲", 2, (0, 255, 0))
+             
+        elif self.phase == ModePhase.INTRO:
+             draw_centered_text(buffer, "▲ ROULETTE ▲", 2, self._primary)
 
     def get_lcd_text(self) -> str:
         """Get LCD text with spinning animation."""

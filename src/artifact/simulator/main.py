@@ -28,6 +28,9 @@ from artifact.modes.roulette import RouletteMode
 from artifact.modes.quiz import QuizMode
 from artifact.modes.ai_prophet import AIProphetMode
 from artifact.modes.squid_game import SquidGameMode
+from artifact.modes.guess_me import GuessMeMode
+from artifact.modes.autopsy import AutopsyMode
+from artifact.modes.roast import RoastMeMode
 from artifact.audio.engine import AudioEngine, get_audio_engine
 
 logger = logging.getLogger(__name__)
@@ -99,6 +102,11 @@ class ArtifactSimulator:
 
         # Squid Game mode - uses webcam for motion detection
         self.mode_manager.register_mode(SquidGameMode)
+        
+        # New AI Modes
+        self.mode_manager.register_mode(GuessMeMode)
+        self.mode_manager.register_mode(AutopsyMode)
+        self.mode_manager.register_mode(RoastMeMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os

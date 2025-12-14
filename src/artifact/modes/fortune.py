@@ -186,9 +186,7 @@ class FortuneMode(BaseMode):
     The mystical mode of VNVNC that combines:
     - Full birthdate input (DD.MM.YYYY)
     - Live camera capture
-    - Zodiac analysis (Western + Chinese)
-    - Numerology (life path number)
-    - AI-powered prediction generation
+    - AI-powered prediction generation (AI interprets zodiac/numerology)
     - AI-generated caricature
     - Combined thermal receipt printing
 
@@ -227,15 +225,15 @@ class FortuneMode(BaseMode):
         self._input_complete: bool = False
         self._birthdate: Optional[Tuple[int, int, int]] = None  # (day, month, year)
 
-        # Zodiac/astro data (calculated after birthdate)
+        # AI results
         self._zodiac_sign: str = ""
-        self._zodiac_symbol: str = ""
-        self._zodiac_element: str = ""
         self._chinese_zodiac: str = ""
-        self._chinese_emoji: str = ""
-        self._chinese_trait: str = ""
-        self._life_path: int = 0
-        self._age: int = 0
+        self._photo_analysis: str = ""
+        self._prediction: str = ""
+        self._lucky_color: str = ""
+        self._caricature: Optional[Caricature] = None
+        self._ai_task: Optional[asyncio.Task] = None
+        self._processing_progress: float = 0.0
 
         # Camera state
         self._camera: Optional[SimulatorCamera] = None
@@ -243,14 +241,6 @@ class FortuneMode(BaseMode):
         self._photo_data: Optional[bytes] = None
         self._camera_countdown: float = 0.0
         self._flash_alpha: float = 0.0
-
-        # AI results
-        self._photo_analysis: str = ""
-        self._prediction: str = ""
-        self._lucky_color: str = ""
-        self._caricature: Optional[Caricature] = None
-        self._ai_task: Optional[asyncio.Task] = None
-        self._processing_progress: float = 0.0
 
         # Animation state
         self._reveal_progress: float = 0.0
@@ -282,6 +272,8 @@ class FortuneMode(BaseMode):
         self._photo_analysis = ""
         self._prediction = ""
         self._lucky_color = ""
+        self._zodiac_sign = ""
+        self._chinese_zodiac = ""
         self._caricature = None
         self._ai_task = None
         self._processing_progress = 0.0
@@ -455,13 +447,7 @@ class FortuneMode(BaseMode):
             self._birthdate = (day, month, year)
             self._input_complete = True
 
-            # Calculate astro data
-            self._zodiac_sign, self._zodiac_symbol, self._zodiac_element = get_zodiac_sign(day, month)
-            self._chinese_zodiac, self._chinese_emoji, self._chinese_trait = get_chinese_zodiac(year)
-            self._life_path = calculate_life_path_number(day, month, year)
-            self._age = calculate_age(day, month, year)
-
-            logger.info(f"Birthdate valid: {day}.{month}.{year} - {self._zodiac_sign}, {self._chinese_zodiac}")
+            logger.info(f"Birthdate valid: {day}.{month}.{year}")
 
         except (ValueError, IndexError):
             self._input_complete = False
@@ -614,39 +600,49 @@ class FortuneMode(BaseMode):
             self._prediction = fallback[0]
             self._lucky_color = fallback[1]
 
-    def _parse_prediction_response(self, response: str) -> Tuple[str, str]:
-        """Parse the AI response into prediction and lucky color."""
+    def _parse_prediction_response(self, response: str) -> Tuple[str, str, str, str]:
+        """Parse the AI response into components."""
         prediction_text = ""
         lucky_color = "золотой"
+        zodiac = ""
+        chinese = ""
 
-        for line in response.strip().split("\n"):
-            line = line.strip()
-            if line.startswith("PREDICTION:"):
-                prediction_text = line[11:].strip()
-            elif line.startswith("LUCKY_COLOR:"):
-                lucky_color = line[12:].strip()
+        try:
+            for line in response.strip().split("\n"):
+                line = line.strip()
+                if line.startswith("PREDICTION:"):
+                    prediction_text = line[11:].strip()
+                elif line.startswith("LUCKY_COLOR:"):
+                    lucky_color = line[12:].strip()
+                elif line.startswith("ZODIAC:"):
+                    zodiac = line[7:].strip()
+                elif line.startswith("CHINESE:"):
+                    chinese = line[8:].strip()
 
-        if not prediction_text:
-            prediction_text = response.strip()
+            if not prediction_text:
+                prediction_text = response.strip()[:100]  # Fallback
+        except Exception as e:
+            logger.warning(f"Error parsing prediction: {e}")
+            prediction_text = response[:100]
 
-        return prediction_text, lucky_color
+        return prediction_text, lucky_color, zodiac, chinese
 
-    def _fallback_prediction(self) -> Tuple[str, str]:
+    def _fallback_prediction(self) -> Tuple[str, str, str, str]:
         """Generate fallback prediction when AI unavailable."""
         import time
         random.seed(time.time())
 
         fallback_texts = [
-            f"Типичный {self._zodiac_sign}! Твоя энергия сегодня на максимуме",
-            f"{self._chinese_zodiac} в тебе силён! Удача уже в пути",
-            f"Число {self._life_path} - твой магический код к успеху",
-            f"В {self._age} лет звёзды особенно благосклонны!",
-            f"{self._zodiac_symbol} говорит: сегодня твой день!",
+            "Твоя энергия сегодня на максимуме, используй это!",
+            "Звёзды говорят, что удача уже в пути.",
+            "Сегодня отличный день для новых начинаний.",
+            "Прислушайся к своей интуиции, она не подведёт.",
+            "Случайная встреча изменит всё к лучшему.",
         ]
 
         colors = ["золотой", "синий", "зелёный", "фиолетовый", "серебряный"]
-
-        return random.choice(fallback_texts), random.choice(colors)
+        
+        return random.choice(fallback_texts), random.choice(colors), "Тайна", "Дракон?"
 
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
@@ -690,8 +686,8 @@ class FortuneMode(BaseMode):
             print_data={
                 "prediction": self._prediction,
                 "caricature": self._caricature.image_data if self._caricature else None,
-                "zodiac_sign": f"{self._zodiac_sign} {self._zodiac_symbol}",
-                "chinese_zodiac": f"{self._chinese_zodiac} {self._chinese_emoji}",
+                "zodiac_sign": self._zodiac_sign,
+                "chinese_zodiac": self._chinese_zodiac,
                 "birthdate": f"{day:02d}.{month:02d}.{year}",
                 "lucky_color": self._lucky_color,
                 "timestamp": datetime.now().isoformat(),
@@ -798,6 +794,130 @@ class FortuneMode(BaseMode):
             cursor_x = 24 + len(self._input_digits) * 10
             # Adjust for dots
             if len(self._input_digits) > 1:
+                cursor_x += 8
+            if len(self._input_digits) > 3:
+                cursor_x += 8
+            
+            draw_rect(buffer, 14 + 8, field_y + 18, 10, 2, self._accent)
+
+        # Keypad hint
+        if len(self._input_digits) == 8:
+            # Valid date?
+            try:
+                digits = "".join(self._input_digits)
+                day = int(digits[0:2])
+                month = int(digits[2:4])
+                year = int(digits[4:8])
+                if 1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= 2024:
+                    draw_centered_text(buffer, "НАЖМИ #", 80, (100, 255, 100), scale=1)
+                else:
+                    draw_centered_text(buffer, "НЕВЕРНАЯ ДАТА", 80, (255, 100, 100), scale=1)
+            except:
+                pass
+        else:
+            draw_centered_text(buffer, "Используй цифры", 80, (100, 100, 120), scale=1)
+
+    def _render_camera_prep(self, buffer, font) -> None:
+        """Render camera preparation instructions."""
+        from artifact.graphics.text_utils import draw_centered_text
+
+        # Update preview background
+        if self._camera_frame is not None:
+            # Copy frame to buffer centered
+            y_offset = (128 - self._camera_frame.shape[0]) // 2
+            x_offset = (128 - self._camera_frame.shape[1]) // 2
+            
+            # Simple blit if sizes match 128x128 approx
+            if self._camera_frame.shape == (128, 128, 3):
+                import numpy as np
+                np.copyto(buffer, self._camera_frame)
+            else:
+                # Basic fill if not
+                pass
+
+        # Overlay text
+        draw_centered_text(buffer, "ПОСМОТРИ", 20, (255, 255, 255), scale=2)
+        draw_centered_text(buffer, "В КАМЕРУ", 40, (255, 255, 255), scale=2)
+        
+        # Face frame
+        from artifact.graphics.primitives import draw_rect
+        draw_rect(buffer, 32, 32, 64, 64, self._accent, filled=False)
+        
+        draw_centered_text(buffer, "Сейчас сделаем фото...", 110, self._secondary, scale=1)
+
+    def _render_camera_capture(self, buffer, font) -> None:
+        """Render camera capture countdown."""
+        from artifact.graphics.text_utils import draw_centered_text
+        
+        # Show camera feed
+        if self._camera_frame is not None:
+             if self._camera_frame.shape == (128, 128, 3):
+                import numpy as np
+                np.copyto(buffer, self._camera_frame)
+
+        # Large countdown number
+        count = math.ceil(self._camera_countdown)
+        if count > 0:
+            scale = 4 + int(math.sin(self._time_in_phase / 100) * 1)
+            color = self._secondary
+            draw_centered_text(buffer, str(count), 40, color, scale=scale)
+
+    def _render_processing(self, buffer, font) -> None:
+        """Render processing animation."""
+        from artifact.graphics.primitives import draw_circle
+        from artifact.graphics.text_utils import draw_centered_text
+
+        # Crystal ball processing
+        cx, cy = 64, 50
+        radius = 25
+        
+        # Swirling colors in ball
+        time = self._time_in_phase
+        for i in range(5):
+            angle = (time / 500) + (i * 2 * math.pi / 5)
+            px = int(cx + math.cos(angle) * (radius - 5))
+            py = int(cy + math.sin(angle) * (radius - 5))
+            draw_circle(buffer, px, py, 4, self._primary)
+            
+        draw_circle(buffer, cx, cy, radius, self._secondary, filled=False)
+
+        # Progress text
+        dots = "." * (int(time / 500) % 4)
+        draw_centered_text(buffer, f"ГАДАЮ{dots}", 85, (200, 200, 255), scale=1)
+        
+        # Random mystical symbols
+        if int(time / 200) % 10 == 0:
+            draw_centered_text(buffer, random.choice(["★", "☾", "☀", "⚡"]), 110, self._accent, scale=2)
+
+    def _render_result(self, buffer, font) -> None:
+        """Render the prediction result."""
+        from artifact.graphics.text_utils import draw_centered_text, wrap_text
+        from artifact.graphics.fonts import draw_text_bitmap
+
+        # Result background
+        if self._sub_phase == FortunePhase.REVEAL:
+            # Fade in
+            alpha = self._reveal_progress
+            # (Logic handled by particles mostly)
+        
+        # Display Header
+        draw_centered_text(buffer, "СУДЬБА", 5, self._secondary, scale=1)
+        
+        # Zodiac info
+        if self._zodiac_sign:
+            draw_centered_text(buffer, f"{self._zodiac_sign} • {self._chinese_zodiac}", 20, self._accent, scale=1)
+            
+        # Prediction text - scroll or wrap
+        # Using a simple wrapped text display for now
+        lines = wrap_text(self._prediction, width_chars=18)
+        y = 40
+        for line in lines[:5]:  # Show first 5 lines
+            draw_centered_text(buffer, line, y, (255, 255, 255), scale=1)
+            y += 12
+            
+        # Print prompt
+        if int(self._time_in_phase / 500) % 2 == 0:
+            draw_centered_text(buffer, "ПЕЧАТЬ...", 110, self._primary, scale=1)
                 cursor_x += 8
             if len(self._input_digits) > 3:
                 cursor_x += 8
