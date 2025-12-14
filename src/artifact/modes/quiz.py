@@ -280,15 +280,9 @@ QUIZ_QUESTIONS: List[Tuple[str, List[str], int]] = [
 ]
 
 
-# Prize ladder (like WWTBAM)
-PRIZE_LADDER = [
-    100, 200, 300, 500, 1000,
-    2000, 4000, 8000, 16000, 32000,
-    64000, 125000, 250000, 500000, 1000000
-]
-
-# Safe havens (guaranteed amounts)
-SAFE_HAVENS = {4: 1000, 9: 32000, 14: 1000000}
+# Prize: Free cocktail for winning!
+# No money ladder - just the glory and a drink
+FREE_COCKTAIL_THRESHOLD = 7  # Need 7/10 correct to win
 
 
 class QuizPhase:
@@ -333,8 +327,9 @@ class QuizMode(BaseMode):
         self._current_question: int = 0
         self._selected_answer: Optional[int] = None  # 0-3
         self._time_remaining: float = 0.0
-        self._winnings: int = 0
+        self._score: int = 0  # Correct answers
         self._sub_phase = QuizPhase.INTRO
+        self._won_cocktail: bool = False
 
         # Animation state
         self._reveal_progress: float = 0.0
@@ -371,7 +366,8 @@ class QuizMode(BaseMode):
         self._current_question = 0
         self._selected_answer = None
         self._time_remaining = self.THINKING_TIME
-        self._winnings = 0
+        self._score = 0
+        self._won_cocktail = False
         self._sub_phase = QuizPhase.INTRO
         self._answer_locked = False
         self._reveal_progress = 0.0
@@ -419,7 +415,7 @@ class QuizMode(BaseMode):
                     question = self._questions[self._current_question]
                     if self._selected_answer == question[2]:
                         self._sub_phase = QuizPhase.CORRECT
-                        self._winnings = PRIZE_LADDER[min(self._current_question, len(PRIZE_LADDER) - 1)]
+                        self._score += 1
                         self._flash_alpha = 1.0
                         gold = self._particles.get_emitter("gold")
                         if gold:
@@ -497,8 +493,15 @@ class QuizMode(BaseMode):
 
     def _finish_game(self) -> None:
         """End the game and show results."""
+        self._won_cocktail = self._score >= FREE_COCKTAIL_THRESHOLD
         self._sub_phase = QuizPhase.RESULT
         self.change_phase(ModePhase.RESULT)
+
+        # Big celebration if won!
+        if self._won_cocktail:
+            gold = self._particles.get_emitter("gold")
+            if gold:
+                gold.burst(100)
 
     def on_exit(self) -> None:
         """Cleanup."""
@@ -507,26 +510,31 @@ class QuizMode(BaseMode):
 
     def _finish(self) -> None:
         """Complete the mode."""
-        score = self._current_question
         total = len(self._questions)
-        pct = int(score / total * 100) if total > 0 else 0
+        pct = int(self._score / total * 100) if total > 0 else 0
 
-        # Format winnings with separators
-        winnings_str = f"{self._winnings:,}".replace(",", " ")
+        if self._won_cocktail:
+            display = "КОКТЕЙЛЬ ТВОЙ!"
+            ticker = f"ПОБЕДА! {self._score}/{total} - БЕСПЛАТНЫЙ КОКТЕЙЛЬ!"
+            lcd = "КОКТЕЙЛЬ ТВОЙ!"
+        else:
+            display = f"Счёт: {self._score}/{total}"
+            ticker = f"ВИКТОРИНА: {self._score}/{total} ({pct}%)"
+            lcd = f"{self._score}/{total} {pct}%"
 
         result = ModeResult(
             mode_name=self.name,
-            success=True,
-            display_text=f"Выигрыш: {winnings_str} ₽",
-            ticker_text=f"МИЛЛИОНЕР: {score}/{total} = {winnings_str}₽",
-            lcd_text=f"{winnings_str}P".center(16),
-            should_print=True,
+            success=self._won_cocktail,
+            display_text=display,
+            ticker_text=ticker,
+            lcd_text=lcd[:16].center(16),
+            should_print=self._won_cocktail,  # Only print if won
             print_data={
-                "score": score,
+                "score": self._score,
                 "total": total,
-                "winnings": self._winnings,
                 "percentage": pct,
-                "type": "millionaire"
+                "won_cocktail": self._won_cocktail,
+                "type": "quiz"
             }
         )
         self.complete(result)
@@ -566,16 +574,17 @@ class QuizMode(BaseMode):
         pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 200)
         title_color = tuple(int(c * pulse) for c in self._gold)
 
-        draw_centered_text(buffer, "КТО ХОЧЕТ", 25, title_color, scale=1)
-        draw_centered_text(buffer, "СТАТЬ", 42, title_color, scale=2)
-        draw_centered_text(buffer, "МИЛЛИОНЕРОМ?", 65, title_color, scale=1)
+        draw_centered_text(buffer, "ВИКТОРИНА", 20, title_color, scale=2)
+        draw_centered_text(buffer, f"{self.QUESTIONS_PER_GAME} вопросов", 45, self._silver, scale=1)
+        draw_centered_text(buffer, f"{FREE_COCKTAIL_THRESHOLD}+ верно =", 60, (150, 150, 180), scale=1)
+        draw_centered_text(buffer, "КОКТЕЙЛЬ!", 75, self._correct_green, scale=2)
 
         # Countdown
         countdown = max(0, 3 - int(self._time_in_phase / 1000))
         if countdown > 0:
-            draw_centered_text(buffer, str(countdown), 95, self._silver, scale=2)
+            draw_centered_text(buffer, str(countdown), 100, self._silver, scale=2)
         else:
-            draw_centered_text(buffer, "ПОЕХАЛИ!", 95, self._correct_green, scale=1)
+            draw_centered_text(buffer, "ПОЕХАЛИ!", 100, self._correct_green, scale=1)
 
     def _render_game(self, buffer) -> None:
         """Render active game."""
@@ -585,10 +594,8 @@ class QuizMode(BaseMode):
         question = self._questions[self._current_question]
         q_text, options, correct = question
 
-        # Question number and prize
-        prize = PRIZE_LADDER[min(self._current_question, len(PRIZE_LADDER) - 1)]
-        prize_str = f"{prize:,}".replace(",", " ")
-        draw_centered_text(buffer, f"#{self._current_question + 1} за {prize_str}₽", 2, self._gold, scale=1)
+        # Question number and score
+        draw_centered_text(buffer, f"#{self._current_question + 1}/{self.QUESTIONS_PER_GAME}  Верно:{self._score}", 2, self._gold, scale=1)
 
         # Timer bar
         timer_pct = self._time_remaining / self.THINKING_TIME
@@ -648,16 +655,23 @@ class QuizMode(BaseMode):
         """Render final result."""
         from artifact.graphics.text_utils import draw_centered_text
 
-        # Title
-        draw_centered_text(buffer, "ИГРА ОКОНЧЕНА", 10, self._gold, scale=1)
+        if self._won_cocktail:
+            # Winner! Big celebration
+            pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
+            title_color = tuple(int(c * pulse) for c in self._gold)
 
-        # Score
-        draw_centered_text(buffer, f"{self._current_question}/{len(self._questions)}", 35, self._silver, scale=2)
-
-        # Winnings
-        winnings_str = f"{self._winnings:,}".replace(",", " ")
-        draw_centered_text(buffer, "ВЫИГРЫШ:", 60, (150, 150, 180), scale=1)
-        draw_centered_text(buffer, f"{winnings_str} P", 78, self._gold, scale=2)
+            draw_centered_text(buffer, "ПОБЕДА!", 15, title_color, scale=2)
+            draw_centered_text(buffer, f"{self._score}/{len(self._questions)}", 40, self._correct_green, scale=2)
+            draw_centered_text(buffer, "БЕСПЛАТНЫЙ", 65, self._gold, scale=1)
+            draw_centered_text(buffer, "КОКТЕЙЛЬ!", 80, self._gold, scale=2)
+            draw_centered_text(buffer, "Покажи бармену", 100, (150, 200, 150), scale=1)
+        else:
+            # Not enough correct answers
+            draw_centered_text(buffer, "ИГРА ОКОНЧЕНА", 15, self._wrong_red, scale=1)
+            draw_centered_text(buffer, f"{self._score}/{len(self._questions)}", 40, self._silver, scale=2)
+            pct = int(self._score / len(self._questions) * 100)
+            draw_centered_text(buffer, f"{pct}%", 65, (150, 150, 180), scale=2)
+            draw_centered_text(buffer, f"Нужно {FREE_COCKTAIL_THRESHOLD}+", 90, (120, 120, 140), scale=1)
 
         # Press to continue
         if int(self._time_in_phase / 500) % 2 == 0:
@@ -672,29 +686,35 @@ class QuizMode(BaseMode):
 
         if self.phase == ModePhase.INTRO:
             render_ticker_animated(
-                buffer, "КТО ХОЧЕТ СТАТЬ МИЛЛИОНЕРОМ",
+                buffer, f"ВИКТОРИНА - {FREE_COCKTAIL_THRESHOLD}+ ВЕРНО = КОКТЕЙЛЬ",
                 self._time_in_phase, self._gold,
                 TickerEffect.RAINBOW_SCROLL, speed=0.025
             )
         elif self.phase == ModePhase.ACTIVE:
-            prize = PRIZE_LADDER[min(self._current_question, len(PRIZE_LADDER) - 1)]
-            prize_str = f"{prize:,}".replace(",", " ")
-            status = f"#{self._current_question + 1} {prize_str}P"
+            status = f"#{self._current_question + 1}/{self.QUESTIONS_PER_GAME} ВЕРНО:{self._score}"
             render_ticker_static(buffer, status, self._time_in_phase, self._gold, TextEffect.GLOW)
         elif self.phase == ModePhase.RESULT:
-            winnings_str = f"{self._winnings:,}".replace(",", " ")
-            render_ticker_animated(
-                buffer, f"ВЫИГРЫШ {winnings_str} РУБЛЕЙ",
-                self._time_in_phase, self._gold,
-                TickerEffect.WAVE_SCROLL, speed=0.022
-            )
+            if self._won_cocktail:
+                render_ticker_animated(
+                    buffer, "ПОБЕДА! БЕСПЛАТНЫЙ КОКТЕЙЛЬ!",
+                    self._time_in_phase, self._correct_green,
+                    TickerEffect.WAVE_SCROLL, speed=0.022
+                )
+            else:
+                render_ticker_animated(
+                    buffer, f"СЧЁТ {self._score}/{len(self._questions)} - ПОПРОБУЙ ЕЩЁ",
+                    self._time_in_phase, self._silver,
+                    TickerEffect.SCROLL, speed=0.022
+                )
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""
         if self.phase == ModePhase.ACTIVE:
-            prize = PRIZE_LADDER[min(self._current_question, len(PRIZE_LADDER) - 1)]
             time_left = int(self._time_remaining)
-            return f"Q{self._current_question + 1} {time_left}s {prize}P"[:16]
+            return f"Q{self._current_question + 1} {time_left}s OK:{self._score}"[:16]
         elif self.phase == ModePhase.RESULT:
-            return f"ВЫИГРЫШ {self._winnings}P"[:16].center(16)
-        return " МИЛЛИОНЕР ".center(16)
+            if self._won_cocktail:
+                return "КОКТЕЙЛЬ ТВОЙ!".center(16)
+            else:
+                return f"{self._score}/{len(self._questions)} TRY AGAIN".center(16)[:16]
+        return " ВИКТОРИНА ".center(16)

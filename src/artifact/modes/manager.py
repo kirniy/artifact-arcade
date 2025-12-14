@@ -597,19 +597,43 @@ class ModeManager:
                 draw_centered_text(buffer, "НАЖМИ КНОПКУ", 110, (150, 150, 150), scale=1)
 
         elif view == 1:
-            # Prediction text view
+            # Prediction text view with auto-scroll for long text
             text = self._last_result.display_text or "..."
             font = load_font("cyrillic")
 
             # Title
             draw_centered_text(buffer, "ПРОРОЧЕСТВО", 3, (255, 200, 100), scale=1)
 
-            # Auto-scale prediction text
+            # Wrap text to fit screen width
             lines = smart_wrap_text(text, 120, font, scale=1)
+            max_visible = 8  # Lines that fit on screen (with title and hint)
+
+            # Calculate scroll offset for long text
+            if len(lines) > max_visible:
+                # Scroll through text over the 4-second view cycle
+                time_in_view = self._time_in_state % cycle_time
+                scroll_duration = cycle_time - 500  # Leave 500ms at start to read beginning
+                if time_in_view > 500:
+                    scroll_progress = (time_in_view - 500) / scroll_duration
+                    max_scroll = len(lines) - max_visible
+                    scroll_offset = int(scroll_progress * max_scroll)
+                else:
+                    scroll_offset = 0
+            else:
+                scroll_offset = 0
+
+            # Render visible lines
             y = 16
-            for i, line in enumerate(lines[:9]):  # Max 9 lines at scale=1
-                draw_centered_text(buffer, line, y, (255, 255, 255), scale=1)
+            for i in range(max_visible):
+                line_idx = scroll_offset + i
+                if line_idx < len(lines):
+                    draw_centered_text(buffer, lines[line_idx], y, (255, 255, 255), scale=1)
                 y += 11
+
+            # Scroll indicator if text is long
+            if len(lines) > max_visible:
+                indicator = "▼" if scroll_offset < len(lines) - max_visible else "●"
+                draw_centered_text(buffer, indicator, 105, (100, 100, 120), scale=1)
 
             # Print hint at bottom
             if self._last_result.should_print:
