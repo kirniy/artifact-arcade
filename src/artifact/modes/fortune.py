@@ -368,7 +368,7 @@ class FortuneMode(BaseMode):
     def on_input(self, event: Event) -> bool:
         """Handle input."""
         # Keypad input for birthdate
-        if event.type == EventType.KEYPAD:
+        if event.type == EventType.KEYPAD_INPUT:
             if self._sub_phase == FortunePhase.BIRTHDATE_INPUT:
                 key = event.data.get("key", "")
                 if key.isdigit():
@@ -918,27 +918,6 @@ class FortuneMode(BaseMode):
         # Print prompt
         if int(self._time_in_phase / 500) % 2 == 0:
             draw_centered_text(buffer, "ПЕЧАТЬ...", 110, self._primary, scale=1)
-                cursor_x += 8
-            if len(self._input_digits) > 3:
-                cursor_x += 8
-            draw_rect(buffer, cursor_x, field_y + 18, 8, 2, self._accent)
-
-        # Format hint
-        draw_centered_text(buffer, "ДД.ММ.ГГГГ", 68, (100, 100, 120), scale=1)
-
-        # Validation status
-        if len(self._input_digits) == 8:
-            if self._input_complete:
-                # Show zodiac preview
-                draw_centered_text(buffer, f"{self._zodiac_symbol} {self._zodiac_sign}", 82, self._accent, scale=1)
-                draw_centered_text(buffer, f"{self._chinese_emoji} {self._chinese_zodiac}", 94, self._accent, scale=1)
-                # Confirm hint
-                draw_centered_text(buffer, "НАЖМИ КНОПКУ", 112, self._secondary, scale=1)
-            else:
-                draw_centered_text(buffer, "НЕВЕРНАЯ ДАТА!", 85, (255, 100, 100), scale=1)
-        else:
-            # Input hint
-            draw_centered_text(buffer, "0-9 ввод  * стереть", 110, (80, 80, 100), scale=1)
 
     def _render_camera_prep(self, buffer, font) -> None:
         """Render camera preparation screen with live preview."""

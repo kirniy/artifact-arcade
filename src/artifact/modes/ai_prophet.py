@@ -380,12 +380,12 @@ class AIProphetMode(BaseMode):
         if self._current_question >= len(self._questions):
             return
 
-        # Unpack 4-tuple format: (question, trait_key, yes_meaning, no_meaning)
-        question_text, trait_key, yes_meaning, no_meaning = self._questions[self._current_question]
+        # Unpack 6-tuple format: (question, trait_key, left_label, right_label, left_meaning, right_meaning)
+        question_text, trait_key, left_label, right_label, left_meaning, right_meaning = self._questions[self._current_question]
 
         # Record answer and its meaning
         self._answers.append(answer)
-        meaning = yes_meaning if answer else no_meaning
+        meaning = right_meaning if answer else left_meaning
         self._answer_meanings.append(meaning)
         self._prediction_service.record_answer(question_text, answer)
 
