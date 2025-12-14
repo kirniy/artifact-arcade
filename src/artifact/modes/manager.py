@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 import logging
 import random
+import math
 
 from artifact.core.events import EventBus, Event, EventType
 from artifact.core.state import StateMachine, State
@@ -12,8 +13,125 @@ from artifact.animation.engine import AnimationEngine
 from artifact.animation.idle_scenes import RotatingIdleAnimation
 from artifact.graphics.renderer import Renderer
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
+from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# BANGER MODE ICONS - Pixel art for each mode (16x16 patterns)
+# =============================================================================
+
+MODE_ICONS = {
+    "fortune": [  # Crystal ball
+        "    ████    ",
+        "  ████████  ",
+        " ██░░░░░░██ ",
+        "██░░░░░░░░██",
+        "██░░██░░░░██",
+        "██░░░░░░░░██",
+        " ██░░░░░░██ ",
+        "  ████████  ",
+        "   ██████   ",
+        "  ████████  ",
+    ],
+    "roulette": [  # Spinning wheel
+        "   ██████   ",
+        " ██░░░░░░██ ",
+        "██░██░░██░██",
+        "██░░░██░░░██",
+        "██░░████░░██",
+        "██░░░██░░░██",
+        "██░██░░██░██",
+        " ██░░░░░░██ ",
+        "   ██████   ",
+        "     ▼      ",
+    ],
+    "quiz": [  # Question mark podium
+        "   ██████   ",
+        "  ██░░░░██  ",
+        "       ░░██ ",
+        "      ░░██  ",
+        "     ░░██   ",
+        "     ░░██   ",
+        "            ",
+        "     ██     ",
+        "  ██████████",
+        " ████████████",
+    ],
+    "squid_game": [  # Triangle/circle/square
+        "     ▲      ",
+        "    ███     ",
+        "   █████    ",
+        "            ",
+        "   ████     ",
+        "   █  █     ",
+        "   ████     ",
+        "            ",
+        "    ●●      ",
+        "    ●●      ",
+    ],
+    "guess_me": [  # Eye with question
+        "  ████████  ",
+        " ██░░░░░░██ ",
+        "██░░████░░██",
+        "██░██████░██",
+        "██░░████░░██",
+        " ██░░░░░░██ ",
+        "  ████████  ",
+        "     ?      ",
+        "            ",
+        "            ",
+    ],
+    "autopsy": [  # Skull/X-ray
+        "  ████████  ",
+        " ██░░░░░░██ ",
+        "██░██░░██░██",
+        "██░░░░░░░░██",
+        " ██░░██░░██ ",
+        "  ██░░░░██  ",
+        "   ██████   ",
+        "    ████    ",
+        "   █    █   ",
+        "            ",
+    ],
+    "roast": [  # Fire/flame
+        "     █      ",
+        "    ███     ",
+        "   █████    ",
+        "  ███████   ",
+        " █████████  ",
+        "  ███████   ",
+        "   █████    ",
+        "    ███     ",
+        "     █      ",
+        "    ▓▓▓     ",
+    ],
+    "ai_prophet": [  # AI brain/eye
+        "  ████████  ",
+        " ██░░░░░░██ ",
+        "██░░░██░░░██",
+        "██░░████░░██",
+        "██░░████░░██",
+        "██░░░██░░░██",
+        " ██░░░░░░██ ",
+        "  ████████  ",
+        "   ▀████▀   ",
+        "            ",
+    ],
+}
+
+# Mode colors for visual identity
+MODE_COLORS = {
+    "fortune": (200, 100, 255),   # Purple
+    "roulette": (255, 50, 50),    # Red
+    "quiz": (255, 215, 0),        # Gold
+    "squid_game": (255, 100, 150),# Pink
+    "guess_me": (100, 200, 255),  # Cyan
+    "autopsy": (150, 255, 150),   # Green
+    "roast": (255, 150, 50),      # Orange
+    "ai_prophet": (100, 255, 200),# Teal
+}
 
 
 class ManagerState(Enum):
@@ -96,8 +214,14 @@ class ModeManager:
         # Callbacks
         self._on_mode_complete: Optional[Callable[[ModeResult], None]] = None
 
+        # Audio engine for music
+        self._audio = get_audio_engine()
+
         # Register event handlers
         self._setup_event_handlers()
+
+        # Start idle music
+        self._audio.play_music("idle", fade_in_ms=1000)
 
         logger.info("ModeManager initialized")
 
@@ -168,6 +292,20 @@ class ModeManager:
 
         logger.debug(f"ModeManager: {old_state.name} -> {new_state.name}")
 
+        # Handle music transitions
+        if new_state == ManagerState.IDLE:
+            self._audio.play_music("idle", fade_in_ms=1000)
+        elif new_state == ManagerState.MODE_SELECT:
+            self._audio.play_music("menu", fade_in_ms=300)
+            self._audio.play_ui_confirm()  # Confirmation sound
+        elif new_state == ManagerState.RESULT:
+            # Result screen - play success or result music
+            self._audio.play_music("idle", fade_in_ms=500)
+            self._audio.play_success()
+        elif new_state == ManagerState.PRINTING:
+            self._audio.stop_music(fade_out_ms=200)
+            self._audio.play_print()
+
         # State machine sync
         state_map = {
             ManagerState.IDLE: State.IDLE,
@@ -183,6 +321,7 @@ class ModeManager:
     def _on_button_press(self, event: Event) -> None:
         """Handle main button press."""
         self._last_input_time = self._time_in_state
+        self._audio.play_ui_click()
 
         if self._state == ManagerState.IDLE:
             # Start mode selection
@@ -261,6 +400,7 @@ class ModeManager:
     def _on_back(self, event: Event) -> None:
         """Handle back/cancel button - go back one step."""
         self._last_input_time = self._time_in_state
+        self._audio.play_ui_back()
 
         if self._state == ManagerState.MODE_SELECT:
             # Go back to idle from mode select
@@ -323,11 +463,13 @@ class ModeManager:
         """Select next mode in carousel."""
         if self._mode_order:
             self._selected_index = (self._selected_index + 1) % len(self._mode_order)
+            self._audio.play_ui_move()
 
     def _select_previous_mode(self) -> None:
         """Select previous mode in carousel."""
         if self._mode_order:
             self._selected_index = (self._selected_index - 1) % len(self._mode_order)
+            self._audio.play_ui_move()
 
     def _start_selected_mode(self) -> None:
         """Start the currently selected mode."""
@@ -347,6 +489,10 @@ class ModeManager:
         # Instantiate and start mode
         self._current_mode = mode_info.cls(context)
         self._current_mode.set_on_complete(self._on_mode_complete_internal)
+
+        # Play mode-specific music
+        self._audio.play_music(mode_info.name, fade_in_ms=500)
+        self._audio.play_transition()
 
         self._change_state(ManagerState.MODE_ACTIVE)
         self._current_mode.enter()
@@ -505,48 +651,125 @@ class ModeManager:
             draw_rect(buffer, x_start, base_y + bounce + i, width, 1, (255, 100, 100))
 
     def _render_mode_select(self, buffer) -> None:
-        """Render mode selection carousel."""
+        """Render BANGER mode selection screen - full animated carousel."""
         from artifact.graphics.fonts import load_font, draw_text_bitmap
         from artifact.graphics.text_utils import draw_centered_text
-        from artifact.graphics.primitives import fill, draw_rect, draw_circle
+        from artifact.graphics.primitives import fill, draw_rect, draw_circle, draw_line
 
-        fill(buffer, (20, 20, 30))
-        font = load_font("cyrillic")
+        # Animated gradient background
+        t = self._time_in_state / 1000
+        for y in range(128):
+            # Synthwave gradient with wave effect
+            wave = math.sin(y / 20 + t * 2) * 10
+            r = int(20 + wave + math.sin(t) * 10)
+            g = int(10 + y / 10)
+            b = int(40 + y / 4 + math.cos(t * 0.5) * 20)
+            draw_line(buffer, 0, y, 128, y, (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b))))
 
-        # Title - centered with scale=1
-        draw_centered_text(buffer, "ВЫБЕРИ РЕЖИМ", 8, (200, 200, 200), scale=1)
+        # Grid lines for retro effect
+        for i in range(0, 128, 16):
+            alpha = int(30 + 20 * math.sin(t * 3 + i / 10))
+            draw_line(buffer, 0, i, 128, i, (alpha, alpha, alpha + 20))
+            draw_line(buffer, i, 0, i, 128, (alpha, alpha, alpha + 20))
 
-        # Current mode
         mode = self.get_selected_mode()
-        if mode:
-            # Mode icon (large) - centered
-            draw_centered_text(buffer, mode.icon, 35, (255, 200, 0), scale=4)
+        if not mode:
+            draw_centered_text(buffer, "НЕТ РЕЖИМОВ", 60, (255, 100, 100), scale=1)
+            return
 
-            # Mode name - centered with auto-scaling for long names
-            name = mode.display_name
-            # Use scale=2, but scale=1 for names longer than 10 chars
-            name_scale = 1 if len(name) > 10 else 2
-            draw_centered_text(buffer, name, 75, (255, 255, 255), scale=name_scale)
+        # Get mode color
+        mode_color = MODE_COLORS.get(mode.name, (255, 200, 0))
 
-        # Left/right arrows
+        # Pulsing glow effect
+        pulse = 0.7 + 0.3 * math.sin(t * 4)
+        glow_color = tuple(int(c * pulse) for c in mode_color)
+
+        # Draw large animated icon in center
+        icon_pattern = MODE_ICONS.get(mode.name)
+        if icon_pattern:
+            self._draw_pixel_icon(buffer, icon_pattern, 64, 45, mode_color, scale=4, time=t)
+        else:
+            # Fallback to text icon
+            draw_centered_text(buffer, mode.icon, 40, glow_color, scale=4)
+
+        # Mode name with glow - positioned below icon
+        name = mode.display_name
+        name_scale = 1 if len(name) > 10 else 2
+
+        # Shadow/glow effect
+        draw_centered_text(buffer, name, 88, (mode_color[0]//4, mode_color[1]//4, mode_color[2]//4), scale=name_scale)
+        draw_centered_text(buffer, name, 87, glow_color, scale=name_scale)
+
+        # Animated arrows with bounce
         if len(self._mode_order) > 1:
-            # Left arrow - positioned to not overlap with content
-            draw_text_bitmap(buffer, "<", 3, 50, (100, 150, 255), font, scale=2)
+            bounce = int(math.sin(t * 6) * 3)
+            font = load_font("cyrillic")
+            # Left arrow
+            draw_text_bitmap(buffer, "<", 5 - bounce, 45, (100, 200, 255), font, scale=2)
+            draw_text_bitmap(buffer, "<", 12 - bounce, 45, (50, 100, 150), font, scale=2)
             # Right arrow
-            draw_text_bitmap(buffer, ">", 115, 50, (100, 150, 255), font, scale=2)
+            draw_text_bitmap(buffer, ">", 111 + bounce, 45, (100, 200, 255), font, scale=2)
+            draw_text_bitmap(buffer, ">", 104 + bounce, 45, (50, 100, 150), font, scale=2)
 
-        # Dots indicator - positioned higher to make room for prompt
+        # Mode indicator dots with animation
         num_modes = len(self._mode_order)
         if num_modes > 1:
-            dot_spacing = 10
+            dot_spacing = 12
             start_x = 64 - (num_modes - 1) * dot_spacing // 2
             for i in range(num_modes):
                 x = start_x + i * dot_spacing
-                color = (255, 200, 0) if i == self._selected_index else (80, 80, 80)
-                draw_circle(buffer, x, 95, 3, color)
+                if i == self._selected_index:
+                    # Selected dot - animated
+                    size = 4 + int(math.sin(t * 8) * 2)
+                    draw_circle(buffer, x, 105, size, mode_color)
+                    draw_circle(buffer, x, 105, size - 1, (255, 255, 255))
+                else:
+                    draw_circle(buffer, x, 105, 2, (60, 60, 80))
 
-        # Confirm prompt - positioned to not get cut off
-        draw_centered_text(buffer, "НАЖМИ СТАРТ", 110, (150, 150, 150), scale=1)
+        # Bottom prompt with flashing
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", 118, (150, 200, 150), scale=1)
+        else:
+            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", 118, (200, 255, 200), scale=1)
+
+    def _draw_pixel_icon(self, buffer, pattern: list, cx: int, cy: int, color: tuple, scale: int = 3, time: float = 0) -> None:
+        """Draw a pixel art icon from pattern with animation."""
+        from artifact.graphics.primitives import draw_rect
+
+        if not pattern:
+            return
+
+        height = len(pattern)
+        width = max(len(row) for row in pattern) if pattern else 0
+
+        # Start position (centered)
+        start_x = cx - (width * scale) // 2
+        start_y = cy - (height * scale) // 2
+
+        for row_idx, row in enumerate(pattern):
+            for col_idx, char in enumerate(row):
+                x = start_x + col_idx * scale
+                y = start_y + row_idx * scale
+
+                if char == '█':
+                    # Main outline color
+                    draw_rect(buffer, x, y, scale, scale, color)
+                elif char == '░':
+                    # Inner highlight (lighter)
+                    highlight = tuple(min(255, c + 80) for c in color)
+                    draw_rect(buffer, x, y, scale, scale, highlight)
+                elif char == '▓':
+                    # Darker accent
+                    dark = tuple(c // 2 for c in color)
+                    draw_rect(buffer, x, y, scale, scale, dark)
+                elif char == '▼' or char == '▲' or char == '●':
+                    # Animated accent
+                    pulse = int(math.sin(time * 5 + col_idx + row_idx) * 50)
+                    accent = tuple(min(255, max(0, c + pulse)) for c in color)
+                    draw_rect(buffer, x, y, scale, scale, accent)
+                elif char == '?':
+                    # Question mark in different color
+                    draw_rect(buffer, x, y, scale, scale, (255, 255, 100))
 
     def _render_mode_select_ticker(self, buffer) -> None:
         """Render ticker during mode select with smooth scrolling."""

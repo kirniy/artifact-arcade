@@ -70,6 +70,7 @@ class TextEffect(Enum):
     CHROMATIC = auto()   # Chromatic aberration
     FLICKER = auto()     # Old TV flicker
     SPARKLE = auto()     # Sparkling text
+    STAR_WARS = auto()   # Star Wars crawl effect
 
 
 @dataclass
@@ -492,6 +493,110 @@ def fit_text_in_rect(
         text_w, _ = font.measure_text(line)
         text_x = x + padding + (available_width - text_w * best_scale) // 2
         draw_text_bitmap(buffer, line, text_x, start_y + i * line_height, color, font, best_scale)
+
+
+def calculate_scroll_duration(
+    text: str,
+    rect: Tuple[int, int, int, int],
+    font: Optional[PixelFont] = None,
+    scale: int = 1,
+    line_spacing: int = 2,
+    scroll_interval_ms: int = 1800,
+) -> float:
+    """Calculate how long text will take to fully scroll through.
+
+    Returns the time in milliseconds when the last line becomes visible.
+    If text fits without scrolling, returns 0.
+
+    Args:
+        text: Text to measure
+        rect: (x, y, width, height) bounding box
+        font: Font to use
+        scale: Scale factor
+        line_spacing: Pixels between lines
+        scroll_interval_ms: Time per scroll step
+
+    Returns:
+        Duration in milliseconds to complete one full scroll cycle
+    """
+    if font is None:
+        font = load_font("cyrillic")
+
+    x, y, width, height = rect
+    if width <= 0 or height <= 0:
+        return 0
+
+    available_width = width - 2
+    lines = smart_wrap_text(text, available_width, font, scale)
+
+    if not lines:
+        return 0
+
+    line_height = CHAR_HEIGHT * scale + line_spacing
+    max_lines = max(1, height // line_height)
+
+    if len(lines) <= max_lines:
+        # No scrolling needed - text fits
+        return 0
+
+    # Number of scroll steps to show all lines
+    scroll_steps = len(lines) - max_lines + 1
+    # Total duration = steps * interval (plus a bit extra for reading last view)
+    return scroll_steps * scroll_interval_ms
+
+
+def render_scrolling_text_area(
+    buffer: NDArray[np.uint8],
+    text: str,
+    rect: Tuple[int, int, int, int],
+    color: Tuple[int, int, int],
+    time_ms: float,
+    font: Optional[PixelFont] = None,
+    scale: int = 1,
+    line_spacing: int = 2,
+    scroll_interval_ms: int = 1800,
+) -> None:
+    """Render wrapped text inside a rectangle with line-by-line scrolling when overflow.
+
+    Args:
+        buffer: Target buffer
+        text: Text to render
+        rect: (x, y, width, height) bounding box
+        color: RGB color
+        time_ms: Current time for scroll timing
+        font: Font to use (defaults to cyrillic)
+        scale: Scale factor
+        line_spacing: Pixels between lines
+        scroll_interval_ms: Time before scrolling to next line
+    """
+    if font is None:
+        font = load_font("cyrillic")
+
+    x, y, width, height = rect
+    if width <= 0 or height <= 0:
+        return
+
+    available_width = width - 2
+    lines = smart_wrap_text(text, available_width, font, scale)
+
+    if not lines:
+        return
+
+    line_height = CHAR_HEIGHT * scale + line_spacing
+    max_lines = max(1, height // line_height)
+
+    if len(lines) <= max_lines:
+        start_line = 0
+    else:
+        cycle = len(lines) - max_lines + 1
+        step = int((time_ms / scroll_interval_ms) % cycle)
+        start_line = step
+
+    for i, line in enumerate(lines[start_line:start_line + max_lines]):
+        text_w, _ = font.measure_text(line)
+        text_x = x + max(0, (width - text_w * scale) // 2)
+        text_y = y + i * line_height
+        draw_text_bitmap(buffer, line, text_x, text_y, color, font, scale)
 
 
 # Convenience functions for common display areas
@@ -1166,3 +1271,144 @@ def render_ticker_static(
 
     else:
         draw_text_bitmap(buffer, text, x, 0, color, font, scale=1)
+
+
+# =============================================================================
+# STAR WARS CRAWL EFFECT
+# =============================================================================
+# Classic text crawl that scrolls from bottom to top with perspective fade
+
+
+def render_star_wars_crawl(
+    buffer: NDArray[np.uint8],
+    text: str,
+    time_ms: float,
+    color: Tuple[int, int, int] = (255, 200, 100),
+    speed: float = 0.015,
+    font: Optional[PixelFont] = None,
+    scale: int = 1,
+    loop: bool = True,
+) -> bool:
+    """Render Star Wars-style text crawl effect.
+
+    Text scrolls from bottom to top with perspective fade effect.
+    Inspired by the classic Star Wars opening crawl.
+
+    Args:
+        buffer: Target buffer (128x128)
+        text: Long text to display (will be wrapped)
+        time_ms: Current time in milliseconds
+        color: Base text color (yellow/gold recommended)
+        speed: Scroll speed in pixels per millisecond
+        font: Font to use (defaults to cyrillic)
+        scale: Text scale (1 or 2)
+        loop: Whether to loop the crawl
+
+    Returns:
+        True if the crawl is complete (all text has scrolled off top)
+    """
+    if font is None:
+        font = load_font("cyrillic")
+
+    # Wrap text to fit display
+    margin = 8
+    available_width = MAIN_DISPLAY_WIDTH - margin * 2
+    lines = smart_wrap_text(text, available_width, font, scale)
+
+    if not lines:
+        return True
+
+    # Calculate total height of all text
+    line_height = CHAR_HEIGHT * scale + 4
+    total_height = len(lines) * line_height
+
+    # Calculate scroll position
+    scroll = int(time_ms * speed)
+
+    # Total scroll range: from bottom of screen to all text off top
+    start_y = MAIN_DISPLAY_HEIGHT
+    end_scroll = start_y + total_height + 20
+
+    if loop:
+        scroll = scroll % end_scroll
+    else:
+        if scroll > end_scroll:
+            return True  # Crawl complete
+
+    # Render each line with perspective effect
+    for i, line in enumerate(lines):
+        # Calculate Y position for this line
+        line_y = start_y + (i * line_height) - scroll
+
+        # Skip lines that are off screen
+        if line_y < -line_height or line_y > MAIN_DISPLAY_HEIGHT:
+            continue
+
+        # Calculate perspective fade based on Y position
+        # Lines at top are dimmer (farther away in perspective)
+        if line_y < 0:
+            alpha = 0.0
+        elif line_y < 40:
+            # Fade zone at top (perspective effect)
+            alpha = line_y / 40.0
+        elif line_y > MAIN_DISPLAY_HEIGHT - 20:
+            # Fade in at bottom
+            alpha = (MAIN_DISPLAY_HEIGHT - line_y) / 20.0
+        else:
+            alpha = 1.0
+
+        alpha = max(0.0, min(1.0, alpha))
+
+        if alpha < 0.05:
+            continue
+
+        # Apply perspective scale (optional: lines at top are slightly smaller)
+        # For simplicity, we just use alpha for now
+        line_color = tuple(int(c * alpha) for c in color)
+
+        # Center the line
+        text_w, _ = font.measure_text(line)
+        x = (MAIN_DISPLAY_WIDTH - text_w * scale) // 2
+
+        # Draw the line
+        draw_text_bitmap(buffer, line, x, int(line_y), line_color, font, scale)
+
+    return False
+
+
+def wrap_text(text: str, width_chars: int = 18) -> List[str]:
+    """Simple character-based word wrap.
+
+    Args:
+        text: Text to wrap
+        width_chars: Maximum characters per line
+
+    Returns:
+        List of wrapped lines
+    """
+    if not text:
+        return []
+
+    words = text.split()
+    lines: List[str] = []
+    current_line = ""
+
+    for word in words:
+        if len(current_line) + len(word) + 1 <= width_chars:
+            if current_line:
+                current_line += " " + word
+            else:
+                current_line = word
+        else:
+            if current_line:
+                lines.append(current_line)
+            # Handle words longer than width
+            while len(word) > width_chars:
+                lines.append(word[:width_chars])
+                word = word[width_chars:]
+            current_line = word
+
+    if current_line:
+        lines.append(current_line)
+
+    return lines

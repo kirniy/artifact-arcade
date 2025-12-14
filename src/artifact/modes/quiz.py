@@ -2,16 +2,25 @@
 
 Russian Gen-Z culture trivia with dramatic effects, sounds, and 4 answer options.
 Styled after "Кто хочет стать миллионером" with prize ladder and lifelines.
+Winners get a personalized victory doodle!
 """
 
 from typing import List, Tuple, Optional, Dict
 import random
 import math
 import os
+import asyncio
+import logging
+from datetime import datetime
 
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.ai.client import get_gemini_client, GeminiModel
+from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
+from artifact.simulator.mock_hardware.camera import SimulatorCamera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -255,28 +264,6 @@ QUIZ_QUESTIONS: List[Tuple[str, List[str], int]] = [
     ("Clash of Clans вышел в?", ["2012", "2013", "2014", "2015"], 0),
 
     # ===========================================================================
-    # SLANG & LANGUAGE (20 questions)
-    # ===========================================================================
-    ("'Жиза' означает?", ["Ложь", "Жизненно", "Странно", "Грустно"], 1),
-    ("'Душнила' это?", ["Весёлый", "Зануда", "Умный", "Глупый"], 1),
-    ("'Падра' откуда?", ["Вписки", "Книг", "Фильмов", "Музыки"], 0),
-    ("'ЛОЛ' означает?", ["Laughing Out Loud", "Lots of Love", "Другое", "League of Legends"], 0),
-    ("'Сорян' это?", ["Привет", "Извини", "Пока", "Спасибо"], 1),
-    ("'Чётко' означает?", ["Плохо", "Хорошо", "Странно", "Грустно"], 1),
-    ("'Кекать' означает?", ["Плакать", "Смеяться", "Работать", "Спать"], 1),
-    ("'Азаза' выражает?", ["Грусть", "Смех", "Злость", "Удивление"], 1),
-    ("'Братан' это?", ["Враг", "Друг", "Коллега", "Родственник"], 1),
-    ("'Чё как?' означает?", ["Пока", "Как дела?", "Извини", "Спасибо"], 1),
-    ("'Топ' означает?", ["Плохо", "Лучшее", "Среднее", "Странное"], 1),
-    ("'Мутить' означает?", ["Спать", "Организовывать", "Есть", "Пить"], 1),
-    ("'Чилово' это?", ["Плохо", "Расслабленно", "Быстро", "Громко"], 1),
-    ("'Агонь' означает?", ["Вода", "Огонь/круто", "Земля", "Воздух"], 1),
-    ("'Бомбить' означает?", ["Радоваться", "Злиться", "Смеяться", "Плакать"], 1),
-    ("'Забить' означает?", ["Помнить", "Забыть/игнорировать", "Делать", "Есть"], 1),
-    ("'Зачётно' означает?", ["Плохо", "Хорошо", "Странно", "Грустно"], 1),
-    ("'Кринжово' означает?", ["Круто", "Стыдно", "Весело", "Грустно"], 1),
-    ("'Лютый' означает?", ["Слабый", "Сильный/крутой", "Маленький", "Большой"], 1),
-    ("'Нормис' это?", ["Странный", "Обычный человек", "Крутой", "Богатый"], 1),
 ]
 
 
@@ -287,11 +274,14 @@ FREE_COCKTAIL_THRESHOLD = 7  # Need 7/10 correct to win
 
 class QuizPhase:
     INTRO = "intro"
+    CAMERA_PREP = "camera_prep"
+    CAMERA_CAPTURE = "capture"
     QUESTION = "question"
     THINKING = "thinking"
     REVEAL = "reveal"
     CORRECT = "correct"
     WRONG = "wrong"
+    GENERATING = "generating"  # AI generating victory doodle
     RESULT = "result"
 
 
@@ -299,20 +289,21 @@ class QuizMode(BaseMode):
     """Quiz mode - Who Wants to Be a Millionaire style.
 
     Features:
-    - 15 questions with increasing difficulty
-    - Prize ladder with safe havens
+    - 10 questions with random selection
+    - Win 7+ to get a free cocktail
     - 4 answer options (A, B, C, D)
     - Dramatic reveals and sound effects
-    - Millionaire-style animations
+    - Photo capture for personalized victory doodle
+    - Winners get AI-generated celebration doodle printed!
     """
 
     name = "quiz"
-    display_name = "МИЛЛИОНЕР"
-    description = "Кто хочет стать миллионером?"
+    display_name = "ВИКТОРИНА"
+    description = "Проверь свои знания!"
     icon = "?"
-    style = "millionaire"
-    requires_camera = False
-    requires_ai = False
+    style = "quiz"
+    requires_camera = True
+    requires_ai = True
     estimated_duration = 180
 
     # Game settings
@@ -322,21 +313,37 @@ class QuizMode(BaseMode):
     def __init__(self, context: ModeContext):
         super().__init__(context)
 
+        # AI services
+        self._gemini_client = get_gemini_client()
+        self._caricature_service = CaricatureService()
+
+        # Camera state
+        self._camera: Optional[SimulatorCamera] = None
+        self._camera_frame: Optional[bytes] = None
+        self._photo_data: Optional[bytes] = None
+        self._camera_countdown: float = 0.0
+        self._flash_alpha: float = 0.0
+
+        # AI results
+        self._victory_doodle: Optional[Caricature] = None
+        self._ai_task: Optional[asyncio.Task] = None
+
         # Game state
         self._questions: List[Tuple[str, List[str], int]] = []
         self._current_question: int = 0
         self._selected_answer: Optional[int] = None  # 0-3
         self._time_remaining: float = 0.0
         self._score: int = 0  # Correct answers
+        self._lives: int = 3  # Allow 2 mistakes (3 lives total)
         self._sub_phase = QuizPhase.INTRO
         self._won_cocktail: bool = False
 
         # Animation state
         self._reveal_progress: float = 0.0
-        self._flash_alpha: float = 0.0
         self._suspense_time: float = 0.0
         self._answer_locked: bool = False
         self._pulse_time: float = 0.0
+        self._wrong_display_timer: float = 0.0  # Timer for showing correct/wrong feedback
 
         # Particles
         self._particles = ParticleSystem()
@@ -363,10 +370,12 @@ class QuizMode(BaseMode):
         # Select random questions
         self._questions = rng.sample(QUIZ_QUESTIONS, min(self.QUESTIONS_PER_GAME, len(QUIZ_QUESTIONS)))
 
+        # Reset game state
         self._current_question = 0
         self._selected_answer = None
         self._time_remaining = self.THINKING_TIME
         self._score = 0
+        self._lives = 3  # 3 lives = 2 allowed mistakes
         self._won_cocktail = False
         self._sub_phase = QuizPhase.INTRO
         self._answer_locked = False
@@ -374,6 +383,19 @@ class QuizMode(BaseMode):
         self._flash_alpha = 0.0
         self._suspense_time = 0.0
         self._pulse_time = 0.0
+        self._wrong_display_timer = 0.0
+
+        # Reset camera/AI state
+        self._photo_data = None
+        self._camera_frame = None
+        self._victory_doodle = None
+        self._ai_task = None
+        self._camera_countdown = 0.0
+
+        # Initialize camera
+        self._camera = create_camera(resolution=(640, 480))
+        if self._camera.open():
+            logger.info("Camera opened for Quiz mode")
 
         # Gold sparkle particles
         gold_sparkle = ParticlePresets.sparkle(x=64, y=64)
@@ -388,10 +410,33 @@ class QuizMode(BaseMode):
         self._pulse_time += delta_ms
         self._flash_alpha = max(0, self._flash_alpha - delta_ms / 200)
 
+        # Update camera preview during camera phases
+        if self._sub_phase in (QuizPhase.CAMERA_PREP, QuizPhase.CAMERA_CAPTURE):
+            self._update_camera_preview()
+
         if self.phase == ModePhase.INTRO:
-            if self._time_in_phase > 3000:
-                self._sub_phase = QuizPhase.QUESTION
-                self.change_phase(ModePhase.ACTIVE)
+            if self._sub_phase == QuizPhase.INTRO:
+                # Show intro briefly, then move to camera
+                if self._time_in_phase > 2000:
+                    self._sub_phase = QuizPhase.CAMERA_PREP
+                    self._time_in_phase = 0
+
+            elif self._sub_phase == QuizPhase.CAMERA_PREP:
+                # Camera prep for 2 seconds
+                if self._time_in_phase > 2000:
+                    self._start_camera_capture()
+
+            elif self._sub_phase == QuizPhase.CAMERA_CAPTURE:
+                # Countdown
+                self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
+                if self._camera_countdown <= 0 and self._photo_data is None:
+                    self._do_camera_capture()
+                    self._flash_alpha = 1.0
+
+                # Move to game after flash
+                if self._time_in_phase > 3500:
+                    self._sub_phase = QuizPhase.QUESTION
+                    self.change_phase(ModePhase.ACTIVE)
 
         elif self.phase == ModePhase.ACTIVE:
             if self._sub_phase == QuizPhase.QUESTION:
@@ -421,27 +466,60 @@ class QuizMode(BaseMode):
                         if gold:
                             gold.burst(50)
                     else:
+                        # IMMEDIATELY decrement lives when wrong
+                        self._lives -= 1
                         self._sub_phase = QuizPhase.WRONG
-                    self._time_in_phase = 0
+                        logger.info(f"Wrong answer! Lives remaining: {self._lives}")
+                    self._wrong_display_timer = 0.0  # Reset wrong display timer
 
             elif self._sub_phase == QuizPhase.CORRECT:
-                if self._time_in_phase > 2000:
+                self._wrong_display_timer += delta_ms
+                if self._wrong_display_timer > 2000:
                     self._next_question()
 
             elif self._sub_phase == QuizPhase.WRONG:
-                if self._time_in_phase > 2500:
-                    self._finish_game()
+                self._wrong_display_timer += delta_ms
+                if self._wrong_display_timer > 2500:
+                    if self._lives <= 0:
+                        self._finish_game()
+                    else:
+                        # Continue to next question after wrong answer
+                        self._next_question()
+
+        elif self.phase == ModePhase.PROCESSING:
+            # Generating victory doodle
+            if self._ai_task and self._ai_task.done():
+                self._on_ai_complete()
 
         elif self.phase == ModePhase.RESULT:
             if self._time_in_phase > 15000:
                 self._finish()
 
     def on_input(self, event: Event) -> bool:
-        """Handle input - A/B on left, C/D on right, confirm with center."""
+        """Handle input - keypad 1-4 for answers, arrows for navigation."""
         if self.phase == ModePhase.ACTIVE and self._sub_phase == QuizPhase.QUESTION:
             if not self._answer_locked:
-                # Navigate options: Left cycles A/B, Right cycles C/D
-                if event.type == EventType.ARCADE_LEFT:
+                # Direct answer selection via keypad 1-4
+                if event.type == EventType.KEYPAD_INPUT:
+                    key = event.data.get("key", "")
+                    if key == "1":
+                        self._selected_answer = 0  # A
+                        self._lock_answer()
+                        return True
+                    elif key == "2":
+                        self._selected_answer = 1  # B
+                        self._lock_answer()
+                        return True
+                    elif key == "3":
+                        self._selected_answer = 2  # C
+                        self._lock_answer()
+                        return True
+                    elif key == "4":
+                        self._selected_answer = 3  # D
+                        self._lock_answer()
+                        return True
+                # Navigation via arrows (backup method)
+                elif event.type == EventType.ARCADE_LEFT:
                     if self._selected_answer is None or self._selected_answer >= 2:
                         self._selected_answer = 0  # A
                     else:
@@ -490,12 +568,21 @@ class QuizMode(BaseMode):
             self._sub_phase = QuizPhase.QUESTION
             self._suspense_time = 0
             self._reveal_progress = 0
+            self._wrong_display_timer = 0
 
     def _finish_game(self) -> None:
         """End the game and show results."""
         self._won_cocktail = self._score >= FREE_COCKTAIL_THRESHOLD
-        self._sub_phase = QuizPhase.RESULT
-        self.change_phase(ModePhase.RESULT)
+
+        # If won and have photo, generate victory doodle!
+        if self._won_cocktail and self._photo_data:
+            self._sub_phase = QuizPhase.GENERATING
+            self.change_phase(ModePhase.PROCESSING)
+            self._ai_task = asyncio.create_task(self._generate_victory_doodle())
+            logger.info("Starting victory doodle generation")
+        else:
+            self._sub_phase = QuizPhase.RESULT
+            self.change_phase(ModePhase.RESULT)
 
         # Big celebration if won!
         if self._won_cocktail:
@@ -503,8 +590,76 @@ class QuizMode(BaseMode):
             if gold:
                 gold.burst(100)
 
+    def _start_camera_capture(self) -> None:
+        """Start the camera capture sequence."""
+        self._sub_phase = QuizPhase.CAMERA_CAPTURE
+        self._time_in_phase = 0
+        self._camera_countdown = 3.0
+        logger.info("Quiz camera capture started")
+
+    def _do_camera_capture(self) -> None:
+        """Capture the photo."""
+        if self._camera and self._camera.is_open:
+            self._photo_data = self._camera.capture_jpeg(quality=90)
+            if self._photo_data:
+                logger.info(f"Quiz photo captured: {len(self._photo_data)} bytes")
+            else:
+                logger.warning("Quiz photo capture failed")
+        else:
+            logger.warning("Camera not available for Quiz")
+
+    def _update_camera_preview(self) -> None:
+        """Update live camera preview."""
+        if not self._camera or not self._camera.is_open:
+            return
+        try:
+            import numpy as np
+            frame = self._camera.capture_frame()
+            if frame is not None and frame.size > 0:
+                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
+                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+        except Exception as e:
+            logger.warning(f"Quiz camera preview error: {e}")
+
+    async def _generate_victory_doodle(self) -> None:
+        """Generate a celebratory doodle for the winner."""
+        try:
+            if not self._photo_data:
+                return
+
+            # Generate victory-themed caricature with QUIZ_WINNER style
+            # Designed for 128x128 pixel display with Russian labels
+            self._victory_doodle = await self._caricature_service.generate_caricature(
+                reference_photo=self._photo_data,
+                style=CaricatureStyle.QUIZ_WINNER,
+                personality_context=f"ПОБЕДИТЕЛЬ! Набрал {self._score} из {len(self._questions)}! Триумф, праздник, чемпион!"
+            )
+            if self._victory_doodle:
+                logger.info(f"Victory doodle generated: {len(self._victory_doodle.image_data)} bytes")
+            else:
+                logger.warning("Victory doodle generation returned None")
+
+        except Exception as e:
+            logger.error(f"Victory doodle generation failed: {e}")
+            self._victory_doodle = None
+
+    def _on_ai_complete(self) -> None:
+        """Handle AI generation completion."""
+        self._sub_phase = QuizPhase.RESULT
+        self.change_phase(ModePhase.RESULT)
+        logger.info("Victory doodle ready, showing result")
+
     def on_exit(self) -> None:
         """Cleanup."""
+        # Cancel AI task
+        if self._ai_task and not self._ai_task.done():
+            self._ai_task.cancel()
+
+        # Close camera
+        if self._camera:
+            self._camera.close()
+            self._camera = None
+
         self._particles.clear_all()
         self.stop_animations()
 
@@ -534,7 +689,9 @@ class QuizMode(BaseMode):
                 "total": total,
                 "percentage": pct,
                 "won_cocktail": self._won_cocktail,
-                "type": "quiz"
+                "type": "quiz",
+                "caricature": self._victory_doodle.image_data if self._victory_doodle else None,
+                "timestamp": datetime.now().isoformat()
             }
         )
         self.complete(result)
@@ -555,6 +712,8 @@ class QuizMode(BaseMode):
             self._render_intro(buffer)
         elif self.phase == ModePhase.ACTIVE:
             self._render_game(buffer)
+        elif self.phase == ModePhase.PROCESSING:
+            self._render_generating(buffer)
         elif self.phase == ModePhase.RESULT:
             self._render_result(buffer)
 
@@ -567,35 +726,76 @@ class QuizMode(BaseMode):
             fill(buffer, flash_color)
 
     def _render_intro(self, buffer) -> None:
-        """Render intro screen."""
+        """Render intro screen with camera phases."""
+        from artifact.graphics.text_utils import draw_centered_text
+        from artifact.graphics.primitives import draw_circle
+        import numpy as np
+
+        if self._sub_phase == QuizPhase.INTRO:
+            # Title intro
+            pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 200)
+            title_color = tuple(int(c * pulse) for c in self._gold)
+
+            draw_centered_text(buffer, "ВИКТОРИНА", 20, title_color, scale=2)
+            draw_centered_text(buffer, f"{self.QUESTIONS_PER_GAME} вопросов", 45, self._silver, scale=1)
+            draw_centered_text(buffer, f"{FREE_COCKTAIL_THRESHOLD}+ верно =", 60, (150, 150, 180), scale=1)
+            draw_centered_text(buffer, "КОКТЕЙЛЬ!", 75, self._correct_green, scale=2)
+            draw_centered_text(buffer, "ГОТОВЬСЯ...", 105, (100, 120, 150), scale=1)
+
+        elif self._sub_phase == QuizPhase.CAMERA_PREP:
+            # Camera preview with instructions
+            if self._camera_frame is not None and isinstance(self._camera_frame, np.ndarray):
+                if self._camera_frame.shape == buffer.shape:
+                    np.copyto(buffer, self._camera_frame)
+
+            draw_centered_text(buffer, "СМОТРИ В КАМЕРУ", 95, self._gold, scale=1)
+            draw_centered_text(buffer, "СДЕЛАЕМ ФОТО!", 110, (255, 200, 100), scale=1)
+
+        elif self._sub_phase == QuizPhase.CAMERA_CAPTURE:
+            # Camera capture with countdown
+            if self._camera_frame is not None and isinstance(self._camera_frame, np.ndarray):
+                if self._camera_frame.shape == buffer.shape:
+                    np.copyto(buffer, self._camera_frame)
+
+            # Big countdown number
+            if self._camera_countdown > 0:
+                countdown_num = str(int(self._camera_countdown) + 1)
+                draw_centered_text(buffer, countdown_num, 50, (255, 255, 255), scale=4)
+
+                # Progress ring
+                progress = 1.0 - (self._camera_countdown % 1)
+                for angle in range(0, int(360 * progress), 10):
+                    rad = math.radians(angle - 90)
+                    px = int(64 + 45 * math.cos(rad))
+                    py = int(64 + 45 * math.sin(rad))
+                    draw_circle(buffer, px, py, 2, self._gold)
+
+    def _render_generating(self, buffer) -> None:
+        """Render AI generation screen."""
         from artifact.graphics.text_utils import draw_centered_text
 
-        # Pulsing title
         pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 200)
-        title_color = tuple(int(c * pulse) for c in self._gold)
+        color = tuple(int(c * pulse) for c in self._gold)
 
-        draw_centered_text(buffer, "ВИКТОРИНА", 20, title_color, scale=2)
-        draw_centered_text(buffer, f"{self.QUESTIONS_PER_GAME} вопросов", 45, self._silver, scale=1)
-        draw_centered_text(buffer, f"{FREE_COCKTAIL_THRESHOLD}+ верно =", 60, (150, 150, 180), scale=1)
-        draw_centered_text(buffer, "КОКТЕЙЛЬ!", 75, self._correct_green, scale=2)
+        draw_centered_text(buffer, "ПОБЕДА!", 25, self._correct_green, scale=2)
+        draw_centered_text(buffer, "СОЗДАЁМ", 55, color, scale=2)
+        draw_centered_text(buffer, "ПРИЗ", 75, color, scale=2)
 
-        # Countdown
-        countdown = max(0, 3 - int(self._time_in_phase / 1000))
-        if countdown > 0:
-            draw_centered_text(buffer, str(countdown), 100, self._silver, scale=2)
-        else:
-            draw_centered_text(buffer, "ПОЕХАЛИ!", 100, self._correct_green, scale=1)
+        dots = "." * (int(self._time_in_phase / 300) % 4)
+        draw_centered_text(buffer, dots, 95, self._gold, scale=2)
+        draw_centered_text(buffer, "Секундочку...", 115, (120, 150, 180), scale=1)
 
     def _render_game(self, buffer) -> None:
         """Render active game."""
         from artifact.graphics.primitives import draw_rect
-        from artifact.graphics.text_utils import draw_centered_text, wrap_text
+        from artifact.graphics.text_utils import draw_centered_text, wrap_text, fit_text_in_rect
 
         question = self._questions[self._current_question]
         q_text, options, correct = question
 
-        # Question number and score
-        draw_centered_text(buffer, f"#{self._current_question + 1}/{self.QUESTIONS_PER_GAME}  Верно:{self._score}", 2, self._gold, scale=1)
+        # Question number, score and lives (hearts for lives)
+        lives_hearts = "♥" * self._lives + "♡" * (3 - self._lives)
+        draw_centered_text(buffer, f"#{self._current_question + 1}/{self.QUESTIONS_PER_GAME}  {lives_hearts}  {self._score}", 2, self._gold, scale=1)
 
         # Timer bar
         timer_pct = self._time_remaining / self.THINKING_TIME
@@ -607,17 +807,17 @@ class QuizMode(BaseMode):
 
         # Question text (wrapped)
         lines = wrap_text(q_text, 20)
-        y = 20
+        text_y = 20
         for line in lines[:2]:
-            draw_centered_text(buffer, line, y, (255, 255, 255), scale=1)
-            y += 11
+            draw_centered_text(buffer, line, text_y, (255, 255, 255), scale=1)
+            text_y += 11
 
         # Answer options in 2x2 grid
-        option_labels = ["A", "B", "C", "D"]
+        option_labels = ["1", "2", "3", "4"]
         positions = [(2, 48), (66, 48), (2, 78), (66, 78)]  # x, y for each option
 
         for i, (opt, label) in enumerate(zip(options, option_labels)):
-            x, y = positions[i]
+            opt_x, opt_y = positions[i]
             w, h = 60, 26
 
             # Determine color based on state
@@ -636,35 +836,63 @@ class QuizMode(BaseMode):
                 color = self._option_blue
 
             # Draw option box
-            draw_rect(buffer, x, y, w, h, color)
+            draw_rect(buffer, opt_x, opt_y, w, h, color)
 
-            # Option text - truncate if needed
-            display_text = f"{label}:{opt}"
-            if len(display_text) > 9:
-                display_text = display_text[:8] + "…"
-            draw_centered_text(buffer, display_text, y + 9, (255, 255, 255), scale=1)
+            # Option text - fit within the option box (uppercase for font)
+            display_text = f"{label}:{opt.upper()}"
+            # Use fit_text_in_rect to properly position text within the option box
+            fit_text_in_rect(buffer, display_text, (opt_x, opt_y, w, h), (255, 255, 255), max_scale=1)
 
         # Instructions at bottom
         if self._sub_phase == QuizPhase.QUESTION and not self._answer_locked:
-            draw_centered_text(buffer, "< A/B  C/D >  OK", 118, (100, 120, 150), scale=1)
+            draw_centered_text(buffer, "НАЖМИ 1-4", 118, (100, 120, 150), scale=1)
         elif self._sub_phase == QuizPhase.THINKING:
             dots = "." * (int(self._suspense_time / 300) % 4)
             draw_centered_text(buffer, f"ДУМАЕМ{dots}", 118, self._gold, scale=1)
 
     def _render_result(self, buffer) -> None:
-        """Render final result."""
+        """Render final result with victory doodle."""
         from artifact.graphics.text_utils import draw_centered_text
+        from artifact.graphics.primitives import draw_rect
 
         if self._won_cocktail:
-            # Winner! Big celebration
-            pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
-            title_color = tuple(int(c * pulse) for c in self._gold)
+            # Winner! Show doodle or celebration alternating
+            show_doodle = self._victory_doodle is not None and (int(self._time_in_phase / 5000) % 2 == 0)
 
-            draw_centered_text(buffer, "ПОБЕДА!", 15, title_color, scale=2)
-            draw_centered_text(buffer, f"{self._score}/{len(self._questions)}", 40, self._correct_green, scale=2)
-            draw_centered_text(buffer, "БЕСПЛАТНЫЙ", 65, self._gold, scale=1)
-            draw_centered_text(buffer, "КОКТЕЙЛЬ!", 80, self._gold, scale=2)
-            draw_centered_text(buffer, "Покажи бармену", 100, (150, 200, 150), scale=1)
+            if show_doodle:
+                # Show victory doodle
+                try:
+                    from PIL import Image
+                    from io import BytesIO
+                    import numpy as np
+
+                    img = Image.open(BytesIO(self._victory_doodle.image_data))
+                    img = img.convert("RGB")
+                    display_size = 100
+                    img = img.resize((display_size, display_size), Image.Resampling.NEAREST)
+
+                    x_offset = (128 - display_size) // 2
+                    y_offset = 5
+
+                    for y in range(display_size):
+                        for x in range(display_size):
+                            bx = x_offset + x
+                            by = y_offset + y
+                            if 0 <= bx < 128 and 0 <= by < 128:
+                                pixel = img.getpixel((x, y))
+                                buffer[by, bx] = pixel
+
+                    # Gold border
+                    draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, self._gold, filled=False)
+                    draw_centered_text(buffer, "ТВОЙ ПРИЗ!", 112, self._gold, scale=1)
+
+                except Exception as e:
+                    logger.warning(f"Failed to render victory doodle: {e}")
+                    # Fallback to text
+                    self._render_winner_text(buffer)
+            else:
+                # Show winner text
+                self._render_winner_text(buffer)
         else:
             # Not enough correct answers
             draw_centered_text(buffer, "ИГРА ОКОНЧЕНА", 15, self._wrong_red, scale=1)
@@ -672,6 +900,23 @@ class QuizMode(BaseMode):
             pct = int(self._score / len(self._questions) * 100)
             draw_centered_text(buffer, f"{pct}%", 65, (150, 150, 180), scale=2)
             draw_centered_text(buffer, f"Нужно {FREE_COCKTAIL_THRESHOLD}+", 90, (120, 120, 140), scale=1)
+
+            # Press to continue
+            if int(self._time_in_phase / 500) % 2 == 0:
+                draw_centered_text(buffer, "НАЖМИ КНОПКУ", 115, (100, 100, 120), scale=1)
+
+    def _render_winner_text(self, buffer) -> None:
+        """Render winner celebration text."""
+        from artifact.graphics.text_utils import draw_centered_text
+
+        pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
+        title_color = tuple(int(c * pulse) for c in self._gold)
+
+        draw_centered_text(buffer, "ПОБЕДА!", 15, title_color, scale=2)
+        draw_centered_text(buffer, f"{self._score}/{len(self._questions)}", 40, self._correct_green, scale=2)
+        draw_centered_text(buffer, "БЕСПЛАТНЫЙ", 65, self._gold, scale=1)
+        draw_centered_text(buffer, "КОКТЕЙЛЬ!", 80, self._gold, scale=2)
+        draw_centered_text(buffer, "Покажи бармену", 100, (150, 200, 150), scale=1)
 
         # Press to continue
         if int(self._time_in_phase / 500) % 2 == 0:

@@ -53,7 +53,7 @@ class IdleAnimation:
 
     def get_lcd_text(self) -> str:
         """Get current LCD text."""
-        return "ARTIFACT"
+        return "VNVNC"
 
     def reset(self) -> None:
         """Reset animation to initial state."""
@@ -194,7 +194,7 @@ class MysticalIdleAnimation(IdleAnimation):
 
         # Draw title text
         font = load_font("cyrillic")
-        text = "АРТЕФАКТ"
+        text = "VNVNC"
         text_width, text_height = font.measure_text(text)
         text_x = (self.config.main_width - text_width * 2) // 2
         draw_text_bitmap(buffer, text, text_x, 15, self.secondary, font, scale=2)
@@ -217,7 +217,7 @@ class MysticalIdleAnimation(IdleAnimation):
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""
-        texts = ["НАЖМИ СТАРТ", "АРТЕФАКТ", "ТВОЯ СУДЬБА?"]
+        texts = ["НАЖМИ СТАРТ", "VNVNC", "ТВОЯ СУДЬБА?"]
         idx = int(self._time / 2000) % len(texts)
         return texts[idx].center(16)
 
@@ -376,7 +376,7 @@ class ArcadeIdleAnimation(IdleAnimation):
         # Flashing "ARTIFACT" logo
         if self._frame % 60 < 40:
             font = load_font("cyrillic")
-            text = "АРТЕФАКТ"
+            text = "VNVNC"
             text_width, _ = font.measure_text(text)
             x = (self.config.main_width - text_width * 3) // 2
             y = int(self.logo_bounce_y)
@@ -407,7 +407,7 @@ class ArcadeIdleAnimation(IdleAnimation):
     def get_lcd_text(self) -> str:
         """Get LCD text."""
         if self._frame % 120 < 60:
-            return "АРТЕФАКТ".center(16)
+            return "VNVNC".center(16)
         else:
             return "НАЖМИ СТАРТ".center(16)
 
@@ -499,7 +499,7 @@ class ModernIdleAnimation(IdleAnimation):
 
         # Central text
         font = load_font("cyrillic")
-        text = "АРТЕФАКТ"
+        text = "VNVNC"
         text_width, _ = font.measure_text(text)
         x = (self.config.main_width - text_width * 2) // 2
         draw_text_bitmap(buffer, text, x, 55, self.primary, font, scale=2)

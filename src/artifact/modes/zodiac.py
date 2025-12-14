@@ -1,15 +1,36 @@
-"""Zodiac mode - Birthday to horoscope predictions."""
+"""Zodiac mode - Birthday to horoscope predictions with photo + constellation portrait."""
 
+import asyncio
+import logging
 from typing import List, Optional, Tuple
-from datetime import date
+from datetime import date, datetime
 import random
 import math
+import numpy as np
 
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.timeline import Timeline
 from artifact.animation.easing import Easing
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.ai.client import get_gemini_client, GeminiModel
+from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
+from artifact.simulator.mock_hardware.camera import (
+    SimulatorCamera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+)
+
+logger = logging.getLogger(__name__)
+
+
+class ZodiacPhase:
+    """Sub-phases within Zodiac mode."""
+    INTRO = "intro"
+    DATE_INPUT = "date_input"
+    CAMERA_PREP = "camera_prep"
+    CAMERA_CAPTURE = "capture"
+    PROCESSING = "processing"
+    GENERATING = "generating"
+    RESULT = "result"
 
 
 # Zodiac signs with date ranges and symbols
@@ -208,13 +229,14 @@ def get_zodiac_sign(month: int, day: int) -> Tuple[str, str, str]:
 
 
 class ZodiacMode(BaseMode):
-    """Zodiac mode - enter birthday, get horoscope.
+    """Zodiac mode - enter birthday, get horoscope with constellation portrait.
 
     Flow:
     1. Intro: Constellation animation
     2. Active: Enter birthday (DD.MM format)
-    3. Processing: Zodiac calculation animation
-    4. Result: Display zodiac sign and horoscope
+    3. Camera: Take photo for constellation portrait
+    4. Processing: AI generates zodiac-themed portrait
+    5. Result: Display zodiac sign, horoscope, and portrait
     """
 
     name = "zodiac"
@@ -222,12 +244,30 @@ class ZodiacMode(BaseMode):
     description = "Узнай свой гороскоп"
     icon = "*"
     style = "mystical"
-    requires_camera = False
-    requires_ai = False
-    estimated_duration = 20
+    requires_camera = True
+    requires_ai = True
+    estimated_duration = 35
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
+
+        # Sub-phase tracking
+        self._sub_phase = ZodiacPhase.INTRO
+
+        # AI services
+        self._gemini_client = get_gemini_client()
+        self._caricature_service = CaricatureService()
+
+        # Camera state
+        self._camera: Optional[SimulatorCamera] = None
+        self._camera_frame: Optional[bytes] = None
+        self._photo_data: Optional[bytes] = None
+        self._camera_countdown: float = 0.0
+        self._flash_alpha: float = 0.0
+
+        # AI results
+        self._constellation_portrait: Optional[Caricature] = None
+        self._ai_task: Optional[asyncio.Task] = None
 
         # Date input state
         self._input_buffer: str = ""
@@ -249,6 +289,12 @@ class ZodiacMode(BaseMode):
         self._symbol_pulse: float = 0.0
         self._input_glow: float = 0.0  # Glow effect for valid input
 
+        # Result view state
+        self._result_view: str = "text"  # "text" or "image"
+        self._text_scroll_complete: bool = False
+        self._text_view_time: float = 0.0
+        self._scroll_duration: float = 0.0
+
         # Particles
         self._particles = ParticleSystem()
 
@@ -260,6 +306,7 @@ class ZodiacMode(BaseMode):
 
     def on_enter(self) -> None:
         """Initialize zodiac mode."""
+        self._sub_phase = ZodiacPhase.INTRO
         self._input_buffer = ""
         self._input_position = 0
         self._input_valid = False
@@ -272,6 +319,27 @@ class ZodiacMode(BaseMode):
         self._orbit_angle = 0.0
         self._symbol_pulse = 0.0
         self._input_glow = 0.0
+        self._result_view = "text"
+        self._text_scroll_complete = False
+        self._text_view_time = 0.0
+        self._scroll_duration = 0.0
+
+        # Reset camera state
+        self._photo_data = None
+        self._camera_frame = None
+        self._camera_countdown = 0.0
+        self._flash_alpha = 0.0
+
+        # Reset AI state
+        self._constellation_portrait = None
+        self._ai_task = None
+
+        # Initialize camera for live preview
+        self._camera = create_camera(resolution=(640, 480))
+        if self._camera.open():
+            logger.info("Camera opened for Zodiac mode")
+        else:
+            logger.warning("Could not open camera, using placeholder")
 
         # Initialize star twinkle phases - more stars for richer effect
         self._star_twinkle = [random.random() * 6.28 for _ in range(30)]
@@ -289,6 +357,7 @@ class ZodiacMode(BaseMode):
         self._particles.add_emitter("magic", magic_config)
 
         self.change_phase(ModePhase.INTRO)
+        logger.info("Zodiac mode entered")
 
     def on_update(self, delta_ms: float) -> None:
         """Update zodiac mode."""
@@ -306,73 +375,147 @@ class ZodiacMode(BaseMode):
         else:
             self._input_glow = max(0.0, self._input_glow - delta_ms / 300)
 
+        # Update live camera preview during camera phases
+        if self._sub_phase in (ZodiacPhase.CAMERA_PREP, ZodiacPhase.CAMERA_CAPTURE):
+            self._update_camera_preview()
+
         if self.phase == ModePhase.INTRO:
             # Longer, more dramatic intro - 3 seconds
             if self._time_in_phase > 3000:
+                self._sub_phase = ZodiacPhase.DATE_INPUT
                 self.change_phase(ModePhase.ACTIVE)
+                self._time_in_phase = 0
+
+        elif self.phase == ModePhase.ACTIVE:
+            if self._sub_phase == ZodiacPhase.DATE_INPUT:
+                # Waiting for user input
+                pass
+
+            elif self._sub_phase == ZodiacPhase.CAMERA_PREP:
+                # Camera prep for 2 seconds
+                if self._time_in_phase > 2000:
+                    self._start_camera_capture()
+
+            elif self._sub_phase == ZodiacPhase.CAMERA_CAPTURE:
+                # Countdown animation
+                self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
+
+                # Capture when countdown reaches 0
+                if self._camera_countdown <= 0 and self._photo_data is None:
+                    self._do_camera_capture()
+                    self._flash_alpha = 1.0
+
+                # Flash effect after capture
+                if self._time_in_phase > 3000:
+                    self._flash_alpha = max(0, 1.0 - (self._time_in_phase - 3000) / 500)
+
+                    if self._time_in_phase > 3500:
+                        self._start_processing()
 
         elif self.phase == ModePhase.PROCESSING:
-            # Slower reveal for more drama - 3 seconds
-            self._reveal_progress = min(1.0, self._time_in_phase / 3000)
+            if self._sub_phase == ZodiacPhase.GENERATING:
+                # Check AI task progress
+                if self._ai_task:
+                    if self._ai_task.done():
+                        self._on_ai_complete()
+                    else:
+                        # Continue with reveal while waiting
+                        self._reveal_progress = min(0.5, self._time_in_phase / 2000)
+            else:
+                # Standard processing phase
+                self._reveal_progress = min(1.0, self._time_in_phase / 3000)
 
-            # Burst more particles during reveal
-            if int(self._time_in_phase / 500) > int((self._time_in_phase - delta_ms) / 500):
-                magic = self._particles.get_emitter("magic")
-                if magic:
-                    magic.burst(10)
+                # Burst more particles during reveal
+                if int(self._time_in_phase / 500) > int((self._time_in_phase - delta_ms) / 500):
+                    magic = self._particles.get_emitter("magic")
+                    if magic:
+                        magic.burst(10)
 
-            if self._reveal_progress >= 1.0:
-                self.change_phase(ModePhase.RESULT)
-                # Final burst
-                stars = self._particles.get_emitter("stars")
-                if stars:
-                    stars.burst(50)
+                if self._reveal_progress >= 1.0:
+                    self._sub_phase = ZodiacPhase.RESULT
+                    self.change_phase(ModePhase.RESULT)
+                    # Final burst
+                    stars = self._particles.get_emitter("stars")
+                    if stars:
+                        stars.burst(50)
 
         elif self.phase == ModePhase.RESULT:
-            # Auto-complete after 20 seconds (longer to admire)
-            if self._time_in_phase > 20000:
+            # Calculate scroll duration on first entry
+            if self._horoscope and self._scroll_duration == 0:
+                from artifact.graphics.text_utils import calculate_scroll_duration, MAIN_DISPLAY_WIDTH
+                from artifact.graphics.fonts import load_font
+                # Horoscope uses wrap_text with max 4 lines, so estimate conservatively
+                self._scroll_duration = 3000  # Short horoscopes usually fit, give base time
+
+            # Track time in text view
+            if self._result_view == "text":
+                self._text_view_time += delta_ms
+                if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
+                    self._text_scroll_complete = True
+                    if self._constellation_portrait:
+                        self._result_view = "image"
+
+            # Auto-complete after 45 seconds
+            if self._time_in_phase > 45000:
                 self._finish()
 
     def on_input(self, event: Event) -> bool:
         """Handle input.
 
         Accepts:
-        - BUTTON_PRESS (center button): Confirm date / finish result
-        - ARCADE_LEFT: Navigate left in date (if implemented) or clear
-        - ARCADE_RIGHT: Navigate right in date (if implemented)
+        - BUTTON_PRESS (center button): Confirm date / toggle display / finish result
+        - ARCADE_LEFT: Navigate left in date (if implemented) or clear / toggle display
+        - ARCADE_RIGHT: Navigate right in date (if implemented) / toggle display
         - KEYPAD_INPUT: Direct digit entry
         """
         if event.type == EventType.BUTTON_PRESS:
             # Center button - confirm action
-            if self.phase == ModePhase.ACTIVE:
+            if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
                 # Confirm date entry with center button
                 if self._validate_date():
                     self._process_date()
                     return True
             elif self.phase == ModePhase.RESULT:
-                self._finish()
-                return True
+                # On image view = print, on text view = switch to image or print
+                if self._result_view == "image" or not self._constellation_portrait:
+                    self._finish()
+                    return True
+                else:
+                    if self._constellation_portrait:
+                        self._result_view = "image"
+                        self._text_scroll_complete = True
+                    else:
+                        self._finish()
+                    return True
 
         elif event.type == EventType.ARCADE_LEFT:
-            if self.phase == ModePhase.ACTIVE:
+            if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
                 # Backspace - delete last digit
                 if self._input_buffer:
                     self._input_buffer = self._input_buffer[:-1]
                     self._input_position = len(self._input_buffer)
                     self._input_valid = False
                 return True
+            elif self.phase == ModePhase.RESULT:
+                # Toggle to text view
+                self._result_view = "text"
+                return True
 
         elif event.type == EventType.ARCADE_RIGHT:
-            if self.phase == ModePhase.ACTIVE:
+            if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
                 # Right arrow - confirm when valid
                 if self._validate_date():
                     self._process_date()
+                return True
+            elif self.phase == ModePhase.RESULT and self._constellation_portrait:
+                # Toggle to image view
+                self._result_view = "image"
                 return True
 
         elif event.type == EventType.KEYPAD_INPUT:
             key = event.data.get("key", "")
 
-            if self.phase == ModePhase.ACTIVE:
+            if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
                 return self._handle_date_input(key)
 
         return False
@@ -427,7 +570,7 @@ class ZodiacMode(BaseMode):
         return False
 
     def _process_date(self) -> None:
-        """Process the entered date and generate horoscope."""
+        """Process the entered date and move to camera phase."""
         day = int(self._input_buffer[:2])
         month = int(self._input_buffer[2:])
 
@@ -443,12 +586,160 @@ class ZodiacMode(BaseMode):
         if stars:
             stars.burst(40)
 
-        self.change_phase(ModePhase.PROCESSING)
+        # Move to camera phase
+        self._sub_phase = ZodiacPhase.CAMERA_PREP
+        self._time_in_phase = 0
+
+        logger.info(f"Zodiac sign determined: {self._zodiac_ru} ({self._zodiac_symbol}), moving to camera")
 
     def on_exit(self) -> None:
         """Cleanup."""
+        # Cancel any pending AI task
+        if self._ai_task and not self._ai_task.done():
+            self._ai_task.cancel()
+
+        # Close camera
+        if self._camera:
+            self._camera.close()
+            self._camera = None
+
         self._particles.clear_all()
         self.stop_animations()
+
+    def _update_camera_preview(self) -> None:
+        """Update the live camera preview frame with dithering."""
+        if not self._camera or not self._camera.is_open:
+            return
+
+        try:
+            frame = self._camera.capture_frame()
+            if frame is not None and frame.size > 0:
+                dithered = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=120)
+                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+        except Exception as e:
+            logger.warning(f"Camera preview update error: {e}")
+            self._camera_frame = None
+
+    def _start_camera_capture(self) -> None:
+        """Start the camera capture sequence."""
+        self._sub_phase = ZodiacPhase.CAMERA_CAPTURE
+        self._time_in_phase = 0
+        self._camera_countdown = 3.0
+        logger.info("Zodiac camera capture started - countdown begins")
+
+    def _do_camera_capture(self) -> None:
+        """Actually capture the photo from camera."""
+        if self._camera and self._camera.is_open:
+            self._photo_data = self._camera.capture_jpeg(quality=90)
+            if self._photo_data:
+                logger.info(f"Zodiac captured photo: {len(self._photo_data)} bytes")
+            else:
+                logger.warning("Failed to capture photo in Zodiac mode")
+        else:
+            logger.warning("Camera not available for Zodiac capture")
+            self._photo_data = None
+
+    def _start_processing(self) -> None:
+        """Start AI processing for constellation portrait."""
+        self._sub_phase = ZodiacPhase.GENERATING
+        self.change_phase(ModePhase.PROCESSING)
+        self._reveal_progress = 0.0
+
+        # Start async AI task for portrait generation
+        self._ai_task = asyncio.create_task(self._generate_constellation_portrait())
+
+        # Burst particles
+        magic = self._particles.get_emitter("magic")
+        if magic:
+            magic.burst(50)
+
+        logger.info("Zodiac AI portrait generation started")
+
+    async def _generate_constellation_portrait(self) -> None:
+        """Generate constellation-themed portrait using AI."""
+        try:
+            if self._photo_data:
+                self._constellation_portrait = await self._caricature_service.generate_caricature(
+                    reference_photo=self._photo_data,
+                    style=CaricatureStyle.ZODIAC,
+                    personality_context=f"Знак зодиака: {self._zodiac_ru} ({self._zodiac_symbol})",
+                )
+                if self._constellation_portrait:
+                    logger.info("Zodiac constellation portrait generated successfully")
+                else:
+                    logger.warning("Zodiac constellation portrait generation returned None")
+            else:
+                logger.warning("No photo data for Zodiac portrait generation")
+                self._constellation_portrait = None
+        except Exception as e:
+            logger.error(f"Zodiac portrait generation failed: {e}")
+            self._constellation_portrait = None
+
+    def _on_ai_complete(self) -> None:
+        """Handle completion of AI processing."""
+        self._reveal_progress = 1.0
+        self._sub_phase = ZodiacPhase.RESULT
+        self.change_phase(ModePhase.RESULT)
+
+        # Start with text view, will auto-switch to image after scroll
+        self._result_view = "text"
+        self._text_scroll_complete = False
+        self._text_view_time = 0.0
+        self._scroll_duration = 0.0
+
+        # Burst particles for reveal
+        stars = self._particles.get_emitter("stars")
+        if stars:
+            stars.burst(100)
+
+        logger.info("Zodiac AI complete, entering result phase")
+
+    def _render_camera_preview(self, buffer) -> None:
+        """Render the camera preview to buffer."""
+        try:
+            if self._camera_frame is not None and isinstance(self._camera_frame, np.ndarray):
+                if self._camera_frame.shape == buffer.shape:
+                    np.copyto(buffer, self._camera_frame)
+        except Exception as e:
+            logger.debug(f"Camera frame render error: {e}")
+
+    def _render_portrait(self, buffer) -> None:
+        """Render the AI-generated constellation portrait."""
+        from artifact.graphics.primitives import draw_rect
+        from artifact.graphics.text_utils import draw_centered_text
+        from io import BytesIO
+
+        if not self._constellation_portrait:
+            return
+
+        try:
+            from PIL import Image
+
+            img = Image.open(BytesIO(self._constellation_portrait.image_data))
+            img = img.convert("RGB")
+
+            display_size = 100
+            img = img.resize((display_size, display_size), Image.Resampling.NEAREST)
+
+            x_offset = (128 - display_size) // 2
+            y_offset = 5
+
+            for y in range(display_size):
+                for x in range(display_size):
+                    bx = x_offset + x
+                    by = y_offset + y
+                    if 0 <= bx < 128 and 0 <= by < 128:
+                        pixel = img.getpixel((x, y))
+                        buffer[by, bx] = pixel
+
+            # Border with zodiac color
+            draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, self._secondary, filled=False)
+
+            # Label
+            draw_centered_text(buffer, f"{self._zodiac_symbol} {self._zodiac_ru}", 112, self._accent, scale=1)
+
+        except Exception as e:
+            logger.warning(f"Failed to render zodiac portrait: {e}")
 
     def _finish(self) -> None:
         """Complete the mode."""
@@ -465,6 +756,7 @@ class ZodiacMode(BaseMode):
                 "zodiac_symbol": self._zodiac_symbol,
                 "horoscope": self._horoscope,
                 "birthday": f"{self._input_buffer[:2]}.{self._input_buffer[2:]}",
+                "portrait": self._constellation_portrait.image_data if self._constellation_portrait else None,
                 "type": "zodiac_horoscope"
             }
         )
@@ -581,56 +873,90 @@ class ZodiacMode(BaseMode):
                 draw_centered_text(buffer, "Введи дату рождения", 100, sub_color, scale=1)
 
         elif self.phase == ModePhase.ACTIVE:
-            # Date input prompt - with animation
-            draw_animated_text(buffer, "ДАТА РОЖДЕНИЯ", 4, self._accent, self._time_in_phase, TextEffect.GLOW, scale=1)
+            if self._sub_phase == ZodiacPhase.DATE_INPUT:
+                # Date input prompt - with animation
+                draw_animated_text(buffer, "ДАТА РОЖДЕНИЯ", 4, self._accent, self._time_in_phase, TextEffect.GLOW, scale=1)
 
-            # Format: DD.MM
-            display_date = ""
-            for i in range(4):
-                if len(self._input_buffer) > i:
-                    display_date += self._input_buffer[i]
+                # Format: DD.MM
+                display_date = ""
+                for i in range(4):
+                    if len(self._input_buffer) > i:
+                        display_date += self._input_buffer[i]
+                    else:
+                        display_date += "_"
+                    if i == 1:
+                        display_date += "."
+
+                # Draw date input box - centered with glow effect when valid
+                box_w, box_h = 70, 24
+                box_x = (128 - box_w) // 2
+                box_y = 88
+
+                # Glow effect when input is valid
+                if self._input_glow > 0:
+                    glow_color = tuple(int(c * self._input_glow * 0.3) for c in (0, 255, 100))
+                    for offset in range(3, 0, -1):
+                        draw_rect(buffer, box_x - offset, box_y - offset,
+                                 box_w + offset * 2, box_h + offset * 2,
+                                 glow_color, filled=False)
+
+                # Box border
+                border_color = (0, 255, 100) if self._input_valid else (60, 60, 100)
+                draw_rect(buffer, box_x, box_y, box_w, box_h, border_color, filled=False)
+
+                # Draw date text - centered within box
+                text_x = box_x + (box_w - 60) // 2
+                draw_text_bitmap(buffer, display_date, text_x, box_y + 5, (255, 255, 255), font, scale=2)
+
+                # Cursor blink
+                if int(self._time_in_phase / 400) % 2 == 0 and not self._input_valid:
+                    cursor_pos = len(self._input_buffer)
+                    cursor_x = text_x + cursor_pos * 12
+                    if cursor_pos >= 2:
+                        cursor_x += 6  # Account for dot
+                    draw_rect(buffer, cursor_x, box_y + 5, 2, 14, self._accent)
+
+                # Instructions - clear and helpful
+                if self._input_valid:
+                    # Pulsing confirmation prompt
+                    pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
+                    confirm_color = tuple(int(c * pulse) for c in (0, 255, 100))
+                    draw_centered_text(buffer, "ЖМИSPACE/→ОК", 118, confirm_color, scale=1)
                 else:
-                    display_date += "_"
-                if i == 1:
-                    display_date += "."
+                    draw_centered_text(buffer, "← УД   →/SPACE ОК", 118, (120, 120, 140), scale=1)
 
-            # Draw date input box - centered with glow effect when valid
-            box_w, box_h = 70, 24
-            box_x = (128 - box_w) // 2
-            box_y = 88
+            elif self._sub_phase == ZodiacPhase.CAMERA_PREP:
+                # Show live camera preview
+                self._render_camera_preview(buffer)
+                # Overlay text
+                draw_centered_text(buffer, "СМОТРИ В КАМЕРУ", 10, self._accent, scale=1)
+                draw_centered_text(buffer, self._zodiac_ru.upper(), 110, self._secondary, scale=2)
 
-            # Glow effect when input is valid
-            if self._input_glow > 0:
-                glow_color = tuple(int(c * self._input_glow * 0.3) for c in (0, 255, 100))
-                for offset in range(3, 0, -1):
-                    draw_rect(buffer, box_x - offset, box_y - offset,
-                             box_w + offset * 2, box_h + offset * 2,
-                             glow_color, filled=False)
+            elif self._sub_phase == ZodiacPhase.CAMERA_CAPTURE:
+                # Show live camera preview with countdown
+                self._render_camera_preview(buffer)
 
-            # Box border
-            border_color = (0, 255, 100) if self._input_valid else (60, 60, 100)
-            draw_rect(buffer, box_x, box_y, box_w, box_h, border_color, filled=False)
+                # Countdown number
+                if self._camera_countdown > 0:
+                    countdown_num = str(int(self._camera_countdown) + 1)
+                    scale = 4 + int((self._camera_countdown % 1) * 2)
+                    draw_centered_text(buffer, countdown_num, 45, (255, 255, 255), scale=scale)
 
-            # Draw date text - centered within box
-            text_x = box_x + (box_w - 60) // 2
-            draw_text_bitmap(buffer, display_date, text_x, box_y + 5, (255, 255, 255), font, scale=2)
+                    # Progress ring
+                    progress = 1.0 - (self._camera_countdown % 1)
+                    for angle_deg in range(0, int(360 * progress), 10):
+                        rad = math.radians(angle_deg - 90)
+                        px = int(64 + 45 * math.cos(rad))
+                        py = int(64 + 45 * math.sin(rad))
+                        draw_circle(buffer, px, py, 2, self._secondary)
 
-            # Cursor blink
-            if int(self._time_in_phase / 400) % 2 == 0 and not self._input_valid:
-                cursor_pos = len(self._input_buffer)
-                cursor_x = text_x + cursor_pos * 12
-                if cursor_pos >= 2:
-                    cursor_x += 6  # Account for dot
-                draw_rect(buffer, cursor_x, box_y + 5, 2, 14, self._accent)
-
-            # Instructions - clear and helpful
-            if self._input_valid:
-                # Pulsing confirmation prompt
-                pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
-                confirm_color = tuple(int(c * pulse) for c in (0, 255, 100))
-                draw_centered_text(buffer, "ЖМИSPACE/→ОК", 118, confirm_color, scale=1)
-            else:
-                draw_centered_text(buffer, "← УД   →/SPACE ОК", 118, (120, 120, 140), scale=1)
+                # Flash effect
+                if self._flash_alpha > 0:
+                    buffer[:, :] = np.clip(
+                        buffer.astype(np.int16) + int(255 * self._flash_alpha),
+                        0, 255
+                    ).astype(np.uint8)
+                    draw_centered_text(buffer, "ФОТО!", 60, (50, 50, 50), scale=2)
 
         elif self.phase == ModePhase.PROCESSING:
             # Dramatic zodiac symbol reveal
@@ -674,25 +1000,42 @@ class ZodiacMode(BaseMode):
                 )
 
         elif self.phase == ModePhase.RESULT:
-            # Display zodiac sign and horoscope with pulsing effects
+            # Display portrait or horoscope based on result_view
+            if self._result_view == "image" and self._constellation_portrait:
+                # Portrait view
+                self._render_portrait(buffer)
 
-            # Symbol with glow - pulsing
-            pulse = 0.85 + 0.15 * math.sin(self._symbol_pulse)
-            symbol_color = tuple(int(c * pulse) for c in self._accent)
-            draw_centered_text(buffer, self._zodiac_symbol, 3, symbol_color, scale=3)
+                # Hint to toggle/print
+                if int(self._time_in_phase / 500) % 2 == 0:
+                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 118, (100, 200, 100), scale=1)
+                else:
+                    draw_centered_text(buffer, "◄ ТЕКСТ", 118, (100, 100, 120), scale=1)
+            else:
+                # Text view - Display zodiac sign and horoscope with pulsing effects
 
-            # Sign name with wave effect
-            draw_animated_text(buffer, self._zodiac_ru, 28, self._secondary, self._time_in_phase, TextEffect.WAVE, scale=2)
+                # Symbol with glow - pulsing
+                pulse = 0.85 + 0.15 * math.sin(self._symbol_pulse)
+                symbol_color = tuple(int(c * pulse) for c in self._accent)
+                draw_centered_text(buffer, self._zodiac_symbol, 3, symbol_color, scale=3)
 
-            # Horoscope text - smart wrapped and centered
-            draw_wrapped_text(
-                buffer, self._horoscope, 52, (255, 255, 255),
-                scale=1, max_lines=4, line_spacing=4
-            )
+                # Sign name with wave effect
+                draw_animated_text(buffer, self._zodiac_ru, 28, self._secondary, self._time_in_phase, TextEffect.WAVE, scale=2)
 
-            # Footer hint
-            if int(self._time_in_phase / 500) % 2 == 0:
-                draw_centered_text(buffer, "НАЖМИ ДЛЯ ВЫХОДА", 118, (80, 80, 100), scale=1)
+                # Horoscope text - smart wrapped and centered
+                draw_wrapped_text(
+                    buffer, self._horoscope, 52, (255, 255, 255),
+                    scale=1, max_lines=4, line_spacing=4
+                )
+
+                # Footer hint
+                if self._constellation_portrait:
+                    if int(self._time_in_phase / 600) % 2 == 0:
+                        draw_centered_text(buffer, "ФОТО ►", 118, (100, 150, 200), scale=1)
+                    else:
+                        draw_centered_text(buffer, "НАЖМИ", 118, (100, 100, 120), scale=1)
+                else:
+                    if int(self._time_in_phase / 500) % 2 == 0:
+                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 118, (100, 200, 100), scale=1)
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with smooth seamless scrolling."""
@@ -701,18 +1044,37 @@ class ZodiacMode(BaseMode):
 
         clear(buffer)
 
-        if self.phase in (ModePhase.INTRO, ModePhase.ACTIVE):
-            # Scrolling mystical text with rainbow effect
+        if self.phase == ModePhase.INTRO:
             render_ticker_animated(
-                buffer, "ЗОДИАК ОРАКУЛ - ВВЕДИ ДАТУ РОЖДЕНИЯ",
+                buffer, "ЗОДИАК ОРАКУЛ",
                 self._time_in_phase, self._secondary,
                 TickerEffect.RAINBOW_SCROLL, speed=0.025
             )
 
+        elif self.phase == ModePhase.ACTIVE:
+            if self._sub_phase == ZodiacPhase.DATE_INPUT:
+                render_ticker_animated(
+                    buffer, "ВВЕДИ ДАТУ РОЖДЕНИЯ",
+                    self._time_in_phase, self._secondary,
+                    TickerEffect.SPARKLE_SCROLL, speed=0.025
+                )
+            elif self._sub_phase == ZodiacPhase.CAMERA_PREP:
+                render_ticker_animated(
+                    buffer, f"КАМЕРА - {self._zodiac_ru}",
+                    self._time_in_phase, self._accent,
+                    TickerEffect.PULSE_SCROLL, speed=0.028
+                )
+            elif self._sub_phase == ZodiacPhase.CAMERA_CAPTURE:
+                render_ticker_animated(
+                    buffer, "ФОТО!",
+                    self._time_in_phase, self._accent,
+                    TickerEffect.PULSE_SCROLL, speed=0.03
+                )
+
         elif self.phase == ModePhase.PROCESSING:
             # Processing animation
             render_ticker_animated(
-                buffer, "ЧИТАЮ ЗВЁЗДЫ",
+                buffer, f"СОЗДАЮ ПОРТРЕТ - {self._zodiac_ru}",
                 self._time_in_phase, self._primary,
                 TickerEffect.PULSE_SCROLL, speed=0.03
             )
@@ -729,18 +1091,25 @@ class ZodiacMode(BaseMode):
     def get_lcd_text(self) -> str:
         """Get LCD text with zodiac symbols."""
         if self.phase == ModePhase.ACTIVE:
-            if self._input_buffer:
-                # Format date input nicely
-                dd = self._input_buffer[:2] if len(self._input_buffer) >= 2 else self._input_buffer + "_" * (2 - len(self._input_buffer))
-                mm = self._input_buffer[2:4] if len(self._input_buffer) >= 4 else self._input_buffer[2:] + "_" * (4 - len(self._input_buffer))
-                return f" ☆ {dd}.{mm} ☆ ".center(16)[:16]
-            return " ☆ ДД.ММ ☆ ".center(16)
+            if self._sub_phase == ZodiacPhase.DATE_INPUT:
+                if self._input_buffer:
+                    # Format date input nicely
+                    dd = self._input_buffer[:2] if len(self._input_buffer) >= 2 else self._input_buffer + "_" * (2 - len(self._input_buffer))
+                    mm = self._input_buffer[2:4] if len(self._input_buffer) >= 4 else self._input_buffer[2:] + "_" * (4 - len(self._input_buffer))
+                    return f" * {dd}.{mm} * ".center(16)[:16]
+                return " * ДД.ММ * ".center(16)
+            elif self._sub_phase == ZodiacPhase.CAMERA_PREP:
+                eye = "*" if int(self._time_in_phase / 300) % 2 == 0 else "o"
+                return f" {eye} КАМЕРА {eye} ".center(16)[:16]
+            elif self._sub_phase == ZodiacPhase.CAMERA_CAPTURE:
+                countdown = int(self._camera_countdown) + 1
+                return f" * ФОТО: {countdown} * ".center(16)[:16]
         elif self.phase == ModePhase.PROCESSING:
             # Animated star reading
-            stars = "★☆★☆★☆"
-            offset = int(self._time_in_phase / 200) % 3
-            return f" {stars[offset:offset+3]} ЧИТАЮ {stars[offset:offset+3]} "[:16]
+            dots = "-\\|/"
+            dot = dots[int(self._time_in_phase / 200) % 4]
+            return f" {dot} ПОРТРЕТ {dot} ".center(16)[:16]
         elif self.phase == ModePhase.RESULT:
             # Show zodiac symbol + name
             return f" {self._zodiac_symbol} {self._zodiac_ru} {self._zodiac_symbol} ".center(16)[:16]
-        return " ☆ ЗОДИАК ☆ ".center(16)[:16]
+        return " * ЗОДИАК * ".center(16)[:16]

@@ -80,6 +80,12 @@ class AutopsyMode(BaseMode):
         self._processing_text: str = "INIT SYSTEM..."
         self._ai_task: Optional[asyncio.Task] = None
 
+        # Result view state
+        self._result_view: str = "text"  # "text" or "image"
+        self._text_scroll_complete: bool = False
+        self._text_view_time: float = 0.0
+        self._scroll_duration: float = 0.0
+
         # Colors
         self._green = (0, 255, 50)
         self._dark_green = (0, 50, 10)
@@ -95,7 +101,11 @@ class AutopsyMode(BaseMode):
         self._id_code = "UNKNOWN"
         self._xray_image = None
         self._scan_line_y = 0.0
-        
+        self._result_view = "text"
+        self._text_scroll_complete = False
+        self._text_view_time = 0.0
+        self._scroll_duration = 0.0
+
         self._camera = create_camera(resolution=(640, 480))
         if self._camera.open():
             logger.info("Camera opened for Autopsy")
@@ -134,14 +144,52 @@ class AutopsyMode(BaseMode):
                 self._on_ai_complete()
 
         elif self.phase == ModePhase.RESULT:
-            if self._time_in_phase > 15000:
+            # Calculate scroll duration on first entry
+            if self._diagnosis and self._scroll_duration == 0:
+                from artifact.graphics.text_utils import calculate_scroll_duration, MAIN_DISPLAY_WIDTH
+                from artifact.graphics.fonts import load_font
+                font = load_font("cyrillic")
+                rect = (4, 28, MAIN_DISPLAY_WIDTH - 8, 72)
+                self._scroll_duration = calculate_scroll_duration(
+                    self._diagnosis, rect, font, scale=1, line_spacing=2, scroll_interval_ms=1600
+                )
+                self._scroll_duration = max(3000, self._scroll_duration + 2000)
+
+            # Track time in text view
+            if self._result_view == "text":
+                self._text_view_time += delta_ms
+                if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
+                    self._text_scroll_complete = True
+                    if self._xray_image:
+                        self._result_view = "image"
+
+            if self._time_in_phase > 45000:
                 self._finish()
 
     def on_input(self, event: Event) -> bool:
         if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.RESULT:
-                self._finish()
+                if self._result_view == "image" or not self._xray_image:
+                    self._finish()
+                    return True
+                else:
+                    if self._xray_image:
+                        self._result_view = "image"
+                        self._text_scroll_complete = True
+                    else:
+                        self._finish()
+                    return True
+
+        elif event.type == EventType.ARCADE_LEFT:
+            if self.phase == ModePhase.RESULT:
+                self._result_view = "text"
                 return True
+
+        elif event.type == EventType.ARCADE_RIGHT:
+            if self.phase == ModePhase.RESULT and self._xray_image:
+                self._result_view = "image"
+                return True
+
         return False
 
     def _start_scan(self) -> None:
@@ -238,7 +286,7 @@ class AutopsyMode(BaseMode):
 
     def render_main(self, buffer) -> None:
         from artifact.graphics.primitives import fill, draw_line, draw_rect
-        from artifact.graphics.text_utils import draw_centered_text, wrap_text
+        from artifact.graphics.text_utils import draw_centered_text, wrap_text, render_scrolling_text_area
 
         # Background - dark medical green
         fill(buffer, (0, 20, 5))
@@ -278,11 +326,83 @@ class AutopsyMode(BaseMode):
             draw_circle(buffer, 64, 40, r, self._green, filled=False)
 
         elif self._sub_phase == AutopsyPhase.RESULT:
-            draw_centered_text(buffer, self._id_code, 10, self._green)
-            lines = wrap_text(self._diagnosis, 18)
-            y = 30
-            for line in lines[:6]:
-                draw_centered_text(buffer, line, y, (200, 255, 200))
-                y += 12
-            
-            draw_centered_text(buffer, "PRINTING REPORT", 110, self._green)
+            if self._result_view == "image" and self._xray_image and self._xray_image.image_data:
+                # Image view - show X-ray
+                try:
+                    from PIL import Image
+                    from io import BytesIO
+                    import numpy as np
+
+                    img = Image.open(BytesIO(self._xray_image.image_data))
+                    img = img.convert("RGB")
+                    img = img.resize((120, 100), Image.Resampling.LANCZOS)
+                    img_array = np.array(img)
+                    buffer[5:105, 4:124] = img_array
+
+                    # Hint at bottom
+                    if int(self._time_in_phase / 500) % 2 == 0:
+                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
+                    else:
+                        draw_centered_text(buffer, "◄ ТЕКСТ", 112, (100, 100, 120), scale=1)
+                except Exception as e:
+                    self._result_view = "text"
+            else:
+                # Text view - diagnosis
+                draw_centered_text(buffer, self._id_code, 10, self._green)
+                render_scrolling_text_area(
+                    buffer,
+                    self._diagnosis,
+                    (4, 28, 120, 72),
+                    (200, 255, 200),
+                    self._text_view_time,  # Use text_view_time for scrolling
+                    scale=1,
+                    line_spacing=2,
+                    scroll_interval_ms=1600,
+                )
+
+                # Hint at bottom
+                if self._xray_image:
+                    if int(self._time_in_phase / 600) % 2 == 0:
+                        draw_centered_text(buffer, "СНИМОК ►", 110, (100, 150, 200), scale=1)
+                    else:
+                        draw_centered_text(buffer, "НАЖМИ", 110, (100, 100, 120), scale=1)
+                else:
+                    if int(self._time_in_phase / 600) % 2 == 0:
+                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 110, (100, 200, 100), scale=1)
+
+    def render_ticker(self, buffer) -> None:
+        """Render ticker display with phase-specific messages."""
+        from artifact.graphics.primitives import clear
+        from artifact.graphics.text_utils import draw_centered_text
+
+        clear(buffer)  # Always clear to prevent rainbow persistence
+
+        if self._sub_phase == AutopsyPhase.INTRO:
+            draw_centered_text(buffer, "ВСКРЫТИЕ", 2, self._green)
+        elif self._sub_phase == AutopsyPhase.SCAN_PREP:
+            draw_centered_text(buffer, "СКАН", 2, self._green)
+        elif self._sub_phase == AutopsyPhase.SCANNING:
+            pct = int((self._scan_line_y / 128) * 100)
+            draw_centered_text(buffer, f"СКАН {pct}%", 2, self._green)
+        elif self._sub_phase == AutopsyPhase.PROCESSING:
+            dots = "." * (int(self._time_in_phase / 400) % 4)
+            draw_centered_text(buffer, f"АНАЛИЗ{dots}", 2, self._green)
+        elif self._sub_phase == AutopsyPhase.RESULT:
+            draw_centered_text(buffer, self._id_code[:8], 2, self._green)
+
+    def get_lcd_text(self) -> str:
+        """Return LCD text based on current phase."""
+        if self._sub_phase == AutopsyPhase.INTRO:
+            return "  MED SCAN INIT "
+        elif self._sub_phase == AutopsyPhase.SCAN_PREP:
+            return "   STAND STILL  "
+        elif self._sub_phase == AutopsyPhase.SCANNING:
+            pct = int((self._scan_line_y / 128) * 100)
+            return f" SCANNING {pct:3d}% ".center(16)
+        elif self._sub_phase == AutopsyPhase.PROCESSING:
+            pct = int((self._time_in_phase / 8000) * 100)
+            pct = min(99, pct)
+            return f" ANALYZING {pct:2d}% ".center(16)
+        elif self._sub_phase == AutopsyPhase.RESULT:
+            return " SCAN COMPLETE  "
+        return "    AUTOPSY     "

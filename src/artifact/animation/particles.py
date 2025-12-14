@@ -320,9 +320,9 @@ class ParticleEmitter:
                     if dx * dx + dy * dy <= radius * radius:
                         px, py = cx + dx, cy + dy
                         if 0 <= px < w and 0 <= py < h:
-                            # Additive blending
+                            # Additive blending (cast to int to avoid uint8 overflow)
                             for i in range(3):
-                                current = buffer[py, px, i]
+                                current = int(buffer[py, px, i])
                                 buffer[py, px, i] = min(255, current + blended_color[i])
 
     def get_active_count(self) -> int:

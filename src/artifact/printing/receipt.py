@@ -75,6 +75,14 @@ class ReceiptGenerator:
             layout = self._create_roulette_receipt(data)
         elif mode_name == "quiz":
             layout = self._create_quiz_receipt(data)
+        elif mode_name == "squid_game":
+            layout = self._create_squid_game_receipt(data)
+        elif mode_name == "guess_me":
+            layout = self._create_guess_me_receipt(data)
+        elif mode_name == "roast":
+            layout = self._create_roast_receipt(data)
+        elif mode_name == "autopsy":
+            layout = self._create_autopsy_receipt(data)
         else:
             layout = self._create_generic_receipt(mode_name, data)
 
@@ -100,8 +108,8 @@ class ReceiptGenerator:
             layout.add_space(1)
         else:
             # Text logo fallback
-            layout.add_text("* ARTIFACT *", size=TextSize.LARGE, bold=True)
-            layout.add_text("Fortune Machine", size=TextSize.SMALL)
+            layout.add_text("* VNVNC *", size=TextSize.LARGE, bold=True)
+            layout.add_text("AI Fortune Machine", size=TextSize.SMALL)
 
         layout.add_separator("double")
         layout.add_space(1)
@@ -117,7 +125,7 @@ class ReceiptGenerator:
         layout.add_text(date_str, size=TextSize.SMALL)
 
         layout.add_space(1)
-        layout.add_text("artifact-arcade.com", size=TextSize.SMALL)
+        layout.add_text("vnvnc.ai", size=TextSize.SMALL)
         layout.add_space(2)
 
     def _create_fortune_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -185,10 +193,10 @@ class ReceiptGenerator:
         layout.add_separator("double")
         layout.add_space(1)
 
-        # Caricature image (if available)
+        # Caricature image (if available) - FULL WIDTH, NO FRAME
         caricature = data.get("caricature")
         if caricature:
-            layout.add_image(caricature, width=300, dither=True)
+            layout.add_image(caricature, width=384, dither=True)
             layout.add_space(1)
 
         layout.add_separator("stars")
@@ -278,6 +286,106 @@ class ReceiptGenerator:
         self._create_footer(layout)
         return layout
 
+    def _create_squid_game_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Receipt for Squid Game mode with sketch + result."""
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("SQUID GAME", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        result = data.get("result", "").upper()
+        if result:
+            layout.add_text(result, size=TextSize.MEDIUM, bold=True)
+
+        # Sketch photo - FULL WIDTH, NO FRAME
+        sketch = data.get("caricature") or data.get("sketch")
+        if sketch:
+            layout.add_space(1)
+            layout.add_image(sketch, width=384, dither=True)
+            layout.add_space(1)
+
+        coupon = data.get("coupon_code")
+        if coupon:
+            layout.add_separator("line")
+            layout.add_text(f"КОД: {coupon}", size=TextSize.LARGE, bold=True)
+            layout.add_text("Покажи бармену", size=TextSize.MEDIUM)
+        else:
+            layout.add_text("Фото твоего бега!", size=TextSize.MEDIUM)
+
+        reason = data.get("elimination_reason")
+        if reason:
+            layout.add_space(1)
+            layout.add_text(reason, size=TextSize.SMALL)
+
+        survived = data.get("survived_time")
+        if survived:
+            layout.add_text(f"Время: {survived}", size=TextSize.SMALL)
+
+        layout.add_space(1)
+        layout.add_separator("double")
+
+        self._create_footer(layout)
+        return layout
+
+    def _create_roast_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Roast mode."""
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("ПРОЖАРКА", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        # Doodle image - FULL WIDTH, NO FRAME
+        doodle = data.get("doodle") or data.get("caricature")
+        if doodle:
+            layout.add_image(doodle, width=384, dither=True)
+            layout.add_space(1)
+
+        # Roast text
+        roast_text = data.get("roast") or data.get("display_text") or ""
+        if roast_text:
+            layout.add_text(roast_text, size=TextSize.MEDIUM)
+
+        layout.add_space(1)
+        layout.add_separator("double")
+
+        self._create_footer(layout)
+        return layout
+
+    def _create_autopsy_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Autopsy mode."""
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("ДИАГНОЗ", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        # X-ray scan image - FULL WIDTH, NO FRAME
+        scan_image = data.get("scan_image") or data.get("caricature")
+        if scan_image:
+            layout.add_image(scan_image, width=384, dither=True)
+            layout.add_space(1)
+
+        # Subject ID
+        subject_id = data.get("id") or ""
+        if subject_id:
+            layout.add_text(f"ID: {subject_id}", size=TextSize.MEDIUM, bold=True)
+
+        # Diagnosis text
+        diagnosis = data.get("diagnosis") or data.get("display_text") or ""
+        if diagnosis:
+            layout.add_text(diagnosis, size=TextSize.MEDIUM)
+
+        layout.add_space(1)
+        layout.add_separator("double")
+
+        self._create_footer(layout)
+        return layout
+
     def _create_generic_receipt(self, mode_name: str, data: Dict[str, Any]) -> ReceiptLayout:
         """Create a generic receipt for any mode."""
         layout = ReceiptLayout()
@@ -295,6 +403,34 @@ class ReceiptGenerator:
 
         layout.add_space(1)
         layout.add_separator("line")
+
+        self._create_footer(layout)
+        return layout
+
+    def _create_guess_me_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Guess Me mode."""
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("WHO AM I?", size=TextSize.LARGE, bold=True)
+        layout.add_separator("line")
+        layout.add_space(1)
+
+        title = data.get("title") or "Загадка"
+        prediction = data.get("prediction") or ""
+        layout.add_text(title, size=TextSize.MEDIUM, bold=True)
+        if prediction:
+            layout.add_space(1)
+            layout.add_text(prediction, size=TextSize.MEDIUM)
+
+        # Caricature - FULL WIDTH, NO FRAME
+        caricature = data.get("caricature")
+        if caricature:
+            layout.add_space(1)
+            layout.add_image(caricature, width=384, dither=True)
+
+        layout.add_space(1)
+        layout.add_separator("double")
 
         self._create_footer(layout)
         return layout

@@ -1,16 +1,39 @@
-"""Roulette mode - Spinning wheel of fortune.
+"""Roulette mode - Spinning wheel of fortune with winner portrait.
 
 A classic arcade-style spinning wheel with various outcomes.
 Uses arcade visual style with flashing lights and dramatic spin animation.
+After winning, takes photo and generates winner portrait.
 """
 
-from typing import List, Tuple
+import asyncio
+import logging
+from typing import List, Tuple, Optional
 import random
 import math
+import numpy as np
 
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.ai.client import get_gemini_client, GeminiModel
+from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
+from artifact.simulator.mock_hardware.camera import (
+    SimulatorCamera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+)
+
+logger = logging.getLogger(__name__)
+
+
+class RoulettePhase:
+    """Sub-phases within the Roulette mode."""
+    INTRO = "intro"
+    READY = "ready"           # Waiting for spin
+    SPINNING = "spinning"     # Wheel spinning
+    WIN_REVEAL = "win_reveal" # Show winning segment
+    CAMERA_PREP = "camera_prep"
+    CAMERA_CAPTURE = "capture"
+    GENERATING = "generating" # AI portrait generation
+    RESULT = "result"         # Final result with portrait
 
 
 # Party wheel segments - more exciting prizes and dares!
@@ -153,13 +176,16 @@ LEGACY_OUTCOMES = {
 
 
 class RouletteMode(BaseMode):
-    """Roulette mode - Spin the wheel of fortune.
+    """Roulette mode - Spin the wheel of fortune with winner portrait.
 
     Flow:
     1. Intro: Wheel appears with lights animation
     2. Active: "Press to spin" prompt
     3. Processing: Wheel spinning animation
-    4. Result: Display winning segment
+    4. Win Reveal: Display winning segment
+    5. Camera: Take winner photo
+    6. AI Generation: Create winner portrait
+    7. Result: Display portrait and prize
     """
 
     name = "roulette"
@@ -167,12 +193,30 @@ class RouletteMode(BaseMode):
     description = "Крути колесо судьбы"
     icon = "O"
     style = "arcade"
-    requires_camera = False
-    requires_ai = False
-    estimated_duration = 20
+    requires_camera = True
+    requires_ai = True
+    estimated_duration = 35
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
+
+        # Sub-phase tracking
+        self._sub_phase = RoulettePhase.INTRO
+
+        # AI services
+        self._gemini_client = get_gemini_client()
+        self._caricature_service = CaricatureService()
+
+        # Camera state
+        self._camera: Optional[SimulatorCamera] = None
+        self._camera_frame: Optional[bytes] = None
+        self._photo_data: Optional[bytes] = None
+        self._camera_countdown: float = 0.0
+        self._camera_flash: float = 0.0
+
+        # AI results
+        self._winner_portrait: Optional[Caricature] = None
+        self._ai_task: Optional[asyncio.Task] = None
 
         # Wheel state
         self._wheel_angle: float = 0.0
@@ -185,6 +229,7 @@ class RouletteMode(BaseMode):
         self._result_segment: str = ""
         self._result_outcome: str = ""
         self._result_rarity: int = 1
+        self._display_mode: int = 0  # 0 = portrait, 1 = text
 
         # Animation
         self._light_phase: float = 0.0
@@ -205,18 +250,37 @@ class RouletteMode(BaseMode):
 
     def on_enter(self) -> None:
         """Initialize roulette mode."""
+        self._sub_phase = RoulettePhase.INTRO
         self._wheel_angle = random.random() * 360
         self._wheel_velocity = 0.0
         self._spinning = False
         self._result_segment = ""
         self._result_outcome = ""
         self._result_rarity = 1
+        self._display_mode = 0
         self._flash_alpha = 0.0
         self._pulse_phase = 0.0
         self._shake_amount = 0.0
         self._glow_intensity = 0.0
         self._celebration_time = 0.0
         self._click_cooldown = 0.0
+
+        # Reset camera state
+        self._photo_data = None
+        self._camera_frame = None
+        self._camera_countdown = 0.0
+        self._camera_flash = 0.0
+
+        # Reset AI state
+        self._winner_portrait = None
+        self._ai_task = None
+
+        # Initialize camera
+        self._camera = create_camera(resolution=(640, 480))
+        if self._camera.open():
+            logger.info("Camera opened for Roulette mode")
+        else:
+            logger.warning("Could not open camera, using placeholder")
 
         # Setup particles - multiple emitters for layered effects
         sparkle_config = ParticlePresets.sparkle(x=64, y=64)
@@ -231,6 +295,7 @@ class RouletteMode(BaseMode):
         self._particles.add_emitter("fire", fire_config)
 
         self.change_phase(ModePhase.INTRO)
+        logger.info("Roulette mode entered")
 
     def on_update(self, delta_ms: float) -> None:
         """Update roulette mode."""
@@ -249,39 +314,81 @@ class RouletteMode(BaseMode):
         # Click cooldown
         self._click_cooldown = max(0, self._click_cooldown - delta_ms)
 
+        # Update camera preview during camera phases
+        if self._sub_phase in (RoulettePhase.CAMERA_PREP, RoulettePhase.CAMERA_CAPTURE):
+            self._update_camera_preview()
+
         if self.phase == ModePhase.INTRO:
             # Longer intro with glow fade-in - 2.5 seconds
             self._glow_intensity = min(1.0, self._time_in_phase / 1500)
             if self._time_in_phase > 2500:
+                self._sub_phase = RoulettePhase.READY
                 self.change_phase(ModePhase.ACTIVE)
 
         elif self.phase == ModePhase.ACTIVE:
-            # Pulsing glow effect to attract attention
-            self._glow_intensity = 0.5 + 0.5 * math.sin(self._pulse_phase)
+            if self._sub_phase == RoulettePhase.READY:
+                # Pulsing glow effect to attract attention
+                self._glow_intensity = 0.5 + 0.5 * math.sin(self._pulse_phase)
+
+            elif self._sub_phase == RoulettePhase.CAMERA_PREP:
+                # Camera prep for 2 seconds
+                if self._time_in_phase > 2000:
+                    self._start_camera_capture()
+
+            elif self._sub_phase == RoulettePhase.CAMERA_CAPTURE:
+                # Countdown animation
+                self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
+
+                # Capture when countdown reaches 0
+                if self._camera_countdown <= 0 and self._photo_data is None:
+                    self._do_camera_capture()
+                    self._camera_flash = 1.0
+
+                # Flash effect after capture
+                if self._time_in_phase > 3000:
+                    self._camera_flash = max(0, 1.0 - (self._time_in_phase - 3000) / 500)
+
+                    if self._time_in_phase > 3500:
+                        self._start_ai_generation()
 
         elif self.phase == ModePhase.PROCESSING:
-            # Update wheel spin
-            if self._spinning:
-                self._update_spin(delta_ms)
-                # Increase glow based on speed
-                self._glow_intensity = min(1.0, abs(self._wheel_velocity) / 800)
+            if self._sub_phase == RoulettePhase.SPINNING:
+                # Update wheel spin
+                if self._spinning:
+                    self._update_spin(delta_ms)
+                    # Increase glow based on speed
+                    self._glow_intensity = min(1.0, abs(self._wheel_velocity) / 800)
+
+            elif self._sub_phase == RoulettePhase.GENERATING:
+                # Check AI task progress
+                if self._ai_task:
+                    if self._ai_task.done():
+                        self._on_ai_complete()
 
         elif self.phase == ModePhase.RESULT:
-            # Flash animation decay
-            self._flash_alpha = max(0, self._flash_alpha - delta_ms / 800)
+            if self._sub_phase == RoulettePhase.WIN_REVEAL:
+                # Flash animation decay
+                self._flash_alpha = max(0, self._flash_alpha - delta_ms / 800)
 
-            # Celebration time for rare wins
-            self._celebration_time += delta_ms
-            if self._result_rarity >= 3:  # Rare or legendary
-                # Continuous particle bursts
-                if int(self._celebration_time / 300) > int((self._celebration_time - delta_ms) / 300):
-                    fire = self._particles.get_emitter("fire")
-                    if fire:
-                        fire.burst(15)
+                # Celebration for 3 seconds then move to camera
+                self._celebration_time += delta_ms
+                if self._result_rarity >= 3:  # Rare or legendary
+                    # Continuous particle bursts
+                    if int(self._celebration_time / 300) > int((self._celebration_time - delta_ms) / 300):
+                        fire = self._particles.get_emitter("fire")
+                        if fire:
+                            fire.burst(15)
 
-            # Auto-complete after 15 seconds (more time to celebrate)
-            if self._time_in_phase > 15000:
-                self._finish()
+                # After win reveal, move to camera
+                if self._time_in_phase > 3000:
+                    self._sub_phase = RoulettePhase.CAMERA_PREP
+                    self.change_phase(ModePhase.ACTIVE)
+                    self._time_in_phase = 0
+
+            elif self._sub_phase == RoulettePhase.RESULT:
+                # Final result with portrait - auto-complete after 20 seconds
+                if self._time_in_phase > 20000:
+                    self._finish()
 
     def _update_spin(self, delta_ms: float) -> None:
         """Update spinning wheel physics with click effects."""
@@ -353,16 +460,38 @@ class RouletteMode(BaseMode):
                 sparkles.burst(30)
             self._shake_amount = 0.5
 
+        # Move to win reveal phase (will transition to camera after)
+        self._sub_phase = RoulettePhase.WIN_REVEAL
         self.change_phase(ModePhase.RESULT)
+        self._time_in_phase = 0
+
+        logger.info(f"Roulette spin complete: {self._result_segment} (rarity {self._result_rarity})")
 
     def on_input(self, event: Event) -> bool:
         """Handle input."""
         if event.type == EventType.BUTTON_PRESS:
-            if self.phase == ModePhase.ACTIVE:
+            if self.phase == ModePhase.ACTIVE and self._sub_phase == RoulettePhase.READY:
                 self._start_spin()
                 return True
-            elif self.phase == ModePhase.RESULT:
-                self._finish()
+            elif self.phase == ModePhase.RESULT and self._sub_phase == RoulettePhase.RESULT:
+                # Toggle display mode or finish
+                if self._winner_portrait:
+                    self._display_mode = (self._display_mode + 1) % 2
+                    if self._display_mode == 0:
+                        # After full cycle, finish
+                        self._finish()
+                else:
+                    self._finish()
+                return True
+
+        elif event.type == EventType.ARCADE_LEFT:
+            if self.phase == ModePhase.RESULT and self._sub_phase == RoulettePhase.RESULT and self._winner_portrait:
+                self._display_mode = 0  # Portrait view
+                return True
+
+        elif event.type == EventType.ARCADE_RIGHT:
+            if self.phase == ModePhase.RESULT and self._sub_phase == RoulettePhase.RESULT and self._winner_portrait:
+                self._display_mode = 1  # Text view
                 return True
 
         return False
@@ -372,6 +501,7 @@ class RouletteMode(BaseMode):
         # Random initial velocity (fast enough for drama)
         self._wheel_velocity = random.uniform(800, 1200)
         self._spinning = True
+        self._sub_phase = RoulettePhase.SPINNING
 
         # Burst particles
         sparkles = self._particles.get_emitter("sparkles")
@@ -379,11 +509,162 @@ class RouletteMode(BaseMode):
             sparkles.burst(30)
 
         self.change_phase(ModePhase.PROCESSING)
+        logger.info("Roulette wheel spinning")
 
     def on_exit(self) -> None:
         """Cleanup."""
+        # Cancel any pending AI task
+        if self._ai_task and not self._ai_task.done():
+            self._ai_task.cancel()
+
+        # Close camera
+        if self._camera:
+            self._camera.close()
+            self._camera = None
+
         self._particles.clear_all()
         self.stop_animations()
+
+    def _update_camera_preview(self) -> None:
+        """Update the live camera preview frame with dithering."""
+        if not self._camera or not self._camera.is_open:
+            return
+
+        try:
+            frame = self._camera.capture_frame()
+            if frame is not None and frame.size > 0:
+                dithered = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=120)
+                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+        except Exception as e:
+            logger.warning(f"Camera preview update error: {e}")
+            self._camera_frame = None
+
+    def _start_camera_capture(self) -> None:
+        """Start the camera capture sequence."""
+        self._sub_phase = RoulettePhase.CAMERA_CAPTURE
+        self._time_in_phase = 0
+        self._camera_countdown = 3.0
+        logger.info("Roulette camera capture started - countdown begins")
+
+    def _do_camera_capture(self) -> None:
+        """Actually capture the photo from camera."""
+        if self._camera and self._camera.is_open:
+            self._photo_data = self._camera.capture_jpeg(quality=90)
+            if self._photo_data:
+                logger.info(f"Roulette captured winner photo: {len(self._photo_data)} bytes")
+            else:
+                logger.warning("Failed to capture photo in Roulette mode")
+        else:
+            logger.warning("Camera not available for Roulette capture")
+            self._photo_data = None
+
+    def _start_ai_generation(self) -> None:
+        """Start AI processing for winner portrait."""
+        self._sub_phase = RoulettePhase.GENERATING
+        self.change_phase(ModePhase.PROCESSING)
+
+        # Start async AI task for portrait generation
+        self._ai_task = asyncio.create_task(self._generate_winner_portrait())
+
+        # Burst particles
+        sparkles = self._particles.get_emitter("sparkles")
+        if sparkles:
+            sparkles.burst(50)
+
+        logger.info("Roulette winner portrait generation started")
+
+    async def _generate_winner_portrait(self) -> None:
+        """Generate winner portrait using AI."""
+        try:
+            if self._photo_data:
+                self._winner_portrait = await self._caricature_service.generate_caricature(
+                    reference_photo=self._photo_data,
+                    style=CaricatureStyle.ROULETTE,
+                    personality_context=f"Выиграл: {self._result_segment} - {self._result_outcome}",
+                )
+                if self._winner_portrait:
+                    logger.info("Roulette winner portrait generated successfully")
+                else:
+                    logger.warning("Roulette winner portrait generation returned None")
+            else:
+                logger.warning("No photo data for Roulette portrait generation")
+                self._winner_portrait = None
+        except Exception as e:
+            logger.error(f"Roulette portrait generation failed: {e}")
+            self._winner_portrait = None
+
+    def _on_ai_complete(self) -> None:
+        """Handle completion of AI processing."""
+        self._sub_phase = RoulettePhase.RESULT
+        self.change_phase(ModePhase.RESULT)
+        self._time_in_phase = 0
+
+        # Start with portrait view if available
+        self._display_mode = 0 if self._winner_portrait else 1
+
+        # Burst particles for reveal
+        sparkles = self._particles.get_emitter("sparkles")
+        fire = self._particles.get_emitter("fire")
+        if sparkles:
+            sparkles.burst(80)
+        if fire:
+            fire.burst(40)
+
+        logger.info("Roulette AI complete, entering final result phase")
+
+    def _render_camera_preview(self, buffer) -> None:
+        """Render the camera preview to buffer."""
+        try:
+            if self._camera_frame is not None and isinstance(self._camera_frame, np.ndarray):
+                if self._camera_frame.shape == buffer.shape:
+                    np.copyto(buffer, self._camera_frame)
+        except Exception as e:
+            logger.debug(f"Camera frame render error: {e}")
+
+    def _render_portrait(self, buffer) -> None:
+        """Render the AI-generated winner portrait."""
+        from artifact.graphics.primitives import draw_rect
+        from artifact.graphics.text_utils import draw_centered_text
+        from io import BytesIO
+
+        if not self._winner_portrait:
+            return
+
+        try:
+            from PIL import Image
+
+            img = Image.open(BytesIO(self._winner_portrait.image_data))
+            img = img.convert("RGB")
+
+            display_size = 100
+            img = img.resize((display_size, display_size), Image.Resampling.NEAREST)
+
+            x_offset = (128 - display_size) // 2
+            y_offset = 5
+
+            for y in range(display_size):
+                for x in range(display_size):
+                    bx = x_offset + x
+                    by = y_offset + y
+                    if 0 <= bx < 128 and 0 <= by < 128:
+                        pixel = img.getpixel((x, y))
+                        buffer[by, bx] = pixel
+
+            # Border with gold
+            draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, self._primary, filled=False)
+
+            # Label with win result
+            draw_centered_text(buffer, self._result_segment, 112, self._primary, scale=1)
+
+        except Exception as e:
+            logger.warning(f"Failed to render winner portrait: {e}")
+
+    def _get_segment_color(self, segment_name: str) -> Tuple[int, int, int]:
+        """Get the color for a wheel segment by name."""
+        for name_ru, symbol, color, rarity in WHEEL_SEGMENTS:
+            if name_ru == segment_name:
+                return color
+        return (255, 255, 255)  # Default white
 
     def _finish(self) -> None:
         """Complete the mode."""
@@ -397,6 +678,8 @@ class RouletteMode(BaseMode):
             print_data={
                 "result": self._result_segment,
                 "outcome": self._result_outcome,
+                "rarity": self._result_rarity,
+                "portrait": self._winner_portrait.image_data if self._winner_portrait else None,
                 "category": "fortune_wheel",
                 "type": "roulette"
             }
@@ -405,9 +688,85 @@ class RouletteMode(BaseMode):
 
     def render_main(self, buffer) -> None:
         """Render main display with fullscreen wheel."""
-        from artifact.graphics.primitives import fill, draw_circle, draw_line
+        from artifact.graphics.primitives import fill, draw_circle, draw_line, draw_rect
         from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
 
+        # Camera phases - show camera preview instead of wheel
+        if self._sub_phase == RoulettePhase.CAMERA_PREP:
+            self._render_camera_preview(buffer)
+            draw_centered_text(buffer, "УЛЫБНИСЬ!", 10, self._primary, scale=1)
+            draw_centered_text(buffer, "ПОБЕДИТЕЛЬ", 100, self._secondary, scale=2)
+            self._particles.render(buffer)
+            return
+
+        if self._sub_phase == RoulettePhase.CAMERA_CAPTURE:
+            self._render_camera_preview(buffer)
+
+            # Countdown number
+            if self._camera_countdown > 0:
+                countdown_num = str(int(self._camera_countdown) + 1)
+                scale = 4 + int((self._camera_countdown % 1) * 2)
+                draw_centered_text(buffer, countdown_num, 45, (255, 255, 255), scale=scale)
+
+                # Progress ring
+                progress = 1.0 - (self._camera_countdown % 1)
+                for angle_deg in range(0, int(360 * progress), 10):
+                    rad = math.radians(angle_deg - 90)
+                    px = int(64 + 45 * math.cos(rad))
+                    py = int(64 + 45 * math.sin(rad))
+                    draw_circle(buffer, px, py, 2, self._primary)
+
+            # Flash effect
+            if self._camera_flash > 0:
+                buffer[:, :] = np.clip(
+                    buffer.astype(np.int16) + int(255 * self._camera_flash),
+                    0, 255
+                ).astype(np.uint8)
+                draw_centered_text(buffer, "ФОТО!", 60, (50, 50, 50), scale=2)
+
+            self._particles.render(buffer)
+            return
+
+        # AI generation phase
+        if self._sub_phase == RoulettePhase.GENERATING:
+            fill(buffer, self._background)
+            draw_centered_text(buffer, "СОЗДАЮ", 35, self._primary, scale=2)
+            draw_centered_text(buffer, "ПОРТРЕТ", 60, self._secondary, scale=2)
+
+            # Spinning animation
+            dots_count = int(self._time_in_phase / 200) % 4
+            draw_centered_text(buffer, "." * dots_count, 90, (255, 255, 255), scale=2)
+
+            self._particles.render(buffer)
+            return
+
+        # Final result phase with portrait toggle
+        if self._sub_phase == RoulettePhase.RESULT:
+            fill(buffer, self._background)
+
+            if self._display_mode == 0 and self._winner_portrait:
+                # Portrait view
+                self._render_portrait(buffer)
+                if int(self._time_in_phase / 600) % 2 == 0:
+                    draw_centered_text(buffer, "← →ТЕКСТ  ЖМИВЫХОД", 118, (80, 80, 100), scale=1)
+            else:
+                # Text view - show prize
+                draw_centered_text(buffer, self._result_segment, 30, self._primary, scale=2)
+                stars = "★" * self._result_rarity
+                draw_centered_text(buffer, stars, 55, (255, 215, 0), scale=2)
+                draw_centered_text(buffer, self._result_outcome[:20], 85, (255, 255, 255), scale=1)
+
+                if self._winner_portrait:
+                    if int(self._time_in_phase / 600) % 2 == 0:
+                        draw_centered_text(buffer, "← ФОТО  ЖМИВЫХОД", 118, (80, 80, 100), scale=1)
+                else:
+                    if int(self._time_in_phase / 500) % 2 == 0:
+                        draw_centered_text(buffer, "НАЖМИ ДЛЯ ВЫХОДА", 118, (80, 80, 100), scale=1)
+
+            self._particles.render(buffer)
+            return
+
+        # Standard wheel rendering for other phases
         # Background
         fill(buffer, self._background)
 
@@ -434,18 +793,13 @@ class RouletteMode(BaseMode):
         self._draw_wheel(buffer, cx, cy, wheel_radius, alpha)
 
         # Draw pointer at the TOP (12 o'clock)
-        # Wheel is rendered, now pointer overlays it
-        # Tip at (64, 4), pointing down to (64, 14)
         self._draw_pointer(buffer, 64, 0)
 
-        # Result Overlay
-        if self.phase == ModePhase.RESULT:
-            # Result text over the wheel with shadow/bg
-            # Semi-transparent bar
-            from artifact.graphics.primitives import draw_rect
+        # Win Reveal Overlay
+        if self._sub_phase == RoulettePhase.WIN_REVEAL:
             bar_height = 30
             bar_y = 49
-            
+
             # Dark transparent bg for readability
             for y in range(bar_y, bar_y + bar_height):
                 for x in range(0, 128):
@@ -455,7 +809,7 @@ class RouletteMode(BaseMode):
             if self._flash_alpha > 0:
                 segment_color = self._get_segment_color(self._result_segment)
                 draw_rect(buffer, 0, bar_y, 128, bar_height, segment_color, filled=False)
-            
+
             # Text
             draw_centered_text(buffer, self._result_segment, 55, (255, 255, 255), scale=1)
             # Rarity stars
@@ -524,56 +878,67 @@ class RouletteMode(BaseMode):
         buffer[y, x] = outline
 
     def render_ticker(self, buffer) -> None:
-        """Render ticker with STATIC instructions and arrows."""
+        """Render ticker with phase-specific messages."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.text_utils import draw_centered_text, TickerEffect, TextEffect
+        from artifact.graphics.text_utils import draw_centered_text, render_ticker_animated, TickerEffect
 
-        clear(buffer) # Black background
-        
-        # Static text centered
-        # "LOOK HERE" with arrows pointing down to screen? 
-        # Or arrows pointing up to wheel?
-        # Assuming ticker is below screen, "LOOK UP" or just "LOOK HERE"
-        
-        if self.phase == ModePhase.ACTIVE:
-            # Arrows pointing UP to the screen
-            # ^^^ LOOK HERE ^^^
-            
-            # Blink arrows
-            if int(self._time_in_phase / 500) % 2 == 0:
-                 draw_centered_text(buffer, "▲ LOOK HERE ▲", 2, self._secondary)
-            else:
-                 draw_centered_text(buffer, "  LOOK HERE  ", 2, self._secondary)
-                 
+        clear(buffer)
+
+        if self.phase == ModePhase.INTRO:
+            draw_centered_text(buffer, "▲ РУЛЕТКА ▲", 2, self._primary)
+
+        elif self.phase == ModePhase.ACTIVE:
+            if self._sub_phase == RoulettePhase.READY:
+                # Blink arrows
+                if int(self._time_in_phase / 500) % 2 == 0:
+                    draw_centered_text(buffer, "▲ КРУТИ ▲", 2, self._secondary)
+                else:
+                    draw_centered_text(buffer, "  КРУТИ  ", 2, self._secondary)
+            elif self._sub_phase == RoulettePhase.CAMERA_PREP:
+                draw_centered_text(buffer, "▲ КАМЕРА ▲", 2, self._primary)
+            elif self._sub_phase == RoulettePhase.CAMERA_CAPTURE:
+                countdown = int(self._camera_countdown) + 1
+                draw_centered_text(buffer, f"▲ ФОТО: {countdown} ▲", 2, self._primary)
+
         elif self.phase == ModePhase.PROCESSING:
-             draw_centered_text(buffer, "▲ SPINNING ▲", 2, self._primary)
-             
+            if self._sub_phase == RoulettePhase.SPINNING:
+                draw_centered_text(buffer, "▲ КРУЧУ ▲", 2, self._primary)
+            elif self._sub_phase == RoulettePhase.GENERATING:
+                draw_centered_text(buffer, "▲ ПОРТРЕТ ▲", 2, self._primary)
+
         elif self.phase == ModePhase.RESULT:
-             draw_centered_text(buffer, f"▲ {self._result_outcome[:10]} ▲", 2, (0, 255, 0))
-             
-        elif self.phase == ModePhase.INTRO:
-             draw_centered_text(buffer, "▲ ROULETTE ▲", 2, self._primary)
+            if self._sub_phase == RoulettePhase.WIN_REVEAL:
+                draw_centered_text(buffer, f"▲ {self._result_segment[:8]} ▲", 2, (0, 255, 0))
+            else:
+                # Final result
+                draw_centered_text(buffer, f"▲ {self._result_segment[:8]} ▲", 2, self._primary)
 
     def get_lcd_text(self) -> str:
-        """Get LCD text with spinning animation."""
+        """Get LCD text with phase-specific animation."""
         if self.phase == ModePhase.ACTIVE:
-            # Animated prompt
-            frame = int(self._time_in_phase / 300) % 4
-            arrows = ["◄►", "◄►", "►◄", "►◄"]
-            return f" {arrows[frame]} КРУТИ {arrows[frame]} "[:16]
+            if self._sub_phase == RoulettePhase.READY:
+                frame = int(self._time_in_phase / 300) % 4
+                arrows = ["<>", "<>", "><", "><"]
+                return f" {arrows[frame]} КРУТИ {arrows[frame]} "[:16]
+            elif self._sub_phase == RoulettePhase.CAMERA_PREP:
+                eye = "*" if int(self._time_in_phase / 300) % 2 == 0 else "o"
+                return f" {eye} КАМЕРА {eye} ".center(16)[:16]
+            elif self._sub_phase == RoulettePhase.CAMERA_CAPTURE:
+                countdown = int(self._camera_countdown) + 1
+                return f" * ФОТО: {countdown} * ".center(16)[:16]
         elif self.phase == ModePhase.PROCESSING:
-            # Spinning animation
-            spinner = "◐◓◑◒"
-            spin = spinner[int(self._time_in_phase / 100) % 4]
-            return f" {spin} КРУЧУ {spin} "[:16]
+            if self._sub_phase == RoulettePhase.SPINNING:
+                spinner = "-\\|/"
+                spin = spinner[int(self._time_in_phase / 100) % 4]
+                return f" {spin} КРУЧУ {spin} ".center(16)[:16]
+            elif self._sub_phase == RoulettePhase.GENERATING:
+                dots = "-\\|/"
+                dot = dots[int(self._time_in_phase / 200) % 4]
+                return f" {dot} ПОРТРЕТ {dot} ".center(16)[:16]
         elif self.phase == ModePhase.RESULT:
-            # Show prize with emoji
-            segment_info = None
-            for name_ru, symbol, _ in WHEEL_SEGMENTS:
-                if name_ru == self._result_segment:
-                    segment_info = (name_ru, symbol)
-                    break
-            if segment_info:
-                return f"►{segment_info[0][:10]}◄".center(16)[:16]
-            return f"►{self._result_segment[:10]}◄".center(16)[:16]
-        return " ◆ РУЛЕТКА ◆ ".center(16)
+            if self._sub_phase == RoulettePhase.WIN_REVEAL:
+                return f">{self._result_segment[:10]}<".center(16)[:16]
+            else:
+                # Final result
+                return f"*{self._result_segment[:10]}*".center(16)[:16]
+        return " * РУЛЕТКА * ".center(16)[:16]

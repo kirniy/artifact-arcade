@@ -36,7 +36,7 @@ class IdleScene(Enum):
     """Available idle scenes."""
     MYSTICAL_EYE = auto()
     COSMIC_PORTAL = auto()
-    FORTUNE_CARDS = auto()
+    CAMERA_MIRROR = auto()  # Replaced FORTUNE_CARDS with camera effects
     MATRIX_RAIN = auto()
 
 
@@ -64,7 +64,10 @@ class RotatingIdleAnimation:
     def __init__(self):
         self.state = SceneState()
         self.scenes = list(IdleScene)
+        # Randomize scene order on boot
+        random.shuffle(self.scenes)
         self.scene_index = 0
+        self.state.current_scene = self.scenes[0]
 
         # Manual control
         self.manual_mode = False  # True when user has switched scenes
@@ -78,7 +81,7 @@ class RotatingIdleAnimation:
         # Scene-specific state
         self._init_mystical_eye()
         self._init_cosmic_portal()
-        self._init_fortune_cards()
+        self._init_camera_mirror()
         self._init_matrix_rain()
 
         # Colors
@@ -122,26 +125,24 @@ class RotatingIdleAnimation:
                 random.uniform(0.5, 2.0)
             ])
 
-    def _init_fortune_cards(self):
-        """Initialize fortune cards scene state."""
-        self.cards: List[dict] = []
-        self.card_symbols = ["★", "☽", "☀", "◆", "♠", "♥", "◇", "✦"]
-        self._generate_cards()
-        self.reveal_card = -1
-        self.reveal_time = 0.0
-
-    def _generate_cards(self):
-        """Generate card positions and properties."""
-        self.cards = []
-        for i in range(5):
-            self.cards.append({
-                "x": 20 + i * 22,
-                "y": 55,
-                "rotation": 0.0,
-                "flip": 0.0,  # 0 = back, 1 = front
-                "symbol": random.choice(self.card_symbols),
-                "hover": 0.0,
-            })
+    def _init_camera_mirror(self):
+        """Initialize camera mirror scene state."""
+        self._camera = None
+        self._camera_frame = None
+        self._camera_effect = "normal"  # normal, negative, blur, edge, pixelate
+        self._effect_time = 0.0
+        self._effect_index = 0
+        self._effects = ["normal", "negative", "edge", "pixelate", "scanline"]
+        self._glitch_lines: List[int] = []
+        self._scanline_offset = 0.0
+        self._frame_buffer = None
+        # Try to open camera
+        try:
+            from artifact.simulator.mock_hardware.camera import create_camera
+            self._camera = create_camera(resolution=(128, 128))
+            self._camera.open()
+        except Exception:
+            self._camera = None
 
     def _init_matrix_rain(self):
         """Initialize matrix rain scene state."""
@@ -195,8 +196,8 @@ class RotatingIdleAnimation:
             self._update_mystical_eye(delta_ms)
         elif scene == IdleScene.COSMIC_PORTAL:
             self._update_cosmic_portal(delta_ms)
-        elif scene == IdleScene.FORTUNE_CARDS:
-            self._update_fortune_cards(delta_ms)
+        elif scene == IdleScene.CAMERA_MIRROR:
+            self._update_camera_mirror(delta_ms)
         elif scene == IdleScene.MATRIX_RAIN:
             self._update_matrix_rain(delta_ms)
 
@@ -226,7 +227,7 @@ class RotatingIdleAnimation:
         names = {
             IdleScene.MYSTICAL_EYE: "ГЛАЗ",
             IdleScene.COSMIC_PORTAL: "ПОРТАЛ",
-            IdleScene.FORTUNE_CARDS: "КАРТЫ",
+            IdleScene.CAMERA_MIRROR: "ЗЕРКАЛО",
             IdleScene.MATRIX_RAIN: "МАТРИЦА",
         }
         return names.get(self.state.current_scene, "СЦЕНА")
@@ -234,9 +235,17 @@ class RotatingIdleAnimation:
     def _on_scene_enter(self):
         """Called when entering a new scene."""
         scene = self.state.current_scene
-        if scene == IdleScene.FORTUNE_CARDS:
-            self._generate_cards()
-            self.reveal_card = -1
+        if scene == IdleScene.CAMERA_MIRROR:
+            self._effect_index = 0
+            self._effect_time = 0.0
+            # Re-open camera if needed
+            if self._camera is None:
+                try:
+                    from artifact.simulator.mock_hardware.camera import create_camera
+                    self._camera = create_camera(resolution=(128, 128))
+                    self._camera.open()
+                except Exception:
+                    pass
         elif scene == IdleScene.MATRIX_RAIN:
             self._generate_columns()
         elif scene == IdleScene.COSMIC_PORTAL:
@@ -291,28 +300,36 @@ class RotatingIdleAnimation:
                 star[2] = 64
                 star[3] = random.uniform(0.3, 1.0)
 
-    def _update_fortune_cards(self, delta_ms: float):
-        """Update fortune cards animation."""
+    def _update_camera_mirror(self, delta_ms: float):
+        """Update camera mirror animation with effects."""
         t = self.state.scene_time
 
-        # Hover animation for each card
-        for i, card in enumerate(self.cards):
-            card["hover"] = math.sin(t / 300 + i * 0.5) * 3
-            card["rotation"] = math.sin(t / 500 + i * 0.7) * 5
+        # Cycle through effects every 3 seconds
+        effect_duration = 3000
+        new_effect_index = int(t / effect_duration) % len(self._effects)
+        if new_effect_index != self._effect_index:
+            self._effect_index = new_effect_index
+            self._camera_effect = self._effects[self._effect_index]
 
-        # Reveal cards one by one
-        reveal_interval = 2500
-        new_reveal = int(t / reveal_interval) % (len(self.cards) + 2)
-        if new_reveal != self.reveal_card and new_reveal < len(self.cards):
-            self.reveal_card = new_reveal
-            self.reveal_time = t
+        # Update scanline offset for scanline effect
+        self._scanline_offset += delta_ms / 20
+        if self._scanline_offset > 128:
+            self._scanline_offset = 0
 
-        # Animate flip for revealed cards
-        for i, card in enumerate(self.cards):
-            if i <= self.reveal_card:
-                card["flip"] = min(1.0, card["flip"] + delta_ms / 500)
-            else:
-                card["flip"] = max(0.0, card["flip"] - delta_ms / 300)
+        # Update glitch lines randomly
+        if random.random() < 0.05:  # 5% chance per frame
+            self._glitch_lines = [random.randint(0, 127) for _ in range(random.randint(1, 5))]
+        elif random.random() < 0.3:
+            self._glitch_lines = []
+
+        # Capture camera frame
+        if self._camera and self._camera.is_open:
+            try:
+                frame = self._camera.capture_frame()
+                if frame is not None:
+                    self._camera_frame = frame
+            except Exception:
+                pass
 
     def _update_matrix_rain(self, delta_ms: float):
         """Update matrix rain animation."""
@@ -336,8 +353,8 @@ class RotatingIdleAnimation:
             self._render_mystical_eye_main(buffer)
         elif scene == IdleScene.COSMIC_PORTAL:
             self._render_cosmic_portal_main(buffer)
-        elif scene == IdleScene.FORTUNE_CARDS:
-            self._render_fortune_cards_main(buffer)
+        elif scene == IdleScene.CAMERA_MIRROR:
+            self._render_camera_mirror_main(buffer)
         elif scene == IdleScene.MATRIX_RAIN:
             self._render_matrix_rain_main(buffer)
 
@@ -355,13 +372,7 @@ class RotatingIdleAnimation:
             fade_amount = int(255 * fade)
             buffer[:, :] = np.clip(buffer.astype(np.int16) - fade_amount, 0, 255).astype(np.uint8)
 
-        # Show scene navigation hint when in manual mode
-        if self.manual_mode and not self.transitioning:
-            # Small indicator showing left/right can switch scenes
-            scene_num = self.scene_index + 1
-            total = len(self.scenes)
-            hint = f"◄ {scene_num}/{total} ►"
-            draw_centered_text(buffer, hint, 2, (100, 100, 120), scale=1)
+        # NO counter display - user requested removal of "1/4", "2/4" etc.
 
     def _render_mystical_eye_main(self, buffer: NDArray[np.uint8]) -> None:
         """Render the mystical all-seeing eye."""
@@ -395,7 +406,11 @@ class RotatingIdleAnimation:
                     vein = int(20 * math.sin(x * 0.3 + y * 0.2 + t / 500))
                     px, py = cx + x, cy + y
                     if 0 <= px < 128 and 0 <= py < 128:
-                        buffer[py, px] = (base + vein, base - 10, base - 10)
+                        # Clamp values to avoid uint8 overflow
+                        r = min(255, max(0, base + vein))
+                        g = min(255, max(0, base - 10))
+                        b = min(255, max(0, base - 10))
+                        buffer[py, px] = (r, g, b)
 
         # Iris with rotating pattern
         iris_r = 22
@@ -512,60 +527,94 @@ class RotatingIdleAnimation:
             glow_color = (int(100 * alpha), int(50 * alpha), int(150 * alpha))
             draw_circle(buffer, cx, cy, r, glow_color)
 
-        # Title
-        draw_animated_text(buffer, "VNVNC", 8, self.pink, t, TextEffect.RAINBOW, scale=2)
+        # Title - NO RAINBOW, use purple/blue gradient instead
+        draw_animated_text(buffer, "VNVNC", 8, self.pink, t, TextEffect.GLOW, scale=2)
         draw_animated_text(buffer, "ПОРТАЛ СУДЬБЫ", 115, self.blue, t, TextEffect.WAVE, scale=1)
 
-    def _render_fortune_cards_main(self, buffer: NDArray[np.uint8]) -> None:
-        """Render animated tarot cards."""
-        fill(buffer, (25, 20, 35))
+    def _render_camera_mirror_main(self, buffer: NDArray[np.uint8]) -> None:
+        """Render camera with fun visual effects."""
         t = self.state.scene_time
-        font = load_font("cyrillic")
 
-        # Draw cards
-        for i, card in enumerate(self.cards):
-            x = int(card["x"] + card["hover"] * math.cos(t / 200 + i))
-            y = int(card["y"] + card["hover"])
+        # If no camera frame, show a placeholder
+        if self._camera_frame is None:
+            fill(buffer, (30, 20, 50))
+            draw_animated_text(buffer, "ЗЕРКАЛО", 50, self.teal, t, TextEffect.WAVE, scale=2)
+            draw_animated_text(buffer, "КАМЕРА...", 75, self.pink, t, TextEffect.PULSE, scale=1)
+            return
 
-            # Card dimensions
-            card_w, card_h = 20, 30
+        # Resize camera frame to 128x128 if needed
+        frame = self._camera_frame
+        if frame.shape[:2] != (128, 128):
+            from PIL import Image
+            img = Image.fromarray(frame)
+            img = img.resize((128, 128), Image.Resampling.NEAREST)
+            frame = np.array(img)
 
-            # Card flip animation (scale width)
-            flip = card["flip"]
-            visible_w = int(card_w * abs(math.cos(flip * math.pi)))
-            if visible_w < 2:
-                visible_w = 2
+        # Apply the current effect
+        effect = self._camera_effect
 
-            # Draw card shadow
-            draw_rect(buffer, x - visible_w // 2 + 2, y + 2, visible_w, card_h, (20, 15, 30))
+        if effect == "negative":
+            # Negative/inverted colors
+            frame = 255 - frame
 
-            # Draw card
-            showing_front = flip > 0.5
+        elif effect == "edge":
+            # Edge detection effect (cyan/pink colors)
+            gray = np.mean(frame, axis=2).astype(np.uint8)
+            # Simple edge detection
+            edges = np.zeros_like(gray)
+            edges[1:, :] = np.abs(gray[1:, :].astype(np.int16) - gray[:-1, :].astype(np.int16))
+            edges[:, 1:] += np.abs(gray[:, 1:].astype(np.int16) - gray[:, :-1].astype(np.int16))
+            edges = np.clip(edges, 0, 255).astype(np.uint8)
+            # Color the edges cyan
+            frame = np.zeros((128, 128, 3), dtype=np.uint8)
+            frame[:, :, 0] = edges // 4  # Minimal red
+            frame[:, :, 1] = edges  # Full green
+            frame[:, :, 2] = edges  # Full blue (cyan)
 
-            if showing_front:
-                # Front of card (revealed)
-                # Gold border
-                draw_rect(buffer, x - visible_w // 2, y, visible_w, card_h, self.gold)
-                # Inner area
-                draw_rect(buffer, x - visible_w // 2 + 1, y + 1, visible_w - 2, card_h - 2, (40, 30, 60))
+        elif effect == "pixelate":
+            # Pixelate effect
+            pixel_size = 8
+            for py in range(0, 128, pixel_size):
+                for px in range(0, 128, pixel_size):
+                    block = frame[py:py+pixel_size, px:px+pixel_size]
+                    avg_color = block.mean(axis=(0, 1)).astype(np.uint8)
+                    frame[py:py+pixel_size, px:px+pixel_size] = avg_color
 
-                # Symbol
-                if visible_w > 8:
-                    symbol = card["symbol"]
-                    draw_text_bitmap(buffer, symbol, x - 3, y + 10, self.gold, font, scale=1)
-            else:
-                # Back of card (mystic pattern)
-                draw_rect(buffer, x - visible_w // 2, y, visible_w, card_h, self.purple)
-                # Pattern
-                if visible_w > 4:
-                    for py in range(y + 2, y + card_h - 2, 4):
-                        for px in range(x - visible_w // 2 + 2, x + visible_w // 2 - 2, 4):
-                            if 0 <= px < 128 and 0 <= py < 128:
-                                buffer[py, px] = self.gold
+        elif effect == "scanline":
+            # CRT scanline effect with purple tint
+            for y in range(0, 128, 2):
+                frame[y, :] = (frame[y, :].astype(np.int16) * 0.6).astype(np.uint8)
+            # Add purple tint
+            frame[:, :, 0] = np.clip(frame[:, :, 0].astype(np.int16) + 30, 0, 255).astype(np.uint8)
+            frame[:, :, 2] = np.clip(frame[:, :, 2].astype(np.int16) + 50, 0, 255).astype(np.uint8)
 
-        # Title
-        draw_animated_text(buffer, "VNVNC", 8, self.gold, t, TextEffect.SPARKLE, scale=2)
-        draw_animated_text(buffer, "КАРТЫ СУДЬБЫ", 115, self.purple, t, TextEffect.GLOW, scale=1)
+        # Copy frame to buffer
+        np.copyto(buffer, frame)
+
+        # Add glitch lines effect
+        for line_y in self._glitch_lines:
+            if 0 <= line_y < 128:
+                shift = random.randint(-10, 10)
+                buffer[line_y, :] = np.roll(buffer[line_y, :], shift, axis=0)
+                buffer[line_y, :] = (255 - buffer[line_y, :])  # Invert glitch line
+
+        # Effect name overlay at bottom
+        effect_names = {
+            "normal": "ЗЕРКАЛО",
+            "negative": "НЕГАТИВ",
+            "edge": "КОНТУР",
+            "pixelate": "ПИКСЕЛИ",
+            "scanline": "РЕТРО"
+        }
+        effect_text = effect_names.get(effect, "ЭФФЕКТ")
+
+        # Dark bar for text
+        draw_rect(buffer, 0, 110, 128, 18, (0, 0, 0))
+        draw_centered_text(buffer, effect_text, 112, self.teal, scale=1)
+
+        # Title at top
+        draw_rect(buffer, 0, 0, 128, 14, (0, 0, 0))
+        draw_centered_text(buffer, "НАЖМИ СТАРТ", 3, self.pink, scale=1)
 
     def _render_matrix_rain_main(self, buffer: NDArray[np.uint8]) -> None:
         """Render matrix-style character rain."""
@@ -612,11 +661,11 @@ class RotatingIdleAnimation:
 
         elif scene == IdleScene.COSMIC_PORTAL:
             text = "ПОРТАЛ В НЕИЗВЕДАННОЕ"
-            render_ticker_animated(buffer, text, t, self.pink, TickerEffect.RAINBOW_SCROLL)
+            render_ticker_animated(buffer, text, t, self.pink, TickerEffect.SPARKLE_SCROLL)
 
-        elif scene == IdleScene.FORTUNE_CARDS:
-            text = "КАРТЫ РАСКРОЮТ ТАЙНЫ"
-            render_ticker_animated(buffer, text, t, self.purple, TickerEffect.WAVE_SCROLL)
+        elif scene == IdleScene.CAMERA_MIRROR:
+            text = "ПОСМОТРИ НА СЕБЯ"
+            render_ticker_animated(buffer, text, t, self.teal, TickerEffect.WAVE_SCROLL)
 
         elif scene == IdleScene.MATRIX_RAIN:
             text = "ЗАГРУЗКА СУДЬБЫ"
@@ -638,8 +687,8 @@ class RotatingIdleAnimation:
             texts = ["  ВСЁ ВИДЯЩЕЕ  ", "    ГЛАЗ    ", " НАЖМИ СТАРТ "]
         elif scene == IdleScene.COSMIC_PORTAL:
             texts = [" КОСМОС ЖДЁТ ", "  ТВОЙ ПУТЬ  ", " НАЖМИ СТАРТ "]
-        elif scene == IdleScene.FORTUNE_CARDS:
-            texts = [" КАРТЫ ТАРО  ", " ТВОЯ СУДЬБА ", " НАЖМИ СТАРТ "]
+        elif scene == IdleScene.CAMERA_MIRROR:
+            texts = ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "]
         elif scene == IdleScene.MATRIX_RAIN:
             texts = ["СИСТЕМА ОНЛАЙН", " ПОДКЛЮЧИСЬ  ", " НАЖМИ СТАРТ "]
         else:
@@ -648,10 +697,13 @@ class RotatingIdleAnimation:
         return texts[idx].center(16)[:16]
 
     def reset(self) -> None:
-        """Reset animation state."""
+        """Reset animation state with randomized scene order."""
         self.state = SceneState()
+        # Re-randomize scene order on reset/reboot
+        random.shuffle(self.scenes)
         self.scene_index = 0
+        self.state.current_scene = self.scenes[0]
         self._init_mystical_eye()
         self._init_cosmic_portal()
-        self._init_fortune_cards()
+        self._init_camera_mirror()
         self._init_matrix_rain()

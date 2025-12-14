@@ -30,6 +30,11 @@ class CaricatureStyle(Enum):
     GUESS = "guess"            # Illustration with text annotations
     MEDICAL = "medical"        # X-ray/Dissection style
     ROAST = "roast"            # Mean doodle with arrows/labels
+    PROPHET = "prophet"        # Mystical portrait (NOT caricature, no exaggeration)
+    TAROT = "tarot"            # Tarot card style portrait
+    QUIZ_WINNER = "quiz_winner"  # Victory celebration doodle for quiz winners
+    ZODIAC = "zodiac"          # Constellation/zodiac sign portrait
+    ROULETTE = "roulette"      # Casino/wheel winner style
 
 
 @dataclass
@@ -43,75 +48,263 @@ class Caricature:
     format: str = "png"
 
 
-# Prompt templates for different caricature styles
-# All prompts emphasize: caricature OF THIS PERSON, thick black outlines, pure white background
+# =============================================================================
+# STYLE PROMPTS - Each VISUALLY DISTINCT for different modes
+# Optimized for 128x128 pixel display + thermal printing
+# TEXT RULES: Russian language, ALL CAPS, VERY LARGE readable
+# NO example labels - model copies them literally
+# =============================================================================
+
 STYLE_PROMPTS = {
+    # =========================================================================
+    # GUESS MODE - "Кто Я?" - Detective investigation board
+    # =========================================================================
+    CaricatureStyle.GUESS: """
+Create a DETECTIVE CASE FILE illustration OF THIS PERSON from the photo.
+
+VISUAL CONCEPT - MYSTERY INVESTIGATION BOARD:
+- The person's face drawn like a suspect sketch pinned to a detective board
+- Red strings/lines connecting their face to floating question marks
+- Magnifying glass icon examining a feature
+- Fingerprint symbol somewhere on the board
+- Scattered sticky notes with question marks (no readable text)
+- Pushpins, evidence photos, mystery clues aesthetic
+- The vibe: "WHO IS THIS PERSON? WHAT ARE THEY HIDING?"
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK black outlines (3-4px minimum)
+- Simple bold shapes only
+- High contrast black/white
+
+TEXT RULES: If any text, must be RUSSIAN, ALL CAPS, VERY LARGE.
+Pure white background. Black and white only.
+""",
+
+    # =========================================================================
+    # MEDICAL MODE - "Диагноз" - X-ray scan diagnostic
+    # =========================================================================
+    CaricatureStyle.MEDICAL: """
+Create a HUMOROUS X-RAY SCAN illustration OF THIS PERSON from the photo.
+
+VISUAL CONCEPT - FUNNY MEDICAL DIAGNOSTIC:
+- Draw the person as seen through an X-ray/CT scan machine
+- Their head shows "brain" with gears, cogs, hamster wheel, or chaos inside
+- Chest area shows heart with funny symbols (fire, ice, butterflies, black hole)
+- Add medical scan frame/border like real diagnostic display
+- Include crosshairs, measurement grid lines, scan annotations
+- Small icons of what's "diagnosed" inside them (coffee addiction, chaos, etc.)
+- The vibe: "WHAT'S WRONG WITH THIS PATIENT?" humorous medical report
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK black outlines (3-4px minimum)
+- Internal organs as simple bold icons
+- Scan grid overlay with thick lines
+- High contrast like real X-ray negative
+
+TEXT RULES: Any diagnostic labels MUST be RUSSIAN, ALL CAPS, VERY LARGE readable.
+Pure white background. Black and white only.
+""",
+
+    # =========================================================================
+    # ROAST MODE - "Прожарка" - Graffiti roast doodle
+    # =========================================================================
+    CaricatureStyle.ROAST: """
+Create a GRAFFITI ROAST DOODLE of THIS PERSON from the photo.
+
+VISUAL CONCEPT - SCHOOL DESK / BATHROOM WALL VANDALISM:
+- Messy, chaotic, scribbly drawing like graffiti tags
+- EXAGGERATE their features hilariously (giant nose, crazy hair, weird ears)
+- Multiple arrows pointing at features with mean but funny roast labels
+- Scribbled underlines, circles around "problem areas"
+- Doodle flames, stink lines, or chaos symbols around them
+- The vibe: a bored student roasting their friend with a pen
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK scribbled outlines
+- Messy but READABLE arrows and labels
+- Keep it simple - bold scribbles only
+- High contrast black/white
+
+TEXT RULES (CRITICAL):
+- ALL labels MUST be in RUSSIAN language
+- ALL text MUST be in CAPITAL LETTERS
+- Text must be VERY LARGE - readable at 128px
+- Chunky graffiti-style scribbled letters
+- 2-4 arrows with SHORT funny roast words
+
+Pure white background. Black and white only.
+""",
+
+    # =========================================================================
+    # PROPHET MODE - "ИИ Пророк" - Mystical oracle portrait
+    # =========================================================================
+    CaricatureStyle.PROPHET: """
+Create a MYSTICAL PROPHET PORTRAIT of THIS PERSON from the photo.
+
+VISUAL CONCEPT - ETHEREAL ORACLE/SEER:
+- NOT a caricature - keep proportions NATURAL and beautiful
+- Draw them as an all-knowing mystic seer
+- Third eye symbol on forehead, glowing softly
+- Radiating lines/halo around their head like divine light
+- Floating stars, cosmic swirls, constellation dots around them
+- Mysterious wise expression, slightly glowing eyes
+- The vibe: an ancient prophet who sees past, present, and future
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK bold black outlines
+- Mystical elements bold and simple
+- High contrast black/white
+
+NO TEXT LABELS - pure mystical visual only.
+Person should look beautiful, wise, powerful - NOT mocked.
+Pure white background. Black and white only.
+""",
+
+    # =========================================================================
+    # TAROT MODE - "Гадалка" - Tarot card illustration
+    # =========================================================================
+    CaricatureStyle.TAROT: """
+Create a TAROT CARD illustration of THIS PERSON from the photo.
+
+VISUAL CONCEPT - CLASSIC TAROT CARD:
+- MUST have ornate decorative FRAME/BORDER around entire image
+- Person posed like a tarot archetype (holding a star, magical gesture, regal pose)
+- Art nouveau decorative corners and flourishes on the frame
+- Mystical symbols: stars, crescent moon, all-seeing eye, zodiac glyph
+- Sun rays or divine light behind the figure
+- The person looks regal, powerful, magical - like a fortune card figure
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK bold black outlines (3-4px)
+- Decorative frame must be BOLD and simple
+- Large shapes, no intricate fine details
+- High contrast black/white
+
+TEXT: If adding card name at bottom, MUST be RUSSIAN, ALL CAPS, VERY LARGE.
+NOT a caricature - proportions NATURAL and flattering.
+Pure white background. Black and white only.
+""",
+
+    # =========================================================================
+    # QUIZ WINNER - "Викторина" - Game show champion
+    # =========================================================================
+    CaricatureStyle.QUIZ_WINNER: """
+Create a GAME SHOW WINNER illustration of THIS PERSON from the photo.
+
+VISUAL CONCEPT - TV QUIZ SHOW CHAMPION MOMENT:
+- Person in triumphant WINNER POSE (arms up victory, fist pump, or holding trophy high)
+- Dramatic spotlight rays radiating from behind them
+- Big confetti pieces and stars scattered everywhere
+- Simple trophy icon or champagne bottle nearby
+- Sparkle/shine star burst effects
+- Money bills or coins flying around (optional)
+- The vibe: just won a million on TV, pure joy and triumph!
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK bold black outlines
+- Simple bold celebration shapes
+- Large confetti pieces, thick light rays
+- High contrast black/white
+
+NO TEXT LABELS - pure visual celebration only.
+Make them look like a CHAMPION, a GENIUS, a WINNER!
+Pure white background. Black and white only.
+""",
+
+    # =========================================================================
+    # UNUSED STYLES (kept for compatibility, improved anyway)
+    # =========================================================================
     CaricatureStyle.MYSTICAL: """
-Create a caricature portrait OF THIS PERSON from the reference photo.
-Black and white hand-drawn sketch style with THICK bold black outlines.
-Pure white background, no shading or gradients.
-Exaggerate their distinctive facial features in a fun, flattering way.
-High contrast suitable for thermal printer.
+Create a CRYSTAL BALL VISION of THIS PERSON from the photo.
+The person's face appearing inside a fortune teller's crystal ball.
+Swirling mist/smoke around the edges, mystical glow effect.
+Stars and sparkles floating in the crystal.
+VERY THICK bold black outlines. Simple bold shapes.
+Pure white background. High contrast black/white only.
+If any text: RUSSIAN, ALL CAPS, VERY LARGE.
 """,
 
     CaricatureStyle.FORTUNE: """
-Create a caricature portrait OF THIS PERSON from the reference photo.
-Black and white hand-drawn style with THICK bold black outlines.
-Pure white background, clean and simple.
-Exaggerate their distinctive features in a charming way.
-High contrast suitable for thermal receipt printer.
+Create a VINTAGE FORTUNE MACHINE portrait of THIS PERSON.
+Style: Old carnival Zoltar machine aesthetic.
+Decorative vintage frame with ornate corners.
+Mystical symbols and stars around the portrait.
+VERY THICK bold black outlines. Simple bold shapes.
+Pure white background. High contrast black/white only.
+If any text: RUSSIAN, ALL CAPS, VERY LARGE.
 """,
 
     CaricatureStyle.SKETCH: """
-Create a caricature portrait OF THIS PERSON from the reference photo.
-Simple black and white line drawing with THICK bold outlines.
-Pure white background, minimal detail.
-Exaggerate their distinctive features in a friendly way.
-High contrast suitable for thermal printer.
+Create a simple artistic PORTRAIT SKETCH of THIS PERSON.
+Clean confident line drawing, minimal detail.
+Capture their likeness with bold expressive strokes.
+VERY THICK bold black outlines. Simple shapes.
+Pure white background. High contrast black/white only.
 """,
 
     CaricatureStyle.CARTOON: """
-Create a caricature portrait OF THIS PERSON from the reference photo.
-Black and white cartoon style with THICK bold black outlines.
-Pure white background, no grayscale.
-Exaggerate their distinctive features in a fun comic style.
-High contrast suitable for thermal printing.
+Create a FUN CARTOON CARICATURE of THIS PERSON.
+Big head, exaggerated expressive features, comic book style.
+Playful and friendly, not mean or ugly.
+VERY THICK bold black outlines. Simple bold shapes.
+Pure white background. High contrast black/white only.
 """,
 
     CaricatureStyle.VINTAGE: """
-Create a caricature portrait OF THIS PERSON from the reference photo.
-Black and white hand-drawn illustration with THICK bold outlines.
-Pure white background, clean lines.
-Exaggerate their distinctive features in a charming vintage style.
-High contrast suitable for thermal receipt printer.
+Create a VINTAGE CIRCUS POSTER portrait of THIS PERSON.
+Victorian sideshow poster aesthetic with decorative frame.
+Dramatic presentation like announcing a circus act.
+Bold decorative border with flourishes.
+VERY THICK bold black outlines.
+Pure white background. High contrast black/white only.
+If any text: RUSSIAN, ALL CAPS, VERY LARGE.
 """,
 
-    CaricatureStyle.GUESS: """
-Create a fun loose sketch OF THIS PERSON with annotations/labels pointing to features.
-Style: Hand-drawn doodle with handwritten notes/arrows around the head.
-Black and white line art, THICK outlines.
-Pure white background.
-The labels should be abstract scribbles or fun icons (stars, question marks).
-Capture the person's vibe in a sketchy, artistic way.
+    # =========================================================================
+    # ZODIAC MODE - "Гороскоп" - Constellation portrait
+    # =========================================================================
+    CaricatureStyle.ZODIAC: """
+Create a CONSTELLATION/ZODIAC portrait of THIS PERSON from the photo.
+
+VISUAL CONCEPT - PERSON AS A CONSTELLATION:
+- Draw the person's portrait made of stars and constellation lines
+- Connect facial features with dotted lines like star maps
+- Add their zodiac symbol prominently (will be specified in context)
+- Scattered stars and cosmic dust around them
+- The face emerges from a starfield/night sky vibe
+- Glowing celestial aura around the portrait
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK bold black outlines
+- Stars as bold dots, constellation lines clear
+- Simple cosmic elements
+- High contrast black/white
+
+NO TEXT LABELS - pure celestial visual only.
+Pure white background. Black and white only.
 """,
 
-    CaricatureStyle.MEDICAL: """
-Create a stylized "medical scan" or "anatomy study" OF THIS PERSON.
-Style: Scientific illustration / X-ray vibe but drawn as line art.
-Black and white, high contrast.
-Show "internal mechanics" or "brain gear" or "heart" in a fun metaphorical way.
-Pure white background.
-Thick outlines, no complex shading.
-Creepy but fun/cute.
-""",
+    # =========================================================================
+    # ROULETTE MODE - "Рулетка" - Casino winner style
+    # =========================================================================
+    CaricatureStyle.ROULETTE: """
+Create a CASINO JACKPOT WINNER illustration of THIS PERSON from the photo.
 
-    CaricatureStyle.ROAST: """
-Create a "mean" doodle caricature OF THIS PERSON.
-Style: Messy scribbly drawing, like a graffiti tag or school desk doodle.
-Exaggerate flaws hilariously (big nose, funny hair) but keep it lighthearted.
-Add arrows pointing to features with scribble text.
-Black and white line art, pure white background.
-High contrast.
+VISUAL CONCEPT - WHEEL OF FORTUNE WINNER:
+- Person with excited winning expression
+- Surrounded by flying coins, chips, and money symbols
+- Casino wheel or slot machine elements in background
+- Stars and sparkles like hitting the jackpot
+- The vibe: "I JUST WON BIG AT THE CASINO!"
+
+DISPLAY (128x128 PIXELS):
+- VERY THICK bold black outlines
+- Simple bold casino symbols (coins, stars, sevens)
+- Dramatic light rays behind them
+- High contrast black/white
+
+NO TEXT LABELS - pure visual celebration.
+Pure white background. Black and white only.
 """,
 }
 
@@ -159,6 +352,12 @@ class CaricatureService:
             return None
 
         try:
+            import hashlib
+            import random
+
+            # Add a small uniqueness token to vary outputs run-to-run
+            uniqueness_token = hashlib.md5(str(random.random()).encode()).hexdigest()[:8].upper()
+
             # Build the caricature prompt
             style_prompt = STYLE_PROMPTS.get(style, STYLE_PROMPTS[CaricatureStyle.SKETCH])
 
@@ -185,6 +384,7 @@ CRITICAL REQUIREMENTS:
 Style: {style_prompt}
 
 The result should be recognizable as THIS specific person, but as a fun caricature.
+UNIQUENESS TOKEN: {uniqueness_token}
 """
 
             # Send photo directly to Gemini 3 Pro Image Preview
@@ -332,5 +532,56 @@ Style requirements:
 
         except Exception as e:
             logger.error(f"Simple caricature generation failed: {e}")
+
+        return None
+
+    async def generate_squid_sketch(
+        self,
+        reference_photo: bytes,
+        eliminated: bool = False,
+        size: Tuple[int, int] = (384, 384),
+    ) -> Optional[bytes]:
+        """Generate a Squid Game style sketch of the player (not a caricature).
+
+        Args:
+            reference_photo: Player photo bytes
+            eliminated: Whether to add an eliminated vibe
+            size: Target size for printing
+
+        Returns:
+            Processed PNG bytes ready for thermal printing, or None on failure
+        """
+        if not self._client.is_available:
+            logger.warning("AI not available for Squid sketch")
+            return None
+
+        mood = "determined survivor energy, mid-run pose" if not eliminated else "eliminated, dramatic ink X across the portrait"
+
+        import hashlib, random
+        uniqueness_token = hashlib.md5(str(random.random()).encode()).hexdigest()[:8].upper()
+
+        prompt = f"""Create a black-and-white hand-drawn sketch of THIS PERSON from the photo.
+Style: Squid Game contestant in the teal tracksuit with a number patch. Face is clearly visible and recognizable.
+NOT a caricature — keep proportions natural. Use thick black outlines only, pure white background, no shading or gray.
+Mood: {mood}.
+All text/patches on clothing or background must be RUSSIAN and ALL CAPS if any appear.
+UNIQUENESS TOKEN: {uniqueness_token}
+Make it look awesome on thermal receipt paper (high contrast, clean lines)."""
+
+        try:
+            image_data = await self._client.generate_image(
+                prompt=prompt,
+                reference_photo=reference_photo,
+                photo_mime_type="image/jpeg",
+                aspect_ratio="1:1",
+                image_size="1K",
+                style="Black and white thermal-printer sketch, Squid Game outfit, bold lines",
+            )
+
+            if image_data:
+                return await self._process_for_printer(image_data, size)
+
+        except Exception as e:
+            logger.error(f"Squid sketch generation failed: {e}")
 
         return None

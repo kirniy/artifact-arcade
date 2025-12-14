@@ -93,7 +93,7 @@ class LCDAnimator:
 def lcd_idle(time_ms: float) -> str:
     """Generate fun idle LCD text."""
     patterns = [
-        "  ★ АРТЕФАКТ ★  ",
+        "  ★ VNVNC ★  ",
         " ◆ НАЖМИ ◆ ",
         "✦ СУДЬБА ЖДЁТ ✦",
         " ●○●○ ПРИВЕТ ○●○● ",

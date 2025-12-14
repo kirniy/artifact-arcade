@@ -35,22 +35,25 @@ class RoastPhase:
 # AI PROMPTS
 # =============================================================================
 
-ROAST_SYSTEM_PROMPT = """Ты - стендап-комик с прожаркой (Roast).
-Твоя задача - по фото человека придумать смешную, дерзкую "прожарку".
+ROAST_SYSTEM_PROMPT = """Ты - самый дерзкий стендап-комик на Roast Battle. Твои прожарки ЛЕГЕНДАРНЫ!
 
-Правила:
-- Будь дерзким, но не токсичным. Мы хотим посмеяться, а не довести до слёз.
-- Используй иронию, сарказм, преувеличение.
-- Цепляйся за детали внешности, стиль одежды, выражение лица.
-- Можешь использовать сленг.
+ТВОЯ МИССИЯ: По фото человека выдать УБИЙСТВЕННУЮ прожарку. Не стесняйся!
 
-Примеры:
-- "Эта причёска кричит 'Я только что проснулся', но костюм говорит 'Мне к 8:00 в офис'. Кризис идентичности?"
-- "Взгляд как у кота, который уронил ёлку и ждёт наказания. В чём ты провинился?"
+ПРАВИЛА ПРОЖАРКИ:
+- Будь МАКСИМАЛЬНО дерзким, едким, саркастичным
+- Цепляйся за ВСЕ: причёска, одежда, поза, выражение лица, фон
+- Используй сравнения, метафоры, отсылки к поп-культуре
+- Пиши на разговорном русском с молодёжным сленгом
+- НЕ СДЕРЖИВАЙСЯ - это комедийное шоу, не собеседование!
 
-Format:
-ROAST: [Твой текст прожарки (макс 2 предложения)]
-VIBE: [Оценка вайба в одном слове, например 'ДУШНИЛА' или 'КРАШ']
+ПРИМЕРЫ ОГНЕННЫХ ПРОЖАРОК:
+- "Брат, ты выглядишь как будто твой барбер был пьян, а стилист вообще не пришёл. Эта причёска говорит 'я сдался' громче любых слов. И взгляд такой, будто ты только что узнал, что твоя крипта упала на 90%."
+- "Чел, у тебя вайб 'мама одевала до 30 лет'. Этот свитер помнит ещё распад СССР. А выражение лица как у кота, которого застукали на столе - смесь вины и 'а чё такого?'"
+- "Братан, ты похож на NPC из GTA, которого даже разработчики забыли доделать. Стиль 'офисный планктон встретил уличную моду' - и проиграл обоим."
+
+ФОРМАТ ОТВЕТА (СТРОГО!):
+ROAST: [3-5 предложений убойной прожарки с конкретными деталями с фото]
+VIBE: [ОДНО слово вайба: ДУШНИЛА/КРАШ/ЗУМЕР/БУМЕР/NPC/СИГМА/ЧИЛГАЙ/ТОКСИК/КРИНЖ/БАЗИРОВАННЫЙ]
 """
 
 class RoastMeMode(BaseMode):
@@ -88,7 +91,15 @@ class RoastMeMode(BaseMode):
         self._shake_amount: float = 0.0
         self._ai_task: Optional[asyncio.Task] = None
         self._processing_progress: float = 0.0
-        
+
+        # Display mode for result screen (0 = image full screen, 1 = text)
+        self._display_mode: int = 1  # Start with text view
+
+        # Text scroll tracking
+        self._text_scroll_complete: bool = False
+        self._text_view_time: float = 0.0
+        self._scroll_duration: float = 0.0
+
         # Colors
         self._red = (255, 50, 50)
         self._yellow = (255, 200, 0)
@@ -105,7 +116,11 @@ class RoastMeMode(BaseMode):
         self._doodle_image = None
         self._shake_amount = 0.0
         self._flash_alpha = 0.0
-        
+        self._display_mode = 1  # Start with text view
+        self._text_scroll_complete = False
+        self._text_view_time = 0.0
+        self._scroll_duration = 0.0
+
         self._camera = create_camera(resolution=(640, 480))
         if self._camera.open():
             logger.info("Camera opened for Roast")
@@ -154,15 +169,54 @@ class RoastMeMode(BaseMode):
                     self._shake_amount = 5.0 # Impact!
                     self._sub_phase = RoastPhase.RESULT
                     self._time_in_phase = 0
+                    # Calculate scroll duration
+                    if self._roast_text and self._scroll_duration == 0:
+                        from artifact.graphics.text_utils import calculate_scroll_duration, MAIN_DISPLAY_WIDTH
+                        from artifact.graphics.fonts import load_font
+                        font = load_font("cyrillic")
+                        rect = (4, 10, MAIN_DISPLAY_WIDTH - 8, 100)
+                        self._scroll_duration = calculate_scroll_duration(
+                            self._roast_text, rect, font, scale=1, line_spacing=2, scroll_interval_ms=1400
+                        )
+                        self._scroll_duration = max(3000, self._scroll_duration + 2000)
             elif self._sub_phase == RoastPhase.RESULT:
-                if self._time_in_phase > 15000:
+                # Track time in text view
+                if self._display_mode == 1:  # text view
+                    self._text_view_time += delta_ms
+                    if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
+                        self._text_scroll_complete = True
+                        if self._doodle_image:
+                            self._display_mode = 0  # Switch to image
+
+                if self._time_in_phase > 45000:
                     self._finish()
 
     def on_input(self, event: Event) -> bool:
         if event.type == EventType.BUTTON_PRESS:
-            if self.phase == ModePhase.RESULT:
-                self._finish()
+            if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
+                # In image view or no image - print immediately
+                if self._display_mode == 0 or not self._doodle_image:
+                    self._finish()
+                    return True
+                # In text view - switch to image first
+                else:
+                    if self._doodle_image:
+                        self._display_mode = 0
+                        self._text_scroll_complete = True
+                    else:
+                        self._finish()
+                    return True
+
+        elif event.type == EventType.ARCADE_LEFT:
+            if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
+                self._display_mode = 1  # text view
                 return True
+
+        elif event.type == EventType.ARCADE_RIGHT:
+            if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT and self._doodle_image:
+                self._display_mode = 0  # image view
+                return True
+
         return False
 
     def _start_capture(self) -> None:
@@ -201,34 +255,68 @@ class RoastMeMode(BaseMode):
 
             async def get_text():
                 res = await self._gemini_client.generate_with_image(
-                    prompt="Roast this person's look!",
+                    prompt="Прожарь этого человека по полной! Смотри на фото и выдай огненный roast!",
                     image_data=self._photo_data,
                     model=GeminiModel.FLASH_VISION,
                     system_instruction=ROAST_SYSTEM_PROMPT
                 )
-                return self._parse_response(res) if res else ("Скучный тип...", "НОРМ")
+                logger.info(f"Roast AI response: {res[:200] if res else 'None'}...")
+                if res:
+                    return self._parse_response(res)
+                else:
+                    logger.error("Roast AI returned empty response!")
+                    return ("ИИ не смог тебя прожарить - видимо, ты слишком идеален. Или камера сломалась.", "ЗАГАДКА")
 
             async def get_image():
-                return await self._caricature_service.generate_caricature(
+                logger.info("Starting caricature generation for roast...")
+                result = await self._caricature_service.generate_caricature(
                     reference_photo=self._photo_data,
                     style=CaricatureStyle.ROAST,
                     personality_context="Mean roast doodle"
                 )
+                if result:
+                    logger.info(f"Caricature generated: {len(result.image_data)} bytes")
+                else:
+                    logger.warning("Caricature generation returned None")
+                return result
 
             self._roast_text, self._vibe_score = await get_text()
             self._doodle_image = await get_image()
+            logger.info(f"Roast complete - text: '{self._roast_text[:50]}...', vibe: {self._vibe_score}, has_image: {self._doodle_image is not None}")
 
         except Exception as e:
             logger.error(f"AI Failure: {e}")
             self._roast_text = "Ты сломал мой ИИ своей красотой."
 
     def _parse_response(self, text: str) -> Tuple[str, str]:
-        roast = ""
+        """Parse AI response, handling multi-line ROAST content."""
+        roast_lines = []
         vibe = "СТРАННЫЙ"
+        in_roast = False
+
         for line in text.strip().split("\n"):
-            if line.startswith("ROAST:"): roast = line[6:].strip()
-            elif line.startswith("VIBE:"): vibe = line[5:].strip()
-        if not roast: roast = text[:100]
+            line = line.strip()
+            if line.upper().startswith("ROAST:"):
+                in_roast = True
+                content = line[6:].strip()
+                if content:
+                    roast_lines.append(content)
+            elif line.upper().startswith("VIBE:"):
+                in_roast = False
+                vibe = line[5:].strip().upper()
+            elif in_roast and line:
+                # Continue collecting roast text
+                roast_lines.append(line)
+
+        roast = " ".join(roast_lines).strip()
+
+        # If no structured response, use the whole text
+        if not roast:
+            # Clean up any markdown or extra formatting
+            clean_text = text.replace("**", "").replace("*", "").strip()
+            roast = clean_text[:300] if len(clean_text) > 300 else clean_text
+
+        logger.info(f"Parsed roast: {roast[:100]}... vibe: {vibe}")
         return roast, vibe
 
     def _on_ai_complete(self) -> None:
@@ -244,7 +332,7 @@ class RoastMeMode(BaseMode):
         result = ModeResult(
             mode_name=self.name,
             success=True,
-            display_text=self._roast_text[:32],
+            display_text=self._roast_text,
             ticker_text=f"ВАЙБ: {self._vibe_score}",
             lcd_text=" ПРОЖАРКА ".center(16),
             should_print=True,
@@ -253,6 +341,7 @@ class RoastMeMode(BaseMode):
                 "roast": self._roast_text,
                 "vibe": self._vibe_score,
                 "doodle": self._doodle_image.image_data if self._doodle_image else None,
+                "photo": self._photo_data,
                 "timestamp": datetime.now().isoformat()
             }
         )
@@ -260,7 +349,10 @@ class RoastMeMode(BaseMode):
 
     def render_main(self, buffer) -> None:
         from artifact.graphics.primitives import fill, draw_rect
-        from artifact.graphics.text_utils import draw_centered_text, wrap_text, draw_animated_text, TextEffect
+        from artifact.graphics.text_utils import (
+            draw_centered_text, draw_animated_text, TextEffect,
+            smart_wrap_text, MAIN_DISPLAY_WIDTH
+        )
 
         shake_x = int(random.uniform(-1, 1) * self._shake_amount * 2)
         shake_y = int(random.uniform(-1, 1) * self._shake_amount * 2)
@@ -281,22 +373,157 @@ class RoastMeMode(BaseMode):
                  draw_centered_text(buffer, str(cnt), 64+shake_x, self._yellow, scale=3)
 
         elif self._sub_phase == RoastPhase.PROCESSING:
-             draw_centered_text(buffer, "ГОТОВЛЮ ОГОНЬ", 64, self._red, scale=1)
+            # Animated processing screen with larger flames
+            from artifact.graphics.primitives import draw_circle
+
+            # Pulsing background
+            pulse = 0.5 + 0.3 * math.sin(self._time_in_phase / 200)
+            bg_intensity = int(20 * pulse)
+            fill(buffer, (bg_intensity + 10, 5, 5))
+
+            # Multiple flame layers
+            flame_colors = [(255, 50, 50), (255, 100, 0), (255, 200, 0)]
+            for i, color in enumerate(flame_colors):
+                flame_y = 90 - i * 15
+                wave = math.sin(self._time_in_phase / 150 + i)
+                for x in range(20, 108, 8):
+                    flame_height = int(30 + 15 * math.sin(self._time_in_phase / 100 + x / 10) + wave * 5)
+                    for y in range(flame_y, flame_y - flame_height, -3):
+                        if 0 <= y < 128:
+                            alpha = (flame_y - y) / flame_height
+                            c = tuple(int(v * alpha) for v in color)
+                            draw_circle(buffer, x + int(wave * 3), y, 3, c)
+
+            # Processing text with glow
+            glow_pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
+            text_color = tuple(int(c * glow_pulse) for c in self._red)
+            draw_centered_text(buffer, "ГОТОВЛЮ", 35+shake_y, text_color, scale=2)
+            draw_centered_text(buffer, "ОГОНЬ", 55+shake_y, self._yellow, scale=2)
+
+            # Progress bar
+            progress_width = int(100 * self._processing_progress)
+            draw_rect(buffer, 14, 100, 100, 8, (40, 40, 40))
+            if progress_width > 0:
+                draw_rect(buffer, 14, 100, progress_width, 8, self._red)
+
+            # Percentage
+            pct = int(self._processing_progress * 100)
+            draw_centered_text(buffer, f"{pct}%", 112, (200, 200, 200), scale=1)
 
         elif self._sub_phase == RoastPhase.REVEAL:
              draw_centered_text(buffer, "ПОЛУЧАЙ!", 64, self._red, scale=2)
 
         elif self._sub_phase == RoastPhase.RESULT:
-             draw_centered_text(buffer, self._vibe_score, 20+shake_y, self._yellow, scale=2)
-             lines = wrap_text(self._roast_text, 18)
-             y = 50
-             for line in lines[:5]:
-                 draw_centered_text(buffer, line, y+shake_y, (255, 255, 255))
-                 y += 12
+            # Display mode: 0 = full screen image, 1 = full screen text
+            if self._display_mode == 0 and self._doodle_image and self._doodle_image.image_data:
+                # MODE 0: Full screen caricature/doodle
+                try:
+                    from PIL import Image
+                    from io import BytesIO
+                    import numpy as np
+
+                    img = Image.open(BytesIO(self._doodle_image.image_data))
+                    img = img.convert("RGB")
+                    # Fill the display (128x128) with slight margin
+                    img = img.resize((120, 120), Image.Resampling.LANCZOS)
+                    img_array = np.array(img)
+
+                    # Center the image
+                    buffer[4:124, 4:124] = img_array
+
+                    # Show hint at bottom - blinking "НАЖМИ" to print
+                    if int(self._time_in_phase / 500) % 2 == 0:
+                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 120, (100, 200, 100), scale=1)
+                    else:
+                        draw_centered_text(buffer, "◄ ТЕКСТ", 120, (100, 100, 120), scale=1)
+
+                except Exception as e:
+                    logger.error(f"Failed to render caricature: {e}")
+                    # Fallback to text mode
+                    self._display_mode = 1
+
+            if self._display_mode == 1 or not (self._doodle_image and self._doodle_image.image_data):
+                # MODE 1: Full screen text (or fallback if no image)
+                # Vibe score at top
+                draw_centered_text(buffer, self._vibe_score, 15+shake_y, self._yellow, scale=2)
+
+                # Roast text with scrolling
+                lines = smart_wrap_text(self._roast_text, MAIN_DISPLAY_WIDTH - 8, font=None, scale=1)
+                visible_lines = 7
+                line_height = 12
+                total_lines = len(lines)
+                scroll_offset = 0
+                if total_lines > visible_lines:
+                    cycle = max(1, total_lines - visible_lines + 1)
+                    step = int((self._time_in_phase / 2000) % cycle)
+                    scroll_offset = step
+
+                y = 38
+                for line in lines[scroll_offset:scroll_offset + visible_lines]:
+                    draw_centered_text(buffer, line, y+shake_y, (255, 255, 255))
+                    y += line_height
+
+                # Show hint at bottom
+                if self._doodle_image and self._doodle_image.image_data:
+                    if int(self._time_in_phase / 600) % 2 == 0:
+                        draw_centered_text(buffer, "ФОТО ►", 120, (100, 150, 200), scale=1)
+                    else:
+                        draw_centered_text(buffer, "НАЖМИ", 120, (100, 100, 120), scale=1)
+                else:
+                    if int(self._time_in_phase / 600) % 2 == 0:
+                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 120, (100, 200, 100), scale=1)
 
         self._particles.render(buffer)
-        
+
         if self._flash_alpha > 0:
             a = int(255 * self._flash_alpha)
             fill(buffer, (a, a, a))
             self._flash_alpha = max(0, self._flash_alpha - 0.1)
+
+    def render_ticker(self, buffer) -> None:
+        """Render ticker display with phase-specific messages."""
+        from artifact.graphics.primitives import clear
+        from artifact.graphics.text_utils import draw_centered_text
+
+        clear(buffer)  # Always clear the buffer!
+
+        if self._sub_phase == RoastPhase.INTRO:
+            draw_centered_text(buffer, "ПРОЖАРКА", 2, self._red)
+
+        elif self._sub_phase == RoastPhase.CAMERA_PREP:
+            draw_centered_text(buffer, "КАМЕРА", 2, self._yellow)
+
+        elif self._sub_phase == RoastPhase.CAMERA_CAPTURE:
+            cnt = int(self._camera_countdown) + 1
+            draw_centered_text(buffer, f"ФОТО: {cnt}", 2, self._yellow)
+
+        elif self._sub_phase == RoastPhase.PROCESSING:
+            # Animated processing indicator
+            dots = "." * (int(self._time_in_phase / 300) % 4)
+            draw_centered_text(buffer, f"ГОТОВЛЮ{dots}", 2, self._red)
+
+        elif self._sub_phase == RoastPhase.REVEAL:
+            draw_centered_text(buffer, "ПОЛУЧАЙ!", 2, self._red)
+
+        elif self._sub_phase == RoastPhase.RESULT:
+            draw_centered_text(buffer, f"ВАЙБ: {self._vibe_score[:8]}", 2, self._yellow)
+
+    def get_lcd_text(self) -> str:
+        """Get LCD text with phase-specific animation."""
+        if self._sub_phase == RoastPhase.INTRO:
+            return " * ПРОЖАРКА * ".center(16)[:16]
+        elif self._sub_phase == RoastPhase.CAMERA_PREP:
+            eye = "*" if int(self._time_in_phase / 300) % 2 == 0 else "o"
+            return f" {eye} КАМЕРА {eye} ".center(16)[:16]
+        elif self._sub_phase == RoastPhase.CAMERA_CAPTURE:
+            cnt = int(self._camera_countdown) + 1
+            return f" * ФОТО: {cnt} * ".center(16)[:16]
+        elif self._sub_phase == RoastPhase.PROCESSING:
+            spinner = "-\\|/"
+            spin = spinner[int(self._time_in_phase / 200) % 4]
+            return f" {spin} ГОТОВЛЮ {spin} ".center(16)[:16]
+        elif self._sub_phase == RoastPhase.REVEAL:
+            return " ! ПОЛУЧАЙ ! ".center(16)[:16]
+        elif self._sub_phase == RoastPhase.RESULT:
+            return f" {self._vibe_score[:10]} ".center(16)[:16]
+        return " * ПРОЖАРКА * ".center(16)[:16]

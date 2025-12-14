@@ -41,7 +41,7 @@ class ThermalPrinterPreview:
     PAPER_WIDTH = 384
     CHAR_WIDTH = 12  # Approximate pixels per character
     CHARS_PER_LINE = 32  # Characters that fit per line
-    CARICATURE_SIZE = 150  # Caricature display size in pixels
+    CARICATURE_SIZE = 200  # Caricature display size in pixels (larger for full width)
 
     def __init__(self):
         self._surface: Optional[pygame.Surface] = None
@@ -61,6 +61,9 @@ class ThermalPrinterPreview:
         self._font: Optional[pygame.font.Font] = None
         self._bold_font: Optional[pygame.font.Font] = None
         self._small_font: Optional[pygame.font.Font] = None
+
+        # Visible height for scroll calculations
+        self._visible_height: int = 400
 
     def _init_fonts(self) -> None:
         """Initialize fonts for receipt rendering."""
@@ -244,6 +247,28 @@ class ThermalPrinterPreview:
                 self._print_progress = 1.0
                 self._is_printing = False
 
+    def scroll(self, direction: int, amount: int = 40) -> None:
+        """Scroll the print preview up or down.
+
+        Args:
+            direction: -1 for up, 1 for down
+            amount: Pixels to scroll per step
+        """
+        self._scroll_offset += direction * amount
+
+        # Calculate total content height
+        total_height = len(self._lines) * 18 + 40
+        if self._caricature_surface:
+            total_height += self.CARICATURE_SIZE + 30
+
+        # Clamp scroll offset - use tracked visible height
+        max_scroll = max(0, total_height - self._visible_height)
+        self._scroll_offset = max(0, min(self._scroll_offset, max_scroll))
+
+    def set_visible_height(self, height: int) -> None:
+        """Set the visible height for scroll calculations."""
+        self._visible_height = height
+
     def render(self, screen: pygame.Surface, x: int, y: int, width: int, height: int) -> None:
         """Render the printer preview at the specified position."""
         self._init_fonts()
@@ -273,6 +298,9 @@ class ThermalPrinterPreview:
         paper_w = width - 30
         paper_visible_h = height - 45
 
+        # Track visible height for scroll calculations
+        self._visible_height = paper_visible_h
+
         # Create paper texture
         paper_surf = pygame.Surface((paper_w, paper_visible_h))
         paper_surf.fill((250, 248, 240))  # Slightly off-white paper color
@@ -284,32 +312,38 @@ class ThermalPrinterPreview:
 
         # Render receipt content
         if self._current_job and self._font:
-            line_y = 10
+            line_y = 10 - int(self._scroll_offset)  # Apply scroll offset
 
             # Calculate how many lines to show based on print progress
             visible_lines = int(len(self._lines) * self._print_progress) if self._is_printing else len(self._lines)
 
             for i, (line, style) in enumerate(zip(self._lines[:visible_lines], self._line_styles[:visible_lines])):
-                if line_y > paper_visible_h - 20:
+                # Skip lines that are above the visible area
+                if line_y < -200:
+                    if style == "image" and self._caricature_surface:
+                        line_y += self.CARICATURE_SIZE + 10
+                    else:
+                        line_y += 18
+                    continue
+
+                # Stop if we're past the visible area
+                if line_y > paper_visible_h + 20:
                     break
 
-                # Handle image style (caricature)
+                # Handle image style (caricature) - FULL WIDTH, NO FRAME
                 if style == "image" and self._caricature_surface:
-                    # Scale caricature to fit paper width
-                    img_size = min(paper_w - 20, self.CARICATURE_SIZE)
+                    # Scale caricature to FULL paper width (no margins)
+                    img_width = paper_w
+                    # Calculate height maintaining aspect ratio
+                    orig_w, orig_h = self._caricature_surface.get_size()
+                    img_height = int(img_width * orig_h / orig_w)
                     scaled_img = pygame.transform.scale(
-                        self._caricature_surface, (img_size, img_size)
+                        self._caricature_surface, (img_width, img_height)
                     )
-                    img_x = (paper_w - img_size) // 2
-                    paper_surf.blit(scaled_img, (img_x, line_y))
-
-                    # Add border around image
-                    pygame.draw.rect(
-                        paper_surf, (60, 60, 60),
-                        (img_x - 2, line_y - 2, img_size + 4, img_size + 4), 2
-                    )
-
-                    line_y += img_size + 10
+                    # No centering - full width from edge to edge
+                    paper_surf.blit(scaled_img, (0, line_y))
+                    # NO BORDER - clean edge-to-edge image
+                    line_y += img_height + 5
                     continue
 
                 # Choose font based on style
@@ -355,6 +389,26 @@ class ThermalPrinterPreview:
         slot_overlay = pygame.Rect(x + 10, y + 25, width - 20, 10)
         pygame.draw.rect(screen, (35, 38, 45), slot_overlay)
 
+        # Scroll indicators if content is longer than visible area
+        if self._current_job:
+            total_height = len(self._lines) * 18 + 40
+            if self._caricature_surface:
+                total_height += self.CARICATURE_SIZE + 30
+
+            if total_height > paper_visible_h:
+                # Show scroll hint
+                if self._font:
+                    # Up arrow if can scroll up
+                    if self._scroll_offset > 0:
+                        up_surf = self._font.render("▲", True, (100, 150, 200))
+                        screen.blit(up_surf, (x + width - 25, y + 35))
+
+                    # Down arrow if can scroll down
+                    max_scroll = max(0, total_height - paper_visible_h)
+                    if self._scroll_offset < max_scroll:
+                        down_surf = self._font.render("▼", True, (100, 150, 200))
+                        screen.blit(down_surf, (x + width - 25, y + height - 25))
+
     def is_printing(self) -> bool:
         """Check if currently printing."""
         return self._is_printing
@@ -375,15 +429,38 @@ def create_print_job_from_result(result: Dict[str, Any]) -> PrintJob:
         "zodiac": "ГОРОСКОП",
         "roulette": "РУЛЕТКА",
         "quiz": "ВИКТОРИНА",
+        "guess_me": "КТО Я?",
+        "squid_game": "ИГРА В КАЛЬМАРА",
+        "roast": "ПРОЖАРКА",
+        "autopsy": "ДИАГНОЗ",
     }
+
+    # Get main text - different modes use different keys
+    main_text = (
+        result.get("prediction") or
+        result.get("display_text") or
+        result.get("roast") or  # Roast mode
+        result.get("diagnosis") or  # Autopsy mode
+        result.get("horoscope") or  # Zodiac mode
+        ""
+    )
+
+    # Get image - different modes use different keys
+    image_data = (
+        result.get("caricature") or
+        result.get("doodle") or  # Roast mode
+        result.get("scan_image") or  # Autopsy mode
+        result.get("sketch") or  # Squid game
+        None
+    )
 
     return PrintJob(
         mode_name=mode_type,
         title=title_map.get(mode_type, "ARTIFACT"),
-        main_text=result.get("prediction", result.get("display_text", "")),
+        main_text=main_text,
         lucky_number=result.get("lucky_number"),
         lucky_color=result.get("lucky_color"),
         traits=result.get("traits"),
-        caricature=result.get("caricature"),
+        caricature=image_data,
         timestamp=datetime.fromisoformat(result.get("timestamp")) if result.get("timestamp") else None,
     )

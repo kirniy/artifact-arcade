@@ -290,7 +290,7 @@ QUESTIONS_DATABASE: List[Tuple[str, str, str, str, str, str]] = [
 ]
 
 # Number of questions to ask per session
-QUESTIONS_PER_SESSION = 5
+QUESTIONS_PER_SESSION = 10
 
 
 def get_random_questions(count: int = QUESTIONS_PER_SESSION) -> List[Tuple[str, str, str, str, str, str]]:
@@ -320,7 +320,7 @@ class AIProphetMode(BaseMode):
 
     The signature mode of VNVNC that combines:
     - Live camera capture
-    - Personality profiling via 5 fun Gen-Z questions
+    - Personality profiling via 10 fun Gen-Z questions
     - AI-powered prediction generation
     - AI-generated caricature
     - Combined thermal receipt printing
@@ -329,7 +329,7 @@ class AIProphetMode(BaseMode):
     1. INTRO: Mystical welcome animation
     2. CAMERA_PREP: "Look at the camera" prompt
     3. CAMERA_CAPTURE: Take photo with countdown
-    4. QUESTIONS: 5 binary questions (left=no, right=yes)
+    4. QUESTIONS: 10 binary questions (left=no, right=yes)
     5. PROCESSING: AI generates prediction + caricature (parallel)
     6. REVEAL: Dramatic reveal animation
     7. RESULT: Display prediction, offer print
@@ -379,6 +379,12 @@ class AIProphetMode(BaseMode):
         self._glow_phase: float = 0.0
         self._scan_line: float = 0.0
 
+        # Result view state
+        self._result_view: str = "text"  # "text" or "image"
+        self._text_scroll_complete: bool = False
+        self._text_view_time: float = 0.0  # Time spent viewing text
+        self._scroll_duration: float = 0.0  # Calculated scroll duration
+
         # Particles
         self._particles = ParticleSystem()
 
@@ -407,6 +413,10 @@ class AIProphetMode(BaseMode):
         self._ai_task = None
         self._processing_progress = 0.0
         self._reveal_progress = 0.0
+        self._result_view = "text"
+        self._text_scroll_complete = False
+        self._text_view_time = 0.0
+        self._scroll_duration = 0.0
 
         # Initialize camera for live preview
         self._camera = create_camera(resolution=(640, 480))
@@ -500,27 +510,76 @@ class AIProphetMode(BaseMode):
 
                 if self._reveal_progress >= 1.0:
                     self._sub_phase = ProphetPhase.RESULT
+                    # Calculate scroll duration when entering result phase
+                    if self._prediction and self._scroll_duration == 0:
+                        from artifact.graphics.text_utils import calculate_scroll_duration, smart_wrap_text, MAIN_DISPLAY_WIDTH
+                        from artifact.graphics.fonts import load_font, CHAR_HEIGHT
+                        font = load_font("cyrillic")
+                        margin = 4
+                        available_width = MAIN_DISPLAY_WIDTH - margin * 2
+                        lines = smart_wrap_text(self._prediction.text, available_width, font, scale=2)
+                        # Determine scale and rect based on line count
+                        if len(lines) <= 6:
+                            rect = (margin, 8, available_width, 100)
+                            scale = 2
+                            interval = 1600
+                        else:
+                            rect = (margin, 5, available_width, 110)
+                            scale = 1
+                            interval = 1400
+                        self._scroll_duration = calculate_scroll_duration(
+                            self._prediction.text, rect, font, scale, line_spacing=4 if scale == 2 else 3, scroll_interval_ms=interval
+                        )
+                        # Add reading time: at least 3 seconds, or scroll duration + 2 seconds for last view
+                        self._scroll_duration = max(3000, self._scroll_duration + 2000)
 
             elif self._sub_phase == ProphetPhase.RESULT:
-                # Auto-complete after 30 seconds
-                if self._time_in_phase > 30000:
+                # Track time in text view
+                if self._result_view == "text":
+                    self._text_view_time += delta_ms
+                    # Auto-switch to image after text scroll completes
+                    if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
+                        self._text_scroll_complete = True
+                        if self._caricature:
+                            self._result_view = "image"
+
+                # Auto-complete after 45 seconds total
+                if self._time_in_phase > 45000:
                     self._finish()
 
     def on_input(self, event: Event) -> bool:
         """Handle input."""
         if event.type == EventType.BUTTON_PRESS:
-            if self.phase == ModePhase.RESULT:
-                self._finish()
-                return True
+            if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
+                # In image view or no caricature - print immediately
+                if self._result_view == "image" or not self._caricature:
+                    self._finish()
+                    return True
+                # In text view - switch to image first (or finish if no image)
+                else:
+                    if self._caricature:
+                        self._result_view = "image"
+                        self._text_scroll_complete = True
+                    else:
+                        self._finish()
+                    return True
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(False)  # No
                 return True
+            # Toggle to text view in result phase
+            if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
+                self._result_view = "text"
+                return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(True)  # Yes
+                return True
+            # Toggle to image view in result phase
+            if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT and self._caricature:
+                self._result_view = "image"
                 return True
 
         return False
@@ -650,18 +709,18 @@ class AIProphetMode(BaseMode):
                     extra_context=personality_context,
                 )
 
-            # Caricature task
+            # Portrait task (NOT caricature - use PROPHET style for natural portrait)
             async def generate_caricature():
                 if self._photo_data:
                     return await self._caricature_service.generate_caricature(
                         reference_photo=self._photo_data,
-                        style=CaricatureStyle.MYSTICAL,
+                        style=CaricatureStyle.PROPHET,  # Mystical portrait, NOT exaggerated
                         personality_context=personality_context,
                     )
                 else:
-                    # No photo, generate simple caricature
+                    # No photo, generate simple portrait
                     return await self._caricature_service.generate_simple_caricature(
-                        style=CaricatureStyle.MYSTICAL
+                        style=CaricatureStyle.PROPHET
                     )
 
             # Run in parallel
@@ -921,8 +980,11 @@ class AIProphetMode(BaseMode):
         left_pulse = 1.0 + 0.3 * math.sin(self._time_in_phase / 200) if left_active else 1.0
         right_pulse = 1.0 + 0.3 * math.sin(self._time_in_phase / 200) if right_active else 1.0
 
-        left_color = tuple(int(c * left_pulse) for c in ((255, 100, 100) if left_active else (100, 50, 50)))
-        right_color = tuple(int(c * right_pulse) for c in ((100, 255, 100) if right_active else (50, 100, 50)))
+        def _clamp_color(values, pulse):
+            return tuple(min(255, int(c * pulse)) for c in values)
+
+        left_color = _clamp_color((255, 100, 100) if left_active else (100, 50, 50), left_pulse)
+        right_color = _clamp_color((100, 255, 100) if right_active else (50, 100, 50), right_pulse)
 
         # Draw button boxes
         draw_rect(buffer, 4, btn_y, 56, btn_h, left_color)
@@ -1008,14 +1070,13 @@ class AIProphetMode(BaseMode):
         )
 
     def _render_result(self, buffer, font) -> None:
-        """Render prediction result with caricature and text alternating.
+        """Render prediction result with text first, then image.
 
-        The result screen alternates between:
-        - Caricature display (if available)
-        - Prediction text display
-
-        This creates a dynamic presentation showing both the AI-generated
-        caricature of the user and their fortune prediction.
+        Flow:
+        1. Text scrolls completely first
+        2. Auto-switches to image after scroll completes
+        3. Arrow keys toggle between text/image views
+        4. Main button on image = print
         """
         from artifact.graphics.primitives import draw_rect, fill
         from artifact.graphics.text_utils import (
@@ -1027,10 +1088,8 @@ class AIProphetMode(BaseMode):
         if not self._prediction:
             return
 
-        # Alternate between caricature and prediction every 5 seconds
-        show_caricature = self._caricature is not None and (int(self._time_in_phase / 5000) % 2 == 0)
-
-        if show_caricature and self._sub_phase == ProphetPhase.RESULT:
+        # Use view state instead of time-based cycling
+        if self._result_view == "image" and self._caricature and self._sub_phase == ProphetPhase.RESULT:
             # Render caricature
             self._render_caricature(buffer, font)
         else:
@@ -1070,12 +1129,11 @@ class AIProphetMode(BaseMode):
                         pixel = img.getpixel((x, y))
                         buffer[by, bx] = pixel
 
-            # Add decorative border
-            border_color = self._secondary
-            draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, border_color, filled=False)
-
-            # Label at bottom
-            draw_centered_text(buffer, "ТВОЯ КАРИКАТУРА", 112, self._accent, scale=1)
+            # Show hint at bottom - blinking "НАЖМИ" to print
+            if int(self._time_in_phase / 500) % 2 == 0:
+                draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
+            else:
+                draw_centered_text(buffer, "◄ ТЕКСТ", 112, (100, 100, 120), scale=1)
 
         except Exception as e:
             logger.warning(f"Failed to render caricature: {e}")
@@ -1086,56 +1144,54 @@ class AIProphetMode(BaseMode):
         """Render the prediction text with effects - auto-scales to fit."""
         from artifact.graphics.text_utils import (
             draw_animated_text, draw_centered_text, smart_wrap_text,
-            TextEffect, MAIN_DISPLAY_WIDTH
+            TextEffect, MAIN_DISPLAY_WIDTH, render_scrolling_text_area
         )
 
         if not self._prediction:
             return
 
-        # Try scale=2 first, fall back to scale=1 for long predictions
         margin = 4
         available_width = MAIN_DISPLAY_WIDTH - margin * 2
-
-        # Check if text fits at scale=2 (max 6 lines to fit on screen)
         lines_scale2 = smart_wrap_text(self._prediction.text, available_width, font, scale=2)
 
         if len(lines_scale2) <= 6:
-            # Fits at scale=2
-            scale = 2
-            lines = lines_scale2
-            line_height = 18
-            max_lines = 6
-            start_y = 8
+            render_scrolling_text_area(
+                buffer,
+                self._prediction.text,
+                (margin, 8, available_width, 100),
+                (255, 255, 255),
+                self._time_in_phase,
+                font=font,
+                scale=2,
+                line_spacing=4,
+                scroll_interval_ms=1600,
+            )
         else:
-            # Use scale=1 for longer text
-            scale = 1
-            lines = smart_wrap_text(self._prediction.text, available_width, font, scale=1)
-            line_height = 10
-            max_lines = 11  # More lines fit at scale=1
-            start_y = 5
+            render_scrolling_text_area(
+                buffer,
+                self._prediction.text,
+                (margin, 5, available_width, 110),
+                (255, 255, 255),
+                self._time_in_phase,
+                font=font,
+                scale=1,
+                line_spacing=3,
+                scroll_interval_ms=1400,
+            )
 
-        y = start_y
-        for i, line in enumerate(lines[:max_lines]):
-            # Staggered reveal animation
-            if self._sub_phase == ProphetPhase.REVEAL:
-                line_alpha = min(1.0, self._reveal_progress * (max_lines / 2) - i * 0.5)
-                if line_alpha <= 0:
-                    continue
-                color = tuple(int(255 * line_alpha) for _ in range(3))
-                draw_centered_text(buffer, line, y, color, scale=scale)
-            else:
-                # Full display with wave effect
-                wave_y = y + int(1.5 * math.sin(self._time_in_phase / 200 + i * 0.4))
-                pulse = 0.85 + 0.15 * math.sin(self._time_in_phase / 300 + i * 0.3)
-                color = tuple(int(255 * pulse) for _ in range(3))
-                draw_centered_text(buffer, line, wave_y, color, scale=scale)
-            y += line_height
-
-        # Show "НАЖМИ" hint at bottom only in result phase
+        # Show navigation hint at bottom in result phase
         if self._sub_phase == ProphetPhase.RESULT:
             hint_y = 118
-            if int(self._time_in_phase / 600) % 2 == 0:
-                draw_centered_text(buffer, "НАЖМИ", hint_y, (100, 100, 120), scale=1)
+            if self._caricature:
+                # Show hint to view image
+                if int(self._time_in_phase / 600) % 2 == 0:
+                    draw_centered_text(buffer, "ФОТО ►", hint_y, (100, 150, 200), scale=1)
+                else:
+                    draw_centered_text(buffer, "НАЖМИ", hint_y, (100, 100, 120), scale=1)
+            else:
+                # No caricature - just show print hint
+                if int(self._time_in_phase / 600) % 2 == 0:
+                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", hint_y, (100, 200, 100), scale=1)
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with smooth seamless scrolling."""

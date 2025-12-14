@@ -1,4 +1,4 @@
-"""Gemini API client singleton for ARTIFACT.
+"""Gemini API client singleton for VNVNC.
 
 Based on patterns from voicio/gemini_client.py with adaptations for
 arcade fortune-telling use case.
@@ -10,6 +10,8 @@ import logging
 from typing import Optional, Dict, Any, List, Union
 from dataclasses import dataclass
 from enum import Enum
+
+from artifact.ai.logging import get_ai_logger
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,7 @@ class GeminiModel(Enum):
     # Image understanding (photo analysis) - Gemini 2.5 Flash supports vision
     FLASH_VISION = "gemini-2.5-flash"
 
-    # Image generation (caricatures) - Gemini 3 Pro Image Preview
+    # Image generation (caricatures/sketches) - Gemini 3.0 Pro Image Preview
     IMAGEN = "gemini-3-pro-image-preview"
 
 
@@ -160,6 +162,18 @@ class GeminiClient:
                     )
 
                     if response and response.text:
+                        # Log the generation
+                        try:
+                            ai_logger = get_ai_logger()
+                            ai_logger.log_text_generation(
+                                category="text_generation",
+                                prompt=prompt,
+                                response=response.text,
+                                model=model.value,
+                                metadata={"system_instruction": system_instruction}
+                            )
+                        except Exception as log_error:
+                            logger.debug(f"Failed to log generation: {log_error}")
                         return response.text
 
                 except asyncio.TimeoutError:
@@ -210,7 +224,7 @@ class GeminiClient:
 
             # Create multimodal content
             contents = [
-                types.Part.from_text(prompt),
+                types.Part.from_text(text=prompt),
                 types.Part.from_bytes(
                     data=image_data,
                     mime_type=mime_type,
@@ -236,6 +250,22 @@ class GeminiClient:
                     )
 
                     if response and response.text:
+                        # Log the vision analysis
+                        try:
+                            ai_logger = get_ai_logger()
+                            ai_logger.log_text_generation(
+                                category="vision_analysis",
+                                prompt=prompt,
+                                response=response.text,
+                                model=model.value,
+                                metadata={
+                                    "has_image": True,
+                                    "mime_type": mime_type,
+                                    "system_instruction": system_instruction
+                                }
+                            )
+                        except Exception as log_error:
+                            logger.debug(f"Failed to log vision analysis: {log_error}")
                         return response.text
 
                 except asyncio.TimeoutError:
@@ -365,7 +395,25 @@ class GeminiClient:
                                     if inline_data:
                                         image_data = inline_data.get("data")
                                         if image_data:
-                                            return base64.b64decode(image_data)
+                                            decoded_image = base64.b64decode(image_data)
+                                            # Log the image generation
+                                            try:
+                                                ai_logger = get_ai_logger()
+                                                ai_logger.log_image_generation(
+                                                    category="generated_image",
+                                                    image_data=decoded_image,
+                                                    prompt=full_prompt,
+                                                    model=GeminiModel.IMAGEN.value,
+                                                    style=style,
+                                                    reference_photo=reference_photo,
+                                                    metadata={
+                                                        "aspect_ratio": aspect_ratio,
+                                                        "image_size": image_size,
+                                                    }
+                                                )
+                                            except Exception as log_error:
+                                                logger.debug(f"Failed to log image: {log_error}")
+                                            return decoded_image
 
                             logger.warning(f"No image in response, attempt {attempt + 1}")
 

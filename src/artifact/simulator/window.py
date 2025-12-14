@@ -25,7 +25,7 @@ class WindowConfig:
     """Simulator window configuration."""
     width: int = 1280
     height: int = 720
-    title: str = "ARTIFACT Simulator"
+    title: str = "VNVNC Simulator"
     fullscreen: bool = False
     fps: int = 60
 
@@ -301,6 +301,14 @@ class SimulatorWindow:
             self.keypad._press("*")
         elif key == pygame.K_HASH:
             self.keypad._press("#")
+
+        # UP/DOWN for scrolling print preview
+        elif key == pygame.K_UP:
+            if self._show_printer and self._printer_preview:
+                self._printer_preview.scroll(-1)  # Scroll up
+        elif key == pygame.K_DOWN:
+            if self._show_printer and self._printer_preview:
+                self._printer_preview.scroll(1)  # Scroll down
 
     def _handle_keyup(self, event: pygame.event.Event) -> None:
         """Handle key release."""

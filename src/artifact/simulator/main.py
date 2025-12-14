@@ -23,7 +23,6 @@ from artifact.graphics.renderer import Renderer
 from artifact.animation.engine import AnimationEngine
 from artifact.modes.manager import ModeManager
 from artifact.modes.fortune import FortuneMode
-from artifact.modes.zodiac import ZodiacMode
 from artifact.modes.roulette import RouletteMode
 from artifact.modes.quiz import QuizMode
 from artifact.modes.ai_prophet import AIProphetMode
@@ -37,15 +36,39 @@ logger = logging.getLogger(__name__)
 
 
 def setup_logging() -> None:
-    """Configure logging for simulator."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    """Configure logging for simulator with file output."""
+    from pathlib import Path
+
+    # Log file in project root
+    log_file = Path(__file__).parent.parent.parent.parent / "simulator.log"
+
+    # Create formatter
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%H:%M:%S"
     )
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_handler.setFormatter(formatter)
+
+    # File handler - truncate on each run for fresh logs
+    file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    # Root logger setup
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+
     # Reduce noise from some modules
     logging.getLogger("artifact.animation").setLevel(logging.INFO)
     logging.getLogger("artifact.graphics").setLevel(logging.INFO)
+
+    logging.info(f"Logging to file: {log_file}")
 
 
 class ArtifactSimulator:
@@ -96,7 +119,6 @@ class ArtifactSimulator:
         """Register all available game modes."""
         # Register all game modes
         self.mode_manager.register_mode(FortuneMode)
-        self.mode_manager.register_mode(ZodiacMode)
         self.mode_manager.register_mode(RouletteMode)
         self.mode_manager.register_mode(QuizMode)
 
