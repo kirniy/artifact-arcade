@@ -53,7 +53,158 @@ class Caricature:
 # Optimized for 128x128 pixel display + thermal printing
 # TEXT RULES: Russian language, ALL CAPS, VERY LARGE readable
 # NO example labels - model copies them literally
+# VARIETY: Each prompt has multiple variations to avoid repetition
 # =============================================================================
+
+# ROAST VARIATIONS - Adult humor with real bite (18+)
+ROAST_VARIATIONS = [
+    """BRUTAL COMEDY CLUB ROAST DOODLE. Draw this person as a CARICATURE being roasted:
+- EXAGGERATE what makes them unique: forehead size, eyebrow shape, cheekbones, lip fullness, ear size, jawline, hairline
+- NOT just the nose! Look at EVERYTHING and pick 2-3 features to roast
+- Add 3-4 arrows pointing to features with BRUTAL but FUNNY labels in RUSSIAN
+- Labels should be ADULT HUMOR - sarcastic, edgy, like a drunk friend roasting you
+- Think comedy roast, not kindergarten insults
+- Scribbled graffiti style, messy but readable
+- RUSSIAN text, ALL CAPS, thick chunky letters
+Black and white only, white background.""",
+
+    """SAVAGE STANDUP COMEDIAN SKETCH. Draw this person getting ROASTED:
+- Find their DISTINCTIVE features: chin shape, eye spacing, smile lines, hair texture, face shape
+- Exaggerate 2-3 unique features BESIDES the nose
+- 3-4 arrows with SAVAGE Russian labels - adult standup comedian level humor
+- Like a friend who knows you too well and has no filter
+- Messy doodle style with stink lines, flames, or shame spirals
+- RUSSIAN labels, ALL CAPS, graffiti letters
+Black and white only, white background.""",
+
+    """BAR NAPKIN ROAST DRAWING. Someone drew this person at 2am being brutally honest:
+- CARICATURE their real features: maybe it's their ears, their eyebrows, their chin, their forehead
+- Pick what's ACTUALLY distinctive about THIS person, not default long nose
+- Drunk friend energy with arrows and labels in RUSSIAN
+- Labels are ADULT - could include mild swears, body humor, lifestyle roasts
+- Scribbly, messy, but the insults are READABLE
+- RUSSIAN text, ALL CAPS, wobbly drunk handwriting style
+Black and white only, white background.""",
+
+    """LOCKER ROOM ROAST DOODLE. The kind of drawing your worst friend would make:
+- EXAGGERATE their unique facial geometry: asymmetry, proportions, expression lines
+- What would a brutal but loving friend notice first? Draw THAT big
+- 3-4 arrows with NO MERCY labels in RUSSIAN
+- Adult humor - nothing is off limits except actually mean stuff
+- Graffiti vandalism style, chaotic but clear
+- RUSSIAN text, ALL CAPS, thick scribbled letters
+Black and white only, white background.""",
+]
+
+# TAROT VARIATIONS - No more constant third eye
+TAROT_VARIATIONS = [
+    """TAROT CARD: THE STAR. Draw this person as the Star card archetype:
+- Ornate art nouveau FRAME around the image
+- Person kneeling, pouring water from two vessels (stars reflected in water)
+- 8-pointed star above their head, smaller stars scattered around
+- Nude or draped figure (tasteful), serene expression
+- Nature elements: tree, bird, flowing water
+- NATURAL proportions, beautiful and ethereal
+- Thick black lines, white background, high contrast""",
+
+    """TAROT CARD: THE MAGICIAN. Draw this person as the Magician archetype:
+- Decorative BORDER with infinity symbol at top
+- Person with one arm raised to sky, one pointing to earth
+- Table before them with cup, sword, pentacle, wand symbols
+- Roses and lilies around the frame
+- Confident, powerful pose - they command the elements
+- NATURAL proportions, regal bearing
+- Thick black lines, white background, high contrast""",
+
+    """TAROT CARD: THE EMPRESS. Draw this person as the Empress archetype:
+- Luxurious ornate FRAME with wheat and pomegranate motifs
+- Person seated on throne/cushions in flowing robes
+- Crown of 12 stars, Venus symbol nearby
+- Lush garden or nature surrounding them
+- Nurturing, abundant, sensual energy
+- NATURAL proportions, beautiful and powerful
+- Thick black lines, white background, high contrast""",
+
+    """TAROT CARD: THE EMPEROR. Draw this person as the Emperor archetype:
+- Strong geometric FRAME with ram heads at corners
+- Person seated on stone throne, armor or royal robes
+- Ankh scepter in one hand, orb in other
+- Mountains in background, red/orange energy (shown as bold lines)
+- Authority, stability, leadership pose
+- NATURAL proportions, commanding presence
+- Thick black lines, white background, high contrast""",
+
+    """TAROT CARD: THE FOOL. Draw this person as the Fool archetype:
+- Whimsical FRAME with floral motifs
+- Person mid-step at cliff edge, looking up carefree
+- Small dog at their heels, bindle/bag over shoulder
+- Sun shining, white rose in hand
+- Joyful, innocent, adventurous expression
+- NATURAL proportions, youthful energy
+- Thick black lines, white background, high contrast""",
+
+    """TAROT CARD: THE HIGH PRIESTESS. Draw this person as the Priestess:
+- Mysterious FRAME with moon phases
+- Person seated between two pillars (B and J letters)
+- Crescent moon at feet, scroll or book in lap
+- Pomegranate veil behind them, water below
+- Wise, intuitive, mysterious gaze
+- NATURAL proportions, serene and knowing
+- Thick black lines, white background, high contrast""",
+]
+
+# PROPHET VARIATIONS - Not always third eye
+PROPHET_VARIATIONS = [
+    """MYSTIC ORACLE PORTRAIT - COSMIC SEER:
+- Draw this person with NATURAL beautiful proportions
+- Radiating halo of light rays behind their head
+- Eyes slightly glowing with inner wisdom
+- Floating constellation dots and star patterns around them
+- Cosmic swirls and nebula shapes in background
+- Wise, knowing expression - they see your future
+- NO third eye, focus on the cosmic elements
+- Thick black lines, white background, high contrast""",
+
+    """MYSTIC ORACLE PORTRAIT - MOON PROPHET:
+- Draw this person with NATURAL beautiful proportions
+- Large crescent moon cradling their head from behind
+- Stars scattered in their hair like a crown
+- Moth or owl symbol near them (wisdom messenger)
+- Flowing ethereal hair or robes
+- Calm, all-knowing gaze
+- Moon phases arranged around the portrait
+- Thick black lines, white background, high contrast""",
+
+    """MYSTIC ORACLE PORTRAIT - CRYSTAL GAZER:
+- Draw this person with NATURAL beautiful proportions
+- Hands raised, holding or hovering over crystal ball
+- Light emanating from the crystal upward to their face
+- Mystical smoke or mist swirling around
+- Geometric sacred symbols floating nearby
+- Deep concentrated expression
+- NO third eye, the crystal is the focus
+- Thick black lines, white background, high contrast""",
+
+    """MYSTIC ORACLE PORTRAIT - FIRE ORACLE:
+- Draw this person with NATURAL beautiful proportions
+- Flames in their hands or rising behind them
+- Phoenix feathers or fire bird silhouette
+- Sparks and embers floating upward
+- Intense, passionate prophet energy
+- Hair flowing upward like flames
+- Powerful and transformative vibe
+- Thick black lines, white background, high contrast""",
+
+    """MYSTIC ORACLE PORTRAIT - TAROT READER:
+- Draw this person with NATURAL beautiful proportions
+- Holding fanned tarot cards in elegant pose
+- Cards floating around them showing mystical symbols
+- Candles or mystical light sources
+- Velvet draping or mystical cloth elements
+- Knowing smile, they've seen your cards
+- NO third eye, cards are the magical element
+- Thick black lines, white background, high contrast""",
+]
 
 STYLE_PROMPTS = {
     # =========================================================================
@@ -106,84 +257,19 @@ Pure white background. Black and white only.
 """,
 
     # =========================================================================
-    # ROAST MODE - "Прожарка" - Graffiti roast doodle
+    # ROAST MODE - "Прожарка" - Adult roast doodle (uses ROAST_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.ROAST: """
-Create a GRAFFITI ROAST DOODLE of THIS PERSON from the photo.
-
-VISUAL CONCEPT - SCHOOL DESK / BATHROOM WALL VANDALISM:
-- Messy, chaotic, scribbly drawing like graffiti tags
-- EXAGGERATE their features hilariously (giant nose, crazy hair, weird ears)
-- Multiple arrows pointing at features with mean but funny roast labels
-- Scribbled underlines, circles around "problem areas"
-- Doodle flames, stink lines, or chaos symbols around them
-- The vibe: a bored student roasting their friend with a pen
-
-DISPLAY (128x128 PIXELS):
-- VERY THICK scribbled outlines
-- Messy but READABLE arrows and labels
-- Keep it simple - bold scribbles only
-- High contrast black/white
-
-TEXT RULES (CRITICAL):
-- ALL labels MUST be in RUSSIAN language
-- ALL text MUST be in CAPITAL LETTERS
-- Text must be VERY LARGE - readable at 128px
-- Chunky graffiti-style scribbled letters
-- 2-4 arrows with SHORT funny roast words
-
-Pure white background. Black and white only.
-""",
+    CaricatureStyle.ROAST: "ROAST_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # PROPHET MODE - "ИИ Пророк" - Mystical oracle portrait
+    # PROPHET MODE - "ИИ Пророк" - Mystical oracle (uses PROPHET_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.PROPHET: """
-Create a MYSTICAL PROPHET PORTRAIT of THIS PERSON from the photo.
-
-VISUAL CONCEPT - ETHEREAL ORACLE/SEER:
-- NOT a caricature - keep proportions NATURAL and beautiful
-- Draw them as an all-knowing mystic seer
-- Third eye symbol on forehead, glowing softly
-- Radiating lines/halo around their head like divine light
-- Floating stars, cosmic swirls, constellation dots around them
-- Mysterious wise expression, slightly glowing eyes
-- The vibe: an ancient prophet who sees past, present, and future
-
-DISPLAY (128x128 PIXELS):
-- VERY THICK bold black outlines
-- Mystical elements bold and simple
-- High contrast black/white
-
-NO TEXT LABELS - pure mystical visual only.
-Person should look beautiful, wise, powerful - NOT mocked.
-Pure white background. Black and white only.
-""",
+    CaricatureStyle.PROPHET: "PROPHET_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # TAROT MODE - "Гадалка" - Tarot card illustration
+    # TAROT MODE - "Гадалка" - Tarot card (uses TAROT_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.TAROT: """
-Create a TAROT CARD illustration of THIS PERSON from the photo.
-
-VISUAL CONCEPT - CLASSIC TAROT CARD:
-- MUST have ornate decorative FRAME/BORDER around entire image
-- Person posed like a tarot archetype (holding a star, magical gesture, regal pose)
-- Art nouveau decorative corners and flourishes on the frame
-- Mystical symbols: stars, crescent moon, all-seeing eye, zodiac glyph
-- Sun rays or divine light behind the figure
-- The person looks regal, powerful, magical - like a fortune card figure
-
-DISPLAY (128x128 PIXELS):
-- VERY THICK bold black outlines (3-4px)
-- Decorative frame must be BOLD and simple
-- Large shapes, no intricate fine details
-- High contrast black/white
-
-TEXT: If adding card name at bottom, MUST be RUSSIAN, ALL CAPS, VERY LARGE.
-NOT a caricature - proportions NATURAL and flattering.
-Pure white background. Black and white only.
-""",
+    CaricatureStyle.TAROT: "TAROT_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
     # QUIZ WINNER - "Викторина" - Game show champion
@@ -358,8 +444,16 @@ class CaricatureService:
             # Add a small uniqueness token to vary outputs run-to-run
             uniqueness_token = hashlib.md5(str(random.random()).encode()).hexdigest()[:8].upper()
 
-            # Build the caricature prompt
+            # Build the caricature prompt - resolve variation placeholders
             style_prompt = STYLE_PROMPTS.get(style, STYLE_PROMPTS[CaricatureStyle.SKETCH])
+
+            # Replace placeholders with random variations for more variety
+            if style_prompt == "ROAST_VARIATION":
+                style_prompt = random.choice(ROAST_VARIATIONS)
+            elif style_prompt == "PROPHET_VARIATION":
+                style_prompt = random.choice(PROPHET_VARIATIONS)
+            elif style_prompt == "TAROT_VARIATION":
+                style_prompt = random.choice(TAROT_VARIATIONS)
 
             # Build personality-aware prompt
             personality_hint = ""
@@ -534,6 +628,53 @@ Style requirements:
             logger.error(f"Simple caricature generation failed: {e}")
 
         return None
+
+    async def generate_multiple_caricatures(
+        self,
+        reference_photo: bytes,
+        style: CaricatureStyle = CaricatureStyle.MYSTICAL,
+        count: int = 3,
+        size: Tuple[int, int] = (384, 384),
+        personality_context: Optional[str] = None,
+    ) -> List[Caricature]:
+        """Generate multiple caricatures with different variations.
+
+        Useful for creating sequences to display or letting user choose.
+
+        Args:
+            reference_photo: User's photo as bytes
+            style: Caricature style to use
+            count: Number of images to generate (1-5)
+            size: Output size (width, height)
+            personality_context: Optional personality traits
+
+        Returns:
+            List of Caricature objects (may have fewer than requested on errors)
+        """
+        count = max(1, min(5, count))  # Clamp to 1-5
+
+        # Generate concurrently for speed
+        tasks = [
+            self.generate_caricature(
+                reference_photo=reference_photo,
+                style=style,
+                size=size,
+                personality_context=personality_context,
+            )
+            for _ in range(count)
+        ]
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Filter out None and exceptions
+        caricatures = []
+        for result in results:
+            if isinstance(result, Caricature):
+                caricatures.append(result)
+            elif isinstance(result, Exception):
+                logger.warning(f"One caricature failed: {result}")
+
+        return caricatures
 
     async def generate_squid_sketch(
         self,
