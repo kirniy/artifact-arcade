@@ -856,62 +856,351 @@ class RouletteMode(BaseMode):
         self._particles.render(buffer)
 
     def _draw_wheel(self, buffer, cx: int, cy: int, radius: int, alpha: float) -> None:
-        """Draw filled wheel segments."""
-        from artifact.graphics.primitives import draw_line, draw_circle
-        
+        """Draw beautiful wheel with prize icons and visual effects."""
+        from artifact.graphics.primitives import draw_line, draw_circle, draw_rect
+        from artifact.graphics.text_utils import draw_text
+
         segment_count = len(WHEEL_SEGMENTS)
         segment_angle = 360 / segment_count
-        
-        # Optimize rendering by pre-calculating or using larger steps
-        # For simulator performance, we might want to be careful with pixel-by-pixel
-        # But let's keep the quality high as requested.
-        
+
+        # Draw outer decorative ring with lights
+        self._draw_wheel_lights(buffer, cx, cy, radius + 3)
+
+        # Draw segments with gradient effect
         for i, (name_ru, symbol, color, rarity) in enumerate(WHEEL_SEGMENTS):
             start_angle = i * segment_angle + self._wheel_angle
             end_angle = start_angle + segment_angle
-            
-            # Adjust color brightness based on spin/rarity
-            rad_color = tuple(int(c * alpha) for c in color)
-            
-            # Draw segment arc
-            # Using simple ray-sweeping for filling wedge
-            for a in range(int(start_angle), int(end_angle) + 1, 2): # Step 2 for speed
+            mid_angle = (start_angle + end_angle) / 2
+
+            # Create segment with edge darkening for 3D effect
+            for a in range(int(start_angle), int(end_angle) + 1, 1):
                 rad = math.radians(a)
                 cos_a = math.cos(rad)
                 sin_a = math.sin(rad)
-                
-                # Draw rays from center to edge
-                for r in range(0, radius + 1, 2): # Step 2 for speed
+
+                # Calculate distance from segment center for shading
+                angle_from_center = abs(a - mid_angle)
+                edge_factor = 1.0 - (angle_from_center / (segment_angle / 2)) * 0.3
+
+                for r in range(15, radius + 1, 1):  # Start from 15 for inner ring
+                    # Add radial gradient (darker near center, lighter at edge)
+                    radial_factor = 0.7 + (r / radius) * 0.3
+
+                    # Combined brightness
+                    brightness = alpha * edge_factor * radial_factor
+
+                    # Rarity glow effect
+                    if rarity >= 3 and self._spinning:
+                        glow_pulse = 0.1 * math.sin(self._time_in_phase / 100 + i)
+                        brightness = min(1.0, brightness + glow_pulse)
+
+                    seg_color = tuple(int(c * brightness) for c in color)
+
                     px = int(cx + r * cos_a)
                     py = int(cy + r * sin_a)
                     if 0 <= px < 128 and 0 <= py < 128:
-                        buffer[py, px] = rad_color
+                        buffer[py, px] = seg_color
 
-        # Wheel Hub
-        draw_circle(buffer, cx, cy, 10, (50, 50, 50))
-        draw_circle(buffer, cx, cy, 8, (200, 180, 50)) # Gold hub
+            # Draw segment divider lines
+            rad = math.radians(start_angle)
+            x1 = int(cx + 15 * math.cos(rad))
+            y1 = int(cy + 15 * math.sin(rad))
+            x2 = int(cx + radius * math.cos(rad))
+            y2 = int(cy + radius * math.sin(rad))
+            self._draw_line_aa(buffer, x1, y1, x2, y2, (40, 40, 40))
+
+            # Draw prize icon in segment
+            self._draw_prize_icon(buffer, cx, cy, radius, mid_angle, symbol, rarity)
+
+        # Inner decorative ring
+        for r in range(13, 16):
+            draw_circle(buffer, cx, cy, r, (60, 60, 60), filled=False)
+
+        # Golden center hub with shine effect
+        draw_circle(buffer, cx, cy, 12, (80, 70, 30))  # Dark gold
+        draw_circle(buffer, cx, cy, 10, (200, 180, 50))  # Gold
+        draw_circle(buffer, cx, cy, 8, (255, 230, 100))  # Bright gold
+
+        # Hub shine highlight
+        highlight_x = cx - 3
+        highlight_y = cy - 3
+        if 0 <= highlight_x < 128 and 0 <= highlight_y < 128:
+            buffer[highlight_y, highlight_x] = (255, 255, 200)
+            if highlight_x + 1 < 128:
+                buffer[highlight_y, highlight_x + 1] = (255, 255, 180)
+            if highlight_y + 1 < 128:
+                buffer[highlight_y + 1, highlight_x] = (255, 255, 180)
+
+    def _draw_wheel_lights(self, buffer, cx: int, cy: int, radius: int) -> None:
+        """Draw animated lights around the wheel rim."""
+        from artifact.graphics.primitives import draw_circle
+
+        light_count = 16
+        for i in range(light_count):
+            angle = (i / light_count) * 360 + self._light_phase * 30
+            rad = math.radians(angle)
+            lx = int(cx + radius * math.cos(rad))
+            ly = int(cy + radius * math.sin(rad))
+
+            # Animated brightness based on position and time
+            brightness = 0.5 + 0.5 * math.sin(self._light_phase + i * 0.5)
+            if self._spinning:
+                brightness = 0.3 + 0.7 * abs(math.sin(self._light_phase * 3 + i * 0.3))
+
+            # Alternate colors for party effect
+            if i % 2 == 0:
+                light_color = (int(255 * brightness), int(200 * brightness), int(50 * brightness))
+            else:
+                light_color = (int(255 * brightness), int(100 * brightness), int(100 * brightness))
+
+            if 0 <= lx < 128 and 0 <= ly < 128:
+                buffer[ly, lx] = light_color
+                # Glow effect
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    gx, gy = lx + dx, ly + dy
+                    if 0 <= gx < 128 and 0 <= gy < 128:
+                        glow = tuple(int(c * 0.4) for c in light_color)
+                        # Blend with existing
+                        existing = buffer[gy, gx]
+                        buffer[gy, gx] = tuple(min(255, existing[j] + glow[j]) for j in range(3))
+
+    def _draw_prize_icon(self, buffer, cx: int, cy: int, radius: int, angle: float, symbol: str, rarity: int) -> None:
+        """Draw a simple icon representing the prize in the segment."""
+        # Calculate position for icon (about 2/3 of the way from center)
+        icon_r = radius * 0.65
+        rad = math.radians(angle)
+        ix = int(cx + icon_r * math.cos(rad))
+        iy = int(cy + icon_r * math.sin(rad))
+
+        # Draw different icons based on symbol
+        icon_size = 4 if rarity >= 3 else 3
+
+        # Color based on rarity
+        if rarity >= 4:
+            icon_color = (255, 255, 200)  # Bright gold for legendary
+        elif rarity >= 3:
+            icon_color = (255, 255, 255)  # White for rare
+        else:
+            icon_color = (200, 200, 200)  # Light gray for common
+
+        # Simple pixel art icons based on prize type
+        if "🥃" in symbol:  # Shot glass
+            self._draw_shot_icon(buffer, ix, iy, icon_color)
+        elif "💃" in symbol:  # Dance
+            self._draw_dance_icon(buffer, ix, iy, icon_color)
+        elif "🤗" in symbol:  # Hug
+            self._draw_heart_icon(buffer, ix, iy, icon_color)
+        elif "💰" in symbol:  # Discount
+            self._draw_coin_icon(buffer, ix, iy, icon_color)
+        elif "💋" in symbol:  # Kiss
+            self._draw_lips_icon(buffer, ix, iy, icon_color)
+        elif "🍹" in symbol:  # Cocktail
+            self._draw_cocktail_icon(buffer, ix, iy, icon_color)
+        elif "📸" in symbol:  # Photo
+            self._draw_camera_icon(buffer, ix, iy, icon_color)
+        elif "⭐" in symbol:  # Jackpot
+            self._draw_star_icon(buffer, ix, iy, (255, 215, 0))
+        elif "💝" in symbol:  # Compliment
+            self._draw_heart_icon(buffer, ix, iy, (255, 150, 200))
+        elif "🤳" in symbol:  # Selfie
+            self._draw_camera_icon(buffer, ix, iy, icon_color)
+        elif "🔄" in symbol:  # Spin again
+            self._draw_arrow_icon(buffer, ix, iy, icon_color)
+        elif "✨" in symbol:  # Wish
+            self._draw_sparkle_icon(buffer, ix, iy, (255, 200, 100))
+        else:
+            self._draw_dot_icon(buffer, ix, iy, icon_color)
+
+    def _draw_shot_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a shot glass icon."""
+        # Simple shot glass shape
+        pixels = [(0, -2), (-1, -1), (1, -1), (-1, 0), (0, 0), (1, 0),
+                  (-1, 1), (0, 1), (1, 1), (0, 2)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_dance_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a dancing figure icon."""
+        pixels = [(0, -2), (-1, -1), (0, -1), (1, -1), (0, 0),
+                  (-1, 1), (1, 1), (-1, 2), (1, 2)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_heart_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a heart icon."""
+        pixels = [(-1, -1), (1, -1), (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0),
+                  (-1, 1), (0, 1), (1, 1), (0, 2)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_coin_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a coin icon."""
+        pixels = [(0, -2), (-1, -1), (0, -1), (1, -1),
+                  (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0),
+                  (-1, 1), (0, 1), (1, 1), (0, 2)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_lips_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw lips icon."""
+        pixels = [(-2, -1), (-1, -1), (1, -1), (2, -1),
+                  (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0),
+                  (-1, 1), (0, 1), (1, 1)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_cocktail_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a cocktail glass icon."""
+        pixels = [(-2, -2), (-1, -2), (0, -2), (1, -2), (2, -2),
+                  (-1, -1), (0, -1), (1, -1), (0, 0), (0, 1), (0, 2),
+                  (-1, 2), (1, 2)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_camera_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a camera icon."""
+        pixels = [(-1, -2), (0, -2), (1, -2),
+                  (-2, -1), (-1, -1), (0, -1), (1, -1), (2, -1),
+                  (-2, 0), (-1, 0), (1, 0), (2, 0),
+                  (-2, 1), (-1, 1), (0, 1), (1, 1), (2, 1)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_star_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a star icon (for jackpot)."""
+        pixels = [(0, -3), (-1, -1), (0, -1), (1, -1),
+                  (-3, 0), (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0), (3, 0),
+                  (-1, 1), (0, 1), (1, 1), (-2, 2), (2, 2), (-2, 3), (2, 3)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_arrow_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a circular arrow (spin again)."""
+        pixels = [(0, -2), (1, -2), (2, -1), (2, 0), (1, 1), (0, 2),
+                  (-1, 2), (-2, 1), (-2, 0), (-1, -1), (2, -2)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_sparkle_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a sparkle/wish icon."""
+        pixels = [(0, -2), (-2, 0), (0, 0), (2, 0), (0, 2),
+                  (-1, -1), (1, -1), (-1, 1), (1, 1)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_dot_icon(self, buffer, x: int, y: int, color) -> None:
+        """Draw a simple dot as fallback icon."""
+        pixels = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]
+        for dx, dy in pixels:
+            px, py = x + dx, y + dy
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
+
+    def _draw_line_aa(self, buffer, x1: int, y1: int, x2: int, y2: int, color) -> None:
+        """Draw a line with basic anti-aliasing effect."""
+        # Bresenham's line with anti-aliasing approximation
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        sx = 1 if x1 < x2 else -1
+        sy = 1 if y1 < y2 else -1
+        err = dx - dy
+
+        while True:
+            if 0 <= x1 < 128 and 0 <= y1 < 128:
+                buffer[y1, x1] = color
+            if x1 == x2 and y1 == y2:
+                break
+            e2 = 2 * err
+            if e2 > -dy:
+                err -= dy
+                x1 += sx
+            if e2 < dx:
+                err += dx
+                y1 += sy
 
     def _draw_pointer(self, buffer, x: int, y: int) -> None:
-        """Draw pointer triangular arrow at top center."""
-        # Simple red triangle pointing down
-        # x is center, y is top edge
-        
-        w = 8
-        h = 12
-        
-        color = (255, 50, 50)
-        outline = (255, 255, 255)
-        
-        # Scanline triangle fill
+        """Draw an improved pointer with glow effect."""
+        from artifact.graphics.primitives import draw_circle
+
+        # Pointer dimensions
+        w = 10
+        h = 16
+
+        # Draw glow behind pointer
+        glow_color = (100, 30, 30)
+        for dy in range(-2, h + 2):
+            glow_width = max(0, int(w * (1 - dy / h)) + 2)
+            py = y + dy
+            for dx in range(-glow_width, glow_width + 1):
+                px = x + dx
+                if 0 <= px < 128 and 0 <= py < 128:
+                    existing = buffer[py, px]
+                    buffer[py, px] = tuple(min(255, existing[j] + glow_color[j]) for j in range(3))
+
+        # Main pointer body (gradient red)
         for i in range(h):
-            row_w = int(w * (1 - i/h))
+            row_w = int(w * (1 - i / h))
             py = y + i
-            for px in range(x - row_w, x + row_w + 1):
+            brightness = 1.0 - (i / h) * 0.3
+
+            for dx in range(-row_w, row_w + 1):
+                px = x + dx
+                # Edge shading
+                edge_dist = abs(dx) / max(1, row_w)
+                edge_brightness = 1.0 - edge_dist * 0.3
+
+                final_brightness = brightness * edge_brightness
+                color = (int(255 * final_brightness), int(50 * final_brightness), int(50 * final_brightness))
+
                 if 0 <= px < 128 and 0 <= py < 128:
                     buffer[py, px] = color
-                    
-        # Highlight
-        buffer[y, x] = outline
+
+        # White outline
+        outline_color = (255, 255, 255)
+        # Top edge
+        buffer[y, x] = outline_color
+        # Left edge
+        for i in range(h):
+            row_w = int(w * (1 - i / h))
+            px = x - row_w
+            py = y + i
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = outline_color
+        # Right edge
+        for i in range(h):
+            row_w = int(w * (1 - i / h))
+            px = x + row_w
+            py = y + i
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = outline_color
+
+        # Shine highlight on left side
+        for i in range(3, h - 3):
+            row_w = int(w * (1 - i / h))
+            px = x - row_w + 2
+            py = y + i
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = (255, 150, 150)
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with phase-specific messages."""
