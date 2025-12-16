@@ -13,6 +13,7 @@ from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.timeline import Timeline
 from artifact.animation.easing import Easing
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import (
@@ -268,6 +269,7 @@ class ZodiacMode(BaseMode):
         # AI results
         self._constellation_portrait: Optional[Caricature] = None
         self._ai_task: Optional[asyncio.Task] = None
+        self._progress_tracker = SmartProgressTracker(mode_theme="zodiac")
 
         # Date input state
         self._input_buffer: str = ""
@@ -333,6 +335,7 @@ class ZodiacMode(BaseMode):
         # Reset AI state
         self._constellation_portrait = None
         self._ai_task = None
+        self._progress_tracker.reset()
 
         # Initialize camera for live preview
         self._camera = create_camera(resolution=(640, 480))
@@ -645,6 +648,10 @@ class ZodiacMode(BaseMode):
         self.change_phase(ModePhase.PROCESSING)
         self._reveal_progress = 0.0
 
+        # Start progress tracker
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         # Start async AI task for portrait generation
         self._ai_task = asyncio.create_task(self._generate_constellation_portrait())
 
@@ -658,6 +665,9 @@ class ZodiacMode(BaseMode):
     async def _generate_constellation_portrait(self) -> None:
         """Generate constellation-themed portrait using AI."""
         try:
+            # Advance to image generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
+
             if self._photo_data:
                 self._constellation_portrait = await self._caricature_service.generate_caricature(
                     reference_photo=self._photo_data,
@@ -671,12 +681,16 @@ class ZodiacMode(BaseMode):
             else:
                 logger.warning("No photo data for Zodiac portrait generation")
                 self._constellation_portrait = None
+
+            # Advance to finalizing
+            self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
         except Exception as e:
             logger.error(f"Zodiac portrait generation failed: {e}")
             self._constellation_portrait = None
 
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
+        self._progress_tracker.complete()
         self._reveal_progress = 1.0
         self._sub_phase = ZodiacPhase.RESULT
         self.change_phase(ModePhase.RESULT)
@@ -959,13 +973,19 @@ class ZodiacMode(BaseMode):
                     draw_centered_text(buffer, "ФОТО!", 60, (50, 50, 50), scale=2)
 
         elif self.phase == ModePhase.PROCESSING:
-            # Dramatic zodiac symbol reveal
-            progress = self._reveal_progress
+            # Update progress tracker
+            self._progress_tracker.update(delta_ms=16)  # Approximate frame time
+            progress = self._progress_tracker.get_progress()
+
+            # Mystical loading animation at top
+            self._progress_tracker.render_loading_animation(
+                buffer, style="mystical", time_ms=self._time_in_phase
+            )
 
             # Rotating glow rings during reveal
             for ring in range(3):
                 ring_radius = 20 + ring * 15 + int(progress * 10)
-                ring_alpha = int(60 * (1 - progress) * (1 - ring / 3))
+                ring_alpha = int(60 * (1 - progress * 0.5) * (1 - ring / 3))
                 ring_angle = self._constellation_angle * (2 - ring * 0.3)
                 for angle_deg in range(0, 360, 30):
                     angle = math.radians(angle_deg) + ring_angle
@@ -977,12 +997,6 @@ class ZodiacMode(BaseMode):
             symbol_scale = int(2 + progress * 3)
             symbol_alpha = int(255 * min(1.0, progress * 1.5))
 
-            # Symbol glow
-            glow_intensity = int(50 * progress)
-            for glow_offset in range(5, 0, -1):
-                glow_color = (glow_intensity // glow_offset, glow_intensity // glow_offset, glow_intensity // glow_offset)
-                # Note: glow effect approximation
-
             draw_centered_text(
                 buffer, self._zodiac_symbol, 35,
                 (symbol_alpha, int(symbol_alpha * 0.9), int(symbol_alpha * 0.7)),
@@ -990,14 +1004,27 @@ class ZodiacMode(BaseMode):
             )
 
             # Sign name fading in with effect
-            if progress > 0.5:
-                name_progress = (progress - 0.5) * 2
+            if progress > 0.3:
+                name_progress = min(1.0, (progress - 0.3) * 1.5)
                 name_alpha = int(255 * name_progress)
                 draw_animated_text(
-                    buffer, self._zodiac_ru, 90,
+                    buffer, self._zodiac_ru, 70,
                     (name_alpha, name_alpha, name_alpha),
                     self._time_in_phase, TextEffect.TYPING, scale=2
                 )
+
+            # Progress bar at bottom
+            bar_x, bar_y, bar_w, bar_h = 14, 94, 100, 8
+            self._progress_tracker.render_progress_bar(
+                buffer, bar_x, bar_y, bar_w, bar_h,
+                bar_color=self._primary,
+                bg_color=(20, 20, 40),
+                border_color=(80, 80, 140)
+            )
+
+            # Status message below progress bar
+            status_message = self._progress_tracker.get_message()
+            draw_centered_text(buffer, status_message, 108, (140, 140, 180), scale=1)
 
         elif self.phase == ModePhase.RESULT:
             # Display portrait or horoscope based on result_view

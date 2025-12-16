@@ -16,6 +16,7 @@ from datetime import datetime
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import SimulatorCamera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
@@ -327,6 +328,7 @@ class QuizMode(BaseMode):
         # AI results
         self._victory_doodle: Optional[Caricature] = None
         self._ai_task: Optional[asyncio.Task] = None
+        self._progress_tracker = SmartProgressTracker(mode_theme="quiz")
 
         # Game state
         self._questions: List[Tuple[str, List[str], int]] = []
@@ -391,6 +393,7 @@ class QuizMode(BaseMode):
         self._victory_doodle = None
         self._ai_task = None
         self._camera_countdown = 0.0
+        self._progress_tracker.reset()
 
         # Initialize camera
         self._camera = create_camera(resolution=(640, 480))
@@ -578,6 +581,9 @@ class QuizMode(BaseMode):
         if self._won_cocktail and self._photo_data:
             self._sub_phase = QuizPhase.GENERATING
             self.change_phase(ModePhase.PROCESSING)
+            # Start progress tracker for victory doodle generation
+            self._progress_tracker.start()
+            self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
             self._ai_task = asyncio.create_task(self._generate_victory_doodle())
             logger.info("Starting victory doodle generation")
         else:
@@ -627,6 +633,9 @@ class QuizMode(BaseMode):
             if not self._photo_data:
                 return
 
+            # Advance to image generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
+
             # Generate victory-themed caricature with QUIZ_WINNER style
             # Designed for 128x128 pixel display with Russian labels
             self._victory_doodle = await self._caricature_service.generate_caricature(
@@ -639,12 +648,16 @@ class QuizMode(BaseMode):
             else:
                 logger.warning("Victory doodle generation returned None")
 
+            # Advance to finalizing
+            self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
+
         except Exception as e:
             logger.error(f"Victory doodle generation failed: {e}")
             self._victory_doodle = None
 
     def _on_ai_complete(self) -> None:
         """Handle AI generation completion."""
+        self._progress_tracker.complete()
         self._sub_phase = QuizPhase.RESULT
         self.change_phase(ModePhase.RESULT)
         logger.info("Victory doodle ready, showing result")
@@ -771,19 +784,38 @@ class QuizMode(BaseMode):
                     draw_circle(buffer, px, py, 2, self._gold)
 
     def _render_generating(self, buffer) -> None:
-        """Render AI generation screen."""
+        """Render AI generation screen with progress tracking."""
         from artifact.graphics.text_utils import draw_centered_text
+
+        # Update progress tracker
+        self._progress_tracker.update(delta_ms=16)
 
         pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 200)
         color = tuple(int(c * pulse) for c in self._gold)
 
-        draw_centered_text(buffer, "ПОБЕДА!", 25, self._correct_green, scale=2)
-        draw_centered_text(buffer, "СОЗДАЁМ", 55, color, scale=2)
-        draw_centered_text(buffer, "ПРИЗ", 75, color, scale=2)
+        draw_centered_text(buffer, "ПОБЕДА!", 10, self._correct_green, scale=2)
 
-        dots = "." * (int(self._time_in_phase / 300) % 4)
-        draw_centered_text(buffer, dots, 95, self._gold, scale=2)
-        draw_centered_text(buffer, "Секундочку...", 115, (120, 150, 180), scale=1)
+        # Loading animation in middle area
+        self._progress_tracker.render_loading_animation(
+            buffer, style="tech", time_ms=self._time_in_phase
+        )
+
+        draw_centered_text(buffer, "СОЗДАЁМ ПРИЗ", 55, color, scale=1)
+
+        # Progress bar
+        bar_x, bar_y, bar_w, bar_h = 14, 75, 100, 8
+        self._progress_tracker.render_progress_bar(
+            buffer, bar_x, bar_y, bar_w, bar_h,
+            bar_color=self._gold,
+            bg_color=(20, 30, 50),
+            border_color=(80, 100, 140)
+        )
+
+        # Status message
+        status_message = self._progress_tracker.get_message()
+        draw_centered_text(buffer, status_message, 92, (140, 160, 200), scale=1)
+
+        draw_centered_text(buffer, "Секундочку...", 108, (100, 120, 150), scale=1)
 
     def _render_game(self, buffer) -> None:
         """Render active game."""

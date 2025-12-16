@@ -15,6 +15,7 @@ import numpy as np
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import (
@@ -242,6 +243,9 @@ class RouletteMode(BaseMode):
         # Particles
         self._particles = ParticleSystem()
 
+        # Progress tracker for AI generation
+        self._progress_tracker = SmartProgressTracker(mode_theme="roulette")
+
         # Colors - more vibrant
         self._primary = (255, 215, 0)      # Gold
         self._secondary = (255, 50, 80)    # Vibrant red
@@ -274,6 +278,9 @@ class RouletteMode(BaseMode):
         # Reset AI state
         self._winner_portrait = None
         self._ai_task = None
+
+        # Reset progress tracker
+        self._progress_tracker.reset()
 
         # Initialize camera
         self._camera = create_camera(resolution=(640, 480))
@@ -563,6 +570,10 @@ class RouletteMode(BaseMode):
         self._sub_phase = RoulettePhase.GENERATING
         self.change_phase(ModePhase.PROCESSING)
 
+        # Start progress tracker
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         # Start async AI task for portrait generation
         self._ai_task = asyncio.create_task(self._generate_winner_portrait())
 
@@ -577,11 +588,18 @@ class RouletteMode(BaseMode):
         """Generate winner portrait using AI."""
         try:
             if self._photo_data:
+                # Advance to image generation phase
+                self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
+
                 self._winner_portrait = await self._caricature_service.generate_caricature(
                     reference_photo=self._photo_data,
                     style=CaricatureStyle.ROULETTE,
                     personality_context=f"Выиграл: {self._result_segment} - {self._result_outcome}",
                 )
+
+                # Advance to finalizing
+                self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
+
                 if self._winner_portrait:
                     logger.info("Roulette winner portrait generated successfully")
                 else:
@@ -595,6 +613,9 @@ class RouletteMode(BaseMode):
 
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
+        # Complete progress tracker
+        self._progress_tracker.complete()
+
         self._sub_phase = RoulettePhase.RESULT
         self.change_phase(ModePhase.RESULT)
         self._time_in_phase = 0
@@ -730,12 +751,27 @@ class RouletteMode(BaseMode):
         # AI generation phase
         if self._sub_phase == RoulettePhase.GENERATING:
             fill(buffer, self._background)
-            draw_centered_text(buffer, "СОЗДАЮ", 35, self._primary, scale=2)
-            draw_centered_text(buffer, "ПОРТРЕТ", 60, self._secondary, scale=2)
 
-            # Spinning animation
-            dots_count = int(self._time_in_phase / 200) % 4
-            draw_centered_text(buffer, "." * dots_count, 90, (255, 255, 255), scale=2)
+            # Update progress tracker
+            self._progress_tracker.update(delta_ms=16)
+
+            # Render loading animation with flames style for roulette
+            self._progress_tracker.render_loading_animation(
+                buffer, style="flames", time_ms=self._time_in_phase
+            )
+
+            # Status text
+            status_message = self._progress_tracker.get_message()
+            draw_centered_text(buffer, status_message, 75, self._primary, scale=1)
+
+            # Progress bar
+            bar_x, bar_y, bar_w, bar_h = 14, 90, 100, 10
+            self._progress_tracker.render_progress_bar(
+                buffer, bar_x, bar_y, bar_w, bar_h,
+                bar_color=self._primary,
+                bg_color=(30, 30, 50),
+                border_color=(100, 80, 40)
+            )
 
             self._particles.render(buffer)
             return

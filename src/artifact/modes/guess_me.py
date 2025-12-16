@@ -22,6 +22,7 @@ import numpy as np
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import (
@@ -198,6 +199,9 @@ class GuessMeMode(BaseMode):
         self._ai_task: Optional[asyncio.Task] = None
         self._processing_progress: float = 0.0
 
+        # Progress tracker for AI processing
+        self._progress_tracker = SmartProgressTracker(mode_theme="guess_me")
+
         # Visuals
         self._particles = ParticleSystem()
         self._reveal_progress: float = 0.0
@@ -232,6 +236,9 @@ class GuessMeMode(BaseMode):
         self._text_scroll_complete = False
         self._text_view_time = 0.0
         self._scroll_duration = 0.0
+
+        # Reset progress tracker
+        self._progress_tracker.reset()
 
         # Reset question state
         self._base_questions = list(BASE_QUESTIONS)
@@ -445,6 +452,12 @@ class GuessMeMode(BaseMode):
         self._sub_phase = GuessPhase.ANALYZING
         self.change_phase(ModePhase.PROCESSING)
         self._processing_progress = 0.0
+
+        # Start progress tracker
+        self._progress_tracker.reset()
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         self._ai_task = asyncio.create_task(self._run_analysis())
         logger.info("Starting Akinator analysis...")
 
@@ -460,11 +473,17 @@ class GuessMeMode(BaseMode):
             profile = self._build_profile_string()
             prompt = ANALYSIS_PROMPT.format(profile=profile)
 
+            # Advance to text generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
+
             response = await self._gemini_client.generate_with_image(
                 prompt=prompt,
                 image_data=self._photo_data,
                 model=GeminiModel.FLASH_VISION,
             )
+
+            # Advance to finalizing
+            self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
             if response:
                 self._parse_analysis_response(response)
@@ -516,6 +535,12 @@ class GuessMeMode(BaseMode):
         self._sub_phase = GuessPhase.FINAL_ANALYZING
         self.change_phase(ModePhase.PROCESSING)
         self._processing_progress = 0.0
+
+        # Reset and start progress tracker for final analysis
+        self._progress_tracker.reset()
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         self._ai_task = asyncio.create_task(self._run_final_analysis())
         logger.info("Starting final Akinator analysis...")
 
@@ -535,11 +560,17 @@ class GuessMeMode(BaseMode):
                 extra_profile=extra_profile
             )
 
+            # Advance to text generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
+
             response = await self._gemini_client.generate_with_image(
                 prompt=prompt,
                 image_data=self._photo_data,
                 model=GeminiModel.FLASH_VISION,
             )
+
+            # Advance to finalizing
+            self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
             if response:
                 for line in response.strip().split("\n"):
@@ -563,6 +594,9 @@ class GuessMeMode(BaseMode):
     def _on_ai_complete(self) -> None:
         """Handle AI task completion."""
         self._processing_progress = 1.0
+
+        # Complete progress tracker
+        self._progress_tracker.complete()
 
         if self._sub_phase == GuessPhase.ANALYZING:
             if self._confidence >= 7 or not self._follow_up_questions:
@@ -593,6 +627,11 @@ class GuessMeMode(BaseMode):
         self.change_phase(ModePhase.PROCESSING)
         self._processing_progress = 0.0
 
+        # Reset and start progress tracker for image generation
+        self._progress_tracker.reset()
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
+
         # Build personality context from all answers
         profile = self._build_profile_string()
         if self._follow_up_answers:
@@ -610,6 +649,9 @@ class GuessMeMode(BaseMode):
                 style=CaricatureStyle.GUESS,
                 personality_context=personality
             )
+
+            # Advance to finalizing
+            self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
         except Exception as e:
             logger.error(f"Image generation error: {e}")
 
@@ -779,36 +821,31 @@ class GuessMeMode(BaseMode):
             draw_centered_text(buffer, "ДА", 105, (0, 0, 0), scale=1)
 
     def _render_processing(self, buffer) -> None:
-        """Render processing animation."""
+        """Render processing animation with progress tracker."""
         from artifact.graphics.primitives import draw_rect, draw_circle
         from artifact.graphics.text_utils import draw_centered_text
 
-        t = self._time_in_phase
+        # Update progress tracker
+        self._progress_tracker.update(delta_ms=16)
 
-        # Thinking animation
-        center_y = 50
-        for i in range(5):
-            angle = t / 200 + i * 0.5
-            x = 64 + int(math.cos(angle) * 30)
-            y = center_y + int(math.sin(angle) * 15)
-            size = 3 + int(math.sin(t / 100 + i) * 2)
-            draw_circle(buffer, x, y, size, self._secondary)
+        # Render themed loading animation
+        style = "tech" if self._sub_phase == GuessPhase.PROCESSING_IMAGE else "mystical"
+        self._progress_tracker.render_loading_animation(
+            buffer, style=style, time_ms=self._time_in_phase
+        )
 
-        # Status text
-        if self._sub_phase == GuessPhase.ANALYZING:
-            text = "АНАЛИЗИРУЮ..."
-        elif self._sub_phase == GuessPhase.FINAL_ANALYZING:
-            text = "ФИНАЛЬНЫЙ АНАЛИЗ..."
-        else:
-            text = "РИСУЮ ПОРТРЕТ..."
+        # Status text from progress tracker
+        status_message = self._progress_tracker.get_message()
+        draw_centered_text(buffer, status_message, 78, self._primary, scale=1)
 
-        draw_centered_text(buffer, text, 85, self._primary, scale=1)
-
-        # Progress bar
-        pct = int(self._processing_progress * 100)
-        draw_rect(buffer, 14, 100, 100, 8, (40, 40, 60))
-        draw_rect(buffer, 14, 100, int(self._processing_progress * 100), 8, self._secondary)
-        draw_centered_text(buffer, f"{pct}%", 115, (200, 200, 200), scale=1)
+        # Progress bar using progress tracker
+        bar_x, bar_y, bar_w, bar_h = 14, 92, 100, 10
+        self._progress_tracker.render_progress_bar(
+            buffer, bar_x, bar_y, bar_w, bar_h,
+            bar_color=self._secondary,
+            bg_color=(40, 40, 60),
+            border_color=(100, 80, 140)
+        )
 
     def render_ticker(self, buffer) -> None:
         """Render ticker display with phase-specific messages."""

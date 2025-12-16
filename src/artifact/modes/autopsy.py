@@ -14,6 +14,7 @@ import math
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import SimulatorCamera, create_camera
@@ -80,6 +81,9 @@ class AutopsyMode(BaseMode):
         self._processing_text: str = "INIT SYSTEM..."
         self._ai_task: Optional[asyncio.Task] = None
 
+        # Progress tracker for AI processing
+        self._progress_tracker = SmartProgressTracker(mode_theme="autopsy")
+
         # Result view state
         self._result_view: str = "text"  # "text" or "image"
         self._text_scroll_complete: bool = False
@@ -105,6 +109,9 @@ class AutopsyMode(BaseMode):
         self._text_scroll_complete = False
         self._text_view_time = 0.0
         self._scroll_duration = 0.0
+
+        # Reset progress tracker
+        self._progress_tracker.reset()
 
         self._camera = create_camera(resolution=(640, 480))
         if self._camera.open():
@@ -218,6 +225,11 @@ class AutopsyMode(BaseMode):
     def _start_processing(self) -> None:
         self._sub_phase = AutopsyPhase.PROCESSING
         self.change_phase(ModePhase.PROCESSING)
+
+        # Start progress tracker
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         self._ai_task = asyncio.create_task(self._run_ai())
 
     async def _run_ai(self) -> None:
@@ -242,8 +254,16 @@ class AutopsyMode(BaseMode):
                     personality_context="X-ray medical scan"
                 )
 
+            # Advance to text generation
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
             self._diagnosis, self._id_code = await get_text()
+
+            # Advance to image generation
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
             self._xray_image = await get_image()
+
+            # Advance to finalizing
+            self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
         except Exception as e:
             logger.error(f"AI Failure: {e}")
@@ -259,6 +279,9 @@ class AutopsyMode(BaseMode):
         return diag, code
 
     def _on_ai_complete(self) -> None:
+        # Complete progress tracker
+        self._progress_tracker.complete()
+
         self._sub_phase = AutopsyPhase.RESULT
         self.change_phase(ModePhase.RESULT)
 
@@ -319,11 +342,26 @@ class AutopsyMode(BaseMode):
                      if 0 <= y-i < 128: draw_line(buffer, 0, y-i, 128, y-i, (0, 100, 20))
 
         elif self._sub_phase == AutopsyPhase.PROCESSING:
-            draw_centered_text(buffer, self._processing_text, 64, self._green, scale=1)
-            # Pulse
-            r = 20 + int(math.sin(self._time_in_phase/200)*5)
-            from artifact.graphics.primitives import draw_circle
-            draw_circle(buffer, 64, 40, r, self._green, filled=False)
+            # Update progress tracker
+            self._progress_tracker.update(delta_ms=16)
+
+            # Render medical-themed loading animation
+            self._progress_tracker.render_loading_animation(
+                buffer, style="tech", time_ms=self._time_in_phase
+            )
+
+            # Status message
+            status_message = self._progress_tracker.get_message()
+            draw_centered_text(buffer, status_message, 78, self._green, scale=1)
+
+            # Progress bar
+            bar_x, bar_y, bar_w, bar_h = 14, 92, 100, 10
+            self._progress_tracker.render_progress_bar(
+                buffer, bar_x, bar_y, bar_w, bar_h,
+                bar_color=self._green,
+                bg_color=(0, 30, 10),
+                border_color=(0, 100, 30)
+            )
 
         elif self._sub_phase == AutopsyPhase.RESULT:
             if self._result_view == "image" and self._xray_image and self._xray_image.image_data:
