@@ -11,6 +11,7 @@ from artifact.core.events import EventBus, Event, EventType
 from artifact.core.state import StateMachine, State
 from artifact.animation.engine import AnimationEngine
 from artifact.animation.idle_scenes import RotatingIdleAnimation
+from artifact.animation.reveal_effects import RevealAnimator, RevealStyle
 from artifact.graphics.renderer import Renderer
 from artifact.graphics.display_coordinator import DisplayCoordinator, CrossDisplayEffect
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
@@ -229,6 +230,9 @@ class ModeManager:
         # Cross-display effects coordinator
         self._display_coordinator = DisplayCoordinator()
 
+        # Reveal animator for dramatic result presentations
+        self._reveal_animator = RevealAnimator()
+
         # Register event handlers
         self._setup_event_handlers()
 
@@ -326,10 +330,26 @@ class ModeManager:
             self._audio.play_ui_confirm()  # Confirmation sound
             self._display_coordinator.set_effect(CrossDisplayEffect.SPARKLE_CASCADE, 0.5)
         elif new_state == ManagerState.RESULT:
-            # Result screen - play success or result music with falling particles
+            # Result screen - play success music with reveal animation
             self._audio.play_music("idle", fade_in_ms=500)
             self._audio.play_success()
             self._display_coordinator.set_effect(CrossDisplayEffect.FALLING_PARTICLES, 0.8)
+            # Start dramatic reveal animation - choose style based on mode
+            reveal_style = RevealStyle.CELEBRATION  # Default celebration
+            if self._current_mode:
+                mode_name = self._current_mode.name
+                # Choose reveal style based on mode theme
+                if mode_name in ("fortune", "zodiac", "ai_prophet"):
+                    reveal_style = RevealStyle.MYSTICAL
+                elif mode_name == "quiz":
+                    reveal_style = RevealStyle.CONFETTI
+                elif mode_name == "roast":
+                    reveal_style = RevealStyle.LIGHT_BURST
+                elif mode_name == "roulette":
+                    reveal_style = RevealStyle.CELEBRATION
+                elif mode_name in ("autopsy", "guess_me"):
+                    reveal_style = RevealStyle.SCANLINE
+            self._reveal_animator.start_reveal(reveal_style, duration=1200.0)
         elif new_state == ManagerState.PRINTING:
             self._audio.stop_music(fade_out_ms=200)
             self._audio.play_print()
@@ -601,8 +621,12 @@ class ModeManager:
                 self._current_mode.update(delta_ms)
 
         elif self._state == ManagerState.RESULT:
-            # Handle auto-advance through result views
-            if self._result_auto_advance:
+            # Update reveal animation
+            if self._reveal_animator.is_active:
+                self._reveal_animator.update(delta_ms)
+
+            # Handle auto-advance through result views (only after reveal completes)
+            if self._result_auto_advance and self._reveal_animator.is_complete:
                 time_since_advance = self._time_in_state - self._result_last_advance
                 # First advance takes longer to let user read
                 advance_time = (self._result_first_advance_time
@@ -636,6 +660,9 @@ class ModeManager:
 
         elif self._state == ManagerState.RESULT:
             self._render_result(buffer)
+            # Render reveal animation overlay
+            if self._reveal_animator.is_active:
+                self._reveal_animator.render_overlay(buffer)
 
         elif self._state == ManagerState.PRINTING:
             self._render_printing(buffer)
