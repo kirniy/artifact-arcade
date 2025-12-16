@@ -23,6 +23,7 @@ from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.timeline import Timeline
 from artifact.animation.easing import Easing
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import (
@@ -283,6 +284,7 @@ class FortuneMode(BaseMode):
         self._caricature: Optional[Caricature] = None
         self._ai_task: Optional[asyncio.Task] = None
         self._processing_progress: float = 0.0
+        self._progress_tracker = SmartProgressTracker(mode_theme="fortune")
 
         # Camera state
         self._camera: Optional[SimulatorCamera] = None
@@ -334,6 +336,7 @@ class FortuneMode(BaseMode):
         self._caricature = None
         self._ai_task = None
         self._processing_progress = 0.0
+        self._progress_tracker.reset()
         self._reveal_progress = 0.0
         self._result_view = "text"
         self._text_scroll_complete = False
@@ -406,13 +409,16 @@ class FortuneMode(BaseMode):
                         self._start_processing()
 
         elif self.phase == ModePhase.PROCESSING:
+            # Update smart progress tracker
+            self._progress_tracker.update(delta_ms)
+
             # Check AI task progress
             if self._ai_task:
                 if self._ai_task.done():
                     self._on_ai_complete()
                 else:
-                    # Fake progress for visual feedback
-                    self._processing_progress = min(0.9, self._processing_progress + delta_ms / 8000)
+                    # Use smart progress tracker for visual feedback
+                    self._processing_progress = self._progress_tracker.get_progress()
 
         elif self.phase == ModePhase.RESULT:
             if self._sub_phase == FortunePhase.REVEAL:
@@ -611,6 +617,10 @@ class FortuneMode(BaseMode):
         self.change_phase(ModePhase.PROCESSING)
         self._processing_progress = 0.0
 
+        # Start smart progress tracker
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         # Start async AI task
         self._ai_task = asyncio.create_task(self._run_ai_generation())
 
@@ -674,6 +684,9 @@ class FortuneMode(BaseMode):
             prediction_task = asyncio.create_task(generate_prediction())
             caricature_task = asyncio.create_task(generate_caricature())
 
+            # Advance to text generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
+
             # Wait for prediction
             try:
                 result = await asyncio.wait_for(prediction_task, timeout=60.0)
@@ -684,18 +697,24 @@ class FortuneMode(BaseMode):
                     self._zodiac_sign = result[2]
                 if len(result) > 3:
                     self._chinese_zodiac = result[3]
+                # Prediction done, advance to image generation
+                self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
             except asyncio.TimeoutError:
                 logger.warning("Prediction generation timed out")
                 fallback = self._fallback_prediction()
                 self._prediction = fallback[0]
                 self._lucky_color = fallback[1]
+                self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
 
             # Wait for caricature
             try:
                 self._caricature = await asyncio.wait_for(caricature_task, timeout=120.0)
+                # Image done, advance to finalizing
+                self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
             except asyncio.TimeoutError:
                 logger.warning("Caricature generation timed out")
                 self._caricature = None
+                self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
             logger.info("AI generation complete")
 
@@ -797,6 +816,7 @@ class FortuneMode(BaseMode):
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
         self._processing_progress = 1.0
+        self._progress_tracker.complete()
         self._sub_phase = FortunePhase.REVEAL
         self.change_phase(ModePhase.RESULT)
         self._reveal_progress = 0.0
@@ -1012,19 +1032,12 @@ class FortuneMode(BaseMode):
             draw_centered_text(buffer, "ФОТО!", 60, (50, 50, 50), scale=2)
 
     def _render_processing(self, buffer, font) -> None:
-        """Render AI processing animation."""
+        """Render AI processing animation with smart progress tracking."""
         from artifact.graphics.primitives import draw_rect, draw_line, draw_circle
         from artifact.graphics.text_utils import draw_animated_text, draw_centered_text, TextEffect
 
-        # Animated mystical background
-        cx, cy = 64, 50
-        for i in range(5):
-            angle = self._time_in_phase / 500 + i * 72
-            r = 30 + 10 * math.sin(self._time_in_phase / 300 + i)
-            x = int(cx + r * math.cos(math.radians(angle)))
-            y = int(cy + r * math.sin(math.radians(angle)))
-            size = int(3 + 2 * math.sin(self._time_in_phase / 200 + i))
-            draw_circle(buffer, x, y, size, self._secondary)
+        # Render mystical-style loading animation from progress tracker
+        self._progress_tracker.render_loading_animation(buffer, style="mystical", time_ms=self._time_in_phase)
 
         # Processing text
         draw_animated_text(
@@ -1037,23 +1050,22 @@ class FortuneMode(BaseMode):
         draw_centered_text(buffer, self._zodiac_sign.upper(), 55, (150, 150, 170), scale=1)
         draw_centered_text(buffer, self._chinese_zodiac.upper(), 68, (150, 150, 170), scale=1)
 
-        # Progress bar
-        bar_w, bar_h = 100, 6
+        # Progress bar using smart tracker
+        bar_w, bar_h = 100, 8
         bar_x = (128 - bar_w) // 2
-        bar_y = 90
+        bar_y = 86
 
-        draw_rect(buffer, bar_x, bar_y, bar_w, bar_h, (40, 40, 60))
+        # Use the SmartProgressTracker's render method for the progress bar
+        self._progress_tracker.render_progress_bar(
+            buffer, bar_x, bar_y, bar_w, bar_h,
+            bar_color=self._accent,
+            bg_color=(40, 40, 60),
+            time_ms=self._time_in_phase
+        )
 
-        progress_w = int(bar_w * self._processing_progress)
-        if progress_w > 0:
-            for px in range(progress_w):
-                pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 100 + px * 0.1)
-                color = tuple(int(c * pulse) for c in self._accent)
-                buffer[bar_y:bar_y + bar_h, bar_x + px] = color
-
-        # Status
-        dots = "." * (int(self._time_in_phase / 300) % 4)
-        draw_centered_text(buffer, f"Читаю судьбу{dots}", 105, (120, 120, 150), scale=1)
+        # Show phase-specific status message from tracker
+        status_message = self._progress_tracker.get_message()
+        draw_centered_text(buffer, status_message, 105, (120, 120, 150), scale=1)
 
     def _render_result(self, buffer, font) -> None:
         """Render prediction result with text first, then image.
@@ -1094,9 +1106,9 @@ class FortuneMode(BaseMode):
         # Life path number
         draw_centered_text(buffer, f"Число судьбы: {self._life_path}", 98, self._accent, scale=1)
 
-        # Hint
+        # Hint - safe Y position
         if int(self._time_in_phase / 600) % 2 == 0:
-            draw_centered_text(buffer, "НАЖМИ", 118, (100, 100, 120), scale=1)
+            draw_centered_text(buffer, "НАЖМИ", 114, (100, 100, 120), scale=1)
 
     def _render_prediction_text(self, buffer, font) -> None:
         """Render the prediction text with Star Wars crawl effect."""
@@ -1173,16 +1185,16 @@ class FortuneMode(BaseMode):
                     draw_centered_text(buffer, line, y, color, scale=scale)
                     y += line_height
 
-        # Hint at bottom
+        # Hint at bottom (using safe zone Y=114 for scale=1)
         if self._sub_phase == FortunePhase.RESULT:
             if self._caricature:
                 if int(self._time_in_phase / 600) % 2 == 0:
-                    draw_centered_text(buffer, "ФОТО ►", 118, (100, 150, 200), scale=1)
+                    draw_centered_text(buffer, "ФОТО ►", 114, (100, 150, 200), scale=1)
                 else:
-                    draw_centered_text(buffer, "НАЖМИ", 118, (100, 100, 120), scale=1)
+                    draw_centered_text(buffer, "НАЖМИ", 114, (100, 100, 120), scale=1)
             else:
                 if int(self._time_in_phase / 600) % 2 == 0:
-                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 118, (100, 200, 100), scale=1)
+                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
 
     def _render_caricature(self, buffer, font) -> None:
         """Render the AI-generated caricature."""

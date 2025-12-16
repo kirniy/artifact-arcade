@@ -15,6 +15,7 @@ import math
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import SimulatorCamera, create_camera
@@ -92,6 +93,7 @@ class RoastMeMode(BaseMode):
         self._shake_amount: float = 0.0
         self._ai_task: Optional[asyncio.Task] = None
         self._processing_progress: float = 0.0
+        self._progress_tracker = SmartProgressTracker(mode_theme="roast")
 
         # Display mode for result screen (0 = image full screen, 1 = text)
         self._display_mode: int = 1  # Start with text view
@@ -121,6 +123,7 @@ class RoastMeMode(BaseMode):
         self._text_scroll_complete = False
         self._text_view_time = 0.0
         self._scroll_duration = 0.0
+        self._progress_tracker.reset()
 
         self._camera = create_camera(resolution=(640, 480))
         if self._camera.open():
@@ -159,10 +162,14 @@ class RoastMeMode(BaseMode):
                     self._start_processing()
 
         elif self.phase == ModePhase.PROCESSING:
+            # Update smart progress tracker
+            self._progress_tracker.update(delta_ms)
+
             if self._ai_task and self._ai_task.done():
                 self._on_ai_complete()
             else:
-                 self._processing_progress = min(0.9, self._processing_progress + delta_ms / 6000)
+                # Use smart progress tracker for visual feedback
+                self._processing_progress = self._progress_tracker.get_progress()
 
         elif self.phase == ModePhase.RESULT:
             if self._sub_phase == RoastPhase.REVEAL:
@@ -243,8 +250,13 @@ class RoastMeMode(BaseMode):
     def _start_processing(self) -> None:
         self._sub_phase = RoastPhase.PROCESSING
         self.change_phase(ModePhase.PROCESSING)
+
+        # Start smart progress tracker
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         self._ai_task = asyncio.create_task(self._run_ai())
-        
+
         e = self._particles.get_emitter("fire")
         if e: e.burst(50)
 
@@ -281,8 +293,16 @@ class RoastMeMode(BaseMode):
                     logger.warning("Caricature generation returned None")
                 return result
 
+            # Advance to text generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
             self._roast_text, self._vibe_score = await get_text()
+
+            # Advance to image generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
             self._doodle_image = await get_image()
+
+            # Advance to finalizing
+            self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
             logger.info(f"Roast complete - text: '{self._roast_text[:50]}...', vibe: {self._vibe_score}, has_image: {self._doodle_image is not None}")
 
         except Exception as e:
@@ -321,6 +341,7 @@ class RoastMeMode(BaseMode):
         return roast, vibe
 
     def _on_ai_complete(self) -> None:
+        self._progress_tracker.complete()
         self._sub_phase = RoastPhase.REVEAL
         self.change_phase(ModePhase.RESULT)
 
@@ -374,7 +395,7 @@ class RoastMeMode(BaseMode):
                  draw_centered_text(buffer, str(cnt), 64+shake_x, self._yellow, scale=3)
 
         elif self._sub_phase == RoastPhase.PROCESSING:
-            # Animated processing screen with larger flames
+            # Animated processing screen with flames and smart progress
             from artifact.graphics.primitives import draw_circle
 
             # Pulsing background
@@ -382,34 +403,43 @@ class RoastMeMode(BaseMode):
             bg_intensity = int(20 * pulse)
             fill(buffer, (bg_intensity + 10, 5, 5))
 
-            # Multiple flame layers
+            # Render flames-style loading animation from progress tracker
+            self._progress_tracker.render_loading_animation(buffer, style="flames", time_ms=self._time_in_phase)
+
+            # Multiple flame layers (additional visual effect)
             flame_colors = [(255, 50, 50), (255, 100, 0), (255, 200, 0)]
             for i, color in enumerate(flame_colors):
-                flame_y = 90 - i * 15
+                flame_y = 85 - i * 12
                 wave = math.sin(self._time_in_phase / 150 + i)
-                for x in range(20, 108, 8):
-                    flame_height = int(30 + 15 * math.sin(self._time_in_phase / 100 + x / 10) + wave * 5)
-                    for y in range(flame_y, flame_y - flame_height, -3):
+                for x in range(20, 108, 10):
+                    flame_height = int(25 + 10 * math.sin(self._time_in_phase / 100 + x / 10) + wave * 5)
+                    for y in range(flame_y, flame_y - flame_height, -4):
                         if 0 <= y < 128:
                             alpha = (flame_y - y) / flame_height
                             c = tuple(int(v * alpha) for v in color)
-                            draw_circle(buffer, x + int(wave * 3), y, 3, c)
+                            draw_circle(buffer, x + int(wave * 3), y, 2, c)
 
             # Processing text with glow
             glow_pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
             text_color = tuple(int(c * glow_pulse) for c in self._red)
-            draw_centered_text(buffer, "ГОТОВЛЮ", 35+shake_y, text_color, scale=2)
-            draw_centered_text(buffer, "ОГОНЬ", 55+shake_y, self._yellow, scale=2)
+            draw_centered_text(buffer, "ГОТОВЛЮ", 30+shake_y, text_color, scale=2)
+            draw_centered_text(buffer, "ОГОНЬ", 50+shake_y, self._yellow, scale=2)
 
-            # Progress bar
-            progress_width = int(100 * self._processing_progress)
-            draw_rect(buffer, 14, 100, 100, 8, (40, 40, 40))
-            if progress_width > 0:
-                draw_rect(buffer, 14, 100, progress_width, 8, self._red)
+            # Smart progress bar
+            bar_w, bar_h = 100, 8
+            bar_x = (128 - bar_w) // 2
+            bar_y = 92
 
-            # Percentage
-            pct = int(self._processing_progress * 100)
-            draw_centered_text(buffer, f"{pct}%", 112, (200, 200, 200), scale=1)
+            self._progress_tracker.render_progress_bar(
+                buffer, bar_x, bar_y, bar_w, bar_h,
+                bar_color=self._red,
+                bg_color=(40, 40, 40),
+                time_ms=self._time_in_phase
+            )
+
+            # Show phase-specific status message from tracker
+            status_message = self._progress_tracker.get_message()
+            draw_centered_text(buffer, status_message, 106, (200, 200, 200), scale=1)
 
         elif self._sub_phase == RoastPhase.REVEAL:
              draw_centered_text(buffer, "ПОЛУЧАЙ!", 64, self._red, scale=2)
@@ -432,11 +462,11 @@ class RoastMeMode(BaseMode):
                     # Center the image
                     buffer[4:124, 4:124] = img_array
 
-                    # Show hint at bottom - blinking "НАЖМИ" to print
+                    # Show hint at bottom (using safe zone Y=114 for scale=1)
                     if int(self._time_in_phase / 500) % 2 == 0:
-                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 120, (100, 200, 100), scale=1)
+                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
                     else:
-                        draw_centered_text(buffer, "◄ ТЕКСТ", 120, (100, 100, 120), scale=1)
+                        draw_centered_text(buffer, "◄ ТЕКСТ", 114, (100, 100, 120), scale=1)
 
                 except Exception as e:
                     logger.error(f"Failed to render caricature: {e}")
@@ -464,15 +494,15 @@ class RoastMeMode(BaseMode):
                     draw_centered_text(buffer, line, y+shake_y, (255, 255, 255))
                     y += line_height
 
-                # Show hint at bottom
+                # Show hint at bottom (using safe zone Y=114 for scale=1)
                 if self._doodle_image and self._doodle_image.image_data:
                     if int(self._time_in_phase / 600) % 2 == 0:
-                        draw_centered_text(buffer, "ФОТО ►", 120, (100, 150, 200), scale=1)
+                        draw_centered_text(buffer, "ФОТО ►", 114, (100, 150, 200), scale=1)
                     else:
-                        draw_centered_text(buffer, "НАЖМИ", 120, (100, 100, 120), scale=1)
+                        draw_centered_text(buffer, "НАЖМИ", 114, (100, 100, 120), scale=1)
                 else:
                     if int(self._time_in_phase / 600) % 2 == 0:
-                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 120, (100, 200, 100), scale=1)
+                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
 
         self._particles.render(buffer)
 

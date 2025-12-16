@@ -44,6 +44,35 @@ CHAR_HEIGHT = 7
 CHAR_SPACING = 1
 CHAR_TOTAL_WIDTH = CHAR_WIDTH + CHAR_SPACING  # 6 pixels per char
 
+# =============================================================================
+# SAFE ZONE CONSTANTS - Prevent text cutoff at display edges
+# =============================================================================
+# Main display is 128x128 pixels. Font height is 7px at scale=1, 14px at scale=2.
+# These constants define maximum Y positions to ensure text remains fully visible.
+
+MAIN_SAFE_TOP = 2           # Minimum Y for any text (leave margin at top)
+MAIN_SAFE_BOTTOM_S1 = 116   # Max Y for scale=1 text (128 - 7 - 5 margin)
+MAIN_SAFE_BOTTOM_S2 = 108   # Max Y for scale=2 text (128 - 14 - 6 margin)
+MAIN_HINT_ZONE_Y = 114      # Y for bottom hints at scale=1 (safe, visible)
+MAIN_BUTTON_HINT_Y = 116    # Y for button hints like "< NO  > YES"
+
+# Safe margins
+MAIN_SIDE_MARGIN = 4        # Left/right margin for text
+
+# Helper function to clamp Y position to safe zone
+def clamp_text_y(y: int, scale: int = 1) -> int:
+    """Clamp Y position to safe zone based on scale.
+
+    Args:
+        y: Desired Y position
+        scale: Text scale (1 or 2)
+
+    Returns:
+        Clamped Y position within safe zone
+    """
+    max_y = MAIN_SAFE_BOTTOM_S2 if scale >= 2 else MAIN_SAFE_BOTTOM_S1
+    return max(MAIN_SAFE_TOP, min(y, max_y))
+
 
 class TextAlign(Enum):
     """Text alignment options."""

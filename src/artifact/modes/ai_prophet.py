@@ -23,6 +23,7 @@ from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.timeline import Timeline
 from artifact.animation.easing import Easing
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.predictor import PredictionService, Prediction, PredictionCategory
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.simulator.mock_hardware.camera import (
@@ -373,6 +374,7 @@ class AIProphetMode(BaseMode):
         self._caricature: Optional[Caricature] = None
         self._ai_task: Optional[asyncio.Task] = None
         self._processing_progress: float = 0.0
+        self._progress_tracker = SmartProgressTracker(mode_theme="ai_prophet")
 
         # Animation state
         self._reveal_progress: float = 0.0
@@ -412,6 +414,7 @@ class AIProphetMode(BaseMode):
         self._caricature = None
         self._ai_task = None
         self._processing_progress = 0.0
+        self._progress_tracker.reset()
         self._reveal_progress = 0.0
         self._result_view = "text"
         self._text_scroll_complete = False
@@ -493,13 +496,16 @@ class AIProphetMode(BaseMode):
                 self._answer_animation = max(0, self._answer_animation - delta_ms / 300)
 
         elif self.phase == ModePhase.PROCESSING:
+            # Update smart progress tracker
+            self._progress_tracker.update(delta_ms)
+
             # Check AI task progress
             if self._ai_task:
                 if self._ai_task.done():
                     self._on_ai_complete()
                 else:
-                    # Fake progress for visual feedback
-                    self._processing_progress = min(0.9, self._processing_progress + delta_ms / 10000)
+                    # Use smart progress tracker for visual feedback
+                    self._processing_progress = self._progress_tracker.get_progress()
 
             # Scan line animation
             self._scan_line = (self._time_in_phase / 20) % 128
@@ -667,6 +673,10 @@ class AIProphetMode(BaseMode):
         self.change_phase(ModePhase.PROCESSING)
         self._processing_progress = 0.0
 
+        # Start smart progress tracker
+        self._progress_tracker.start()
+        self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
         # Start async AI task
         self._ai_task = asyncio.create_task(self._run_ai_generation())
 
@@ -727,18 +737,27 @@ class AIProphetMode(BaseMode):
             prediction_task = asyncio.create_task(generate_prediction())
             caricature_task = asyncio.create_task(generate_caricature())
 
+            # Advance to text generation phase
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
+
             # Wait for both (with timeout)
             try:
                 self._prediction = await asyncio.wait_for(prediction_task, timeout=60.0)
+                # Prediction done, advance to image generation
+                self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
             except asyncio.TimeoutError:
                 logger.warning("Prediction generation timed out")
                 self._prediction = self._prediction_service._fallback_prediction()
+                self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
 
             try:
                 self._caricature = await asyncio.wait_for(caricature_task, timeout=120.0)
+                # Image done, advance to finalizing
+                self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
             except asyncio.TimeoutError:
                 logger.warning("Caricature generation timed out")
                 self._caricature = None
+                self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
             logger.info("AI generation complete")
 
@@ -750,6 +769,7 @@ class AIProphetMode(BaseMode):
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
         self._processing_progress = 1.0
+        self._progress_tracker.complete()
         self._sub_phase = ProphetPhase.REVEAL
         self.change_phase(ModePhase.RESULT)
         self._reveal_progress = 0.0
@@ -857,9 +877,9 @@ class AIProphetMode(BaseMode):
         # Inner highlight
         draw_circle(buffer, 58, 39, 8, (100, 150, 200))
 
-        # Title - centered, positioned safely
-        draw_centered_text(buffer, "ИИ ПРОРОК", 90, self._accent, scale=2)
-        draw_centered_text(buffer, "Судьба ждёт", 110, (100, 100, 120), scale=1)
+        # Title - centered, positioned within safe zone
+        draw_centered_text(buffer, "ИИ ПРОРОК", 88, self._accent, scale=2)
+        draw_centered_text(buffer, "Судьба ждёт", 106, (100, 100, 120), scale=1)
 
     def _render_camera_prep(self, buffer, font) -> None:
         """Render camera preparation screen with live dithered preview."""
@@ -875,9 +895,9 @@ class AIProphetMode(BaseMode):
         except Exception as e:
             logger.debug(f"Camera frame render error: {e}")
 
-        # Overlay text on top of the preview
-        draw_centered_text(buffer, "СМОТРИ В КАМЕРУ", 95, self._accent, scale=1)
-        draw_centered_text(buffer, "ПРИГОТОВЬСЯ...", 110, (255, 200, 100), scale=1)
+        # Overlay text on top of the preview - within safe zone
+        draw_centered_text(buffer, "СМОТРИ В КАМЕРУ", 100, self._accent, scale=1)
+        draw_centered_text(buffer, "ПРИГОТОВЬСЯ...", 112, (255, 200, 100), scale=1)
 
     def _render_camera_capture(self, buffer, font) -> None:
         """Render camera capture with countdown and live preview."""
@@ -1007,21 +1027,18 @@ class AIProphetMode(BaseMode):
         right_text_color = tuple(int(255 * right_text_pulse) for _ in range(3))
         draw_text_bitmap(buffer, right_text, right_x, btn_y + 5, right_text_color, font, scale=1)
 
-        # Hint at bottom - simpler
-        draw_centered_text(buffer, "< / >", 118, (80, 80, 100), scale=1)
+        # Hint at bottom - safe Y position
+        draw_centered_text(buffer, "< / >", 114, (80, 80, 100), scale=1)
 
     def _render_processing(self, buffer, font) -> None:
-        """Render AI processing animation with dramatic effects."""
+        """Render AI processing animation with smart progress tracking."""
         from artifact.graphics.primitives import draw_rect, draw_line
         from artifact.graphics.text_utils import (
             draw_animated_text, draw_centered_text, TextEffect
         )
 
-        # Scan lines effect - CRT style
-        for y in range(0, 128, 4):
-            alpha = 0.15 + 0.15 * math.sin((y + self._time_in_phase / 30) / 8)
-            color = tuple(int(c * alpha) for c in self._secondary)
-            draw_line(buffer, 0, y, 127, y, color)
+        # Render tech-style loading animation from progress tracker
+        self._progress_tracker.render_loading_animation(buffer, style="tech", time_ms=self._time_in_phase)
 
         # Dramatic processing text with glitch effect - CENTERED
         draw_animated_text(
@@ -1030,44 +1047,26 @@ class AIProphetMode(BaseMode):
             TextEffect.GLITCH, scale=2
         )
 
-        # Animated dots below
-        dots = "." * (int(self._time_in_phase / 300) % 4)
-        draw_centered_text(buffer, dots, 58, self._accent, scale=2)
-
-        # Progress bar - centered
-        bar_w, bar_h = 100, 6
+        # Progress bar using smart tracker - centered
+        bar_w, bar_h = 100, 8
         bar_x = (128 - bar_w) // 2
         bar_y = 72
 
-        # Background with glow
-        draw_rect(buffer, bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4, (20, 20, 35))
-        draw_rect(buffer, bar_x, bar_y, bar_w, bar_h, (40, 40, 60))
-
-        # Progress fill with animation
-        progress_w = int(bar_w * self._processing_progress)
-        if progress_w > 0:
-            # Gradient fill
-            for px in range(progress_w):
-                pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 100 + px * 0.1)
-                color = tuple(int(c * pulse) for c in self._accent)
-                buffer[bar_y:bar_y + bar_h, bar_x + px] = color
-
-        # Scanning indicator
-        scan_x = bar_x + int((self._time_in_phase / 10) % bar_w)
-        for sx in range(max(bar_x, scan_x - 3), min(bar_x + bar_w, scan_x + 3)):
-            brightness = 1.0 - abs(sx - scan_x) / 3
-            glow = tuple(int(255 * brightness) for _ in range(3))
-            buffer[bar_y:bar_y + bar_h, sx] = np.clip(
-                buffer[bar_y:bar_y + bar_h, sx].astype(np.int16) + np.array(glow),
-                0, 255
-            ).astype(np.uint8)
-
-        # Status text with wave effect - CENTERED
-        draw_animated_text(
-            buffer, "Анализ судьбы", 95,
-            (120, 150, 180), self._time_in_phase,
-            TextEffect.WAVE, scale=1
+        # Use the SmartProgressTracker's render method for the progress bar
+        self._progress_tracker.render_progress_bar(
+            buffer, bar_x, bar_y, bar_w, bar_h,
+            bar_color=self._accent,
+            bg_color=(40, 40, 60),
+            time_ms=self._time_in_phase
         )
+
+        # Show phase-specific status message from tracker
+        status_message = self._progress_tracker.get_message()
+        draw_centered_text(buffer, status_message, 95, (120, 150, 180), scale=1)
+
+        # Percentage display
+        pct = int(self._progress_tracker.get_progress() * 100)
+        draw_centered_text(buffer, f"{pct}%", 58, self._accent, scale=1)
 
     def _render_result(self, buffer, font) -> None:
         """Render prediction result with text first, then image.
@@ -1179,9 +1178,9 @@ class AIProphetMode(BaseMode):
                 scroll_interval_ms=1400,
             )
 
-        # Show navigation hint at bottom in result phase
+        # Show navigation hint at bottom in result phase - safe Y position
         if self._sub_phase == ProphetPhase.RESULT:
-            hint_y = 118
+            hint_y = 114
             if self._caricature:
                 # Show hint to view image
                 if int(self._time_in_phase / 600) % 2 == 0:

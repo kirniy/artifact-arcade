@@ -473,9 +473,9 @@ class RotatingIdleAnimation:
                         if 0 <= px < 128 and 0 <= py < 128:
                             buffer[py, px] = (80, 50, 100)
 
-        # Title with glow effect
+        # Title with glow effect - safe Y positions
         draw_animated_text(buffer, "VNVNC", 8, self.gold, t, TextEffect.GLOW, scale=2)
-        draw_animated_text(buffer, "НАЖМИ СТАРТ", 115, self.teal, t, TextEffect.PULSE, scale=1)
+        draw_animated_text(buffer, "НАЖМИ СТАРТ", 114, self.teal, t, TextEffect.PULSE, scale=1)
 
     def _render_cosmic_portal_main(self, buffer: NDArray[np.uint8]) -> None:
         """Render swirling cosmic portal with stars."""
@@ -527,9 +527,9 @@ class RotatingIdleAnimation:
             glow_color = (int(100 * alpha), int(50 * alpha), int(150 * alpha))
             draw_circle(buffer, cx, cy, r, glow_color)
 
-        # Title - NO RAINBOW, use purple/blue gradient instead
+        # Title - NO RAINBOW, use purple/blue gradient instead - safe Y positions
         draw_animated_text(buffer, "VNVNC", 8, self.pink, t, TextEffect.GLOW, scale=2)
-        draw_animated_text(buffer, "ПОРТАЛ СУДЬБЫ", 115, self.blue, t, TextEffect.WAVE, scale=1)
+        draw_animated_text(buffer, "ПОРТАЛ СУДЬБЫ", 114, self.blue, t, TextEffect.WAVE, scale=1)
 
     def _render_camera_mirror_main(self, buffer: NDArray[np.uint8]) -> None:
         """Render camera with fun visual effects."""
@@ -608,13 +608,13 @@ class RotatingIdleAnimation:
         }
         effect_text = effect_names.get(effect, "ЭФФЕКТ")
 
-        # Dark bar for text
-        draw_rect(buffer, 0, 110, 128, 18, (0, 0, 0))
-        draw_centered_text(buffer, effect_text, 112, self.teal, scale=1)
+        # Dark bar for text at safe bottom position
+        draw_rect(buffer, 0, 108, 128, 20, (0, 0, 0))
+        draw_centered_text(buffer, effect_text, 110, self.teal, scale=1)
 
         # Title at top
         draw_rect(buffer, 0, 0, 128, 14, (0, 0, 0))
-        draw_centered_text(buffer, "НАЖМИ СТАРТ", 3, self.pink, scale=1)
+        draw_centered_text(buffer, "НАЖМИ СТАРТ", 4, self.pink, scale=1)
 
     def _render_matrix_rain_main(self, buffer: NDArray[np.uint8]) -> None:
         """Render matrix-style character rain."""

@@ -12,6 +12,7 @@ from artifact.core.state import StateMachine, State
 from artifact.animation.engine import AnimationEngine
 from artifact.animation.idle_scenes import RotatingIdleAnimation
 from artifact.graphics.renderer import Renderer
+from artifact.graphics.display_coordinator import DisplayCoordinator, CrossDisplayEffect
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.audio.engine import get_audio_engine
 
@@ -211,11 +212,22 @@ class ModeManager:
         self._idle_timeout: float = 30000  # Return to idle after 30s of inactivity
         self._last_input_time: float = 0.0
 
+        # Result view control - user navigates with LEFT/RIGHT
+        self._result_view_index: int = 0      # Current view (0=prompt, 1=prediction, 2=caricature)
+        self._result_num_views: int = 2       # Number of views available
+        self._result_auto_advance: bool = True  # Auto-advance enabled
+        self._result_first_advance_time: float = 8000  # First auto-advance after 8s
+        self._result_next_advance_time: float = 6000   # Subsequent advances every 6s
+        self._result_last_advance: float = 0.0  # Time of last advance
+
         # Callbacks
         self._on_mode_complete: Optional[Callable[[ModeResult], None]] = None
 
         # Audio engine for music
         self._audio = get_audio_engine()
+
+        # Cross-display effects coordinator
+        self._display_coordinator = DisplayCoordinator()
 
         # Register event handlers
         self._setup_event_handlers()
@@ -292,19 +304,36 @@ class ModeManager:
 
         logger.debug(f"ModeManager: {old_state.name} -> {new_state.name}")
 
-        # Handle music transitions
+        # Initialize result view state when entering RESULT
+        if new_state == ManagerState.RESULT:
+            self._result_view_index = 0
+            self._result_auto_advance = True
+            self._result_last_advance = 0.0
+            # Determine number of views based on result data
+            if self._last_result:
+                has_caricature = (self._last_result.print_data and
+                                  self._last_result.print_data.get("caricature"))
+                self._result_num_views = 3 if has_caricature else 2
+            else:
+                self._result_num_views = 2
+
+        # Handle music transitions and cross-display effects
         if new_state == ManagerState.IDLE:
             self._audio.play_music("idle", fade_in_ms=1000)
+            self._display_coordinator.clear_effect()  # Clear effects on idle
         elif new_state == ManagerState.MODE_SELECT:
             self._audio.play_music("menu", fade_in_ms=300)
             self._audio.play_ui_confirm()  # Confirmation sound
+            self._display_coordinator.set_effect(CrossDisplayEffect.SPARKLE_CASCADE, 0.5)
         elif new_state == ManagerState.RESULT:
-            # Result screen - play success or result music
+            # Result screen - play success or result music with falling particles
             self._audio.play_music("idle", fade_in_ms=500)
             self._audio.play_success()
+            self._display_coordinator.set_effect(CrossDisplayEffect.FALLING_PARTICLES, 0.8)
         elif new_state == ManagerState.PRINTING:
             self._audio.stop_music(fade_out_ms=200)
             self._audio.play_print()
+            self._display_coordinator.set_effect(CrossDisplayEffect.DATA_STREAM, 0.6)
 
         # State machine sync
         state_map = {
@@ -359,8 +388,11 @@ class ModeManager:
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
         elif self._state == ManagerState.RESULT:
-            # Left = No print, exit
-            self._return_to_idle()
+            # Left = Previous view (with wrap-around)
+            self._result_view_index = (self._result_view_index - 1) % self._result_num_views
+            self._result_auto_advance = False  # User took control, disable auto
+            self._result_last_advance = self._time_in_state
+            self._audio.play_ui_move()
 
     def _on_arcade_right(self, event: Event) -> None:
         """Handle right arcade button."""
@@ -374,9 +406,11 @@ class ModeManager:
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
         elif self._state == ManagerState.RESULT:
-            # Right = Yes print
-            if self._last_result and self._last_result.should_print:
-                self._start_printing()
+            # Right = Next view (with wrap-around)
+            self._result_view_index = (self._result_view_index + 1) % self._result_num_views
+            self._result_auto_advance = False  # User took control, disable auto
+            self._result_last_advance = self._time_in_state
+            self._audio.play_ui_move()
 
     def _on_keypad_input(self, event: Event) -> None:
         """Handle keypad input."""
@@ -550,6 +584,9 @@ class ModeManager:
         """Update manager state."""
         self._time_in_state += delta_ms
 
+        # Update cross-display effects coordinator
+        self._display_coordinator.update(delta_ms)
+
         # Handle state-specific updates
         if self._state == ManagerState.IDLE:
             self._idle_animation.update(delta_ms)
@@ -562,6 +599,22 @@ class ModeManager:
         elif self._state == ManagerState.MODE_ACTIVE:
             if self._current_mode:
                 self._current_mode.update(delta_ms)
+
+        elif self._state == ManagerState.RESULT:
+            # Handle auto-advance through result views
+            if self._result_auto_advance:
+                time_since_advance = self._time_in_state - self._result_last_advance
+                # First advance takes longer to let user read
+                advance_time = (self._result_first_advance_time
+                                if self._result_last_advance == 0.0
+                                else self._result_next_advance_time)
+                if time_since_advance >= advance_time:
+                    self._result_view_index = (self._result_view_index + 1) % self._result_num_views
+                    self._result_last_advance = self._time_in_state
+
+            # Timeout back to idle after extended inactivity (60 seconds)
+            if self._time_in_state - self._last_input_time > 60000:
+                self._return_to_idle()
 
         elif self._state == ManagerState.PRINTING:
             # Simulate print completion after 10 seconds
@@ -590,6 +643,9 @@ class ModeManager:
         elif self._state == ManagerState.ADMIN_MENU:
             self._render_admin_menu(buffer)
 
+        # Apply cross-display effects overlay
+        self._display_coordinator.render_main_overlay(buffer)
+
     def render_ticker(self, buffer) -> None:
         """Render ticker display."""
         if self._state == ManagerState.IDLE:
@@ -600,6 +656,9 @@ class ModeManager:
 
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.render_ticker(buffer)
+
+        # Apply cross-display effects overlay
+        self._display_coordinator.render_ticker_overlay(buffer)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
@@ -632,23 +691,24 @@ class ModeManager:
 
     def _render_start_prompt(self, buffer) -> None:
         """Render 'press start' prompt with arrow."""
-        from artifact.graphics.text_utils import draw_centered_text
+        from artifact.graphics.text_utils import draw_centered_text, MAIN_SAFE_BOTTOM_S2
         from artifact.graphics.primitives import draw_rect
 
-        # Blinking "НАЖМИ" at bottom - positioned to not get cut off
+        # Blinking "НАЖМИ" at bottom - positioned within safe zone for scale=2
         if int(self._time_in_state / 500) % 2 == 0:
-            draw_centered_text(buffer, "НАЖМИ", 100, (255, 200, 0), scale=2)
+            draw_centered_text(buffer, "НАЖМИ", 92, (255, 200, 0), scale=2)
 
         # Arrow pointing down (to button) - wide at top, point at bottom
-        # Position adjusted to stay within 128px height
-        base_y = 115
+        # Position adjusted to stay within safe zone
+        base_y = MAIN_SAFE_BOTTOM_S2 + 2  # 110, within safe area
         bounce = int((self._time_in_state / 200) % 3)  # Reduced bounce range
         cx = 64
         # Down arrow: starts wide, ends in point
         for i in range(4):  # Reduced height to fit
             width = (4 - i) * 2 - 1  # 7, 5, 3, 1
             x_start = cx - width // 2
-            draw_rect(buffer, x_start, base_y + bounce + i, width, 1, (255, 100, 100))
+            y_pos = min(base_y + bounce + i, 123)  # Clamp to avoid overflow
+            draw_rect(buffer, x_start, y_pos, width, 1, (255, 100, 100))
 
     def _render_mode_select(self, buffer) -> None:
         """Render BANGER mode selection screen - full animated carousel."""
@@ -726,11 +786,12 @@ class ModeManager:
                 else:
                     draw_circle(buffer, x, 105, 2, (60, 60, 80))
 
-        # Bottom prompt with flashing
+        # Bottom prompt with flashing - at safe Y position
+        from artifact.graphics.text_utils import MAIN_HINT_ZONE_Y
         if int(t * 2) % 2 == 0:
-            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", 118, (150, 200, 150), scale=1)
+            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", MAIN_HINT_ZONE_Y, (150, 200, 150), scale=1)
         else:
-            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", 118, (200, 255, 200), scale=1)
+            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", MAIN_HINT_ZONE_Y, (200, 255, 200), scale=1)
 
     def _draw_pixel_icon(self, buffer, pattern: list, cx: int, cy: int, color: tuple, scale: int = 3, time: float = 0) -> None:
         """Draw a pixel art icon from pattern with animation."""
@@ -788,10 +849,22 @@ class ModeManager:
             )
 
     def _render_result(self, buffer) -> None:
-        """Render result screen with cycling views."""
-        from artifact.graphics.text_utils import draw_centered_text, draw_wrapped_text, smart_wrap_text
+        """Render result screen with user-controlled views.
+
+        Views are navigated with LEFT/RIGHT buttons. Auto-advance is slower
+        and can be disabled by user interaction.
+
+        Views:
+        - 0: Print prompt (do you want to print?)
+        - 1: Prediction text with auto-scroll
+        - 2: Caricature image (if available)
+        """
+        from artifact.graphics.text_utils import (
+            draw_centered_text, smart_wrap_text,
+            MAIN_SAFE_BOTTOM_S1, MAIN_SAFE_BOTTOM_S2, MAIN_HINT_ZONE_Y
+        )
         from artifact.graphics.fonts import load_font
-        from artifact.graphics.primitives import fill
+        from artifact.graphics.primitives import fill, draw_rect
         from io import BytesIO
 
         fill(buffer, (20, 30, 40))
@@ -800,24 +873,28 @@ class ModeManager:
             draw_centered_text(buffer, "ГОТОВО!", 50, (255, 255, 200), scale=2)
             return
 
-        # Cycle through views every 4 seconds: 0=print prompt, 1=prediction, 2=caricature
-        cycle_time = 4000
+        # Use the tracked view index (user-controlled)
+        view = self._result_view_index
         has_caricature = (self._last_result.print_data and
                          self._last_result.print_data.get("caricature"))
-        num_views = 3 if has_caricature else 2
-        view = int(self._time_in_state / cycle_time) % num_views
+
+        # View indicator dots at top
+        self._render_view_dots(buffer, view, self._result_num_views)
 
         if view == 0:
             # Print prompt view
             draw_centered_text(buffer, "СОХРАНИТЬ", 25, (150, 180, 200), scale=2)
-            draw_centered_text(buffer, "НА ПАМЯТЬ?", 50, (150, 180, 200), scale=2)
-            draw_centered_text(buffer, "ПЕЧАТЬ", 80, (255, 255, 100), scale=2)
+            draw_centered_text(buffer, "НА ПАМЯТЬ?", 48, (150, 180, 200), scale=2)
+            draw_centered_text(buffer, "ПЕЧАТЬ", 75, (255, 255, 100), scale=2)
 
-            # Print options at bottom
+            # Navigation hint and print options at safe bottom position
+            nav_hint = "< НАЗАД  ДАЛЕЕ >"
+            draw_centered_text(buffer, nav_hint, 100, (100, 120, 140), scale=1)
+
             if self._last_result.should_print:
-                draw_centered_text(buffer, "< НЕТ  > ДА", 110, (150, 200, 150), scale=1)
+                draw_centered_text(buffer, "НАЖМИ СТАРТ", MAIN_HINT_ZONE_Y, (150, 200, 150), scale=1)
             else:
-                draw_centered_text(buffer, "НАЖМИ КНОПКУ", 110, (150, 150, 150), scale=1)
+                draw_centered_text(buffer, "НАЖМИ КНОПКУ", MAIN_HINT_ZONE_Y, (150, 150, 150), scale=1)
 
         elif view == 1:
             # Prediction text view with auto-scroll for long text
@@ -829,38 +906,37 @@ class ModeManager:
 
             # Wrap text to fit screen width
             lines = smart_wrap_text(text, 120, font, scale=1)
-            max_visible = 8  # Lines that fit on screen (with title and hint)
+            max_visible = 7  # Lines that fit on screen (with title and hints)
 
-            # Calculate scroll offset for long text
+            # Calculate scroll offset for long text - smooth scroll based on time in this view
             if len(lines) > max_visible:
-                # Scroll through text over the 4-second view cycle
-                time_in_view = self._time_in_state % cycle_time
-                scroll_duration = cycle_time - 500  # Leave 500ms at start to read beginning
-                if time_in_view > 500:
-                    scroll_progress = (time_in_view - 500) / scroll_duration
-                    max_scroll = len(lines) - max_visible
-                    scroll_offset = int(scroll_progress * max_scroll)
-                else:
-                    scroll_offset = 0
+                # Use time since entering this view for scroll
+                scroll_cycle = 6000  # 6 seconds per scroll cycle
+                time_in_view = self._time_in_state - self._result_last_advance
+                scroll_progress = (time_in_view % scroll_cycle) / scroll_cycle
+                max_scroll = len(lines) - max_visible
+                scroll_offset = int(scroll_progress * max_scroll)
             else:
                 scroll_offset = 0
 
             # Render visible lines
             y = 16
+            line_height = 11
             for i in range(max_visible):
                 line_idx = scroll_offset + i
                 if line_idx < len(lines):
                     draw_centered_text(buffer, lines[line_idx], y, (255, 255, 255), scale=1)
-                y += 11
+                y += line_height
 
             # Scroll indicator if text is long
             if len(lines) > max_visible:
                 indicator = "▼" if scroll_offset < len(lines) - max_visible else "●"
-                draw_centered_text(buffer, indicator, 105, (100, 100, 120), scale=1)
+                draw_centered_text(buffer, indicator, 95, (100, 100, 120), scale=1)
 
-            # Print hint at bottom
+            # Navigation and action hints at safe bottom positions
+            draw_centered_text(buffer, "< НАЗАД  ДАЛЕЕ >", 105, (100, 120, 140), scale=1)
             if self._last_result.should_print:
-                draw_centered_text(buffer, "< НЕТ  > ДА", 118, (100, 150, 100), scale=1)
+                draw_centered_text(buffer, "СТАРТ: ПЕЧАТЬ", MAIN_HINT_ZONE_Y, (100, 150, 100), scale=1)
 
         elif view == 2 and has_caricature:
             # Caricature view
@@ -871,23 +947,41 @@ class ModeManager:
                 caricature_data = self._last_result.print_data.get("caricature")
                 img = Image.open(BytesIO(caricature_data))
                 img = img.convert("RGB")
-                img = img.resize((100, 100), Image.Resampling.NEAREST)
+                img = img.resize((96, 96), Image.Resampling.NEAREST)
 
-                # Center on screen
+                # Center on screen with space for hints
                 img_array = np.array(img)
-                x_offset = (128 - 100) // 2
-                y_offset = 5
-                buffer[y_offset:y_offset+100, x_offset:x_offset+100] = img_array
+                x_offset = (128 - 96) // 2
+                y_offset = 8
+                buffer[y_offset:y_offset+96, x_offset:x_offset+96] = img_array
 
-                # Title at bottom
-                draw_centered_text(buffer, "ТВОЙ ШАРЖ", 110, (255, 200, 100), scale=1)
+                # Title at safe bottom position
+                draw_centered_text(buffer, "ТВОЙ ШАРЖ", 105, (255, 200, 100), scale=1)
             except Exception:
-                # Fallback to prediction
+                # Fallback to placeholder
                 draw_centered_text(buffer, "ШАРЖ", 50, (200, 200, 200), scale=2)
 
-            # Print hint
+            # Print hint at safe position
             if self._last_result.should_print:
-                draw_centered_text(buffer, "< НЕТ  > ДА", 118, (100, 150, 100), scale=1)
+                draw_centered_text(buffer, "СТАРТ: ПЕЧАТЬ", MAIN_HINT_ZONE_Y, (100, 150, 100), scale=1)
+
+    def _render_view_dots(self, buffer, current_view: int, total_views: int) -> None:
+        """Render view indicator dots at top of screen."""
+        from artifact.graphics.primitives import draw_circle
+
+        if total_views <= 1:
+            return
+
+        dot_spacing = 10
+        start_x = 64 - (total_views - 1) * dot_spacing // 2
+        y = 3
+
+        for i in range(total_views):
+            x = start_x + i * dot_spacing
+            if i == current_view:
+                draw_circle(buffer, x, y, 2, (255, 200, 100))  # Active dot
+            else:
+                draw_circle(buffer, x, y, 1, (80, 80, 100))  # Inactive dot
 
     def _render_printing(self, buffer) -> None:
         """Render printing progress."""
