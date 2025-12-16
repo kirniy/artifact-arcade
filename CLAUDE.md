@@ -4,7 +4,103 @@
 
 ARTIFACT is an AI-powered arcade fortune-telling machine built on Raspberry Pi 4 with a multi-display system, camera, thermal printer, and Gemini AI integration.
 
-## Quick Start
+---
+
+## Raspberry Pi Setup
+
+### Hardware Specs
+- **Model**: Raspberry Pi 4 Model B Rev 1.5 (8GB RAM)
+- **OS**: Debian 13 (Trixie) 64-bit
+- **Hostname**: `artifact`
+- **User**: `kirniy` / Password: `qaz123`
+
+### Network Access
+
+| Method | Address | Notes |
+|--------|---------|-------|
+| SSH | `ssh kirniy@artifact.local` | Or use IP address |
+| VNC | `vnc://artifact.local:5900` | Remote desktop |
+| Dashboard | `http://artifact.local:8080` | Logs, images, status |
+
+### Finding the Pi on Any Network
+
+```bash
+# Method 1: mDNS (if on same network)
+ping artifact.local
+
+# Method 2: Network scan (from Mac)
+arp -a | grep -i "raspberry\|artifact"
+
+# Method 3: Router admin page
+# Look for device named "artifact"
+
+# Method 4: Use Raspberry Pi Connect (works from anywhere)
+# https://connect.raspberrypi.com
+```
+
+### Configured WiFi Networks
+| Network | Location | Priority |
+|---------|----------|----------|
+| Renaissance | Home | Default |
+| office_64 | Club | Auto-connect |
+
+### Pre-configured Services
+
+| Service | Status | Description |
+|---------|--------|-------------|
+| `artifact.service` | Enabled | Main arcade application (autostart) |
+| `artifact-dashboard.service` | Enabled | Web dashboard on port 8080 |
+| `artifact-update.timer` | Enabled | Auto-pulls from GitHub every 2 min |
+| `sing-box.service` | Enabled | VPN (Frankfurt server) |
+| `wayvnc` | Enabled | Remote desktop |
+
+### Quick Commands (on Pi)
+
+```bash
+# Check all services
+systemctl status artifact artifact-dashboard artifact-update.timer sing-box
+
+# View live logs
+journalctl -u artifact -f
+
+# Manual update from GitHub
+~/modular-arcade/scripts/auto-update.sh
+
+# Restart application
+sudo systemctl restart artifact
+
+# Run in hardware mode
+cd ~/modular-arcade
+sudo ARTIFACT_ENV=hardware PYTHONPATH=src .venv/bin/python -m artifact.main
+```
+
+### Hardware Connections
+
+#### Fan Connection (GPIO)
+```
+Pin 4 (5V)  → Red wire
+Pin 6 (GND) → Black wire
+```
+
+#### Display Interfaces
+| Interface | Device | GPIO/Connection |
+|-----------|--------|-----------------|
+| I2C | LCD 16x2 | /dev/i2c-1 (GPIO 2,3) |
+| SPI | RGB Matrix | /dev/spidev0.0 |
+| UART | Thermal Printer | /dev/ttyAMA0 (GPIO 14,15) |
+| GPIO 18 | WS2812B LEDs | PWM (audio disabled) |
+
+### Installed Libraries
+- RPi.GPIO, gpiozero - GPIO control
+- rpi_ws281x, neopixel - LED strips
+- RPLCD - LCD display
+- python-escpos - Thermal printer
+- picamera2 - Camera
+- rgbmatrix - RGB LED Matrix
+
+---
+
+## Quick Start (Simulator on Mac)
 
 ```bash
 # Run simulator
