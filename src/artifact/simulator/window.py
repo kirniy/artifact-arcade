@@ -321,6 +321,19 @@ class SimulatorWindow:
             self.left_button._release()
         elif key == pygame.K_RIGHT:
             self.right_button._release()
+        else:
+            # Release keypad state so buttons don't stay "held"
+            keypad_keys = set(range(pygame.K_0, pygame.K_9 + 1))
+            keypad_keys.add(pygame.K_KP0)
+            keypad_keys.update(range(pygame.K_KP1, pygame.K_KP9 + 1))
+            keypad_keys.add(pygame.K_ASTERISK)
+            hash_key = getattr(pygame, "K_HASH", None)
+            if hash_key is not None:
+                keypad_keys.add(hash_key)
+            keypad_keys.add(pygame.K_KP_MULTIPLY)
+
+            if key in keypad_keys:
+                self.keypad._release()
 
     def _render(self) -> None:
         """Render all UI elements."""

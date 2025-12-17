@@ -74,6 +74,22 @@ def clamp_text_y(y: int, scale: int = 1) -> int:
     return max(MAIN_SAFE_TOP, min(y, max_y))
 
 
+def _safe_bottom(scale: int) -> int:
+    """Bottom Y that keeps text visible based on scale."""
+    return MAIN_SAFE_BOTTOM_S2 if scale >= 2 else MAIN_SAFE_BOTTOM_S1
+
+
+def _clamp_x_within_margin(
+    x: int,
+    text_width: int,
+    display_width: int,
+    margin: int = MAIN_SIDE_MARGIN,
+) -> int:
+    """Clamp X position so text stays inside horizontal margins."""
+    max_x = max(margin, display_width - text_width - margin)
+    return max(margin, min(x, max_x))
+
+
 class TextAlign(Enum):
     """Text alignment options."""
     LEFT = auto()
@@ -327,7 +343,7 @@ def render_text_block(
         Y position after the block (for stacking)
     """
     # Calculate available width with margin
-    margin = 4
+    margin = MAIN_SIDE_MARGIN if block.max_width == MAIN_DISPLAY_WIDTH else 4
     available_width = block.max_width - margin * 2
 
     # Wrap text
@@ -338,10 +354,16 @@ def render_text_block(
 
     # Calculate line height
     line_height = CHAR_HEIGHT * block.style.scale + block.line_spacing
+    y = clamp_text_y(block.y, block.style.scale)
+
+    if block.max_width >= MAIN_DISPLAY_WIDTH:
+        safe_bottom = _safe_bottom(block.style.scale)
+        max_lines = max(1, (safe_bottom - y) // line_height)
+    else:
+        max_lines = len(lines)
 
     # Render each line
-    y = block.y
-    for i, line in enumerate(lines):
+    for i, line in enumerate(lines[:max_lines]):
         # Calculate X position based on alignment
         x = calc_text_x(
             line, font, block.style.scale,
@@ -423,8 +445,17 @@ def draw_centered_text(
     if font is None:
         font = load_font("cyrillic")
 
+    display_width = buffer.shape[1] if buffer is not None else MAIN_DISPLAY_WIDTH
+    margin = MAIN_SIDE_MARGIN if display_width == MAIN_DISPLAY_WIDTH else 1
+
     text_w, text_h = font.measure_text(text)
-    x = calc_centered_x(text_w * scale, MAIN_DISPLAY_WIDTH)
+    total_width = text_w * scale
+
+    if display_width == MAIN_DISPLAY_WIDTH:
+        y = clamp_text_y(y, scale)
+
+    x = calc_centered_x(total_width, display_width)
+    x = _clamp_x_within_margin(x, total_width, display_width, margin)
 
     return draw_text_bitmap(buffer, text, x, y, color, font, scale)
 
@@ -459,15 +490,25 @@ def draw_wrapped_text(
     if font is None:
         font = load_font("cyrillic")
 
-    margin = 4
-    available_width = max_width - margin * 2
+    display_width = buffer.shape[1] if buffer is not None else max_width
+    target_width = min(max_width, display_width)
+    margin = MAIN_SIDE_MARGIN if target_width == MAIN_DISPLAY_WIDTH else 4
+    available_width = target_width - margin * 2
     lines = smart_wrap_text(text, available_width, font, scale)
 
     line_height = CHAR_HEIGHT * scale + line_spacing
+    y = clamp_text_y(y, scale) if target_width == MAIN_DISPLAY_WIDTH else y
 
-    for i, line in enumerate(lines[:max_lines]):
+    if target_width == MAIN_DISPLAY_WIDTH:
+        safe_bottom = _safe_bottom(scale)
+        max_visible = max(1, (safe_bottom - y) // line_height)
+    else:
+        max_visible = max_lines
+
+    for i, line in enumerate(lines[:min(max_lines, max_visible)]):
         text_w, _ = font.measure_text(line)
-        x = calc_centered_x(text_w * scale, max_width)
+        x = calc_centered_x(text_w * scale, target_width)
+        x = _clamp_x_within_margin(x, text_w * scale, target_width, margin)
         draw_text_bitmap(buffer, line, x, y, color, font, scale)
         y += line_height
 

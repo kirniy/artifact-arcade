@@ -30,6 +30,11 @@ from artifact.modes.squid_game import SquidGameMode
 from artifact.modes.guess_me import GuessMeMode
 from artifact.modes.autopsy import AutopsyMode
 from artifact.modes.roast import RoastMeMode
+from artifact.modes.flow_field import FlowFieldMode
+from artifact.modes.glitch_mirror import GlitchMirrorMode
+from artifact.modes.dither_art import DitherArtMode
+from artifact.modes.ascii_art import AsciiArtMode
+from artifact.modes.particle_sculptor import ParticleSculptorMode
 from artifact.audio.engine import AudioEngine, get_audio_engine
 
 logger = logging.getLogger(__name__)
@@ -129,6 +134,13 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(GuessMeMode)
         self.mode_manager.register_mode(AutopsyMode)
         self.mode_manager.register_mode(RoastMeMode)
+
+        # Algorithmic Art Modes - visual/interactive modes
+        self.mode_manager.register_mode(FlowFieldMode)
+        self.mode_manager.register_mode(GlitchMirrorMode)
+        self.mode_manager.register_mode(DitherArtMode)
+        self.mode_manager.register_mode(AsciiArtMode)
+        self.mode_manager.register_mode(ParticleSculptorMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os
