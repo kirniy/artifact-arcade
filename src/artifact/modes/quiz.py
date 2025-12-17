@@ -965,7 +965,7 @@ class QuizMode(BaseMode):
             render_ticker_animated(
                 buffer, f"ВИКТОРИНА - {FREE_COCKTAIL_THRESHOLD}+ ВЕРНО = КОКТЕЙЛЬ",
                 self._time_in_phase, self._gold,
-                TickerEffect.RAINBOW_SCROLL, speed=0.025
+                TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
         elif self.phase == ModePhase.ACTIVE:
             status = f"#{self._current_question + 1}/{self.QUESTIONS_PER_GAME} ВЕРНО:{self._score}"

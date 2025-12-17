@@ -64,7 +64,7 @@ class DitherArtMode(BaseMode):
     """
 
     name = "dither_art"
-    display_name = "ДИЗЕР"
+    display_name = "DITHER"
     icon = "pixel"
     style = "retro"
 
@@ -137,13 +137,14 @@ class DitherArtMode(BaseMode):
                 pass
             self._camera = None
 
-    def handle_input(self, event: Event) -> None:
+    def on_input(self, event: Event) -> bool:
         """Handle user input."""
         if self._sub_phase == DitherPhase.INTRO:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = DitherPhase.LIVE
                 self._time_in_phase = 0.0
-            return
+                return True
+            return False
 
         if self._sub_phase == DitherPhase.LIVE:
             if event.type == EventType.ARCADE_LEFT:
@@ -153,25 +154,31 @@ class DitherArtMode(BaseMode):
                 self._algorithm = self._algorithms[self._algo_index]
                 self._transition_progress = 0.0
                 self._update_ticker_pattern()
-                self.context.audio.play_ui_click()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_click()
+                return True
 
             elif event.type == EventType.ARCADE_RIGHT:
                 # Cycle color mode
                 self._color_index = (self._color_index + 1) % len(self._color_modes)
                 self._color_mode = self._color_modes[self._color_index]
-                self.context.audio.play_ui_click()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_click()
+                return True
 
             elif event.type == EventType.BUTTON_PRESS:
                 # Capture
                 self._capture_image()
-                self.context.audio.play_success()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_success()
+                return True
 
         elif self._sub_phase == DitherPhase.CAPTURE:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = DitherPhase.LIVE
                 self._time_in_phase = 0.0
+                return True
 
-    def update(self, delta_ms: float) -> None:
+        return False
+
+    def on_update(self, delta_ms: float) -> None:
         """Update mode state."""
         self._time_in_phase += delta_ms
         self._total_time += delta_ms
@@ -466,15 +473,21 @@ class DitherArtMode(BaseMode):
             ColorMode.AMBER: "АМБ",
         }
 
+        font = load_font("cyrillic")
+
         # Algorithm indicator
         draw_rect(buffer, 0, 0, 35, 12, (0, 0, 0))
-        draw_text_bitmap(buffer, algo_names.get(self._algorithm, "?"), 2, 2,
-                        (100, 255, 100), load_font("cyrillic"), scale=1)
+        algo_text = algo_names.get(self._algorithm, "?")
+        algo_w, _ = font.measure_text(algo_text)
+        algo_scale = max(1, min(2, 30 // max(1, algo_w)))
+        draw_text_bitmap(buffer, algo_text, 2, 2, (100, 255, 100), font, scale=algo_scale)
 
         # Color mode indicator
         draw_rect(buffer, 93, 0, 35, 12, (0, 0, 0))
-        draw_text_bitmap(buffer, color_names.get(self._color_mode, "?"), 95, 2,
-                        (255, 200, 100), load_font("cyrillic"), scale=1)
+        color_text = color_names.get(self._color_mode, "?")
+        color_w, _ = font.measure_text(color_text)
+        color_scale = max(1, min(2, 30 // max(1, color_w)))
+        draw_text_bitmap(buffer, color_text, 95, 2, (255, 200, 100), font, scale=color_scale)
 
         # Hint
         hint_alpha = 0.4 + 0.2 * math.sin(t / 400)
@@ -503,29 +516,34 @@ class DitherArtMode(BaseMode):
                 draw_rect(buffer, i, 124, 8, 4, (100, 255, 100))
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display with dither-style animation."""
+        """Render ticker display as camera continuation with dither effect."""
         from artifact.graphics.primitives import clear
 
         clear(buffer)
 
-        if self._sub_phase == DitherPhase.LIVE:
-            # Render dither pattern visualization
-            offset = int(self._ticker_offset)
+        if self._sub_phase == DitherPhase.LIVE and self._camera_frame is not None:
+            # Show camera-based dithered ticker (continuation of main display)
+            color = self._get_mode_color()
 
-            for x in range(48):
-                idx = (x + offset) % 48
-                is_on = self._ticker_pattern[idx]
+            for ty in range(8):
+                for tx in range(48):
+                    # Map to camera coordinates (top band)
+                    cam_y = (ty * 128) // 8
+                    cam_x = (tx * 128) // 48
 
-                # Create vertical dither bar
-                for y in range(8):
-                    if is_on:
-                        # Apply bayer pattern for smoother look
-                        threshold = (y + x) % 4 < 2
-                        if threshold:
-                            buffer[y, x] = self._get_mode_color()
-                    else:
-                        # Dark pixel
-                        buffer[y, x] = (10, 15, 10)
+                    if cam_y < 128 and cam_x < 128:
+                        # Get brightness from camera
+                        pixel = self._camera_frame[cam_y, cam_x]
+                        brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+
+                        # Apply dithering
+                        bayer = Dithering.BAYER_4X4[ty % 4, tx % 4]
+                        threshold = brightness + (bayer - 0.5) * 0.4
+
+                        if threshold > 0.5:
+                            buffer[ty, tx] = color
+                        else:
+                            buffer[ty, tx] = (10, 15, 10)
 
         elif self._sub_phase == DitherPhase.INTRO:
             # Animated gradient dither

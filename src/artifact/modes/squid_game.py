@@ -1054,8 +1054,8 @@ class SquidGameMode(BaseMode):
             buffer[22:102, 8:88] = sketch
             draw_rect(buffer, 6, 20, 84, 84, SQUID_GOLD, filled=False)
 
-        # Victory text with rainbow
-        draw_animated_text(buffer, RUSSIAN_VICTORY, 15, SQUID_GOLD, self._time_in_phase, TextEffect.RAINBOW, scale=2)
+        # Victory text with pulse effect
+        draw_animated_text(buffer, RUSSIAN_VICTORY, 15, SQUID_GOLD, self._time_in_phase, TextEffect.PULSE, scale=2)
 
         # Coupon code box
         box_y = 100
@@ -1182,7 +1182,7 @@ class SquidGameMode(BaseMode):
             render_ticker_static(buffer, "ВЫБЫЛ", self._time_in_phase, SQUID_RED, TextEffect.GLITCH)
 
         elif self._sub_phase == SquidPhase.VICTORY:
-            render_ticker_static(buffer, "ПОБЕДА", self._time_in_phase, SQUID_GOLD, TextEffect.RAINBOW)
+            render_ticker_static(buffer, "ПОБЕДА", self._time_in_phase, SQUID_GOLD, TextEffect.PULSE)
 
         elif self._sub_phase in (SquidPhase.PHOTO_PROMPT, SquidPhase.PHOTO_CAPTURE):
             fill(buffer, (0, 30, 30))

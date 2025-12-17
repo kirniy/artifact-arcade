@@ -102,6 +102,7 @@ class FlowFieldMode(BaseMode):
         self._burst_cooldown = 0.0
         self._flow_evolution = 0.0
         self._intensity = 1.0
+        self._total_time = 0.0
 
     def on_enter(self) -> None:
         """Initialize mode."""
@@ -112,6 +113,7 @@ class FlowFieldMode(BaseMode):
         self._palette_index = 0
         self._palette = self._palettes[0]
         self._hue_offset = 0.0
+        self._total_time = 0.0
 
         # Initialize flow field
         self._flow_field = FlowField(128, 128, scale=0.04, seed=random.randint(0, 65535))
@@ -138,13 +140,14 @@ class FlowFieldMode(BaseMode):
                 pass
             self._camera = None
 
-    def handle_input(self, event: Event) -> None:
+    def on_input(self, event: Event) -> bool:
         """Handle user input."""
         if self._sub_phase == FlowPhase.INTRO:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = FlowPhase.CAMERA_CAPTURE
                 self._time_in_phase = 0.0
-            return
+                return True
+            return False
 
         if self._sub_phase == FlowPhase.FLOWING:
             if event.type == EventType.ARCADE_LEFT:
@@ -152,21 +155,27 @@ class FlowFieldMode(BaseMode):
                 self._pattern_index = (self._pattern_index + 1) % len(self._patterns)
                 self._pattern = self._patterns[self._pattern_index]
                 self._update_flow_pattern()
-                self.context.audio.play_ui_click()
+                if hasattr(self.context, 'audio') and self.context.audio:
+                    self.context.audio.play_ui_click()
+                return True
 
             elif event.type == EventType.ARCADE_RIGHT:
                 # Spawn burst of particles
                 if self._burst_cooldown <= 0:
                     self._spawn_particle_burst(200)
                     self._burst_cooldown = 500  # 500ms cooldown
-                    self.context.audio.play_ui_confirm()
+                    if hasattr(self.context, 'audio') and self.context.audio:
+                        self.context.audio.play_ui_confirm()
+                return True
 
             elif event.type == EventType.BUTTON_PRESS:
                 # Change palette and capture moment
                 self._palette_index = (self._palette_index + 1) % len(self._palettes)
                 self._palette = self._palettes[self._palette_index]
                 self._capture_moment()
-                self.context.audio.play_success()
+                if hasattr(self.context, 'audio') and self.context.audio:
+                    self.context.audio.play_success()
+                return True
 
         elif self._sub_phase == FlowPhase.RESULT:
             if event.type == EventType.BUTTON_PRESS:
@@ -174,10 +183,14 @@ class FlowFieldMode(BaseMode):
                 self._sub_phase = FlowPhase.FLOWING
                 self._time_in_phase = 0.0
                 self._trail_buffer = np.zeros((128, 128, 3), dtype=np.uint8)
+                return True
 
-    def update(self, delta_ms: float) -> None:
+        return False
+
+    def on_update(self, delta_ms: float) -> None:
         """Update mode state."""
         self._time_in_phase += delta_ms
+        self._total_time += delta_ms
         self._hue_offset += delta_ms / 50  # Slow hue rotation
         self._flow_evolution += delta_ms / 1000
         self._burst_cooldown = max(0, self._burst_cooldown - delta_ms)
@@ -465,10 +478,24 @@ class FlowFieldMode(BaseMode):
         draw_animated_text(buffer, "НАЖМИ СТАРТ", 110, (100, 150, 100), t, TextEffect.PULSE, scale=1)
 
     def _render_camera_capture(self, buffer: NDArray[np.uint8], t: float):
-        """Render camera capture phase."""
+        """Render camera capture phase with live camera preview."""
         fill(buffer, (20, 10, 30))
 
-        # Scanning animation
+        # Show camera preview with flow-style coloring
+        if self._camera_frame is not None:
+            for y in range(128):
+                for x in range(128):
+                    pixel = self._camera_frame[y, x]
+                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+
+                    # Apply flow-style purple/blue tint
+                    hue_shift = math.sin(x * 0.05 + y * 0.05 + t / 300) * 30
+                    r = int((80 + hue_shift) * brightness)
+                    g = int((100 + hue_shift * 0.5) * brightness)
+                    b = int((200) * brightness)
+                    buffer[y, x] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+
+        # Scanning line overlay
         scan_y = int((t % 2000) / 2000 * 128)
         for x in range(128):
             if 0 <= scan_y < 128:
@@ -476,14 +503,30 @@ class FlowFieldMode(BaseMode):
             if 0 <= scan_y + 1 < 128:
                 buffer[scan_y + 1, x] = (0, 200, 150)
 
-        # Pulsing circle
+        # Pulsing circle overlay
         pulse = 0.7 + 0.3 * math.sin(t / 150)
         draw_circle(buffer, 64, 64, int(40 * pulse), (100, 50, 150))
 
         draw_centered_text(buffer, "СКАНИРУЮ...", 100, (150, 200, 200), scale=1)
 
     def _render_flowing(self, buffer: NDArray[np.uint8], t: float):
-        """Render the flowing particles."""
+        """Render the flowing particles with live camera background."""
+        # First, render camera as a subtle background
+        if self._camera_frame is not None:
+            for y in range(128):
+                for x in range(128):
+                    pixel = self._camera_frame[y, x]
+                    # Very dim, tinted camera background
+                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+                    # Deep blue/purple tint at 15% intensity
+                    r = int(10 + 15 * brightness)
+                    g = int(5 + 12 * brightness)
+                    b = int(20 + 25 * brightness)
+                    buffer[y, x] = (r, g, b)
+        else:
+            # Clear to dark background
+            buffer[:] = (10, 5, 20)
+
         # Fade trail buffer
         self._trail_buffer = (self._trail_buffer.astype(np.float32) * 0.92).astype(np.uint8)
 
@@ -505,8 +548,15 @@ class FlowFieldMode(BaseMode):
             elif 0 <= px < 128 and 0 <= py < 128:
                 self._trail_buffer[py, px] = color
 
-        # Copy trail to main buffer
-        np.copyto(buffer, self._trail_buffer)
+        # Blend trail buffer on top of camera background (additive)
+        for y in range(128):
+            for x in range(128):
+                trail = self._trail_buffer[y, x]
+                base = buffer[y, x]
+                r = min(255, int(base[0]) + int(trail[0]))
+                g = min(255, int(base[1]) + int(trail[1]))
+                b = min(255, int(base[2]) + int(trail[2]))
+                buffer[y, x] = (r, g, b)
 
         # UI overlay
         self._render_ui_overlay(buffer, t)
@@ -587,16 +637,32 @@ class FlowFieldMode(BaseMode):
         draw_centered_text(buffer, "ПОТОК ИСКУССТВА", 110, (200, 200, 255), scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display."""
+        """Render ticker display as camera continuation."""
         from artifact.graphics.text_utils import render_ticker_animated, TickerEffect
         from artifact.graphics.primitives import clear
 
         clear(buffer)
         t = self._time_in_phase
 
-        if self._sub_phase == FlowPhase.FLOWING:
-            text = f"ЧАСТИЦЫ: {len(self._flow_field.particles)}"
-            render_ticker_animated(buffer, text, t, (100, 200, 255), TickerEffect.WAVE_SCROLL)
+        if self._sub_phase == FlowPhase.FLOWING and self._camera_frame is not None:
+            # Show camera-based flow effect on ticker (48x8)
+            for ty in range(8):
+                for tx in range(48):
+                    # Map to camera coordinates (top part of frame)
+                    cam_y = (ty * 128) // 8
+                    cam_x = (tx * 128) // 48
+
+                    if cam_y < 128 and cam_x < 128:
+                        # Get brightness and apply flow-style coloring
+                        pixel = self._camera_frame[cam_y, cam_x]
+                        brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+
+                        # Flow field colors (blue-purple)
+                        hue_shift = math.sin(tx * 0.2 + self._total_time / 1000) * 30
+                        r = int((100 + hue_shift) * brightness)
+                        g = int((150 + hue_shift * 0.5) * brightness)
+                        b = int((255) * brightness)
+                        buffer[ty, tx] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
         else:
             render_ticker_animated(buffer, "ПОТОК ЧАСТИЦ", t, (200, 150, 255), TickerEffect.SPARKLE_SCROLL)
 

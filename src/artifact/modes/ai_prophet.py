@@ -1200,11 +1200,11 @@ class AIProphetMode(BaseMode):
         clear(buffer)
 
         if self._sub_phase == ProphetPhase.INTRO:
-            # Intro with rainbow
+            # Intro with sparkle
             render_ticker_animated(
                 buffer, "ИИ ПРОРОК - СУДЬБА ЖДЁТ",
                 self._time_in_phase, self._primary,
-                TickerEffect.RAINBOW_SCROLL, speed=0.025
+                TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
 
         elif self._sub_phase in (ProphetPhase.CAMERA_PREP, ProphetPhase.CAMERA_CAPTURE):

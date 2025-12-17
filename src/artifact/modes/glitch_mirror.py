@@ -54,7 +54,7 @@ class GlitchMirrorMode(BaseMode):
     """
 
     name = "glitch_mirror"
-    display_name = "ГЛИТЧ"
+    display_name = "GLITCH"
     icon = "glitch"
     style = "cyber"
 
@@ -132,38 +132,45 @@ class GlitchMirrorMode(BaseMode):
                 pass
             self._camera = None
 
-    def handle_input(self, event: Event) -> None:
+    def on_input(self, event: Event) -> bool:
         """Handle user input."""
         if self._sub_phase == GlitchPhase.INTRO:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = GlitchPhase.MIRROR
                 self._time_in_phase = 0.0
-            return
+                return True
+            return False
 
         if self._sub_phase == GlitchPhase.MIRROR:
             if event.type == EventType.ARCADE_LEFT:
                 # Cycle glitch style
                 self._style_index = (self._style_index + 1) % len(self._styles)
                 self._style = self._styles[self._style_index]
-                self.context.audio.play_ui_click()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_click()
+                return True
 
             elif event.type == EventType.ARCADE_RIGHT:
                 # Trigger burst
                 if not self._burst_active:
                     self._trigger_burst()
-                    self.context.audio.play_ui_confirm()
+                    hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_confirm()
+                return True
 
             elif event.type == EventType.BUTTON_PRESS:
                 # Capture
                 self._capture_image()
-                self.context.audio.play_success()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_success()
+                return True
 
         elif self._sub_phase == GlitchPhase.CAPTURE:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = GlitchPhase.MIRROR
                 self._time_in_phase = 0.0
+                return True
 
-    def update(self, delta_ms: float) -> None:
+        return False
+
+    def on_update(self, delta_ms: float) -> None:
         """Update mode state."""
         self._time_in_phase += delta_ms
         self._total_time += delta_ms
@@ -550,39 +557,33 @@ class GlitchMirrorMode(BaseMode):
                 buffer[i, 127] = border_color
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display with coordinated glitch effect."""
+        """Render ticker display as camera continuation with glitch effect."""
         from artifact.graphics.primitives import clear
 
         clear(buffer)
         t = self._total_time
 
-        if self._sub_phase == GlitchPhase.MIRROR:
-            # Glitchy ticker that syncs with main display
+        if self._sub_phase == GlitchPhase.MIRROR and self._camera_frame is not None:
+            # Show camera-based glitch on ticker (continuation of main display)
+            for ty in range(8):
+                for tx in range(48):
+                    # Map to camera coordinates (top band)
+                    cam_y = (ty * 128) // 8
+                    cam_x = (tx * 128) // 48
 
-            # Build display text with revealed/glitch characters
-            display_chars = []
-            for i in range(min(8, len(self._ticker_target_text))):
-                if i < self._ticker_reveal_pos:
-                    display_chars.append(self._ticker_target_text[i])
-                elif i < len(self._ticker_glitch_chars):
-                    display_chars.append(self._ticker_glitch_chars[i])
-                else:
-                    display_chars.append(' ')
+                    if cam_y < 128 and cam_x < 128:
+                        pixel = self._camera_frame[cam_y, cam_x]
 
-            # Render each character with color variation
-            font = load_font("cyrillic")
-            x = 0
-            for i, char in enumerate(display_chars):
-                if i < self._ticker_reveal_pos:
-                    # Revealed - style color
-                    hue = (self._style_index * 45 + t / 10) % 360
-                    color = hsv_to_rgb(hue, 1.0, 1.0)
-                else:
-                    # Glitch - random color
-                    color = (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200))
-
-                draw_text_bitmap(buffer, char, x, 0, color, font, scale=1)
-                x += 6
+                        # Apply glitch-style color shift
+                        if random.random() < 0.1:  # 10% chance of glitch
+                            # Random color glitch
+                            buffer[ty, tx] = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
+                        else:
+                            # Style-tinted pixel
+                            hue = (self._style_index * 45 + tx * 2 + t / 20) % 360
+                            brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+                            color = hsv_to_rgb(hue, 0.8, brightness)
+                            buffer[ty, tx] = color
 
             # Scanline sync with main display
             scan_x = int((self._scanline_y / 128) * 48)

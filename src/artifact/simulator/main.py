@@ -30,6 +30,7 @@ from artifact.modes.squid_game import SquidGameMode
 from artifact.modes.guess_me import GuessMeMode
 from artifact.modes.autopsy import AutopsyMode
 from artifact.modes.roast import RoastMeMode
+from artifact.modes.vnvnc_rush import VNVNCRushMode
 from artifact.modes.flow_field import FlowFieldMode
 from artifact.modes.glitch_mirror import GlitchMirrorMode
 from artifact.modes.dither_art import DitherArtMode
@@ -141,6 +142,7 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(DitherArtMode)
         self.mode_manager.register_mode(AsciiArtMode)
         self.mode_manager.register_mode(ParticleSculptorMode)
+        self.mode_manager.register_mode(VNVNCRushMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os

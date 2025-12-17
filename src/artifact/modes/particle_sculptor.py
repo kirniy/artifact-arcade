@@ -143,25 +143,28 @@ class ParticleSculptorMode(BaseMode):
                 pass
             self._camera = None
 
-    def handle_input(self, event: Event) -> None:
+    def on_input(self, event: Event) -> bool:
         """Handle user input."""
         if self._sub_phase == SculptorPhase.INTRO:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = SculptorPhase.CAPTURE
                 self._time_in_phase = 0.0
-            return
+                return True
+            return False
 
         if self._sub_phase == SculptorPhase.SCULPTING:
             if event.type == EventType.ARCADE_LEFT:
                 # Cycle force type
                 self._force_index = (self._force_index + 1) % len(self._force_types)
                 self._force_type = self._force_types[self._force_index]
-                self.context.audio.play_ui_click()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_click()
+                return True
 
             elif event.type == EventType.ARCADE_RIGHT:
                 # Apply force burst
                 self._apply_force_burst()
-                self.context.audio.play_ui_confirm()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_confirm()
+                return True
 
             elif event.type == EventType.BUTTON_PRESS:
                 # Reset/reform particles or capture
@@ -169,20 +172,25 @@ class ParticleSculptorMode(BaseMode):
                     self._start_reform()
                 else:
                     self._capture_sculpture()
-                self.context.audio.play_success()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_success()
+                return True
 
         elif self._sub_phase == SculptorPhase.REFORMING:
             if event.type == EventType.BUTTON_PRESS:
                 # Skip to sculpting
                 self._sub_phase = SculptorPhase.SCULPTING
                 self._time_in_phase = 0.0
+                return True
 
         elif self._sub_phase == SculptorPhase.SAVED:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = SculptorPhase.SCULPTING
                 self._time_in_phase = 0.0
+                return True
 
-    def update(self, delta_ms: float) -> None:
+        return False
+
+    def on_update(self, delta_ms: float) -> None:
         """Update mode state."""
         self._time_in_phase += delta_ms
         self._total_time += delta_ms
@@ -194,17 +202,23 @@ class ParticleSculptorMode(BaseMode):
                 self._time_in_phase = 0.0
 
         elif self._sub_phase == SculptorPhase.CAPTURE:
+            # Continuously capture camera for preview
             self._capture_camera()
-            if self._camera_frame is not None:
+            # Wait for at least 2 seconds of preview before transitioning
+            if self._camera_frame is not None and self._time_in_phase > 2000:
                 self._create_particles_from_face()
                 self._sub_phase = SculptorPhase.SCULPTING
                 self._time_in_phase = 0.0
-            elif self._time_in_phase > 3000:
+            elif self._time_in_phase > 4000:
+                # Timeout - create demo if no camera
                 self._create_demo_particles()
                 self._sub_phase = SculptorPhase.SCULPTING
                 self._time_in_phase = 0.0
 
         elif self._sub_phase == SculptorPhase.SCULPTING:
+            # Continuously capture camera for live background
+            self._capture_camera()
+
             self._update_particles(delta_ms)
 
             # Decay force strength
@@ -478,10 +492,24 @@ class ParticleSculptorMode(BaseMode):
         draw_animated_text(buffer, "НАЖМИ СТАРТ", 115, (100, 100, 150), t, TextEffect.PULSE, scale=1)
 
     def _render_capture_phase(self, buffer: NDArray[np.uint8], t: float):
-        """Render camera capture phase."""
+        """Render camera capture phase with live preview."""
         fill(buffer, (20, 10, 30))
 
-        # Pulsing capture indicator
+        # Show camera preview with sculptor-style coloring
+        if self._camera_frame is not None:
+            for y in range(128):
+                for x in range(128):
+                    pixel = self._camera_frame[y, x]
+                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+
+                    # Apply sculptor purple/pink tint
+                    hue_shift = math.sin(x * 0.04 + y * 0.04 + t / 200) * 40
+                    r = int((180 + hue_shift) * brightness)
+                    g = int((80) * brightness)
+                    b = int((200 - hue_shift * 0.5) * brightness)
+                    buffer[y, x] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+
+        # Pulsing capture indicator overlay
         pulse = 0.5 + 0.5 * math.sin(t / 150)
         draw_circle(buffer, 64, 64, int(40 * pulse), (100, 50, 150))
         draw_circle(buffer, 64, 64, int(30 * pulse), (150, 80, 200))
@@ -496,7 +524,23 @@ class ParticleSculptorMode(BaseMode):
         draw_centered_text(buffer, "ЛИЦО...", 80, (150, 100, 200), scale=1)
 
     def _render_sculpting(self, buffer: NDArray[np.uint8], t: float):
-        """Render sculpting view."""
+        """Render sculpting view with live camera background."""
+        # First, render camera as a subtle background
+        if self._camera_frame is not None:
+            for y in range(128):
+                for x in range(128):
+                    pixel = self._camera_frame[y, x]
+                    # Very dim, purple-tinted camera background
+                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+                    # Purple/pink tint at 15% intensity
+                    r = int(15 + 15 * brightness)
+                    g = int(5 + 8 * brightness)
+                    b = int(20 + 20 * brightness)
+                    buffer[y, x] = (r, g, b)
+        else:
+            # Clear to dark background
+            buffer[:] = (15, 5, 20)
+
         # Fade trail buffer
         self._trail_buffer = (self._trail_buffer.astype(np.float32) * 0.85).astype(np.uint8)
 
@@ -526,8 +570,15 @@ class ParticleSculptorMode(BaseMode):
                                     max(e, g) for e, g in zip(existing, glow_color)
                                 )
 
-        # Copy to main buffer
-        np.copyto(buffer, self._trail_buffer)
+        # Blend trail buffer on top of camera background (additive)
+        for y in range(128):
+            for x in range(128):
+                trail = self._trail_buffer[y, x]
+                base = buffer[y, x]
+                r = min(255, int(base[0]) + int(trail[0]))
+                g = min(255, int(base[1]) + int(trail[1]))
+                b = min(255, int(base[2]) + int(trail[2]))
+                buffer[y, x] = (r, g, b)
 
         # UI overlay
         force_names = {
@@ -577,28 +628,41 @@ class ParticleSculptorMode(BaseMode):
         draw_centered_text(buffer, "ШЕДЕВР!", 55, (200, 150, 255), scale=2)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display with particle visualization."""
+        """Render ticker display as camera continuation with particle overlay."""
         from artifact.graphics.primitives import clear
 
         clear(buffer)
 
-        if self._sub_phase == SculptorPhase.SCULPTING:
-            # Show particle velocity as a bar graph
-            # Sample some particles and show their speed
-            if self._particles:
-                num_samples = min(48, len(self._particles))
-                step = max(1, len(self._particles) // num_samples)
+        if self._sub_phase in (SculptorPhase.SCULPTING, SculptorPhase.CAPTURE) and self._camera_frame is not None:
+            # Show camera-based effect on ticker (48x8)
+            for ty in range(8):
+                for tx in range(48):
+                    # Map to camera coordinates (top part of frame)
+                    cam_y = (ty * 128) // 8
+                    cam_x = (tx * 128) // 48
 
-                for i in range(num_samples):
-                    idx = (i * step) % len(self._particles)
-                    particle = self._particles[idx]
+                    if cam_y < 128 and cam_x < 128:
+                        # Get brightness and apply sculptor-style coloring
+                        pixel = self._camera_frame[cam_y, cam_x]
+                        brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
 
+                        # Purple/pink tint
+                        hue_shift = math.sin(tx * 0.15 + self._total_time / 800) * 30
+                        r = int((180 + hue_shift) * brightness)
+                        g = int((80) * brightness)
+                        b = int((200 - hue_shift * 0.5) * brightness)
+                        buffer[ty, tx] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+
+            # Overlay particle indicators if sculpting
+            if self._sub_phase == SculptorPhase.SCULPTING and self._particles:
+                # Show brighter spots where particles are moving fast
+                for particle in self._particles[:48]:
                     speed = math.sqrt(particle.vx ** 2 + particle.vy ** 2)
-                    height = min(8, int(speed * 2))
-
-                    for y in range(8 - height, 8):
-                        hue = (particle.x * 2 + particle.y + self._total_time / 10) % 360
-                        buffer[y, i] = hsv_to_rgb(hue, 0.8, 0.9)
+                    if speed > 0.5:
+                        tx = int((particle.x / 128) * 48)
+                        ty = int((particle.y / 128) * 8)
+                        if 0 <= tx < 48 and 0 <= ty < 8:
+                            buffer[ty, tx] = (255, 150, 255)
 
         elif self._sub_phase == SculptorPhase.REFORMING:
             # Progress bar

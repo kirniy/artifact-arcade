@@ -121,18 +121,96 @@ MODE_ICONS = {
         "   ▀████▀   ",
         "            ",
     ],
+    "flow_field": [  # Flowing particles/waves
+        "█         █ ",
+        " █       █  ",
+        "  █  █  █   ",
+        "   █ █ █    ",
+        "    ███     ",
+        "   █ █ █    ",
+        "  █  █  █   ",
+        " █       █  ",
+        "█         █ ",
+        "            ",
+    ],
+    "glitch_mirror": [  # Glitchy face
+        "  ████████  ",
+        " ██░░░░░░██ ",
+        "██░█░░░█░░██",
+        "  ░░░░░░░░  ",
+        "██░░████░░██",
+        "██░░░░░░░░██",
+        " ██░░██░░██ ",
+        "   ██████   ",
+        "  █      █  ",
+        "            ",
+    ],
+    "dither_art": [  # Dither pattern
+        "█░█░█░█░█░█ ",
+        "░█░█░█░█░█░ ",
+        "█░█░█░█░█░█ ",
+        "░█░█░█░█░█░ ",
+        "█░█░█░█░█░█ ",
+        "░█░█░█░█░█░ ",
+        "█░█░█░█░█░█ ",
+        "░█░█░█░█░█░ ",
+        "█░█░█░█░█░█ ",
+        "░█░█░█░█░█░ ",
+    ],
+    "ascii_art": [  # Text/ASCII characters
+        "   ▄▀▀▄     ",
+        "   █▄▄█     ",
+        "   █  █     ",
+        "            ",
+        "   ████     ",
+        "   █  █     ",
+        "   ████     ",
+        "            ",
+        "   ░░░░     ",
+        "            ",
+    ],
+    "particle_sculptor": [  # Exploding particles
+        "    ●       ",
+        "  ● ● ●     ",
+        "    ██●     ",
+        "  ●████●    ",
+        "   ████     ",
+        "  ●████●    ",
+        "    ██●     ",
+        "  ● ● ●     ",
+        "    ●       ",
+        "            ",
+    ],
+    "vnvnc_rush": [  # Lightning bolt
+        "     ██     ",
+        "    ███     ",
+        "   ███      ",
+        "  ███       ",
+        " ████       ",
+        "  ███       ",
+        "   ███      ",
+        "    ███     ",
+        "     ███    ",
+        "      ██    ",
+    ],
 }
 
 # Mode colors for visual identity
 MODE_COLORS = {
-    "fortune": (200, 100, 255),   # Purple
-    "roulette": (255, 50, 50),    # Red
-    "quiz": (255, 215, 0),        # Gold
-    "squid_game": (255, 100, 150),# Pink
-    "guess_me": (100, 200, 255),  # Cyan
-    "autopsy": (150, 255, 150),   # Green
-    "roast": (255, 150, 50),      # Orange
-    "ai_prophet": (100, 255, 200),# Teal
+    "fortune": (200, 100, 255),     # Purple
+    "roulette": (255, 50, 50),      # Red
+    "quiz": (255, 215, 0),          # Gold
+    "squid_game": (255, 100, 150),  # Pink
+    "guess_me": (100, 200, 255),    # Cyan
+    "autopsy": (150, 255, 150),     # Green
+    "roast": (255, 150, 50),        # Orange
+    "ai_prophet": (100, 255, 200),  # Teal
+    "flow_field": (100, 150, 255),  # Blue
+    "glitch_mirror": (255, 50, 150),# Magenta
+    "dither_art": (150, 200, 100),  # Lime
+    "ascii_art": (0, 255, 100),     # Terminal green
+    "particle_sculptor": (200, 150, 255),  # Lavender
+    "vnvnc_rush": (255, 80, 160),   # Neon pink
 }
 
 
@@ -147,6 +225,35 @@ class ManagerState(Enum):
     ADMIN_MENU = auto()     # Hidden admin menu
 
 
+class SelectorEffect(Enum):
+    """Visual effects for mode selector background."""
+    DITHER = auto()         # Bayer dithering
+    SCANLINES = auto()      # CRT scanline effect
+    PIXELATE = auto()       # Chunky pixels
+    THERMAL = auto()        # Thermal camera look
+    MATRIX = auto()         # Matrix rain style
+
+
+# Map each mode to its camera effect style
+MODE_EFFECTS = {
+    "dither_art": SelectorEffect.DITHER,
+    "glitch_mirror": SelectorEffect.PIXELATE,
+    "ascii_art": SelectorEffect.SCANLINES,
+    "particle_sculptor": SelectorEffect.THERMAL,
+    "flow_field": SelectorEffect.MATRIX,
+    "fortune": SelectorEffect.DITHER,
+    "ai_prophet": SelectorEffect.MATRIX,
+    "roast": SelectorEffect.THERMAL,
+    "quiz": SelectorEffect.SCANLINES,
+    "squid_game": SelectorEffect.PIXELATE,
+    "roulette": SelectorEffect.SCANLINES,
+    "guess_me": SelectorEffect.THERMAL,
+    "autopsy": SelectorEffect.THERMAL,
+    "zodiac": SelectorEffect.DITHER,
+    "vnvnc_rush": SelectorEffect.PIXELATE,
+}
+
+
 @dataclass
 class ModeInfo:
     """Information about a registered mode."""
@@ -156,6 +263,7 @@ class ModeInfo:
     display_name: str
     icon: str
     style: str
+    description: str
     enabled: bool = True
 
 
@@ -217,8 +325,10 @@ class ModeManager:
         self._result_view_index: int = 0      # Current view (0=prompt, 1=prediction, 2=caricature)
         self._result_num_views: int = 2       # Number of views available
         self._result_auto_advance: bool = True  # Auto-advance enabled
-        self._result_first_advance_time: float = 8000  # First auto-advance after 8s
-        self._result_next_advance_time: float = 6000   # Subsequent advances every 6s
+        self._result_first_default: float = 8000  # Baseline timing
+        self._result_next_default: float = 6000
+        self._result_first_advance_time: float = self._result_first_default
+        self._result_next_advance_time: float = self._result_next_default
         self._result_last_advance: float = 0.0  # Time of last advance
 
         # Callbacks
@@ -239,7 +349,63 @@ class ModeManager:
         # Start idle music
         self._audio.play_music("idle", fade_in_ms=1000)
 
+        # Mode selector camera and effects
+        self._selector_camera = None
+        self._selector_frame = None
+        self._selector_effect = SelectorEffect.DITHER
+        self._selector_effect_index = 0
+        self._selector_effects = list(SelectorEffect)
+        self._selector_effect_timer = 0.0  # Cycle effect every 3 seconds
+        self._bayer_matrix = self._create_bayer_matrix(4)  # 4x4 Bayer matrix
+
         logger.info("ModeManager initialized")
+
+    def _create_bayer_matrix(self, size: int) -> list:
+        """Create a Bayer ordered dithering matrix."""
+        if size == 2:
+            return [[0, 2], [3, 1]]
+        else:
+            smaller = self._create_bayer_matrix(size // 2)
+            n = size // 2
+            result = [[0] * size for _ in range(size)]
+            for y in range(n):
+                for x in range(n):
+                    val = smaller[y][x] * 4
+                    result[y][x] = val
+                    result[y][x + n] = val + 2
+                    result[y + n][x] = val + 3
+                    result[y + n][x + n] = val + 1
+            return result
+
+    def _open_selector_camera(self) -> None:
+        """Open camera for mode selector background."""
+        if self._selector_camera is None:
+            try:
+                from artifact.simulator.mock_hardware.camera import create_camera
+                self._selector_camera = create_camera(resolution=(128, 128))
+                self._selector_camera.open()
+            except Exception:
+                self._selector_camera = None
+
+    def _close_selector_camera(self) -> None:
+        """Close the selector camera."""
+        if self._selector_camera:
+            try:
+                self._selector_camera.close()
+            except Exception:
+                pass
+            self._selector_camera = None
+            self._selector_frame = None
+
+    def _update_selector_camera(self) -> None:
+        """Capture a frame from the selector camera."""
+        if self._selector_camera:
+            try:
+                frame = self._selector_camera.capture_frame()
+                if frame is not None:
+                    self._selector_frame = frame
+            except Exception:
+                pass
 
     def _setup_event_handlers(self) -> None:
         """Register event handlers."""
@@ -264,6 +430,7 @@ class ModeManager:
             display_name=mode_cls.display_name,
             icon=mode_cls.icon,
             style=mode_cls.style,
+            description=getattr(mode_cls, "description", getattr(mode_cls, "__doc__", "") or mode_cls.display_name),
             enabled=enabled
         )
         self._registered_modes[mode_cls.name] = info
@@ -313,11 +480,36 @@ class ModeManager:
             self._result_view_index = 0
             self._result_auto_advance = True
             self._result_last_advance = 0.0
+            self._result_first_advance_time = self._result_first_default
+            self._result_next_advance_time = self._result_next_default
             # Determine number of views based on result data
             if self._last_result:
                 has_caricature = (self._last_result.print_data and
                                   self._last_result.print_data.get("caricature"))
                 self._result_num_views = 3 if has_caricature else 2
+                if self._last_result.display_text:
+                    try:
+                        from artifact.graphics.fonts import load_font
+                        from artifact.graphics.text_utils import smart_wrap_text
+
+                        font = load_font("cyrillic")
+                        lines = smart_wrap_text(self._last_result.display_text, 120, font, scale=1)
+                        line_count = max(1, len(lines))
+                        # Add generous reading time for longer fortunes
+                        base_ms = 9000
+                        per_line_ms = 1200
+                        self._result_first_advance_time = max(
+                            base_ms,
+                            base_ms + max(0, line_count - 4) * per_line_ms
+                        )
+                        self._result_next_advance_time = max(
+                            7000,
+                            5000 + max(0, line_count - 4) * 800
+                        )
+                    except Exception:
+                        # Fall back to defaults if anything goes wrong
+                        self._result_first_advance_time = self._result_first_default
+                        self._result_next_advance_time = self._result_next_default
             else:
                 self._result_num_views = 2
 
@@ -325,10 +517,14 @@ class ModeManager:
         if new_state == ManagerState.IDLE:
             self._audio.play_music("idle", fade_in_ms=1000)
             self._display_coordinator.clear_effect()  # Clear effects on idle
+            self._close_selector_camera()  # Close selector camera if open
         elif new_state == ManagerState.MODE_SELECT:
             self._audio.play_music("menu", fade_in_ms=300)
             self._audio.play_ui_confirm()  # Confirmation sound
             self._display_coordinator.set_effect(CrossDisplayEffect.SPARKLE_CASCADE, 0.5)
+            # Open camera for selector background effects
+            self._open_selector_camera()
+            self._selector_effect_timer = 0.0
         elif new_state == ManagerState.RESULT:
             # Result screen - play success music with reveal animation
             self._audio.play_music("idle", fade_in_ms=500)
@@ -531,6 +727,9 @@ class ModeManager:
         if not mode_info:
             return
 
+        # Close selector camera before starting mode
+        self._close_selector_camera()
+
         # Create mode context
         context = ModeContext(
             state_machine=self.state_machine,
@@ -612,6 +811,14 @@ class ModeManager:
             self._idle_animation.update(delta_ms)
 
         elif self._state == ManagerState.MODE_SELECT:
+            # Update camera
+            self._update_selector_camera()
+
+            # Set effect based on currently selected mode
+            mode = self.get_selected_mode()
+            if mode:
+                self._selector_effect = MODE_EFFECTS.get(mode.name, SelectorEffect.DITHER)
+
             # Timeout back to idle
             if self._time_in_state - self._last_input_time > self._idle_timeout:
                 self._return_to_idle()
@@ -738,87 +945,298 @@ class ModeManager:
             draw_rect(buffer, x_start, y_pos, width, 1, (255, 100, 100))
 
     def _render_mode_select(self, buffer) -> None:
-        """Render BANGER mode selection screen - full animated carousel."""
+        """Render beautiful mode selection with FULL SCREEN live camera effect."""
+        import numpy as np
         from artifact.graphics.fonts import load_font, draw_text_bitmap
         from artifact.graphics.text_utils import draw_centered_text
-        from artifact.graphics.primitives import fill, draw_rect, draw_circle, draw_line
+        from artifact.graphics.primitives import fill, draw_rect
 
-        # Animated gradient background
         t = self._time_in_state / 1000
-        for y in range(128):
-            # Synthwave gradient with wave effect
-            wave = math.sin(y / 20 + t * 2) * 10
-            r = int(20 + wave + math.sin(t) * 10)
-            g = int(10 + y / 10)
-            b = int(40 + y / 4 + math.cos(t * 0.5) * 20)
-            draw_line(buffer, 0, y, 128, y, (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b))))
 
-        # Grid lines for retro effect
-        for i in range(0, 128, 16):
-            alpha = int(30 + 20 * math.sin(t * 3 + i / 10))
-            draw_line(buffer, 0, i, 128, i, (alpha, alpha, alpha + 20))
-            draw_line(buffer, i, 0, i, 128, (alpha, alpha, alpha + 20))
+        # === STEP 1: FULL SCREEN CAMERA EFFECT BACKGROUND ===
+        # The camera effect fills the ENTIRE 128x128 display
+        if self._selector_frame is not None:
+            self._render_camera_effect_background(buffer, t)
+        else:
+            # Fallback animated gradient if no camera
+            self._render_fallback_gradient(buffer, t)
 
         mode = self.get_selected_mode()
         if not mode:
             draw_centered_text(buffer, "НЕТ РЕЖИМОВ", 60, (255, 100, 100), scale=1)
             return
 
-        # Get mode color
+        # Get mode color with pulsing effect
         mode_color = MODE_COLORS.get(mode.name, (255, 200, 0))
-
-        # Pulsing glow effect
         pulse = 0.7 + 0.3 * math.sin(t * 4)
         glow_color = tuple(int(c * pulse) for c in mode_color)
 
-        # Draw large animated icon in center
-        icon_pattern = MODE_ICONS.get(mode.name)
-        if icon_pattern:
-            self._draw_pixel_icon(buffer, icon_pattern, 64, 45, mode_color, scale=4, time=t)
-        else:
-            # Fallback to text icon
-            draw_centered_text(buffer, mode.icon, 40, glow_color, scale=4)
+        # === STEP 2: SEMI-TRANSPARENT CENTER PANEL FOR TEXT ===
+        # Darken center area slightly for text readability
+        panel_y1, panel_y2 = 40, 90
+        for y in range(panel_y1, panel_y2):
+            for x in range(20, 108):
+                # Distance from center for rounded corners effect
+                dist_x = abs(x - 64) / 44
+                dist_y = abs(y - 65) / 25
+                if dist_x > 1 or dist_y > 1:
+                    continue
+                # Subtle darkening
+                r = max(0, int(buffer[y, x, 0] * 0.4))
+                g = max(0, int(buffer[y, x, 1] * 0.4))
+                b = max(0, int(buffer[y, x, 2] * 0.4))
+                buffer[y, x] = [r, g, b]
 
-        # Mode name with glow - positioned below icon
-        name = mode.display_name
-        name_scale = 1 if len(name) > 10 else 2
+        # === STEP 3: MODE NAME - BIG AND CENTERED ===
+        name = mode.display_name.upper()
+        font = load_font("cyrillic")
 
-        # Shadow/glow effect
-        draw_centered_text(buffer, name, 88, (mode_color[0]//4, mode_color[1]//4, mode_color[2]//4), scale=name_scale)
-        draw_centered_text(buffer, name, 87, glow_color, scale=name_scale)
+        # Thick black outline for perfect readability
+        name_y = 58
+        for ox in [-2, -1, 0, 1, 2]:
+            for oy in [-2, -1, 0, 1, 2]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, name, name_y + oy, (0, 0, 0), scale=2)
+        draw_centered_text(buffer, name, name_y, glow_color, scale=2)
 
-        # Animated arrows with bounce
+        # === STEP 4: NAVIGATION ARROWS ===
         if len(self._mode_order) > 1:
             bounce = int(math.sin(t * 6) * 3)
-            font = load_font("cyrillic")
-            # Left arrow
-            draw_text_bitmap(buffer, "<", 5 - bounce, 45, (100, 200, 255), font, scale=2)
-            draw_text_bitmap(buffer, "<", 12 - bounce, 45, (50, 100, 150), font, scale=2)
-            # Right arrow
-            draw_text_bitmap(buffer, ">", 111 + bounce, 45, (100, 200, 255), font, scale=2)
-            draw_text_bitmap(buffer, ">", 104 + bounce, 45, (50, 100, 150), font, scale=2)
+            arrow_y = 55
 
-        # Mode indicator dots with animation
+            # Left arrow with outline
+            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                draw_text_bitmap(buffer, "<", 4 - bounce + ox, arrow_y + oy, (0, 0, 0), font, scale=2)
+            draw_text_bitmap(buffer, "<", 4 - bounce, arrow_y, (255, 255, 255), font, scale=2)
+
+            # Right arrow with outline
+            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                draw_text_bitmap(buffer, ">", 112 + bounce + ox, arrow_y + oy, (0, 0, 0), font, scale=2)
+            draw_text_bitmap(buffer, ">", 112 + bounce, arrow_y, (255, 255, 255), font, scale=2)
+
+        # === STEP 5: PROGRESS DOTS (no counter!) ===
         num_modes = len(self._mode_order)
         if num_modes > 1:
-            dot_spacing = 12
-            start_x = 64 - (num_modes - 1) * dot_spacing // 2
+            # Calculate dot layout
+            max_dots_width = 100
+            dot_spacing = min(8, max_dots_width // max(1, num_modes - 1))
+            total_width = (num_modes - 1) * dot_spacing
+            start_x = 64 - total_width // 2
+            dot_y = 100
+
             for i in range(num_modes):
                 x = start_x + i * dot_spacing
                 if i == self._selected_index:
-                    # Selected dot - animated
-                    size = 4 + int(math.sin(t * 8) * 2)
-                    draw_circle(buffer, x, 105, size, mode_color)
-                    draw_circle(buffer, x, 105, size - 1, (255, 255, 255))
+                    # Current mode - larger bright dot
+                    draw_rect(buffer, x - 2, dot_y - 2, 5, 5, mode_color)
+                    # Glow effect
+                    for gx in range(-1, 2):
+                        for gy in range(-1, 2):
+                            if 0 <= x + gx - 3 < 128 and 0 <= dot_y + gy - 3 < 128:
+                                buffer[dot_y + gy - 3, x + gx - 3] = [
+                                    min(255, buffer[dot_y + gy - 3, x + gx - 3, 0] + 30),
+                                    min(255, buffer[dot_y + gy - 3, x + gx - 3, 1] + 30),
+                                    min(255, buffer[dot_y + gy - 3, x + gx - 3, 2] + 30)
+                                ]
                 else:
-                    draw_circle(buffer, x, 105, 2, (60, 60, 80))
+                    # Other modes - small dim dot
+                    draw_rect(buffer, x - 1, dot_y - 1, 3, 3, (80, 80, 100))
 
-        # Bottom prompt with flashing - at safe Y position
-        from artifact.graphics.text_utils import MAIN_HINT_ZONE_Y
-        if int(t * 2) % 2 == 0:
-            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", MAIN_HINT_ZONE_Y, (150, 200, 150), scale=1)
-        else:
-            draw_centered_text(buffer, "ЖМЯКНИ СТАРТ", MAIN_HINT_ZONE_Y, (200, 255, 200), scale=1)
+        # === STEP 6: BOTTOM PROMPT ===
+        prompt_y = 115
+        prompt_color = (100, 200, 100) if int(t * 2) % 2 == 0 else (150, 255, 150)
+        # Black outline
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, "НАЖМИ КНОПКУ", prompt_y + oy, (0, 0, 0), scale=1)
+        draw_centered_text(buffer, "НАЖМИ КНОПКУ", prompt_y, prompt_color, scale=1)
+
+    def _render_camera_effect_background(self, buffer, t: float) -> None:
+        """Apply current effect to camera frame and render to FULL 128x128 buffer."""
+        import numpy as np
+
+        frame = self._selector_frame
+        if frame is None:
+            return
+
+        # Mirror horizontally for selfie view
+        frame = np.fliplr(frame)
+
+        # CRITICAL: Resize frame to EXACTLY 128x128 to fill entire screen
+        if frame.shape[0] != 128 or frame.shape[1] != 128:
+            try:
+                import cv2
+                frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_LINEAR)
+            except ImportError:
+                # Manual nearest-neighbor resize if cv2 not available
+                old_h, old_w = frame.shape[:2]
+                new_frame = np.zeros((128, 128, 3), dtype=np.uint8)
+                for y in range(128):
+                    for x in range(128):
+                        src_y = min(int(y * old_h / 128), old_h - 1)
+                        src_x = min(int(x * old_w / 128), old_w - 1)
+                        new_frame[y, x] = frame[src_y, src_x]
+                frame = new_frame
+
+        # Apply effect based on current selection
+        if self._selector_effect == SelectorEffect.DITHER:
+            self._apply_dither_effect(buffer, frame, t)
+        elif self._selector_effect == SelectorEffect.SCANLINES:
+            self._apply_scanline_effect(buffer, frame, t)
+        elif self._selector_effect == SelectorEffect.PIXELATE:
+            self._apply_pixelate_effect(buffer, frame, t)
+        elif self._selector_effect == SelectorEffect.THERMAL:
+            self._apply_thermal_effect(buffer, frame, t)
+        elif self._selector_effect == SelectorEffect.MATRIX:
+            self._apply_matrix_effect(buffer, frame, t)
+
+    def _apply_dither_effect(self, buffer, frame, t: float) -> None:
+        """Apply Bayer ordered dithering to camera frame."""
+        import numpy as np
+
+        h, w = frame.shape[:2]
+        bayer_size = len(self._bayer_matrix)
+        bayer_max = bayer_size * bayer_size
+
+        # Convert to grayscale
+        gray = np.mean(frame, axis=2).astype(np.float32)
+
+        # Apply dithering with pulsing threshold
+        pulse = 0.85 + 0.15 * math.sin(t * 2)
+        for y in range(h):
+            for x in range(w):
+                bayer_val = self._bayer_matrix[y % bayer_size][x % bayer_size]
+                threshold = (bayer_val / bayer_max) * 255 * pulse
+                if gray[y, x] > threshold:
+                    # Bright pixels - vivid cyan/purple gradient
+                    r = int(140 + 100 * (x / w))
+                    g = int(220 + 35 * math.sin(t + y / 20))
+                    b = int(255)
+                    buffer[y, x] = [min(255, r), min(255, g), min(255, b)]
+                else:
+                    # Dark pixels - visible dark blue
+                    buffer[y, x] = [20, 15, 50]
+
+    def _apply_scanline_effect(self, buffer, frame, t: float) -> None:
+        """Apply CRT scanline effect to camera frame."""
+        import numpy as np
+
+        h, w = frame.shape[:2]
+
+        # Copy frame with boosted brightness and CRT look
+        for y in range(h):
+            scanline_intensity = 0.9 if y % 2 == 0 else 0.5  # Brighter scanlines
+            # Add subtle wave distortion
+            wave_offset = int(math.sin(y / 10 + t * 5) * 2)
+            for x in range(w):
+                src_x = (x + wave_offset) % w
+                r = int(frame[y, src_x, 0] * scanline_intensity * 1.1)
+                g = int(frame[y, src_x, 1] * scanline_intensity * 1.3)  # Strong green for CRT
+                b = int(frame[y, src_x, 2] * scanline_intensity * 1.0)
+                buffer[y, x] = [min(255, r), min(255, g), min(255, b)]
+
+        # Add phosphor glow on bright areas
+        for y in range(1, h - 1):
+            for x in range(1, w - 1):
+                if buffer[y, x, 1] > 100:  # Green channel bright
+                    # Subtle bloom
+                    for dy in [-1, 1]:
+                        ny = y + dy
+                        buffer[ny, x, 1] = min(255, buffer[ny, x, 1] + 15)
+
+    def _apply_pixelate_effect(self, buffer, frame, t: float) -> None:
+        """Apply chunky pixel effect to camera frame."""
+        import numpy as np
+
+        h, w = frame.shape[:2]
+        block_size = 8  # Chunky 8x8 pixels
+
+        for by in range(0, h, block_size):
+            for bx in range(0, w, block_size):
+                # Average color in block
+                block = frame[by:by+block_size, bx:bx+block_size]
+                avg_color = np.mean(block, axis=(0, 1)).astype(np.uint8)
+
+                # Quantize colors to retro palette (fewer colors)
+                r = (avg_color[0] // 64) * 64 + 32
+                g = (avg_color[1] // 64) * 64 + 32
+                b = (avg_color[2] // 64) * 64 + 32
+
+                # Fill block with slight variation for texture
+                for y in range(by, min(by + block_size, h)):
+                    for x in range(bx, min(bx + block_size, w)):
+                        # Add pixel grid lines
+                        if x % block_size == 0 or y % block_size == 0:
+                            buffer[y, x] = [r // 2, g // 2, b // 2]
+                        else:
+                            buffer[y, x] = [r, g, b]
+
+    def _apply_thermal_effect(self, buffer, frame, t: float) -> None:
+        """Apply thermal camera style effect."""
+        import numpy as np
+
+        h, w = frame.shape[:2]
+
+        # Convert to grayscale (heat map based on brightness)
+        gray = np.mean(frame, axis=2)
+
+        for y in range(h):
+            for x in range(w):
+                heat = gray[y, x] / 255.0
+
+                # Thermal color mapping: black -> blue -> purple -> red -> yellow -> white
+                if heat < 0.2:
+                    r, g, b = 0, 0, int(heat * 5 * 150)
+                elif heat < 0.4:
+                    t_heat = (heat - 0.2) / 0.2
+                    r, g, b = int(t_heat * 100), 0, 150
+                elif heat < 0.6:
+                    t_heat = (heat - 0.4) / 0.2
+                    r, g, b = 100 + int(t_heat * 155), 0, int((1 - t_heat) * 150)
+                elif heat < 0.8:
+                    t_heat = (heat - 0.6) / 0.2
+                    r, g, b = 255, int(t_heat * 200), 0
+                else:
+                    t_heat = (heat - 0.8) / 0.2
+                    r, g, b = 255, 200 + int(t_heat * 55), int(t_heat * 200)
+
+                buffer[y, x] = [min(255, r), min(255, g), min(255, b)]
+
+    def _apply_matrix_effect(self, buffer, frame, t: float) -> None:
+        """Apply Matrix-style green rain effect over camera."""
+        import numpy as np
+
+        h, w = frame.shape[:2]
+
+        # Convert to green-tinted grayscale
+        gray = np.mean(frame, axis=2)
+
+        for y in range(h):
+            for x in range(w):
+                brightness = gray[y, x] / 255.0
+
+                # Matrix rain columns
+                rain_phase = (y / 8 + x * 0.3 + t * 3) % 10
+                rain_intensity = max(0, 1 - rain_phase / 5) if rain_phase < 5 else 0
+
+                # Combine camera brightness with rain
+                g = int(brightness * 150 + rain_intensity * 100)
+                r = int(brightness * 20 + rain_intensity * 10)
+                b = int(brightness * 30)
+
+                buffer[y, x] = [min(255, r), min(255, g), min(255, b)]
+
+    def _render_fallback_gradient(self, buffer, t: float) -> None:
+        """Render animated gradient when no camera available."""
+        from artifact.graphics.primitives import draw_line
+
+        for y in range(128):
+            wave = math.sin(y / 20 + t * 2) * 10
+            r = int(max(0, min(255, 20 + wave + math.sin(t) * 10)))
+            g = int(max(0, min(255, 10 + y / 10)))
+            b = int(max(0, min(255, 40 + y / 4 + math.cos(t * 0.5) * 20)))
+            draw_line(buffer, 0, y, 128, y, (r, g, b))
 
     def _draw_pixel_icon(self, buffer, pattern: list, cx: int, cy: int, color: tuple, scale: int = 3, time: float = 0) -> None:
         """Draw a pixel art icon from pattern with animation."""
@@ -868,11 +1286,12 @@ class ModeManager:
 
         mode = self.get_selected_mode()
         if mode:
-            # Mode name with rainbow scroll effect
+            # Explicit nav hint + mode name - using ASCII-safe characters
+            text = f"<< >> ЛИСТАЙ - СТАРТ ОК - {mode.display_name}"
             render_ticker_animated(
-                buffer, f"ВЫБРАНО: {mode.display_name}",
+                buffer, text,
                 self._time_in_state, (255, 200, 0),
-                TickerEffect.RAINBOW_SCROLL, speed=0.025
+                TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
 
     def _render_result(self, buffer) -> None:

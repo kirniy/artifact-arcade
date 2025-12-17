@@ -126,6 +126,10 @@ class AudioEngine:
         self._generate_quiz_music()
         self._generate_roulette_music()
         self._generate_roast_music()
+        self._generate_flow_field_music()
+        self._generate_glitch_mirror_music()
+        self._generate_particle_sculptor_music()
+        self._generate_ascii_music()
 
         self._generated = True
         logger.info(f"Generated {len(self._sounds)} sound effects")
@@ -1207,6 +1211,236 @@ class AudioEngine:
         mixed = apply_reverb(mixed, delay_ms=50, decay=0.15)
         self._sounds["music_roast"] = self._create_sound(mixed)
 
+    def _generate_flow_field_music(self) -> None:
+        """Dreamy flow-field music - airy pads + drifting arps."""
+        voices = []
+        duration = 8.0
+        bpm = 105
+        beat = 60.0 / bpm
+
+        # Soft noise pad with filter sweep
+        pad = SynthVoice(
+            wave_type=WaveType.NOISE,
+            frequency=400,
+            amplitude=0.06,
+            envelope=ADSR(attack=1.5, decay=1.0, sustain=0.4, release=1.5),
+            vibrato_rate=0.2,
+            vibrato_depth=6,
+        )
+        pad_samples = pad.generate_samples(self.SAMPLE_RATE, duration)
+        pad_samples = apply_filter(pad_samples, cutoff=0.25, resonance=0.4)
+        voices.append(pad_samples)
+
+        # Glassy pluck arps (minor 7th flavor)
+        arp_notes = [261, 311, 392, 466, 392, 311, 261, 233]  # Cm7-ish
+        for i, freq in enumerate(arp_notes):
+            pluck = SynthVoice(
+                wave_type=WaveType.TRIANGLE,
+                frequency=freq,
+                amplitude=0.1,
+                envelope=ADSR(attack=0.005, decay=0.25, sustain=0.05, release=0.15),
+                vibrato_rate=1.2,
+                vibrato_depth=5,
+            )
+            s = pluck.generate_samples(self.SAMPLE_RATE, beat * 0.45)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.75))
+            delay.extend(s)
+            voices.append(delay)
+
+        # Swirling chorus pad (two detuned sines)
+        for detune in (-3, 3):
+            swirl = SynthVoice(
+                wave_type=WaveType.SINE,
+                frequency=98 + detune,  # G2 base
+                amplitude=0.08,
+                envelope=ADSR(attack=1.0, decay=0.8, sustain=0.6, release=1.2),
+                vibrato_rate=0.35,
+                vibrato_depth=12,
+            )
+            voices.append(swirl.generate_samples(self.SAMPLE_RATE, duration))
+
+        # Gentle pulse kick every 2 beats to anchor
+        for i in range(int(duration / (beat * 2))):
+            t = i * beat * 2
+            kick = SynthVoice(
+                wave_type=WaveType.SINE,
+                frequency=45,
+                amplitude=0.2,
+                envelope=ADSR(attack=0.005, decay=0.18, sustain=0.0, release=0.12),
+            )
+            s = kick.generate_samples(self.SAMPLE_RATE, 0.18)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=180, decay=0.35)
+        mixed = apply_filter(mixed, cutoff=0.45, resonance=0.2)
+        self._sounds["music_flow_field"] = self._create_sound(mixed)
+
+    def _generate_glitch_mirror_music(self) -> None:
+        """Glitch mirror music - crunchy bitcrush + detuned drones."""
+        voices = []
+        duration = 6.0
+
+        # Detuned dual drone with slow phasing
+        for detune in (-6, 6):
+            drone = SynthVoice(
+                wave_type=WaveType.SAWTOOTH,
+                frequency=130 + detune,
+                amplitude=0.12,
+                envelope=ADSR(attack=1.0, decay=0.6, sustain=0.5, release=1.0),
+                vibrato_rate=0.4,
+                vibrato_depth=9,
+            )
+            samples = drone.generate_samples(self.SAMPLE_RATE, duration)
+            samples = apply_filter(samples, cutoff=0.3, resonance=0.25)
+            voices.append(samples)
+
+        # Bitcrushed arp
+        arp_notes = [392, 466, 523, 659, 523, 466, 392, 349]
+        for i, freq in enumerate(arp_notes):
+            arp = SynthVoice(
+                wave_type=WaveType.SQUARE,
+                frequency=freq,
+                amplitude=0.09,
+                envelope=ADSR(attack=0.005, decay=0.15, sustain=0.05, release=0.1),
+                pulse_width=0.25,
+            )
+            s = arp.generate_samples(self.SAMPLE_RATE, 0.35)
+            # crude bitcrush by downsampling every 3rd sample
+            crushed = array.array('h', [s[j] for j in range(0, len(s), 3)])
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * 0.45))
+            delay.extend(crushed)
+            voices.append(delay)
+
+        # Glitch percussion ticks
+        for i in range(16):
+            tick = SynthVoice(
+                wave_type=WaveType.NOISE,
+                frequency=6000,
+                amplitude=0.08,
+                envelope=ADSR(attack=0.001, decay=0.03, sustain=0.0, release=0.01),
+            )
+            s = tick.generate_samples(self.SAMPLE_RATE, 0.03)
+            # jitter the start time slightly
+            jitter = (i * 0.35) + (0.02 if i % 3 == 0 else 0)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * jitter))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=90, decay=0.25)
+        self._sounds["music_glitch_mirror"] = self._create_sound(mixed)
+
+    def _generate_particle_sculptor_music(self) -> None:
+        """Particle Sculptor music - rhythmic hammering with epic pad."""
+        voices = []
+        duration = 6.0
+        bpm = 118
+        beat = 60.0 / bpm
+
+        # Heavy anvils (pitched noise)
+        for i in range(12):
+            anv = SynthVoice(
+                wave_type=WaveType.NOISE,
+                frequency=400 + i * 5,
+                amplitude=0.18,
+                envelope=ADSR(attack=0.002, decay=0.15, sustain=0.0, release=0.08),
+            )
+            s = anv.generate_samples(self.SAMPLE_RATE, 0.12)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        # Epic minor-pad swell
+        for freq in [196, 233, 311, 392]:  # Gm chord tones
+            pad = SynthVoice(
+                wave_type=WaveType.SAWTOOTH,
+                frequency=freq,
+                amplitude=0.1,
+                envelope=ADSR(attack=0.8, decay=0.6, sustain=0.4, release=0.8),
+                detune=7,
+            )
+            samples = pad.generate_samples(self.SAMPLE_RATE, duration)
+            samples = apply_filter(samples, cutoff=0.4, resonance=0.2)
+            voices.append(samples)
+
+        # Metallic arp sparkle
+        spark_notes = [622, 740, 932, 740]
+        for i, freq in enumerate(spark_notes):
+            spark = SynthVoice(
+                wave_type=WaveType.TRIANGLE,
+                frequency=freq,
+                amplitude=0.07,
+                envelope=ADSR(attack=0.002, decay=0.18, sustain=0.0, release=0.12),
+            )
+            s = spark.generate_samples(self.SAMPLE_RATE, 0.28)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=110, decay=0.3)
+        self._sounds["music_particle_sculptor"] = self._create_sound(mixed)
+
+    def _generate_ascii_music(self) -> None:
+        """ASCII Art music - chiptune blips with cheerful chords."""
+        voices = []
+        duration = 4.0
+        bpm = 140
+        beat = 60.0 / bpm
+
+        # Chiptune bass
+        bass_notes = [98, 123, 147, 123, 110, 98, 82, 98]
+        for i, freq in enumerate(bass_notes):
+            bass = SynthVoice(
+                wave_type=WaveType.SQUARE,
+                frequency=freq,
+                amplitude=0.14,
+                envelope=ADSR(attack=0.005, decay=0.1, sustain=0.2, release=0.08),
+                pulse_width=0.35,
+            )
+            s = bass.generate_samples(self.SAMPLE_RATE, beat * 0.35)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        # Cheerful triad stabs (C major)
+        chord_freqs = [262, 330, 392]
+        for i in range(4):
+            for freq in chord_freqs:
+                chord = SynthVoice(
+                    wave_type=WaveType.SAWTOOTH,
+                    frequency=freq,
+                    amplitude=0.08,
+                    envelope=ADSR(attack=0.01, decay=0.12, sustain=0.12, release=0.1),
+                    detune=4,
+                )
+                s = chord.generate_samples(self.SAMPLE_RATE, 0.2)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat))
+                delay.extend(s)
+                voices.append(delay)
+
+        # Pixel bleeps
+        bleep_notes = [784, 988, 1175, 1319]
+        for i, freq in enumerate(bleep_notes):
+            bleep = SynthVoice(
+                wave_type=WaveType.SQUARE,
+                frequency=freq,
+                amplitude=0.06,
+                envelope=ADSR(attack=0.001, decay=0.08, sustain=0.0, release=0.05),
+                pulse_width=0.2,
+            )
+            s = bleep.generate_samples(self.SAMPLE_RATE, 0.1)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * (i * beat * 0.5 + 0.1)))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=60, decay=0.18)
+        self._sounds["music_ascii"] = self._create_sound(mixed)
+
     # ═══════════════════════════════════════════════════════════════
     # PLAYBACK API
     # ═══════════════════════════════════════════════════════════════
@@ -1290,6 +1524,10 @@ class AudioEngine:
             "fortune": "fortune_mystical",
             "zodiac": "zodiac_stars",
             "ai_prophet": "prophet_scan",
+            "flow_field": "idle_hum",
+            "dither_art": "idle_hum",
+            "glitch_mirror": "transition_whoosh",
+            "particle_sculptor": "fortune_mystical",
         }
         sound_name = sound_map.get(mode_name)
         if sound_name:
@@ -1341,6 +1579,11 @@ class AudioEngine:
         "guess_me": "music_quiz",
         "squid_game": "music_quiz",
         "ai_prophet": "music_fortune",
+        "flow_field": "music_flow_field",
+        "dither_art": "music_flow_field",
+        "glitch_mirror": "music_glitch_mirror",
+        "particle_sculptor": "music_particle_sculptor",
+        "ascii_art": "music_ascii",
     }
 
     def play_music(self, track_name: str, fade_in_ms: int = 500) -> Optional[pygame.mixer.Channel]:
@@ -1369,8 +1612,12 @@ class AudioEngine:
 
         sound = self._sounds.get(sound_name)
         if not sound:
-            logger.warning(f"Music track not found: {sound_name}")
-            return None
+            fallback = self._sounds.get("music_idle")
+            logger.warning(f"Music track not found: {sound_name}, falling back to music_idle" if fallback else f"Music track not found: {sound_name}")
+            if not fallback:
+                return None
+            sound = fallback
+            sound_name = "music_idle"
 
         # Set volume and play with loop
         volume = self._volume_music * self._volume_master

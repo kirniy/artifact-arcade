@@ -181,13 +181,29 @@ class RotatingIdleAnimation:
             (0, 0, 30), (0, 0, 100), (60, 0, 130), (150, 0, 80),
             (200, 50, 0), (255, 100, 0), (255, 200, 50), (255, 255, 200)
         ]
-        # Try to open camera
+        # Camera stays closed until scene is entered to avoid startup failures
+
+    def _open_camera(self) -> None:
+        """Attempt to open the simulator camera lazily."""
+        if self._camera is not None:
+            return
         try:
             from artifact.simulator.mock_hardware.camera import create_camera
-            self._camera = create_camera(resolution=(128, 128))
-            self._camera.open()
+            cam = create_camera(resolution=(128, 128))
+            cam.open()
+            self._camera = cam
         except Exception:
             self._camera = None
+
+    def _close_camera(self) -> None:
+        """Close and release the camera."""
+        if self._camera:
+            try:
+                self._camera.close()
+            except Exception:
+                pass
+        self._camera = None
+        self._camera_frame = None
 
     def _init_matrix_rain(self):
         """Initialize matrix rain scene state."""
@@ -242,6 +258,8 @@ class RotatingIdleAnimation:
             if self.transition_progress >= 1.0:
                 self.transitioning = False
                 self.transition_progress = 0.0
+                previous_scene = self.state.current_scene
+                self._on_scene_exit(previous_scene)
                 self.scene_index = self.next_scene_index
                 self.state.current_scene = self.scenes[self.scene_index]
                 self.state.scene_time = 0.0
@@ -310,13 +328,7 @@ class RotatingIdleAnimation:
             self._vhs_noise_lines = []
             self._glitch_lines = []
             # Re-open camera if needed
-            if self._camera is None:
-                try:
-                    from artifact.simulator.mock_hardware.camera import create_camera
-                    self._camera = create_camera(resolution=(128, 128))
-                    self._camera.open()
-                except Exception:
-                    pass
+            self._open_camera()
         elif scene == IdleScene.MATRIX_RAIN:
             self._generate_columns()
             self._generate_glow_spots(8)
@@ -331,6 +343,11 @@ class RotatingIdleAnimation:
             self.shooting_stars = []
         elif scene == IdleScene.MYSTICAL_EYE:
             self._init_mystical_eye()
+
+    def _on_scene_exit(self, scene: IdleScene) -> None:
+        """Cleanup when leaving a scene."""
+        if scene == IdleScene.CAMERA_MIRROR:
+            self._close_camera()
 
     def _update_mystical_eye(self, delta_ms: float):
         """Update mystical eye animation."""
@@ -1135,6 +1152,7 @@ class RotatingIdleAnimation:
 
     def reset(self) -> None:
         """Reset animation state with randomized scene order."""
+        self._close_camera()
         self.state = SceneState()
         # Re-randomize scene order on reset/reboot
         random.shuffle(self.scenes)

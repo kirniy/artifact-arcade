@@ -48,8 +48,13 @@ async def run_simulator() -> None:
 
 async def run_hardware() -> None:
     """Run the hardware version (on Raspberry Pi)."""
-    # TODO: Implement hardware version
-    raise NotImplementedError("Hardware mode not yet implemented")
+    # Until dedicated hardware drivers are wired, fall back to simulator so
+    # systemd/unit launches don't crash the Pi. This keeps the top screen
+    # usable instead of failing fast when ARTIFACT_ENV=hardware is set.
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning("Hardware mode not yet implemented - running simulator fallback")
+    await run_simulator()
 
 
 def main() -> None:

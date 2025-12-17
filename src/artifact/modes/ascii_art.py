@@ -61,7 +61,7 @@ class AsciiArtMode(BaseMode):
     """
 
     name = "ascii_art"
-    display_name = "АСКИ"
+    display_name = "ASCII"
     icon = "text"
     style = "terminal"
 
@@ -100,7 +100,10 @@ class AsciiArtMode(BaseMode):
         self._color_schemes = list(ColorScheme)
 
         # Cell size (characters per pixel block)
-        self._cell_size = 8  # 128/8 = 16 chars wide
+        # Smaller = more detailed. Options: 4 (32x32), 5 (25x25), 6 (21x21), 8 (16x16)
+        self._cell_size = 4  # 128/4 = 32 chars wide - much finer detail!
+        self._cell_sizes = [4, 5, 6, 8]  # Cycle options
+        self._cell_size_index = 0
 
         # Captured frame
         self._captured_frame: Optional[NDArray] = None
@@ -155,13 +158,14 @@ class AsciiArtMode(BaseMode):
                 pass
             self._camera = None
 
-    def handle_input(self, event: Event) -> None:
+    def on_input(self, event: Event) -> bool:
         """Handle user input."""
         if self._sub_phase == AsciiPhase.INTRO:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = AsciiPhase.LIVE
                 self._time_in_phase = 0.0
-            return
+                return True
+            return False
 
         if self._sub_phase == AsciiPhase.LIVE:
             if event.type == EventType.ARCADE_LEFT:
@@ -172,25 +176,31 @@ class AsciiArtMode(BaseMode):
                     charset=self.CHARSETS[self._charset],
                     cell_size=self._cell_size
                 )
-                self.context.audio.play_ui_click()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_click()
+                return True
 
             elif event.type == EventType.ARCADE_RIGHT:
                 # Cycle color scheme
                 self._color_index = (self._color_index + 1) % len(self._color_schemes)
                 self._color_scheme = self._color_schemes[self._color_index]
-                self.context.audio.play_ui_click()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_ui_click()
+                return True
 
             elif event.type == EventType.BUTTON_PRESS:
                 # Capture
                 self._capture_image()
-                self.context.audio.play_success()
+                hasattr(self.context, "audio") and self.context.audio and self.context.audio.play_success()
+                return True
 
         elif self._sub_phase == AsciiPhase.CAPTURE:
             if event.type == EventType.BUTTON_PRESS:
                 self._sub_phase = AsciiPhase.LIVE
                 self._time_in_phase = 0.0
+                return True
 
-    def update(self, delta_ms: float) -> None:
+        return False
+
+    def on_update(self, delta_ms: float) -> None:
         """Update mode state."""
         self._time_in_phase += delta_ms
         self._total_time += delta_ms
@@ -364,21 +374,27 @@ class AsciiArtMode(BaseMode):
         else:
             fill(buffer, (0, 0, 0))
 
-        # Render ASCII characters
+        # Render ASCII characters using actual cell size
         font = load_font("cyrillic")
+        cell = self._cell_size
 
         for row_idx, row in enumerate(self._ascii_chars):
-            y = row_idx * 8
+            y = row_idx * cell
             if y >= 128:
                 break
 
             for col_idx, char in enumerate(row):
-                x = col_idx * 8
+                x = col_idx * cell
                 if x >= 128:
                     break
 
                 color = self._get_char_color(char, col_idx, row_idx)
-                draw_text_bitmap(buffer, char, x, y, color, font, scale=1)
+                # For small cells, draw single pixel instead of full char for better density
+                if cell <= 4:
+                    # Draw colored pixel block
+                    buffer[y:min(y+cell, 128), x:min(x+cell, 128)] = color
+                else:
+                    draw_text_bitmap(buffer, char, x, y, color, font, scale=1)
 
         # Matrix rain overlay (subtle)
         if self._color_scheme == ColorScheme.MATRIX:
@@ -428,19 +444,24 @@ class AsciiArtMode(BaseMode):
         # Render captured ASCII
         fill(buffer, (0, 10, 0))
         font = load_font("cyrillic")
+        cell = self._cell_size
 
         for row_idx, row in enumerate(self._captured_chars):
-            y = row_idx * 8
+            y = row_idx * cell
             if y >= 128:
                 break
 
             for col_idx, char in enumerate(row):
-                x = col_idx * 8
+                x = col_idx * cell
                 if x >= 128:
                     break
 
                 color = self._get_char_color(char, col_idx, row_idx)
-                draw_text_bitmap(buffer, char, x, y, color, font, scale=1)
+                # For small cells, draw colored pixel blocks
+                if cell <= 4:
+                    buffer[y:min(y+cell, 128), x:min(x+cell, 128)] = color
+                else:
+                    draw_text_bitmap(buffer, char, x, y, color, font, scale=1)
 
         # Flash effect
         flash = max(0, 1 - t / 300)
@@ -452,34 +473,53 @@ class AsciiArtMode(BaseMode):
         draw_centered_text(buffer, "СОХРАНЕНО!", 55, (50, 255, 50), scale=2)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display with ASCII-style animation."""
+        """Render ticker display as camera continuation (48x8 = top band of image)."""
         from artifact.graphics.primitives import clear
 
         clear(buffer)
-        font = load_font("cyrillic")
 
-        if self._sub_phase == AsciiPhase.LIVE:
-            # Scrolling ASCII art pattern
-            offset = int(self._total_time / 100) % 48
+        if self._sub_phase == AsciiPhase.LIVE and self._camera_frame is not None:
+            # Show ASCII continuation - render top part of the ASCII art
+            # Ticker is 48x8, scale camera to fit
+            # Sample from camera frame and render as colored pixels
+            cell = max(1, self._cell_size // 4)  # Smaller cells for ticker
 
-            for x in range(48):
-                idx = (x + offset) % len(self.CHARSETS[self._charset])
-                char = self.CHARSETS[self._charset][idx % len(self.CHARSETS[self._charset])]
+            for ty in range(8):
+                for tx in range(48):
+                    # Map ticker coords to camera frame
+                    # Ticker represents the "sky" / top of the scene
+                    cam_y = (ty * 128) // 8  # Top 8 rows of camera
+                    cam_x = (tx * 128) // 48
 
-                # Color based on position
-                intensity = (math.sin(x * 0.3 + self._total_time / 200) + 1) / 2
-                color = (
-                    int(50 * intensity),
-                    int(255 * intensity),
-                    int(50 * intensity)
-                )
+                    if cam_y < 128 and cam_x < 128:
+                        # Get brightness from camera
+                        pixel = self._camera_frame[cam_y, cam_x]
+                        brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
 
-                # Draw character (scaled to fit ticker)
-                if x % 6 == 0:  # Every 6 pixels
-                    draw_text_bitmap(buffer, char, x, 0, color, font, scale=1)
+                        # Apply color scheme
+                        if self._color_scheme == ColorScheme.GREEN:
+                            color = (int(30 * brightness), int(200 * brightness), int(30 * brightness))
+                        elif self._color_scheme == ColorScheme.AMBER:
+                            color = (int(200 * brightness), int(140 * brightness), int(40 * brightness))
+                        elif self._color_scheme == ColorScheme.MATRIX:
+                            color = (0, int(220 * brightness), int(60 * brightness))
+                        elif self._color_scheme == ColorScheme.RAINBOW:
+                            hue = (tx * 8 + self._total_time / 20) % 360
+                            color = hsv_to_rgb(hue, 1.0, brightness)
+                        elif self._color_scheme == ColorScheme.CYBER:
+                            if (tx + ty) % 2 == 0:
+                                color = (int(200 * brightness), int(50 * brightness), int(180 * brightness))
+                            else:
+                                color = (int(50 * brightness), int(200 * brightness), int(180 * brightness))
+                        else:
+                            v = int(200 * brightness)
+                            color = (v, v, v)
+
+                        buffer[ty, tx] = color
 
         elif self._sub_phase == AsciiPhase.INTRO:
             # Matrix rain on ticker
+            font = load_font("cyrillic")
             for drop in self._rain_drops[:5]:
                 x = int(drop['x'] * 3) % 48
                 y = int(drop['y']) % 8

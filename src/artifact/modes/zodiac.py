@@ -1075,7 +1075,7 @@ class ZodiacMode(BaseMode):
             render_ticker_animated(
                 buffer, "ЗОДИАК ОРАКУЛ",
                 self._time_in_phase, self._secondary,
-                TickerEffect.RAINBOW_SCROLL, speed=0.025
+                TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
 
         elif self.phase == ModePhase.ACTIVE:
