@@ -31,6 +31,7 @@ from artifact.modes.guess_me import GuessMeMode
 from artifact.modes.autopsy import AutopsyMode
 from artifact.modes.roast import RoastMeMode
 from artifact.modes.vnvnc_rush import VNVNCRushMode
+from artifact.modes.tower_stack import TowerStackMode
 from artifact.modes.flow_field import FlowFieldMode
 from artifact.modes.glitch_mirror import GlitchMirrorMode
 from artifact.modes.dither_art import DitherArtMode
@@ -143,6 +144,7 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(AsciiArtMode)
         self.mode_manager.register_mode(ParticleSculptorMode)
         self.mode_manager.register_mode(VNVNCRushMode)
+        self.mode_manager.register_mode(TowerStackMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os

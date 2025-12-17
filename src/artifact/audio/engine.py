@@ -1528,6 +1528,7 @@ class AudioEngine:
             "dither_art": "idle_hum",
             "glitch_mirror": "transition_whoosh",
             "particle_sculptor": "fortune_mystical",
+            "tower_stack": "fortune_mystical",
         }
         sound_name = sound_map.get(mode_name)
         if sound_name:
@@ -1584,6 +1585,7 @@ class AudioEngine:
         "glitch_mirror": "music_glitch_mirror",
         "particle_sculptor": "music_particle_sculptor",
         "ascii_art": "music_ascii",
+        "tower_stack": "music_roulette",
     }
 
     def play_music(self, track_name: str, fade_in_ms: int = 500) -> Optional[pygame.mixer.Channel]:

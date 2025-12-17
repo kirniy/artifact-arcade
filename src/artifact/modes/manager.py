@@ -251,6 +251,7 @@ MODE_EFFECTS = {
     "autopsy": SelectorEffect.THERMAL,
     "zodiac": SelectorEffect.DITHER,
     "vnvnc_rush": SelectorEffect.PIXELATE,
+    "tower_stack": SelectorEffect.DITHER,
 }
 
 
@@ -1049,8 +1050,8 @@ class ModeManager:
         for ox in [-1, 0, 1]:
             for oy in [-1, 0, 1]:
                 if ox != 0 or oy != 0:
-                    draw_centered_text(buffer, "НАЖМИ КНОПКУ", prompt_y + oy, (0, 0, 0), scale=1)
-        draw_centered_text(buffer, "НАЖМИ КНОПКУ", prompt_y, prompt_color, scale=1)
+                    draw_centered_text(buffer, "▼НАЖМИ КНОПКУ▼", prompt_y + oy, (0, 0, 0), scale=1)
+        draw_centered_text(buffer, "▼НАЖМИ КНОПКУ▼", prompt_y, prompt_color, scale=1)
 
     def _render_camera_effect_background(self, buffer, t: float) -> None:
         """Apply current effect to camera frame and render to FULL 128x128 buffer."""
@@ -1340,7 +1341,7 @@ class ModeManager:
             if self._last_result.should_print:
                 draw_centered_text(buffer, "НАЖМИ СТАРТ", MAIN_HINT_ZONE_Y, (150, 200, 150), scale=1)
             else:
-                draw_centered_text(buffer, "НАЖМИ КНОПКУ", MAIN_HINT_ZONE_Y, (150, 150, 150), scale=1)
+                draw_centered_text(buffer, "▼НАЖМИ КНОПКУ▼", MAIN_HINT_ZONE_Y, (150, 150, 150), scale=1)
 
         elif view == 1:
             # Prediction text view with auto-scroll for long text

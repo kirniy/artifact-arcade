@@ -86,22 +86,26 @@ class VNVNCRushMode(BaseMode):
                 self._flash_timer = 200
                 if self.context.animation_engine:
                     self.context.animation_engine.trigger("celebrate", duration=400)
-                self.context.audio.play_success()
+                if hasattr(self.context, "audio") and self.context.audio:
+                    self.context.audio.play_success()
             else:
                 self._streak = 0
-                self.context.audio.play_ui_error()
+                if hasattr(self.context, "audio") and self.context.audio:
+                    self.context.audio.play_ui_error()
             return True
 
         elif event.type == EventType.ARCADE_LEFT:
             # Nudge marker left
             self._marker_vel -= 0.05
-            self.context.audio.play_ui_move()
+            if hasattr(self.context, "audio") and self.context.audio:
+                self.context.audio.play_ui_move()
             return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             # Nudge marker right
             self._marker_vel += 0.05
-            self.context.audio.play_ui_move()
+            if hasattr(self.context, "audio") and self.context.audio:
+                self.context.audio.play_ui_move()
             return True
 
         return False
