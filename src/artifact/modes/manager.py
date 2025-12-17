@@ -1288,7 +1288,7 @@ class ModeManager:
         mode = self.get_selected_mode()
         if mode:
             # Explicit nav hint + mode name - using ASCII-safe characters
-            text = f"<< >> ЛИСТАЙ - СТАРТ ОК - {mode.display_name}"
+            text = f"VNVNC ARCADE: {mode.display_name} VNVNC ARCADE: {mode.display_name} VNVNC ARCADE: {mode.display_name} VNVNC ARCADE: {mode.display_name}"
             render_ticker_animated(
                 buffer, text,
                 self._time_in_state, (255, 200, 0),
