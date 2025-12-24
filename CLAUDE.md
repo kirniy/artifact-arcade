@@ -86,9 +86,46 @@ Pin 6 (GND) → Black wire
 | Interface | Device | GPIO/Connection |
 |-----------|--------|-----------------|
 | HDMI | Main RGB Matrix (via T50) | HDMI port → NovaStar T50 |
-| GPIO 18 | WS2812B Ticker LEDs | PWM (384 LEDs) |
+| GPIO 21 | WS2812B Ticker LEDs | PWM (384 LEDs) |
 | I2C | LCD 16x2 | /dev/i2c-1 (GPIO 2,3) |
 | UART | Thermal Printer | /dev/ttyAMA0 (GPIO 14,15) |
+
+#### Camera
+| Component | Specification |
+|-----------|---------------|
+| **Model** | Raspberry Pi Camera Module 3 NoIR |
+| **Sensor** | Sony IMX708 (no IR filter) |
+| **Resolution** | 4608×2592 (12MP) |
+| **Interface** | CSI (Camera Serial Interface) |
+| **Library** | picamera2, rpicam-apps |
+
+```bash
+# List cameras
+rpicam-hello --list-cameras
+
+# Take a photo
+rpicam-still -o photo.jpg
+
+# Stream to network (view with: ffplay tcp://artifact.local:8888)
+rpicam-vid -t 0 --width 640 --height 480 --inline --listen -o tcp://0.0.0.0:8888
+```
+
+#### Audio Output
+| Component | Specification |
+|-----------|---------------|
+| **Output** | 3.5mm headphone jack |
+| **Driver** | snd_bcm2835 |
+| **Card** | card 2: Headphones |
+
+**Note**: Audio uses PWM on GPIO 18, which conflicts with WS2812B. Solution: WS2812B moved to GPIO 21.
+
+```bash
+# Test audio
+speaker-test -D hw:2,0 -t sine -f 440 -l 1
+
+# Audio module auto-loads via /etc/modules-load.d/audio.conf
+# Default output set in /etc/asound.conf
+```
 
 ### Installed Libraries
 - RPi.GPIO, gpiozero - GPIO control
@@ -220,13 +257,15 @@ NovaStar receiving cards (DH418) have native firmware support for ICN2153 panels
 | **LED Type** | WS2812B (Neopixel-compatible) |
 | **Layout** | 1× 32×8 matrix + 2× 8×8 matrices = 48×8 total |
 | **Total LEDs** | 384 (256 + 64 + 64) |
-| **GPIO Pin** | GPIO 18 (PWM) |
+| **GPIO Pin** | GPIO 21 (PWM) |
 | **Data Protocol** | Single-wire 800kHz serial |
+
+**Note**: Using GPIO 21 instead of GPIO 18 to avoid conflict with 3.5mm audio (which uses GPIO 18 for PWM).
 
 ### Wiring
 
 ```
-Raspberry Pi GPIO 18 ──────▶ DIN (first matrix)
+Raspberry Pi GPIO 21 ──────▶ DIN (first matrix)
                              ↓
                       32×8 Matrix (256 LEDs)
                              ↓ DOUT → DIN
@@ -249,8 +288,8 @@ Using `rpi_ws281x` / `adafruit-circuitpython-neopixel`:
 import board
 import neopixel
 
-# 384 LEDs on GPIO 18
-pixels = neopixel.NeoPixel(board.D18, 384, brightness=0.5, auto_write=False)
+# 384 LEDs on GPIO 21 (not GPIO 18 - that conflicts with audio)
+pixels = neopixel.NeoPixel(board.D21, 384, brightness=0.5, auto_write=False)
 
 # Set pixel colors
 pixels[0] = (255, 0, 0)  # Red
@@ -259,11 +298,7 @@ pixels.show()
 
 ### Important Notes
 
-1. **GPIO 18 Conflict**: WS2812B uses GPIO 18 for PWM timing. This conflicts with audio PWM, so audio must be disabled:
-   ```
-   # In /boot/config.txt
-   dtparam=audio=off
-   ```
+1. **GPIO 21 for WS2812B**: Using GPIO 21 instead of GPIO 18 to allow 3.5mm audio (which uses GPIO 18 for PWM). Both GPIO 18 and 21 support PWM for WS2812B.
 
 2. **Level Shifting**: WS2812B expects 5V logic but Pi outputs 3.3V. Most WS2812B LEDs work reliably with 3.3V signals, but for long runs or reliability, add a 74AHCT125 level shifter.
 
