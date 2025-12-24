@@ -48,13 +48,21 @@ async def run_simulator() -> None:
 
 async def run_hardware() -> None:
     """Run the hardware version (on Raspberry Pi)."""
-    # Until dedicated hardware drivers are wired, fall back to simulator so
-    # systemd/unit launches don't crash the Pi. This keeps the top screen
-    # usable instead of failing fast when ARTIFACT_ENV=hardware is set.
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.warning("Hardware mode not yet implemented - running simulator fallback")
-    await run_simulator()
+    from artifact.hardware.runner import HardwareRunner, HardwareConfig
+
+    # Create shared components
+    state_machine = StateMachine()
+    event_bus = EventBus()
+
+    # Create and run hardware runner
+    config = HardwareConfig()
+    runner = HardwareRunner(
+        config=config,
+        state_machine=state_machine,
+        event_bus=event_bus
+    )
+
+    await runner.run()
 
 
 def main() -> None:
