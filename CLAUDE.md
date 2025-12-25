@@ -174,22 +174,27 @@ The main 128×128 display uses NovaStar professional LED control equipment, prov
 └─────────────┘             └─────────────┘              └─────────────┘            └────────────┘
 ```
 
-### Physical Wiring (Snake Pattern)
+### Physical Wiring (4 Direct Cables)
 
-The 4 panels are daisy-chained from DH418:
+Each panel connects directly to DH418 with its own HUB75E cable (NO daisy-chain):
 
 ```
 Panel Layout (as seen from FRONT):
 
-  [2] TOP-LEFT  ───→  [3] TOP-RIGHT
-       ↑                    │
-       │                    ↓
-  [1] BOT-LEFT        [4] BOT-RIGHT
-       ↑
-    INPUT from DH418
+  ┌───────────────┬───────────────┐
+  │   Panel 2     │   Panel 3     │
+  │  (top-left)   │  (top-right)  │
+  │    HUB2       │    HUB3       │
+  ├───────────────┼───────────────┤
+  │   Panel 1     │   Panel 4     │
+  │ (bottom-left) │(bottom-right) │
+  │    HUB1       │    HUB4       │
+  └───────────────┴───────────────┘
 
-Signal flow: DH418 → Panel 1 → Panel 2 → Panel 3 → Panel 4
+DH418 → 4 cables → 4 panels (each panel gets 1 cable)
 ```
+
+See `docs/hardware/novastar-setup.md` for complete wiring guide.
 
 ### Power Connections
 
@@ -205,40 +210,68 @@ IMPORTANT:
 
 ### T50 Configuration
 
-The T50 requires one-time configuration via NovaLCT software (Windows only):
+The T50 + DH418 require configuration via NovaLCT software (Windows only):
 
-1. Connect T50 to Windows PC via USB or network
-2. Launch NovaLCT
-3. Configure screen parameters:
-   - Resolution: 128×128
-   - Panel type: P3 64×64 1/32 scan
-   - Chain: 4 panels in snake pattern
-4. Save configuration to T50
+1. Connect to T50 via WiFi (`AP00006151` / `12345678`) or Ethernet
+2. Launch NovaLCT V5.8.1
+3. Use **Smart Settings Guide** to configure module:
+   - Chip: ICND2153
+   - Decoder: ICN2013
+   - Data Type: Parallel drive
+   - Module Type: Irregular Module
+   - Size: 64×64
+4. Use **Construct Irregular-Cabinet** to set up 128×128 layout:
+   - 8 data groups (2 per panel, 4 panels)
+   - Irregular cabinet type
+5. Send configuration to DH418
 
 **Note**: After initial configuration, the T50 operates standalone. NovaLCT is not needed for daily use.
 
+See `docs/hardware/novastar-setup.md` for detailed configuration guide.
+
 ### Accessing NovaLCT
 
-Options for one-time Windows configuration:
-- Windows VM (VirtualBox/Parallels) on Mac
+Options for Mac users:
+- **Azure Windows VM** + Tailscale (recommended)
+- Parallels/VMware with Windows
 - Borrow a Windows laptop
-- Wine (may work, untested)
 
 ### Software Integration
 
-The Pi outputs standard video via HDMI. The display code uses pygame:
+**HDMI Configuration**: Pi outputs 720×480 @ 60Hz HDMI. T50 crops the top-left 128×128 pixels for display.
+
+**IMPORTANT**: Raspberry Pi OS runs labwc (Wayland compositor) by default, which blocks pygame from accessing DRM. To run pygame on the LED display:
+
+```bash
+# 1. Stop desktop compositor
+sudo systemctl stop labwc.service
+sudo killall -9 labwc wf-panel-pi
+
+# 2. Run pygame with kmsdrm driver (requires sudo!)
+export SDL_VIDEODRIVER=kmsdrm
+sudo python3 your_app.py
+```
+
+The display code uses pygame:
 
 ```python
-# Initialize pygame for HDMI output
-pygame.init()
-screen = pygame.display.set_mode((128, 128), pygame.FULLSCREEN)
+import os
+os.environ['SDL_VIDEODRIVER'] = 'kmsdrm'  # MUST be before pygame.init()
 
-# Draw to screen - T50/DH418 handle the rest
-screen.fill((255, 0, 0))  # Red
+import pygame
+pygame.init()
+
+# Use 720×480 for HDMI, T50 crops to 128×128
+screen = pygame.display.set_mode((720, 480), pygame.FULLSCREEN)
+
+# Draw in top-left 128×128 corner - this is what appears on LED panels
+game_surface = pygame.Surface((128, 128))
+game_surface.fill((255, 0, 0))  # Red
+screen.blit(game_surface, (0, 0))
 pygame.display.flip()
 ```
 
-Pi outputs 128×128 video over HDMI → T50 receives and forwards to DH418 → DH418 drives panels via HUB75E.
+**Complete display documentation**: See `docs/hardware/display-setup.md` for full troubleshooting guide, SDL driver issues, and systemd configuration.
 
 ### Why NovaStar Instead of GPIO HAT?
 
