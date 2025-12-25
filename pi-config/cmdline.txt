@@ -1,0 +1,1 @@
+console=tty1 root=PARTUUID=18c02fab-02 rootfstype=ext4 fsck.repair=yes rootwait video=HDMI-A-1:720x480@60 quiet splash plymouth.ignore-serial-consoles cfg80211.ieee80211_regdom=RU
