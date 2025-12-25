@@ -5,10 +5,13 @@ The T50 receives HDMI input and forwards it to the DH418 receiver card,
 which drives the HUB75E LED panels. From the Pi's perspective, we just
 output standard video via HDMI - the T50/DH418 handle all panel driving.
 
-This driver uses pygame to render to the HDMI output at 128x128 resolution.
+IMPORTANT: On Raspberry Pi with kmsdrm, we output 720x480 via HDMI.
+The T50 is configured to crop the top-left 128x128 pixels for the LED panels.
+This approach works because kmsdrm needs a standard resolution, not 128x128.
 """
 
 import logging
+import os
 import numpy as np
 from numpy.typing import NDArray
 
@@ -21,20 +24,35 @@ _pygame = None
 
 
 def _get_pygame():
-    """Lazy import pygame."""
+    """Lazy import pygame with kmsdrm driver setup."""
     global _pygame
     if _pygame is None:
+        # MUST set video driver BEFORE importing pygame on Pi with kmsdrm
+        if os.environ.get("SDL_VIDEODRIVER") != "kmsdrm":
+            # Check if we're likely on a Pi (no display env vars)
+            if not os.environ.get("DISPLAY") and os.path.exists("/dev/dri"):
+                os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
+                logger.info("Set SDL_VIDEODRIVER=kmsdrm for Pi hardware mode")
         import pygame
         _pygame = pygame
     return _pygame
+
+
+# HDMI output resolution (standard resolution for T50 compatibility)
+HDMI_OUTPUT_WIDTH = 720
+HDMI_OUTPUT_HEIGHT = 480
 
 
 class HDMIDisplay(Display):
     """
     HDMI display driver for T50 + DH418 LED matrix system.
 
-    Outputs 128x128 pixels via HDMI. The NovaStar T50 receives this
-    signal and forwards it to the DH418, which drives the panels.
+    Outputs 720x480 via HDMI with the 128x128 content in the top-left corner.
+    The NovaStar T50 is configured to crop the top-left 128x128 pixels,
+    which then get sent to the DH418 receiver card driving the LED panels.
+
+    This approach is needed because kmsdrm requires standard video resolutions,
+    and 128x128 is not a valid HDMI mode.
 
     Usage:
         display = HDMIDisplay()
@@ -56,6 +74,7 @@ class HDMIDisplay(Display):
         self._height = height
         self._buffer = np.zeros((height, width, 3), dtype=np.uint8)
         self._screen = None
+        self._led_surface = None  # The 128x128 surface for LED content
         self._initialized = False
 
     @property
@@ -86,12 +105,15 @@ class HDMIDisplay(Display):
             # Hide mouse cursor
             pygame.mouse.set_visible(False)
 
-            # Set up fullscreen display at native resolution
-            # The T50 will receive whatever we output
+            # Set up fullscreen display at HDMI-compatible resolution
+            # kmsdrm needs a standard resolution, T50 crops to 128x128
             self._screen = pygame.display.set_mode(
-                (self._width, self._height),
-                pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF
+                (HDMI_OUTPUT_WIDTH, HDMI_OUTPUT_HEIGHT),
+                pygame.FULLSCREEN
             )
+
+            # Create surface for the 128x128 LED content
+            self._led_surface = pygame.Surface((self._width, self._height))
 
             pygame.display.set_caption("ARTIFACT")
 
@@ -100,7 +122,10 @@ class HDMIDisplay(Display):
             pygame.display.flip()
 
             self._initialized = True
-            logger.info(f"HDMI display initialized: {self._width}x{self._height}")
+            logger.info(
+                f"HDMI display initialized: {HDMI_OUTPUT_WIDTH}x{HDMI_OUTPUT_HEIGHT} "
+                f"(LED area: {self._width}x{self._height} in top-left)"
+            )
             return True
 
         except Exception as e:
@@ -135,12 +160,14 @@ class HDMIDisplay(Display):
 
         # Convert numpy buffer to pygame surface
         # pygame expects (width, height) but numpy is (height, width)
-        # Also pygame uses RGB while we store RGB, so just swap axes
         surface = pygame.surfarray.make_surface(
             self._buffer.swapaxes(0, 1)
         )
 
-        # Blit to screen
+        # Clear screen to black first
+        self._screen.fill((0, 0, 0))
+
+        # Blit LED content to top-left corner (T50 crops this region)
         self._screen.blit(surface, (0, 0))
         pygame.display.flip()
 
