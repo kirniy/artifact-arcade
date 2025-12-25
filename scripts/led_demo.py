@@ -2758,38 +2758,112 @@ def main():
     current = 0
     clock = pygame.time.Clock()
     running = True
+    launch_artifact = False
 
     # Long-press tracking for mode switch
     enter_pressed_time = None
+    enter_held = False
     LONG_PRESS_DURATION = 3.0  # seconds to hold for mode switch
-    show_hold_indicator = False
+
+    # Visual feedback colors
+    PROGRESS_BG = (40, 40, 40)
+    PROGRESS_FG = (0, 255, 128)
+    PROGRESS_READY = (255, 200, 0)
 
     print(f"\n{len(effects)} effects. Press ENTER to switch. HOLD 3s for ARTIFACT mode. ESC to exit.\n")
     print(f"→ {effects[current][0]}")
 
     try:
         while running:
+            current_time = time.time()
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
-                    elif event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_RIGHT):
-                        # Play switch sound and go to next effect
+                    elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        # Start tracking long press
+                        if enter_pressed_time is None:
+                            enter_pressed_time = current_time
+                            enter_held = True
+                    elif event.key == pygame.K_RIGHT:
+                        # Right arrow - just next effect (no long-press)
                         sound.play_once('switch')
                         effects[current][1].reset()
                         current = (current + 1) % len(effects)
                         print(f"→ {effects[current][0]}")
                     elif event.key == pygame.K_LEFT:
-                        # Play switch sound and go to previous effect
+                        # Left arrow - previous effect
                         sound.play_once('switch')
                         effects[current][1].reset()
                         current = (current - 1) % len(effects)
                         print(f"→ {effects[current][0]}")
 
+                elif event.type == pygame.KEYUP:
+                    if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        # Check if it was a short press (switch effect)
+                        if enter_pressed_time is not None:
+                            hold_duration = current_time - enter_pressed_time
+                            if hold_duration < 0.5:  # Short press threshold
+                                # Switch to next effect
+                                sound.play_once('switch')
+                                effects[current][1].reset()
+                                current = (current + 1) % len(effects)
+                                print(f"→ {effects[current][0]}")
+                        enter_pressed_time = None
+                        enter_held = False
+
+            # Check for long press completion
+            if enter_held and enter_pressed_time is not None:
+                hold_duration = current_time - enter_pressed_time
+                if hold_duration >= LONG_PRESS_DURATION:
+                    print("\n🚀 Launching ARTIFACT mode...")
+                    launch_artifact = True
+                    running = False
+
             # Each effect loops forever until ENTER pressed
             effects[current][1].render(led)
+
+            # Draw hold progress bar if holding ENTER
+            if enter_held and enter_pressed_time is not None:
+                hold_duration = current_time - enter_pressed_time
+                if hold_duration >= 0.5:  # Only show after short-press threshold
+                    progress = min(1.0, (hold_duration - 0.5) / (LONG_PRESS_DURATION - 0.5))
+
+                    # Progress bar dimensions
+                    bar_width = 100
+                    bar_height = 10
+                    bar_x = (LED_SIZE - bar_width) // 2
+                    bar_y = LED_SIZE - 18
+
+                    # Outer glow effect
+                    glow_color = (0, 100, 50) if progress < 1.0 else (100, 80, 0)
+                    pygame.draw.rect(led, glow_color, (bar_x - 4, bar_y - 4, bar_width + 8, bar_height + 8))
+
+                    # Background
+                    pygame.draw.rect(led, PROGRESS_BG, (bar_x, bar_y, bar_width, bar_height))
+
+                    # Progress fill with gradient effect
+                    fill_width = int(bar_width * progress)
+                    if fill_width > 0:
+                        if progress >= 1.0:
+                            # Flashing gold when ready
+                            flash = int(current_time * 8) % 2
+                            fill_color = (255, 220, 50) if flash else (255, 180, 0)
+                        else:
+                            fill_color = PROGRESS_FG
+                        pygame.draw.rect(led, fill_color, (bar_x, bar_y, fill_width, bar_height))
+
+                        # Highlight line on top
+                        highlight = (min(255, fill_color[0] + 50), min(255, fill_color[1] + 50), min(255, fill_color[2] + 50))
+                        pygame.draw.line(led, highlight, (bar_x, bar_y), (bar_x + fill_width - 1, bar_y))
+
+                    # Border
+                    pygame.draw.rect(led, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height), 1)
+
             screen.fill((0, 0, 0))
             screen.blit(led, (0, 0))
             pygame.display.flip()
@@ -2800,6 +2874,28 @@ def main():
 
     sound.stop()
     pygame.quit()
+
+    # Launch ARTIFACT mode if requested
+    if launch_artifact:
+        import subprocess
+        import sys
+
+        # Get the path to the artifact module
+        artifact_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        artifact_src = os.path.join(artifact_dir, "src")
+
+        print("Starting ARTIFACT...")
+        env = os.environ.copy()
+        env["ARTIFACT_ENV"] = "hardware"
+        env["PYTHONPATH"] = artifact_src
+        env["SDL_VIDEODRIVER"] = "kmsdrm"
+
+        # Launch ARTIFACT main
+        subprocess.run(
+            [sys.executable, "-m", "artifact.main"],
+            cwd=artifact_dir,
+            env=env
+        )
 
 
 if __name__ == "__main__":
