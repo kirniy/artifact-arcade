@@ -89,6 +89,10 @@ class HardwareRunner:
         self._clock = None
         self._initialized = False
 
+        # Long-press shutdown tracking
+        self._backspace_pressed_time: float | None = None
+        self._shutdown_hold_duration = 3.0  # seconds to hold for shutdown
+
         # Use mock displays if hardware unavailable
         self._use_mocks = os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
 
@@ -225,6 +229,7 @@ class HardwareRunner:
 
     def _handle_events(self) -> None:
         """Process pygame events (keyboard fallback for GPIO)."""
+        import time
         pygame = _get_pygame()
 
         for event in pygame.event.get():
@@ -236,6 +241,13 @@ class HardwareRunner:
 
             elif event.type == pygame.KEYUP:
                 self._handle_keyup(event)
+
+        # Check for long-press shutdown (Backspace held 3 seconds)
+        if self._backspace_pressed_time is not None:
+            held_duration = time.time() - self._backspace_pressed_time
+            if held_duration >= self._shutdown_hold_duration:
+                logger.warning("Backspace held 3s - initiating shutdown!")
+                self._shutdown_system()
 
     def _handle_keydown(self, event) -> None:
         """Handle key press events."""
@@ -249,20 +261,63 @@ class HardwareRunner:
             # Reboot to idle
             self.event_bus.emit(Event(EventType.REBOOT, source="keyboard"))
         elif key == pygame.K_BACKSPACE:
-            # Go back
-            self.event_bus.emit(Event(EventType.BACK, source="keyboard"))
+            # Start tracking for long-press shutdown
+            import time
+            if self._backspace_pressed_time is None:
+                self._backspace_pressed_time = time.time()
+                logger.debug("Backspace pressed - hold 3s to shutdown")
 
         # Center button (SPACE or RETURN)
         elif key in (pygame.K_SPACE, pygame.K_RETURN):
             self.event_bus.emit(Event(EventType.BUTTON_PRESS, source="center"))
 
-        # Arcade buttons
+        # Arcade buttons (regular arrows)
         elif key == pygame.K_LEFT:
             self.event_bus.emit(Event(EventType.ARCADE_LEFT, source="arcade"))
         elif key == pygame.K_RIGHT:
             self.event_bus.emit(Event(EventType.ARCADE_RIGHT, source="arcade"))
+        elif key == pygame.K_UP:
+            self.event_bus.emit(Event(EventType.ARCADE_UP, source="arcade"))
+        elif key == pygame.K_DOWN:
+            self.event_bus.emit(Event(EventType.ARCADE_DOWN, source="arcade"))
 
-        # Keypad (0-9, *, #)
+        # Numpad Enter - works as confirm button
+        elif key == pygame.K_KP_ENTER:
+            self.event_bus.emit(Event(EventType.BUTTON_PRESS, source="center"))
+
+        # Numpad 4/6 - work as BOTH navigation AND digits
+        # (mode decides which event to handle)
+        elif key == pygame.K_KP4:
+            self.event_bus.emit(Event(EventType.ARCADE_LEFT, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "4"},
+                source="keypad"
+            ))
+        elif key == pygame.K_KP6:
+            self.event_bus.emit(Event(EventType.ARCADE_RIGHT, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "6"},
+                source="keypad"
+            ))
+        # Numpad 8/2 - work as up/down navigation AND digits
+        elif key == pygame.K_KP8:
+            self.event_bus.emit(Event(EventType.ARCADE_UP, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "8"},
+                source="keypad"
+            ))
+        elif key == pygame.K_KP2:
+            self.event_bus.emit(Event(EventType.ARCADE_DOWN, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "2"},
+                source="keypad"
+            ))
+
+        # Keypad (0-9, *, #) - regular number row
         elif key in range(pygame.K_0, pygame.K_9 + 1):
             char = chr(key)
             self.event_bus.emit(Event(
@@ -270,17 +325,41 @@ class HardwareRunner:
                 data={"key": char},
                 source="keypad"
             ))
+        # Numpad digits (except 2,4,6,8 which are handled above)
         elif key == pygame.K_KP0:
             self.event_bus.emit(Event(
                 EventType.KEYPAD_INPUT,
                 data={"key": "0"},
                 source="keypad"
             ))
-        elif key in range(pygame.K_KP1, pygame.K_KP9 + 1):
-            char = str(key - pygame.K_KP1 + 1)
+        elif key == pygame.K_KP1:
             self.event_bus.emit(Event(
                 EventType.KEYPAD_INPUT,
-                data={"key": char},
+                data={"key": "1"},
+                source="keypad"
+            ))
+        elif key == pygame.K_KP3:
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "3"},
+                source="keypad"
+            ))
+        elif key == pygame.K_KP5:
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "5"},
+                source="keypad"
+            ))
+        elif key == pygame.K_KP7:
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "7"},
+                source="keypad"
+            ))
+        elif key == pygame.K_KP9:
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "9"},
                 source="keypad"
             ))
         elif key == pygame.K_ASTERISK or key == pygame.K_KP_MULTIPLY:
@@ -289,7 +368,8 @@ class HardwareRunner:
                 data={"key": "*"},
                 source="keypad"
             ))
-        elif key == pygame.K_HASH:
+        elif key == pygame.K_HASH or key == pygame.K_KP_PLUS:
+            # Use numpad + as # since numpad doesn't have #
             self.event_bus.emit(Event(
                 EventType.KEYPAD_INPUT,
                 data={"key": "#"},
@@ -298,11 +378,20 @@ class HardwareRunner:
 
     def _handle_keyup(self, event) -> None:
         """Handle key release events."""
+        import time
         pygame = _get_pygame()
         key = event.key
 
-        if key in (pygame.K_SPACE, pygame.K_RETURN):
+        if key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER):
             self.event_bus.emit(Event(EventType.BUTTON_RELEASE, source="center"))
+
+        elif key == pygame.K_BACKSPACE:
+            # If released before 3s, emit BACK event (go back/cancel)
+            if self._backspace_pressed_time is not None:
+                held_duration = time.time() - self._backspace_pressed_time
+                self._backspace_pressed_time = None
+                if held_duration < self._shutdown_hold_duration:
+                    self.event_bus.emit(Event(EventType.BACK, source="keyboard"))
 
     def _update_displays(self) -> None:
         """Update all displays from their buffers."""
@@ -385,6 +474,35 @@ class HardwareRunner:
         pygame.quit()
 
         logger.info("Hardware cleanup complete")
+
+    def _shutdown_system(self) -> None:
+        """Shutdown the Raspberry Pi (called on long Backspace press)."""
+        import subprocess
+
+        logger.warning("=== SYSTEM SHUTDOWN INITIATED ===")
+
+        # Cleanup before shutdown
+        self._running = False
+        self._cleanup()
+
+        # Clear the display before shutdown (show black)
+        try:
+            pygame = _get_pygame()
+            if self._main_display:
+                self._main_display.clear(0, 0, 0)
+                self._main_display.show()
+        except Exception:
+            pass
+
+        # Execute shutdown command
+        try:
+            logger.info("Executing: sudo shutdown now")
+            subprocess.run(["sudo", "shutdown", "now"], check=False)
+        except Exception as e:
+            logger.error(f"Shutdown failed: {e}")
+            # If shutdown fails (e.g., not running as root), at least exit
+            import sys
+            sys.exit(0)
 
     def stop(self) -> None:
         """Stop the hardware runner."""

@@ -971,7 +971,7 @@ class FortuneMode(BaseMode):
                 month = int(digits[2:4])
                 year = int(digits[4:8])
                 if 1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= 2024:
-                    draw_centered_text(buffer, "ЖМЯКНИ КНОПКУ", 80, (100, 255, 100), scale=1)
+                    draw_centered_text(buffer, "ЖМИ КНОПКУ", 80, (100, 255, 100), scale=1)
                 else:
                     draw_centered_text(buffer, "НЕВЕРНАЯ ДАТА", 80, (255, 100, 100), scale=1)
             except:

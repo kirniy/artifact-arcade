@@ -3,17 +3,22 @@
 ## Displays
 
 ### P3 LED Matrix Modules (x4)
+- **Model**: P3-2121-64x64-32S-v3
 - **Resolution**: 64x64 pixels per module
 - **Pixel Pitch**: 3mm
-- **Interface**: HUB75E
+- **Interface**: HUB75E (2 input connectors per panel - NO daisy-chain!)
 - **Configuration**: 2x2 grid = 128x128 pixels total
 - **Physical Size**: 192x192mm per module (384x384mm total)
 - **Scan Rate**: 1/32
+- **Driver Chip**: ICND2153 (CHIPONE ICN2153)
+- **Row Decoder**: ICN2013
+- **Data Groups**: 2 per panel (8 total for all 4 panels)
+- **Controller**: NovaStar T50 (sender) + DH418 (receiver)
 
 ### WS2812B LED Ticker
 - **Configuration**: 32x8 center + 8x8 left + 8x8 right
 - **Total LEDs**: 384 (48x8)
-- **Interface**: PWM (GPIO 18)
+- **Interface**: PWM (GPIO 21 - not 18, to avoid audio conflict)
 - **Voltage**: 5V
 - **Protocol**: WS2812B (800kHz)
 

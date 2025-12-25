@@ -11,7 +11,7 @@ Raspberry Pi 4 GPIO Header
           I2C SCL - GPIO3 [05] [06] GND
                     GPIO4 [07] [08] GPIO14 - UART TX (Printer)
                       GND [09] [10] GPIO15 - UART RX (Printer)
-                   GPIO17 [11] [12] GPIO18 - WS2812B Data
+                   GPIO17 [11] [12] GPIO18 - (Audio PWM)
                    GPIO27 [13] [14] GND
                    GPIO22 [15] [16] GPIO23 - Arcade Left
                       3V3 [17] [18] GPIO24 - Arcade Right
@@ -25,31 +25,49 @@ Raspberry Pi 4 GPIO Header
           Keypad R3 - GPIO13 [33] [34] GND
           Keypad R4 - GPIO19 [35] [36] GPIO16 - Keypad C2
                    GPIO26 [37] [38] GPIO20 - Keypad C3
-                      GND [39] [40] GPIO21
+                      GND [39] [40] GPIO21 - WS2812B Data
 ```
 
 ## Connection Details
 
-### P3 LED Matrix (via RGB Matrix HAT)
-The RGB Matrix HAT connects to all 40 GPIO pins and provides HUB75 output.
+### P3 LED Matrix (via NovaStar T50 + DH418)
+
+**NOT using GPIO** - uses HDMI output to professional LED controller.
 
 ```
-RGB Matrix HAT → P3 Panels
-Port 1 → Panel 1 (top-left)
-Port 2 → Panel 2 (top-right)
-Port 3 → Panel 3 (bottom-left)
-Port 4 → Panel 4 (bottom-right)
+Signal Path:
+  Pi HDMI → T50 HDMI In → T50 Ethernet Out → DH418 Ethernet In → HUB75E to Panels
+
+DH418 HUB Outputs → Panel Inputs (8 cables total, NO daisy-chain!):
+  HUB1 → Panel 1 (bottom-left) Input A (top half)
+  HUB2 → Panel 1 (bottom-left) Input B (bottom half)
+  HUB3 → Panel 2 (top-left) Input A
+  HUB4 → Panel 2 (top-left) Input B
+  HUB5 → Panel 3 (top-right) Input A
+  HUB6 → Panel 3 (top-right) Input B
+  HUB7 → Panel 4 (bottom-right) Input A
+  HUB8 → Panel 4 (bottom-right) Input B
+
+Panel Layout (from front):
+  ┌─────────┬─────────┐
+  │ Panel 2 │ Panel 3 │
+  ├─────────┼─────────┤
+  │ Panel 1 │ Panel 4 │
+  └─────────┴─────────┘
 ```
 
-### WS2812B Ticker (GPIO 18)
+See `novastar-setup.md` for complete configuration guide.
+
+### WS2812B Ticker (GPIO 21)
 ```
 Raspberry Pi          WS2812B Strip
 -----------          --------------
-GPIO 18 (PWM) -----> DIN (Data In)
+GPIO 21 (PWM) -----> DIN (Data In)
 5V (external) -----> VCC
 GND          -----> GND
 
-Note: Power WS2812B from external 5V supply, not Pi.
+Note: Using GPIO 21 (not 18) to avoid conflict with 3.5mm audio.
+Power WS2812B from external 5V supply, not Pi.
 Connect grounds together.
 ```
 

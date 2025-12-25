@@ -184,9 +184,24 @@ class RotatingIdleAnimation:
         # Camera stays closed until scene is entered to avoid startup failures
 
     def _open_camera(self) -> None:
-        """Attempt to open the simulator camera lazily."""
+        """Attempt to open camera lazily (Pi camera or simulator)."""
         if self._camera is not None:
             return
+
+        # Try Pi camera first (for hardware mode)
+        try:
+            from artifact.hardware.camera.picamera import create_camera, is_pi_camera_available
+            if is_pi_camera_available():
+                cam = create_camera(preview_resolution=(128, 128))
+                cam.open()
+                self._camera = cam
+                return
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        # Fall back to simulator camera (for Mac/development)
         try:
             from artifact.simulator.mock_hardware.camera import create_camera
             cam = create_camera(resolution=(128, 128))
