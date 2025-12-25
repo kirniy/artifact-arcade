@@ -48,13 +48,25 @@ async def run_simulator() -> None:
 
 async def run_hardware() -> None:
     """Run the hardware version (on Raspberry Pi)."""
+    import os
     from artifact.hardware.runner import HardwareRunner, HardwareConfig
+    from artifact.graphics.renderer import Renderer
+    from artifact.animation.engine import AnimationEngine
+    from artifact.modes.manager import ModeManager
+    from artifact.modes.fortune import FortuneMode
+    from artifact.modes.roulette import RouletteMode
+    from artifact.modes.quiz import QuizMode
+    from artifact.core.events import Event, EventType
+
+    logger = logging.getLogger(__name__)
 
     # Create shared components
     state_machine = StateMachine()
     event_bus = EventBus()
+    renderer = Renderer()
+    animation_engine = AnimationEngine()
 
-    # Create and run hardware runner
+    # Create hardware runner
     config = HardwareConfig()
     runner = HardwareRunner(
         config=config,
@@ -62,6 +74,44 @@ async def run_hardware() -> None:
         event_bus=event_bus
     )
 
+    # Create mode manager
+    mode_manager = ModeManager(
+        state_machine=state_machine,
+        event_bus=event_bus,
+        renderer=renderer,
+        animation_engine=animation_engine,
+        theme="mystical"
+    )
+
+    # Register game modes (basic ones that don't need camera)
+    mode_manager.register_mode(FortuneMode)
+    mode_manager.register_mode(RouletteMode)
+    mode_manager.register_mode(QuizMode)
+    logger.info(f"Registered {len(mode_manager._registered_modes)} modes")
+
+    # Initialize hardware
+    if not runner.init():
+        logger.error("Hardware initialization failed")
+        return
+
+    # Wire up tick handler to update and render
+    def on_tick(event: Event) -> None:
+        delta = event.data.get("delta", 0.016)
+        delta_ms = delta * 1000
+
+        # Update systems
+        mode_manager.update(delta_ms)
+        animation_engine.update(delta_ms)
+
+        # Render to hardware display
+        if runner.main_display:
+            main_buffer = runner.main_display.get_buffer()
+            mode_manager.render_main(main_buffer)
+            runner.main_display.set_buffer(main_buffer)
+
+    event_bus.subscribe(EventType.TICK, on_tick)
+
+    # Run hardware loop
     await runner.run()
 
 
