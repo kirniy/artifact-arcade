@@ -2704,7 +2704,6 @@ def main():
     print("=" * 60)
 
     pygame.init()
-    pygame.mouse.set_visible(False)
 
     sound = SoundManager()
     sound.init()
@@ -2712,6 +2711,7 @@ def main():
     print(f"Video: {pygame.display.get_driver()}")
 
     screen = pygame.display.set_mode((HDMI_W, HDMI_H), pygame.FULLSCREEN)
+    pygame.mouse.set_visible(False)  # Must be AFTER display.set_mode() on kmsdrm
     led = pygame.Surface((LED_SIZE, LED_SIZE))
 
     effects = [
