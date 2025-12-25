@@ -2708,10 +2708,11 @@ def main():
     sound = SoundManager()
     sound.init()
 
+    # Initialize display first - kmsdrm requires this before any display operations
+    screen = pygame.display.set_mode((HDMI_W, HDMI_H), pygame.FULLSCREEN)
+    pygame.mouse.set_visible(False)
     print(f"Video: {pygame.display.get_driver()}")
 
-    screen = pygame.display.set_mode((HDMI_W, HDMI_H), pygame.FULLSCREEN)
-    pygame.mouse.set_visible(False)  # Must be AFTER display.set_mode() on kmsdrm
     led = pygame.Surface((LED_SIZE, LED_SIZE))
 
     effects = [
