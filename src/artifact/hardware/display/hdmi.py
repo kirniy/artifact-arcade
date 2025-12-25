@@ -24,15 +24,11 @@ _pygame = None
 
 
 def _get_pygame():
-    """Lazy import pygame with kmsdrm driver setup."""
+    """Lazy import pygame - let it auto-detect video driver."""
     global _pygame
     if _pygame is None:
-        # MUST set video driver BEFORE importing pygame on Pi with kmsdrm
-        if os.environ.get("SDL_VIDEODRIVER") != "kmsdrm":
-            # Check if we're likely on a Pi (no display env vars)
-            if not os.environ.get("DISPLAY") and os.path.exists("/dev/dri"):
-                os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
-                logger.info("Set SDL_VIDEODRIVER=kmsdrm for Pi hardware mode")
+        # NOTE: Do NOT set SDL_VIDEODRIVER=kmsdrm explicitly on Debian Trixie!
+        # Let pygame auto-detect the driver - explicit setting breaks initialization.
         import pygame
         _pygame = pygame
     return _pygame
@@ -102,20 +98,21 @@ class HDMIDisplay(Display):
             pygame.init()
             pygame.display.init()
 
-            # Hide mouse cursor
-            pygame.mouse.set_visible(False)
-
-            # Set up fullscreen display at HDMI-compatible resolution
-            # kmsdrm needs a standard resolution, T50 crops to 128x128
+            # Set up fullscreen display FIRST - required for kmsdrm driver
             self._screen = pygame.display.set_mode(
                 (HDMI_OUTPUT_WIDTH, HDMI_OUTPUT_HEIGHT),
                 pygame.FULLSCREEN
             )
 
+            # Hide mouse cursor AFTER set_mode (kmsdrm requirement)
+            pygame.mouse.set_visible(False)
+
             # Create surface for the 128x128 LED content
             self._led_surface = pygame.Surface((self._width, self._height))
 
             pygame.display.set_caption("ARTIFACT")
+
+            logger.info(f"Video driver: {pygame.display.get_driver()}")
 
             # Clear to black initially
             self._screen.fill((0, 0, 0))

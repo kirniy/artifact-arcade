@@ -312,26 +312,31 @@ Options for Mac users:
 **IMPORTANT**: Raspberry Pi OS runs labwc (Wayland compositor) by default, which blocks pygame from accessing DRM. To run pygame on the LED display:
 
 ```bash
-# 1. Stop desktop compositor
-sudo systemctl stop labwc.service
-sudo killall -9 labwc wf-panel-pi
+# 1. Stop artifact.service if running (it grabs DRM)
+sudo systemctl stop artifact
 
-# 2. Run pygame with kmsdrm driver (requires sudo!)
-export SDL_VIDEODRIVER=kmsdrm
+# 2. Stop desktop compositor
+sudo killall -9 labwc wf-panel-pi 2>/dev/null
+
+# 3. Run pygame - let it auto-detect kmsdrm (do NOT set SDL_VIDEODRIVER!)
 sudo python3 your_app.py
 ```
+
+**⚠️ CRITICAL**: On Debian Trixie, do NOT set `SDL_VIDEODRIVER=kmsdrm` explicitly!
+Let pygame auto-detect the driver. Explicit setting breaks initialization.
 
 The display code uses pygame:
 
 ```python
-import os
-os.environ['SDL_VIDEODRIVER'] = 'kmsdrm'  # MUST be before pygame.init()
-
 import pygame
+
 pygame.init()
 
-# Use 720×480 for HDMI, T50 crops to 128×128
+# Initialize display FIRST - required for kmsdrm
 screen = pygame.display.set_mode((720, 480), pygame.FULLSCREEN)
+pygame.mouse.set_visible(False)  # Must be AFTER set_mode()
+
+print(f"Video driver: {pygame.display.get_driver()}")  # Should show "KMSDRM"
 
 # Draw in top-left 128×128 corner - this is what appears on LED panels
 game_surface = pygame.Surface((128, 128))

@@ -189,18 +189,12 @@ class HardwareRunner:
     def _init_pygame(self) -> bool:
         """Initialize pygame for event handling."""
         try:
-            import os
-
-            # Set kmsdrm video driver for Pi hardware mode BEFORE pygame import
-            # This is required for direct HDMI output without X11/Wayland
-            if not os.environ.get("DISPLAY") and os.path.exists("/dev/dri"):
-                os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
-                logger.info("Using kmsdrm video driver for Pi hardware")
-
+            # NOTE: Do NOT set SDL_VIDEODRIVER=kmsdrm explicitly on Debian Trixie!
+            # Let pygame auto-detect the driver - explicit setting breaks initialization.
             pygame = _get_pygame()
             pygame.init()
             self._clock = pygame.time.Clock()
-            logger.info("Pygame initialized for hardware runner")
+            logger.info(f"Pygame initialized (driver: {pygame.display.get_driver()})")
             return True
         except Exception as e:
             logger.error(f"Pygame init error: {e}")
