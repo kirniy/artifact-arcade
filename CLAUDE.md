@@ -74,9 +74,9 @@ cd ~/modular-arcade
 sudo ARTIFACT_ENV=hardware PYTHONPATH=src .venv/bin/python -m artifact.main
 ```
 
-### LED Demo (19 Visual Effects with Chiptune Music)
+### LED Demo (32 Visual Effects with Chiptune Music)
 
-A standalone demo showcasing the 128×128 LED panel with 19 visual effects, videos, images, and Balatro-style chiptune music.
+A standalone demo showcasing the 128×128 LED panel with 32 visual effects, videos, images, and Balatro-style chiptune music.
 
 **Run the Demo:**
 ```bash
@@ -89,29 +89,45 @@ sudo modprobe snd-bcm2835
 # Kill any running python processes (optional)
 sudo pkill -9 python
 
-# Run demo with kmsdrm (direct display) and ALSA audio to 3.5mm
-sudo SDL_VIDEODRIVER=kmsdrm SDL_AUDIODRIVER=alsa AUDIODEV=hw:2,0 python3 ~/modular-arcade/scripts/led_demo.py
+# Kill desktop compositor (grabs display)
+sudo killall -9 labwc wf-panel-pi 2>/dev/null
+
+# Run demo - let pygame auto-detect kmsdrm (do NOT set SDL_VIDEODRIVER explicitly!)
+sudo SDL_AUDIODRIVER=alsa AUDIODEV=hw:2,0 python3 ~/modular-arcade/scripts/led_demo.py
 ```
 
 **Controls:**
 | Key | Action |
 |-----|--------|
 | ENTER / SPACE / → | Next effect |
+| ← | Previous effect |
 | ESC | Exit demo |
 | Big Red USB Button | Sends ENTER (switches effects) |
 
 **Effects Include:**
+
+*Iconic/Recognizable:*
+- 🧽 SpongeBob Christmas (pixel art underwater scene)
+- 🍄 Mario Runner (NES-style infinite runner)
+- 🏛️ St. Petersburg (St. Isaac's Cathedral with snowfall)
+- 👻 Pac-Man Chase (classic arcade)
+- 🌈 Nyan Cat (rainbow trail in space)
+- 🧱 Tetris (falling blocks)
+
+*Video & Branding:*
 - 🎬 Winter Saga (video with audio)
 - 🎄 Polar Express (animated image)
 - 🎮 VNVNC 3D Rotating logo
 - 🌊 VNVNC Wave animation
-- 🌀 Plasma Vortex
-- 📡 Neon Grid
-- ⚡ Electric Storm
-- ⚛️ Quantum Field
-- 🔮 Hypercube 4D
-- ❄️ Holiday effects (snowflakes, tree, fireworks)
-- And more...
+
+*Visual Effects:*
+- 🌀 Plasma Vortex, 📡 Neon Grid, ⚡ Electric Storm
+- ⚛️ Quantum Field, 🔮 Hypercube 4D, 🧬 DNA Helix
+- 🌳 Four Seasons Tree (cherry blossoms, fireflies, falling leaves, snow)
+- 🕳️ Black Hole, 🌌 Aurora Borealis, 🎆 Fireworks
+- 🫧 Lava Lamp, 🧬 Game of Life, 📡 Radar Sweep
+- 🌀 Spiral Galaxy, 🔮 Kaleidoscope
+- ❄️ Snowfall, 🔥 Fireplace, 💜 Plasma, 💚 Matrix, ✨ Starfield, 🕳️ Tunnel
 
 **Audio:**
 - Each effect has unique Balatro-style chiptune music
