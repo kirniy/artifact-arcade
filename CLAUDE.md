@@ -74,6 +74,59 @@ cd ~/modular-arcade
 sudo ARTIFACT_ENV=hardware PYTHONPATH=src .venv/bin/python -m artifact.main
 ```
 
+### LED Demo (19 Visual Effects with Chiptune Music)
+
+A standalone demo showcasing the 128×128 LED panel with 19 visual effects, videos, images, and Balatro-style chiptune music.
+
+**Run the Demo:**
+```bash
+# SSH into Pi
+ssh kirniy@artifact.local
+
+# Load audio driver for 3.5mm jack
+sudo modprobe snd-bcm2835
+
+# Kill any running python processes (optional)
+sudo pkill -9 python
+
+# Run demo with kmsdrm (direct display) and ALSA audio to 3.5mm
+sudo SDL_VIDEODRIVER=kmsdrm SDL_AUDIODRIVER=alsa AUDIODEV=hw:2,0 python3 ~/modular-arcade/scripts/led_demo.py
+```
+
+**Controls:**
+| Key | Action |
+|-----|--------|
+| ENTER / SPACE / → | Next effect |
+| ESC | Exit demo |
+| Big Red USB Button | Sends ENTER (switches effects) |
+
+**Effects Include:**
+- 🎬 Winter Saga (video with audio)
+- 🎄 Polar Express (animated image)
+- 🎮 VNVNC 3D Rotating logo
+- 🌊 VNVNC Wave animation
+- 🌀 Plasma Vortex
+- 📡 Neon Grid
+- ⚡ Electric Storm
+- ⚛️ Quantum Field
+- 🔮 Hypercube 4D
+- ❄️ Holiday effects (snowflakes, tree, fireworks)
+- And more...
+
+**Audio:**
+- Each effect has unique Balatro-style chiptune music
+- Arcade "blip" sound on effect switch
+- Video plays with its native audio track
+- All audio goes through 3.5mm jack (hw:2,0)
+
+**Big Red Button:**
+The USB button (LinTx Keyboard, VendorID 0x8088) sends ENTER keycode when pressed.
+
+```bash
+# Verify button is detected
+cat /proc/bus/input/devices | grep -A5 LinTx
+```
+
 ### Hardware Connections
 
 #### Fan Connection (GPIO)
