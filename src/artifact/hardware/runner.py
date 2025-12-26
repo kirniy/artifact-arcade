@@ -178,18 +178,10 @@ class HardwareRunner:
 
     def _init_audio(self) -> bool:
         """Initialize audio system."""
-        try:
-            self._audio_engine = get_audio_engine()
-            # Skip sound generation for faster startup - procedural synthesis is too CPU-heavy
-            if self._audio_engine.init(skip_generation=True):
-                logger.info("Audio engine initialized (sounds skipped for performance)")
-                return True
-            else:
-                logger.warning("Audio engine init returned False")
-                return False
-        except Exception as e:
-            logger.warning(f"Audio init error: {e}")
-            return False
+        # TEMPORARILY DISABLED - audio synthesis too CPU-heavy, causes framerate issues
+        logger.info("Audio disabled for performance (temporary)")
+        self._audio_engine = None
+        return True
 
     def _init_pygame(self) -> bool:
         """Initialize pygame for event handling."""
