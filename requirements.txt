@@ -1,5 +1,6 @@
 # Core
 pygame>=2.5.0
+pygame-menu>=4.4.0
 numpy>=1.24.0
 pillow>=10.0.0
 pydantic>=2.0.0
@@ -13,3 +14,4 @@ aiohttp>=3.9.0
 
 # Camera (for simulator)
 opencv-python>=4.8.0
+mediapipe>=0.10.11

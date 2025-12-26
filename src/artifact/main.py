@@ -81,6 +81,9 @@ async def run_hardware() -> None:
     from artifact.modes.stacks import StacksMode
     from artifact.modes.towerbrock import TowerbrockMode
     from artifact.modes.hand_snake import HandSnakeMode
+    from artifact.modes.rocketpy import RocketPyMode
+    from artifact.modes.skii import SkiiMode
+    from artifact.modes.ninja_fruit import NinjaFruitMode
 
     logger = logging.getLogger(__name__)
 
@@ -131,6 +134,9 @@ async def run_hardware() -> None:
     mode_manager.register_mode(StacksMode)
     mode_manager.register_mode(TowerbrockMode)
     mode_manager.register_mode(HandSnakeMode)
+    mode_manager.register_mode(RocketPyMode)
+    mode_manager.register_mode(SkiiMode)
+    mode_manager.register_mode(NinjaFruitMode)
 
     # AI Prophet mode - needs API key
     if os.environ.get("GEMINI_API_KEY"):

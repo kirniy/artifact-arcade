@@ -220,6 +220,9 @@ MODE_COLORS = {
     "lunar_lander": (200, 160, 80),
     "towerbrock": (200, 190, 160),
     "hand_snake": (120, 255, 140),
+    "rocketpy": (180, 220, 255),
+    "skii": (180, 200, 220),
+    "ninja_fruit": (255, 200, 120),
 }
 
 
@@ -367,6 +370,16 @@ class ModeManager:
         self._selector_effect_timer = 0.0  # Cycle effect every 3 seconds
         self._bayer_matrix = self._create_bayer_matrix(4)  # 4x4 Bayer matrix
 
+        # Pygame-menu selector (optional)
+        self._use_pygame_menu = True
+        self._menu_failed = False
+        self._menu = None
+        self._menu_surface = None
+        self._menu_events: List = []
+        self._menu_widgets: List = []
+        self._menu_index_map: List[int] = []
+        self._menu_mode_count = 0
+
         logger.info("ModeManager initialized")
 
     def _create_bayer_matrix(self, size: int) -> list:
@@ -411,6 +424,117 @@ class ModeManager:
                 self._selector_frame = frame
         except Exception:
             self._selector_frame = None
+
+    def _menu_label(self, mode: ModeInfo) -> str:
+        """Return ASCII-safe label for pygame-menu."""
+        label = mode.display_name.strip()
+        if any(ord(ch) > 127 for ch in label):
+            label = mode.name.replace("_", " ").upper()
+        return label[:12]
+
+    def _ensure_pygame_menu(self) -> None:
+        """Build pygame-menu selector if available."""
+        if not self._use_pygame_menu or self._menu_failed:
+            return
+        if self._menu is not None and self._menu_mode_count == len(self._mode_order):
+            return
+        try:
+            import pygame
+            import pygame_menu
+        except Exception as exc:
+            logger.warning(f"pygame-menu unavailable: {exc}")
+            self._menu_failed = True
+            return
+
+        theme = pygame_menu.themes.THEME_DARK.copy()
+        theme.title_font_size = 10
+        theme.widget_font_size = 10
+        theme.widget_margin = (0, 1)
+        theme.widget_padding = 0
+        theme.background_color = (12, 12, 16)
+        theme.title_background_color = (24, 24, 32)
+
+        menu = pygame_menu.Menu(
+            title="SELECT",
+            width=128,
+            height=128,
+            theme=theme,
+        )
+
+        self._menu_widgets = []
+        self._menu_index_map = []
+        for index, name in enumerate(self._mode_order):
+            mode = self._registered_modes.get(name)
+            if not mode or not mode.enabled:
+                continue
+            label = self._menu_label(mode)
+            widget = menu.add.button(label, self._menu_start_from_menu, index)
+            self._menu_widgets.append(widget)
+            self._menu_index_map.append(index)
+
+        self._menu = menu
+        self._menu_surface = pygame.Surface((128, 128))
+        self._menu_events = []
+        self._menu_mode_count = len(self._mode_order)
+
+    def _menu_start_from_menu(self, index: int) -> None:
+        """Start a mode from pygame-menu selection."""
+        self._selected_index = index % max(1, len(self._mode_order))
+        self._start_selected_mode()
+
+    def _queue_menu_key(self, key) -> None:
+        """Queue a pygame-menu key event."""
+        if not self._menu or self._menu_failed:
+            return
+        try:
+            import pygame
+        except Exception:
+            return
+        self._menu_events.append(pygame.event.Event(pygame.KEYDOWN, {"key": key}))
+
+    def _update_pygame_menu(self) -> None:
+        """Update pygame-menu state and sync selection."""
+        if not self._menu:
+            return
+        events = self._menu_events
+        self._menu_events = []
+        try:
+            self._menu.update(events)
+        except Exception as exc:
+            logger.debug(f"pygame-menu update error: {exc}")
+
+        selected = self._selected_index
+        try:
+            widget = None
+            if hasattr(self._menu, "get_selected_widget"):
+                widget = self._menu.get_selected_widget()
+            elif hasattr(self._menu, "get_current") and self._menu.get_current():
+                current = self._menu.get_current()
+                if hasattr(current, "get_selected_widget"):
+                    widget = current.get_selected_widget()
+            if widget is not None and widget in self._menu_widgets:
+                widget_index = self._menu_widgets.index(widget)
+                if widget_index < len(self._menu_index_map):
+                    selected = self._menu_index_map[widget_index]
+        except Exception:
+            pass
+
+        if selected != self._selected_index:
+            self._selected_index = selected
+
+    def _render_pygame_menu(self, buffer) -> None:
+        """Render pygame-menu selector to buffer."""
+        if not self._menu or not self._menu_surface:
+            return
+        try:
+            self._menu_surface.fill((12, 12, 16))
+            self._menu.draw(self._menu_surface)
+            import pygame.surfarray
+
+            menu_frame = pygame.surfarray.array3d(self._menu_surface).swapaxes(0, 1)
+            buffer[:menu_frame.shape[0], :menu_frame.shape[1]] = menu_frame
+        except Exception as exc:
+            logger.debug(f"pygame-menu render error: {exc}")
 
     def _setup_event_handlers(self) -> None:
         """Register event handlers."""
@@ -579,7 +703,14 @@ class ModeManager:
 
         elif self._state == ManagerState.MODE_SELECT:
             # Confirm selection, start mode
-            self._start_selected_mode()
+            if self._menu and not self._menu_failed:
+                try:
+                    import pygame
+                    self._queue_menu_key(pygame.K_RETURN)
+                except Exception:
+                    self._start_selected_mode()
+            else:
+                self._start_selected_mode()
 
         elif self._state == ManagerState.MODE_ACTIVE:
             # Pass to active mode
@@ -605,7 +736,15 @@ class ModeManager:
             # Switch to previous idle scene
             self._idle_animation.prev_scene()
         elif self._state == ManagerState.MODE_SELECT:
-            self._select_previous_mode()
+            if self._menu and not self._menu_failed:
+                try:
+                    import pygame
+                    self._queue_menu_key(pygame.K_UP)
+                    self._audio.play_ui_move()
+                except Exception:
+                    self._select_previous_mode()
+            else:
+                self._select_previous_mode()
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
         elif self._state == ManagerState.RESULT:
@@ -623,7 +762,15 @@ class ModeManager:
             # Switch to next idle scene
             self._idle_animation.next_scene()
         elif self._state == ManagerState.MODE_SELECT:
-            self._select_next_mode()
+            if self._menu and not self._menu_failed:
+                try:
+                    import pygame
+                    self._queue_menu_key(pygame.K_DOWN)
+                    self._audio.play_ui_move()
+                except Exception:
+                    self._select_next_mode()
+            else:
+                self._select_next_mode()
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
         elif self._state == ManagerState.RESULT:
@@ -647,6 +794,24 @@ class ModeManager:
             self._toggle_admin_menu()
             self._key_buffer.clear()
             return
+
+        if self._state == ManagerState.MODE_SELECT and self._menu and not self._menu_failed:
+            try:
+                import pygame
+                if key in ("4", "8"):
+                    self._queue_menu_key(pygame.K_UP)
+                    self._audio.play_ui_move()
+                    return
+                if key in ("6", "2"):
+                    self._queue_menu_key(pygame.K_DOWN)
+                    self._audio.play_ui_move()
+                    return
+                if key in ("5", "0"):
+                    self._queue_menu_key(pygame.K_RETURN)
+                    self._audio.play_ui_confirm()
+                    return
+            except Exception:
+                pass
 
         # Pass to active mode
         if self._state == ManagerState.MODE_ACTIVE and self._current_mode:
@@ -713,6 +878,8 @@ class ModeManager:
 
         self._change_state(ManagerState.MODE_SELECT)
         self._selected_index = 0
+        if self._use_pygame_menu:
+            self._ensure_pygame_menu()
 
     def _select_next_mode(self) -> None:
         """Select next mode in carousel."""
@@ -816,13 +983,18 @@ class ModeManager:
             self._idle_animation.update(delta_ms)
 
         elif self._state == ManagerState.MODE_SELECT:
-            # Update camera
-            self._update_selector_camera()
+            if self._use_pygame_menu:
+                self._ensure_pygame_menu()
+                if self._menu and not self._menu_failed:
+                    self._update_pygame_menu()
+            if not self._menu or self._menu_failed:
+                # Update camera
+                self._update_selector_camera()
 
-            # Set effect based on currently selected mode
-            mode = self.get_selected_mode()
-            if mode:
-                self._selector_effect = MODE_EFFECTS.get(mode.name, SelectorEffect.DITHER)
+                # Set effect based on currently selected mode
+                mode = self.get_selected_mode()
+                if mode:
+                    self._selector_effect = MODE_EFFECTS.get(mode.name, SelectorEffect.DITHER)
 
             # Timeout back to idle
             if self._time_in_state - self._last_input_time > self._idle_timeout:
@@ -865,7 +1037,10 @@ class ModeManager:
             # Note: Start prompt is now integrated into idle_scenes.py
 
         elif self._state == ManagerState.MODE_SELECT:
-            self._render_mode_select(buffer)
+            if self._menu and not self._menu_failed:
+                self._render_pygame_menu(buffer)
+            else:
+                self._render_mode_select(buffer)
 
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.render_main(buffer)

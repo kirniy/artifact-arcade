@@ -1907,6 +1907,9 @@ class AudioEngine:
         "lunar_lander": "music_flow_field",
         "towerbrock": "music_tower_stack",
         "hand_snake": "music_ascii",
+        "rocketpy": "music_bar_runner",
+        "skii": "music_flow_field",
+        "ninja_fruit": "music_brick_breaker",
     }
 
     def play_music(self, track_name: str, fade_in_ms: int = 500) -> Optional[pygame.mixer.Channel]:

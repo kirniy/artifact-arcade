@@ -46,6 +46,9 @@ from artifact.modes.game_2048 import Game2048Mode
 from artifact.modes.stacks import StacksMode
 from artifact.modes.towerbrock import TowerbrockMode
 from artifact.modes.hand_snake import HandSnakeMode
+from artifact.modes.rocketpy import RocketPyMode
+from artifact.modes.skii import SkiiMode
+from artifact.modes.ninja_fruit import NinjaFruitMode
 from artifact.audio.engine import AudioEngine, get_audio_engine
 from artifact.utils.camera_service import camera_service
 
@@ -168,6 +171,9 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(StacksMode)
         self.mode_manager.register_mode(TowerbrockMode)
         self.mode_manager.register_mode(HandSnakeMode)
+        self.mode_manager.register_mode(RocketPyMode)
+        self.mode_manager.register_mode(SkiiMode)
+        self.mode_manager.register_mode(NinjaFruitMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os

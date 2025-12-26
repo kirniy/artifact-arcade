@@ -20,6 +20,10 @@ def fill(buffer: Buffer, color: Color) -> None:
     buffer[:, :] = color
 
 
+def _clamp_color(color: Color) -> Color:
+    return tuple(max(0, min(255, int(c))) for c in color)
+
+
 def draw_rect(
     buffer: Buffer,
     x: int,
@@ -42,6 +46,7 @@ def draw_rect(
         filled: If True, fill rectangle; if False, draw outline only
         thickness: Line thickness for outline (when filled=False)
     """
+    color = _clamp_color(color)
     h, w = buffer.shape[:2]
 
     # Clamp to buffer bounds
@@ -87,6 +92,7 @@ def draw_circle(
         color: RGB color tuple
         filled: If True, fill circle; if False, draw outline only
     """
+    color = _clamp_color(color)
     h, w = buffer.shape[:2]
 
     if filled:
@@ -140,6 +146,7 @@ def draw_line(
         color: RGB color tuple
         thickness: Line thickness in pixels
     """
+    color = _clamp_color(color)
     h, w = buffer.shape[:2]
 
     dx = abs(x2 - x1)
@@ -193,6 +200,7 @@ def draw_text(
     Returns:
         Tuple of (width, height) of rendered text in pixels
     """
+    color = _clamp_color(color)
     if font is None:
         font = _get_default_font()
 
