@@ -446,6 +446,8 @@ class ModeManager:
             self._menu_failed = True
             return
 
+        pygame.font.init()
+
         theme = pygame_menu.themes.THEME_DARK.copy()
         theme.title_font_size = 10
         theme.widget_font_size = 10
