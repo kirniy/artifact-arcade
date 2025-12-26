@@ -30,7 +30,6 @@ from artifact.modes.squid_game import SquidGameMode
 from artifact.modes.guess_me import GuessMeMode
 from artifact.modes.autopsy import AutopsyMode
 from artifact.modes.roast import RoastMeMode
-from artifact.modes.tower_stack import TowerStackMode
 from artifact.modes.bar_runner import BarRunnerMode
 from artifact.modes.flow_field import FlowFieldMode
 from artifact.modes.glitch_mirror import GlitchMirrorMode
@@ -159,7 +158,6 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(GlitchMirrorMode)
         self.mode_manager.register_mode(DitherArtMode)
         self.mode_manager.register_mode(AsciiArtMode)
-        self.mode_manager.register_mode(TowerStackMode)
         self.mode_manager.register_mode(BarRunnerMode)
         self.mode_manager.register_mode(BrickBreakerMode)
         self.mode_manager.register_mode(SnakeClassicMode)

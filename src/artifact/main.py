@@ -65,7 +65,6 @@ async def run_hardware() -> None:
     from artifact.modes.guess_me import GuessMeMode
     from artifact.modes.autopsy import AutopsyMode
     from artifact.modes.roast import RoastMeMode
-    from artifact.modes.tower_stack import TowerStackMode
     from artifact.modes.bar_runner import BarRunnerMode
     from artifact.modes.flow_field import FlowFieldMode
     from artifact.modes.glitch_mirror import GlitchMirrorMode
@@ -122,7 +121,6 @@ async def run_hardware() -> None:
     mode_manager.register_mode(GlitchMirrorMode)
     mode_manager.register_mode(DitherArtMode)
     mode_manager.register_mode(AsciiArtMode)
-    mode_manager.register_mode(TowerStackMode)
     mode_manager.register_mode(BarRunnerMode)
     mode_manager.register_mode(BrickBreakerMode)
     mode_manager.register_mode(SnakeClassicMode)

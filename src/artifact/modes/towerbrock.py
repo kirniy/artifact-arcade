@@ -10,7 +10,8 @@ from numpy.typing import NDArray
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect, draw_line
-from artifact.graphics.text_utils import draw_centered_text
+from artifact.graphics.text_utils import draw_centered_text, draw_text, measure_text
+from artifact.utils.camera_service import camera_service
 
 
 class TowerbrockMode(BaseMode):
@@ -19,12 +20,14 @@ class TowerbrockMode(BaseMode):
     description = "Swing, drop, and stack the tower"
     icon = "tower"
     style = "arcade"
+    requires_camera = True
 
     BLOCK_H = 8
     BASE_Y = 118
     START_W = 40
     ROPE_LEN = 28
     GRAVITY = 220.0
+    START_LIVES = 3
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
@@ -37,6 +40,7 @@ class TowerbrockMode(BaseMode):
         self._drop_vy = 0.0
         self._state = "swing"
         self._score = 0
+        self._lives = self.START_LIVES
         self._game_over = False
         self._pivot_x = 64
         self._pivot_y = 6
@@ -53,12 +57,10 @@ class TowerbrockMode(BaseMode):
         base_y = self.BASE_Y - self.BLOCK_H
         self._tower.append((64.0, base_y, self.START_W))
         self._block_w = self.START_W
-        self._angle = random.choice([-0.6, 0.6])
-        self._ang_vel = 0.0
-        self._drop_vy = 0.0
-        self._state = "swing"
         self._score = 0
+        self._lives = self.START_LIVES
         self._game_over = False
+        self._reset_swing()
 
     def on_input(self, event: Event) -> bool:
         if self.phase != ModePhase.ACTIVE:
@@ -93,8 +95,8 @@ class TowerbrockMode(BaseMode):
             self._drop_vy += self.GRAVITY * dt
             self._drop_y += self._drop_vy * dt
             target_y = self._next_block_y()
-            if self._drop_y >= target_y:
-                self._land_block(target_y)
+        if self._drop_y >= target_y:
+            self._land_block(target_y)
 
     def _next_block_y(self) -> float:
         last = self._tower[-1]
@@ -107,7 +109,11 @@ class TowerbrockMode(BaseMode):
         overlap = right - left
 
         if overlap <= 0:
-            self._game_over = True
+            self._lives -= 1
+            if self._lives <= 0:
+                self._game_over = True
+                return
+            self._reset_swing()
             return
 
         new_x = (left + right) / 2
@@ -121,14 +127,40 @@ class TowerbrockMode(BaseMode):
                 shifted.append((x, y + self.BLOCK_H, w))
             self._tower = shifted
 
+        self._reset_swing()
+
+    def _reset_swing(self) -> None:
         self._angle = random.choice([-0.6, 0.6])
         self._ang_vel = 0.0
+        self._drop_vy = 0.0
+        self._drop_x = float(self._pivot_x)
+        self._drop_y = float(self._pivot_y + self.ROPE_LEN)
         self._state = "swing"
 
-    def render_main(self, buffer: NDArray[np.uint8]) -> None:
-        fill(buffer, (10, 12, 18))
+    def _render_camera_background(self, buffer: NDArray[np.uint8]) -> None:
+        frame = camera_service.get_frame(timeout=0)
+        if frame is not None and frame.shape[:2] == (128, 128):
+            dimmed = (frame.astype(np.float32) * 0.9).astype(np.uint8)
+            np.copyto(buffer, dimmed)
+        else:
+            fill(buffer, (8, 8, 12))
 
-        draw_centered_text(buffer, f"SCORE {self._score}", 1, (220, 220, 220), scale=1)
+    def _render_hud(self, buffer: NDArray[np.uint8]) -> None:
+        score_text = f"SCORE {self._score}"
+        lives_text = f"LIVES {self._lives}"
+        score_w, _ = measure_text(score_text, scale=1)
+        lives_w, _ = measure_text(lives_text, scale=1)
+
+        draw_rect(buffer, 0, 0, score_w + 4, 9, (0, 0, 0), filled=True)
+        draw_text(buffer, score_text, 2, 1, (240, 240, 240), scale=1)
+
+        lives_x = max(0, 128 - lives_w - 4)
+        draw_rect(buffer, lives_x, 0, lives_w + 4, 9, (0, 0, 0), filled=True)
+        draw_text(buffer, lives_text, lives_x + 2, 1, (240, 200, 200), scale=1)
+
+    def render_main(self, buffer: NDArray[np.uint8]) -> None:
+        self._render_camera_background(buffer)
+        self._render_hud(buffer)
 
         # Rope and hook
         if not self._game_over:
@@ -143,16 +175,13 @@ class TowerbrockMode(BaseMode):
         # Dropping block
         if not self._game_over:
             draw_rect(buffer, int(self._drop_x - self._block_w / 2), int(self._drop_y), int(self._block_w), self.BLOCK_H, (240, 220, 180), filled=True)
-        else:
-            draw_centered_text(buffer, "GAME OVER", 54, (255, 80, 80), scale=1)
-            draw_centered_text(buffer, "PRESS", 66, (220, 220, 220), scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         fill(buffer, (0, 0, 0))
-        draw_centered_text(buffer, f"TOWER {self._score}", 1, (200, 200, 200), scale=1)
+        draw_centered_text(buffer, f"S{self._score:02d} L{self._lives}", 1, (200, 200, 200), scale=1)
 
     def get_lcd_text(self) -> str:
-        return f"TOWER {self._score:02d}".center(16)[:16]
+        return f"TWR {self._score:02d} L{self._lives}".center(16)[:16]
 
     def _complete(self) -> None:
         result = ModeResult(

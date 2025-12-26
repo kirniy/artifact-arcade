@@ -146,18 +146,28 @@ class NinjaFruitMode(BaseMode):
 
     def _update_finger_position(self) -> None:
         overlay = camera_service.get_hand_overlay()
-        if overlay is None:
+        if overlay is not None:
+            _bbox, landmarks = overlay
+            if len(landmarks) <= 8:
+                self._finger_prev = None
+                self._finger_pos = None
+                return
+            fx, fy = landmarks[8]
+            x = float(fx * 128)
+            y = float(fy * 128)
+            self._finger_prev = self._finger_pos
+            self._finger_pos = (x, y)
+            return
+
+        motion_x, confidence = camera_service.get_motion_position()
+        motion_bbox = camera_service.get_motion_overlay()
+        if motion_bbox is None or confidence < 0.05:
             self._finger_prev = None
             self._finger_pos = None
             return
-        _bbox, landmarks = overlay
-        if len(landmarks) <= 8:
-            self._finger_prev = None
-            self._finger_pos = None
-            return
-        fx, fy = landmarks[8]
-        x = float(fx * 128)
-        y = float(fy * 128)
+        x1, y1, x2, y2 = motion_bbox
+        x = float(motion_x * 128)
+        y = float(((y1 + y2) * 0.5) * 128)
         self._finger_prev = self._finger_pos
         self._finger_pos = (x, y)
 
@@ -236,20 +246,30 @@ class NinjaFruitMode(BaseMode):
 
     def _render_hand_overlay(self, buffer: NDArray[np.uint8]) -> None:
         overlay = camera_service.get_hand_overlay()
-        if overlay is None:
+        if overlay is not None:
+            bbox, landmarks = overlay
+            x1, y1, x2, y2 = bbox
+            px1 = int(x1 * 128)
+            py1 = int(y1 * 128)
+            px2 = int(x2 * 128)
+            py2 = int(y2 * 128)
+            draw_rect(buffer, px1, py1, max(1, px2 - px1), max(1, py2 - py1), (80, 255, 120), filled=False)
+
+            for idx in (4, 8, 12, 16, 20):
+                if idx < len(landmarks):
+                    lx, ly = landmarks[idx]
+                    draw_rect(buffer, int(lx * 128) - 1, int(ly * 128) - 1, 3, 3, (255, 255, 255), filled=True)
             return
-        bbox, landmarks = overlay
-        x1, y1, x2, y2 = bbox
+
+        motion_bbox = camera_service.get_motion_overlay()
+        if motion_bbox is None:
+            return
+        x1, y1, x2, y2 = motion_bbox
         px1 = int(x1 * 128)
         py1 = int(y1 * 128)
         px2 = int(x2 * 128)
         py2 = int(y2 * 128)
-        draw_rect(buffer, px1, py1, max(1, px2 - px1), max(1, py2 - py1), (80, 255, 120), filled=False)
-
-        for idx in (4, 8, 12, 16, 20):
-            if idx < len(landmarks):
-                lx, ly = landmarks[idx]
-                draw_rect(buffer, int(lx * 128) - 1, int(ly * 128) - 1, 3, 3, (255, 255, 255), filled=True)
+        draw_rect(buffer, px1, py1, max(1, px2 - px1), max(1, py2 - py1), (100, 180, 255), filled=False)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         fill(buffer, (0, 0, 0))
