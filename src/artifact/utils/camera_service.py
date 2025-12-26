@@ -20,7 +20,7 @@ import os
 import time
 import logging
 import threading
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 import numpy as np
 from numpy.typing import NDArray
 
@@ -83,6 +83,8 @@ class CameraService:
         self._motion_last_x: float = 0.5
         self._motion_last_seen: float = 0.0
         self._motion_hold_sec: float = 0.35
+        self._motion_bbox_norm: Optional[Tuple[float, float, float, float]] = None
+        self._motion_bbox_time: float = 0.0
 
         # Optional hand tracking (MediaPipe)
         self._hand_tracker = None
@@ -91,6 +93,9 @@ class CameraService:
         self._hand_last_seen: float = 0.0
         self._hand_hold_sec: float = 0.3
         self._hand_smooth: float = 0.3
+        self._hand_bbox_norm: Optional[Tuple[float, float, float, float]] = None
+        self._hand_landmarks_norm: Optional[List[Tuple[float, float]]] = None
+        self._hand_bbox_time: float = 0.0
 
         logger.info("CameraService initialized")
 
@@ -408,6 +413,18 @@ class CameraService:
         xs = [landmarks[i].x for i in palm_indices]
         raw_x = float(np.median(xs))
 
+        # Cache overlay data (raw, not mirrored)
+        all_x = [lm.x for lm in landmarks]
+        all_y = [lm.y for lm in landmarks]
+        min_x = max(0.0, min(all_x))
+        max_x = min(1.0, max(all_x))
+        min_y = max(0.0, min(all_y))
+        max_y = min(1.0, max(all_y))
+        self._hand_bbox_norm = (min_x, min_y, max_x, max_y)
+        self._hand_landmarks_norm = [(lm.x, lm.y) for lm in landmarks]
+        self._hand_bbox_time = time.time()
+
+        # Mirror X for natural control feel
         x = 1.0 - max(0.0, min(1.0, raw_x))
         self._hand_last_x += (x - self._hand_last_x) * self._hand_smooth
         self._hand_last_seen = time.time()
@@ -447,6 +464,16 @@ class CameraService:
                 self._motion_last_x += (0.5 - self._motion_last_x) * 0.05
             return (self._motion_last_x, 0.0)
 
+        ys, xs = np.where(mask)
+        if ys.size > 0 and xs.size > 0:
+            h, w = gray.shape
+            min_x = max(0.0, float(xs.min()) / w)
+            max_x = min(1.0, float(xs.max()) / w)
+            min_y = max(0.0, float(ys.min()) / h)
+            max_y = min(1.0, float(ys.max()) / h)
+            self._motion_bbox_norm = (min_x, min_y, max_x, max_y)
+            self._motion_bbox_time = time.time()
+
         positions = np.arange(len(col_energy))
         centroid = float(np.sum(positions * col_energy) / (total + 1e-6))
         x = 1.0 - (centroid / len(col_energy))
@@ -456,6 +483,26 @@ class CameraService:
         self._motion_last_seen = time.time()
         confidence = min(1.0, total / 45000.0)
         return (self._motion_last_x, confidence)
+
+    def get_hand_overlay(self, max_age: float = 0.2) -> Optional[Tuple[Tuple[float, float, float, float], List[Tuple[float, float]]]]:
+        """Get cached hand overlay data (bbox + landmarks).
+
+        Returns:
+            (bbox, landmarks) or None if not available
+        """
+        if self._hand_bbox_norm is None or self._hand_landmarks_norm is None:
+            return None
+        if (time.time() - self._hand_bbox_time) > max_age:
+            return None
+        return (self._hand_bbox_norm, self._hand_landmarks_norm)
+
+    def get_motion_overlay(self, max_age: float = 0.2) -> Optional[Tuple[float, float, float, float]]:
+        """Get cached motion bbox for visual overlay."""
+        if self._motion_bbox_norm is None:
+            return None
+        if (time.time() - self._motion_bbox_time) > max_age:
+            return None
+        return self._motion_bbox_norm
 
     def get_motion_x(self) -> float:
         """Get horizontal motion position (0.0-1.0).

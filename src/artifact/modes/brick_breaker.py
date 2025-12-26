@@ -24,17 +24,17 @@ logger = logging.getLogger(__name__)
 
 # Game constants
 SCREEN_W, SCREEN_H = 128, 128
-PADDLE_WIDTH = 24
-PADDLE_HEIGHT = 4
+PADDLE_WIDTH = 32
+PADDLE_HEIGHT = 5
 PADDLE_Y = 118
 BALL_RADIUS = 3
-BRICK_ROWS = 6
+BRICK_ROWS = 5
 BRICK_COLS = 8
 BRICK_WIDTH = 14
 BRICK_HEIGHT = 6
 BRICK_TOP_OFFSET = 20
-INITIAL_LIVES = 3
-MAX_MISSES = 5  # Lose if you miss this many times in a row
+INITIAL_LIVES = 5
+MAX_MISSES = 8  # Lose if you miss this many times in a row
 
 
 @dataclass
@@ -173,7 +173,7 @@ class BrickBreakerMode(BaseMode):
     def _spawn_ball(self) -> None:
         """Spawn a new ball on the paddle."""
         angle = random.uniform(-0.5, 0.5) + math.pi * 1.5  # Upward with slight random
-        speed = 1.5 + self.level * 0.1
+        speed = 1.1 + self.level * 0.05
         self.balls.append(Ball(
             x=self.paddle_x,
             y=PADDLE_Y - 5,
@@ -405,7 +405,7 @@ class BrickBreakerMode(BaseMode):
                             ))
 
                         # Random powerup
-                        if random.random() < 0.15:
+                        if random.random() < 0.22:
                             self.powerups.append(PowerUp(
                                 x=brick.x + brick.width // 2,
                                 y=brick.y + brick.height // 2,
@@ -544,9 +544,10 @@ class BrickBreakerMode(BaseMode):
         pass
 
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
-        """Render game to main display with arcade background."""
-        # Render arcade background
-        self._render_arcade_background(buffer)
+        """Render game to main display with camera background."""
+        # Render camera background
+        self._render_camera_background(buffer)
+        self._render_tracking_overlay(buffer)
 
         if self.phase == ModePhase.INTRO:
             self._render_intro(buffer)
@@ -581,8 +582,20 @@ class BrickBreakerMode(BaseMode):
                 ).astype(np.uint8)
         self._render_hud(buffer)
 
+    def _render_camera_background(self, buffer: NDArray[np.uint8]) -> None:
+        """Render camera feed as background."""
+        from artifact.utils.camera_service import camera_service
+
+        frame = camera_service.get_frame(timeout=0)
+        if frame is not None and frame.shape[:2] == (128, 128):
+            # Slight dim to keep game elements visible
+            dimmed = (frame.astype(np.float32) * 0.85).astype(np.uint8)
+            np.copyto(buffer, dimmed)
+        else:
+            self._render_arcade_background(buffer)
+
     def _render_arcade_background(self, buffer: NDArray[np.uint8]) -> None:
-        """Render a neon arcade background with grid and scanlines."""
+        """Render a fallback neon background when camera is unavailable."""
         t_sec = self._time_in_mode / 1000.0
         horizon_y = 52
 
@@ -626,6 +639,36 @@ class BrickBreakerMode(BaseMode):
 
         # Scanlines
         buffer[::2] = (buffer[::2].astype(np.float32) * 0.88).astype(np.uint8)
+
+    def _render_tracking_overlay(self, buffer: NDArray[np.uint8]) -> None:
+        """Render hand or motion tracking overlay."""
+        from artifact.utils.camera_service import camera_service
+
+        overlay = camera_service.get_hand_overlay()
+        if overlay is not None:
+            bbox, landmarks = overlay
+            self._draw_bbox_overlay(buffer, bbox, (80, 255, 120))
+            for idx in (0, 4, 8, 12, 16, 20):
+                if idx < len(landmarks):
+                    lx, ly = landmarks[idx]
+                    px = int(lx * 128)
+                    py = int(ly * 128)
+                    draw_rect(buffer, px - 1, py - 1, 3, 3, (255, 255, 255), filled=True)
+            return
+
+        motion_bbox = camera_service.get_motion_overlay()
+        if motion_bbox is not None:
+            self._draw_bbox_overlay(buffer, motion_bbox, (100, 180, 255))
+
+    def _draw_bbox_overlay(self, buffer: NDArray[np.uint8], bbox: tuple, color: tuple) -> None:
+        x1, y1, x2, y2 = bbox
+        px1 = int(x1 * 128)
+        py1 = int(y1 * 128)
+        px2 = int(x2 * 128)
+        py2 = int(y2 * 128)
+        w = max(1, px2 - px1)
+        h = max(1, py2 - py1)
+        draw_rect(buffer, px1, py1, w, h, color, filled=False)
 
     def _render_intro(self, buffer: NDArray[np.uint8]) -> None:
         """Render intro screen."""
