@@ -53,10 +53,24 @@ async def run_hardware() -> None:
     from artifact.graphics.renderer import Renderer
     from artifact.animation.engine import AnimationEngine
     from artifact.modes.manager import ModeManager
+    from artifact.core.events import Event, EventType
+
+    # Import ALL game modes
     from artifact.modes.fortune import FortuneMode
     from artifact.modes.roulette import RouletteMode
     from artifact.modes.quiz import QuizMode
-    from artifact.core.events import Event, EventType
+    from artifact.modes.ai_prophet import AIProphetMode
+    from artifact.modes.squid_game import SquidGameMode
+    from artifact.modes.guess_me import GuessMeMode
+    from artifact.modes.autopsy import AutopsyMode
+    from artifact.modes.roast import RoastMeMode
+    from artifact.modes.tower_stack import TowerStackMode
+    from artifact.modes.bar_runner import BarRunnerMode
+    from artifact.modes.flow_field import FlowFieldMode
+    from artifact.modes.glitch_mirror import GlitchMirrorMode
+    from artifact.modes.dither_art import DitherArtMode
+    from artifact.modes.ascii_art import AsciiArtMode
+    from artifact.modes.particle_sculptor import ParticleSculptorMode
 
     logger = logging.getLogger(__name__)
 
@@ -83,10 +97,29 @@ async def run_hardware() -> None:
         theme="mystical"
     )
 
-    # Register game modes (basic ones that don't need camera)
+    # Register ALL game modes
     mode_manager.register_mode(FortuneMode)
     mode_manager.register_mode(RouletteMode)
     mode_manager.register_mode(QuizMode)
+    mode_manager.register_mode(SquidGameMode)
+    mode_manager.register_mode(GuessMeMode)
+    mode_manager.register_mode(AutopsyMode)
+    mode_manager.register_mode(RoastMeMode)
+    mode_manager.register_mode(FlowFieldMode)
+    mode_manager.register_mode(GlitchMirrorMode)
+    mode_manager.register_mode(DitherArtMode)
+    mode_manager.register_mode(AsciiArtMode)
+    mode_manager.register_mode(ParticleSculptorMode)
+    mode_manager.register_mode(TowerStackMode)
+    mode_manager.register_mode(BarRunnerMode)
+
+    # AI Prophet mode - needs API key
+    if os.environ.get("GEMINI_API_KEY"):
+        mode_manager.register_mode(AIProphetMode)
+        logger.info("AI Prophet mode enabled (API key found)")
+    else:
+        logger.warning("AI Prophet mode disabled (no GEMINI_API_KEY)")
+
     logger.info(f"Registered {len(mode_manager._registered_modes)} modes")
 
     # Initialize hardware

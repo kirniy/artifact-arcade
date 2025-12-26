@@ -856,7 +856,6 @@ class RouletteMode(BaseMode):
     def _draw_wheel(self, buffer, cx: int, cy: int, radius: int, alpha: float) -> None:
         """Draw beautiful wheel with prize icons and visual effects."""
         from artifact.graphics.primitives import draw_line, draw_circle, draw_rect
-        from artifact.graphics.text_utils import draw_text
 
         segment_count = len(WHEEL_SEGMENTS)
         segment_angle = 360 / segment_count
