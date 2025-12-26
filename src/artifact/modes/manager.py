@@ -545,11 +545,17 @@ class ModeManager:
         if not self._menu or not self._menu_surface:
             return False
         try:
+            import numpy as np
             self._menu_surface.fill((12, 12, 16))
             self._menu.draw(self._menu_surface)
             import pygame.surfarray
 
             menu_frame = pygame.surfarray.array3d(self._menu_surface).swapaxes(0, 1)
+            # Detect blank/near-blank renders to avoid invisible menu.
+            bg = np.array([12, 12, 16], dtype=np.int16)
+            delta = np.abs(menu_frame.astype(np.int16) - bg)
+            if np.count_nonzero(delta > 6) < 64:
+                raise RuntimeError("pygame-menu render empty")
             buffer[:menu_frame.shape[0], :menu_frame.shape[1]] = menu_frame
             return True
         except Exception as exc:
