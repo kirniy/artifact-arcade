@@ -91,11 +91,11 @@ class PiCamera:
             self._camera = _picamera2()
 
             # Configure camera
-            # Use main stream for full resolution capture
-            # Use lores stream for preview
+            # Use main stream for full resolution capture (RGB888)
+            # Use lores stream for preview (must be YUV420, we convert to RGB later)
             config = self._camera.create_still_configuration(
                 main={"size": (self._width, self._height), "format": "RGB888"},
-                lores={"size": (self._preview_width, self._preview_height), "format": "RGB888"},
+                lores={"size": (self._preview_width, self._preview_height), "format": "YUV420"},
                 display="lores"
             )
             self._camera.configure(config)
@@ -141,9 +141,23 @@ class PiCamera:
 
         if self._camera is not None and self._is_streaming:
             try:
-                # Get the lores (preview) array
-                frame = self._camera.capture_array("lores")
+                # Get the lores (preview) array - it's YUV420
+                yuv_frame = self._camera.capture_array("lores")
+
+                # Convert YUV420 to RGB
+                # YUV420 has Y plane at full resolution, then U and V at half resolution
+                # We'll just use the Y (luminance) channel for grayscale preview
+                # This is much simpler and works well for silhouette display
+                h, w = self._preview_height, self._preview_width
+
+                # YUV420 layout: Y plane is first h*w bytes
+                # Just extract Y channel and make grayscale RGB
+                y_plane = yuv_frame[:h, :w]
+
+                # Convert grayscale to RGB
+                frame = np.stack([y_plane, y_plane, y_plane], axis=-1)
                 return frame
+
             except Exception as e:
                 logger.error(f"Failed to capture frame: {e}")
 
