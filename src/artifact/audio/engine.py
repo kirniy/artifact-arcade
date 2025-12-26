@@ -138,6 +138,10 @@ class AudioEngine:
         self._generate_glitch_mirror_music()
         self._generate_particle_sculptor_music()
         self._generate_ascii_music()
+        self._generate_tower_stack_music()
+        self._generate_bar_runner_music()
+        self._generate_brick_breaker_music()
+        self._generate_squid_game_music()
 
         self._generated = True
         logger.info(f"Generated {len(self._sounds)} sound effects")
@@ -1449,6 +1453,303 @@ class AudioEngine:
         mixed = apply_reverb(mixed, delay_ms=60, decay=0.18)
         self._sounds["music_ascii"] = self._create_sound(mixed)
 
+    def _generate_tower_stack_music(self) -> None:
+        """Tower Stack music - fast, bouncy chiptune with tight rhythm."""
+        voices = []
+        bpm = 150
+        beat = 60.0 / bpm
+
+        lead_notes = [659, 587, 523, 587, 659, 784, 659, 587]  # E5 D5 C5
+        for i, freq in enumerate(lead_notes):
+            lead = SynthVoice(
+                wave_type=WaveType.SQUARE,
+                frequency=freq,
+                amplitude=0.2,
+                envelope=ADSR(attack=0.01, decay=0.08, sustain=0.2, release=0.06),
+                pulse_width=0.35,
+            )
+            s = lead.generate_samples(self.SAMPLE_RATE, beat * 0.32)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        bass_notes = [110, 110, 131, 147, 110, 98, 110, 131]  # A2 A2 C3 D3
+        for i, freq in enumerate(bass_notes):
+            bass = SynthVoice(
+                wave_type=WaveType.TRIANGLE,
+                frequency=freq,
+                amplitude=0.18,
+                envelope=ADSR(attack=0.01, decay=0.12, sustain=0.3, release=0.08),
+            )
+            s = bass.generate_samples(self.SAMPLE_RATE, beat * 0.45)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        for i in range(16):
+            t = i * beat * 0.5
+            if i % 2 == 0:
+                kick = SynthVoice(
+                    wave_type=WaveType.SINE,
+                    frequency=55,
+                    amplitude=0.35,
+                    envelope=ADSR(attack=0.005, decay=0.12, sustain=0.0, release=0.05),
+                )
+                s = kick.generate_samples(self.SAMPLE_RATE, 0.12)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            if i % 4 == 2:
+                snare = SynthVoice(
+                    wave_type=WaveType.NOISE,
+                    frequency=200,
+                    amplitude=0.18,
+                    envelope=ADSR(attack=0.003, decay=0.09, sustain=0.0, release=0.04),
+                )
+                s = snare.generate_samples(self.SAMPLE_RATE, 0.1)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            hh = SynthVoice(
+                wave_type=WaveType.NOISE,
+                frequency=9000,
+                amplitude=0.06 if i % 2 == 0 else 0.04,
+                envelope=ADSR(attack=0.001, decay=0.03, sustain=0.0, release=0.01),
+            )
+            s = hh.generate_samples(self.SAMPLE_RATE, 0.04)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=50, decay=0.18)
+        self._sounds["music_tower_stack"] = self._create_sound(mixed)
+
+    def _generate_bar_runner_music(self) -> None:
+        """Bar Runner music - fast, driving chiptune sprint."""
+        voices = []
+        bpm = 160
+        beat = 60.0 / bpm
+
+        lead_notes = [784, 880, 988, 880, 784, 659, 587, 659]  # G5 A5 B5
+        for i, freq in enumerate(lead_notes):
+            lead = SynthVoice(
+                wave_type=WaveType.SQUARE,
+                frequency=freq,
+                amplitude=0.18,
+                envelope=ADSR(attack=0.01, decay=0.06, sustain=0.2, release=0.05),
+                pulse_width=0.3,
+            )
+            s = lead.generate_samples(self.SAMPLE_RATE, beat * 0.28)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        bass_notes = [82, 98, 110, 130, 98, 110, 123, 147]  # E2 G2 A2
+        for i, freq in enumerate(bass_notes):
+            bass = SynthVoice(
+                wave_type=WaveType.SAWTOOTH,
+                frequency=freq,
+                amplitude=0.22,
+                envelope=ADSR(attack=0.01, decay=0.12, sustain=0.35, release=0.08),
+                detune=4,
+            )
+            s = bass.generate_samples(self.SAMPLE_RATE, beat * 0.4)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        for i in range(16):
+            t = i * beat * 0.5
+            if i % 2 == 0:
+                kick = SynthVoice(
+                    wave_type=WaveType.SINE,
+                    frequency=58,
+                    amplitude=0.4,
+                    envelope=ADSR(attack=0.005, decay=0.1, sustain=0.0, release=0.04),
+                )
+                s = kick.generate_samples(self.SAMPLE_RATE, 0.12)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            if i % 4 == 2:
+                snare = SynthVoice(
+                    wave_type=WaveType.NOISE,
+                    frequency=220,
+                    amplitude=0.2,
+                    envelope=ADSR(attack=0.003, decay=0.08, sustain=0.0, release=0.04),
+                )
+                s = snare.generate_samples(self.SAMPLE_RATE, 0.09)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            hh = SynthVoice(
+                wave_type=WaveType.NOISE,
+                frequency=10000,
+                amplitude=0.07 if i % 2 == 0 else 0.05,
+                envelope=ADSR(attack=0.001, decay=0.025, sustain=0.0, release=0.01),
+            )
+            s = hh.generate_samples(self.SAMPLE_RATE, 0.035)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=45, decay=0.15)
+        self._sounds["music_bar_runner"] = self._create_sound(mixed)
+
+    def _generate_brick_breaker_music(self) -> None:
+        """Brick Breaker music - mid-tempo chiptune bounce."""
+        voices = []
+        bpm = 124
+        beat = 60.0 / bpm
+
+        lead_notes = [523, 659, 587, 523, 659, 784, 698, 659]  # C5 E5 D5
+        for i, freq in enumerate(lead_notes):
+            lead = SynthVoice(
+                wave_type=WaveType.SQUARE,
+                frequency=freq,
+                amplitude=0.16,
+                envelope=ADSR(attack=0.01, decay=0.1, sustain=0.2, release=0.08),
+                pulse_width=0.4,
+            )
+            s = lead.generate_samples(self.SAMPLE_RATE, beat * 0.35)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        bass_notes = [98, 123, 110, 98, 147, 123, 110, 98]  # G2 B2 A2
+        for i, freq in enumerate(bass_notes):
+            bass = SynthVoice(
+                wave_type=WaveType.TRIANGLE,
+                frequency=freq,
+                amplitude=0.2,
+                envelope=ADSR(attack=0.01, decay=0.12, sustain=0.3, release=0.08),
+            )
+            s = bass.generate_samples(self.SAMPLE_RATE, beat * 0.5)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        for i in range(16):
+            t = i * beat * 0.5
+            if i % 2 == 0:
+                kick = SynthVoice(
+                    wave_type=WaveType.SINE,
+                    frequency=60,
+                    amplitude=0.3,
+                    envelope=ADSR(attack=0.006, decay=0.12, sustain=0.0, release=0.05),
+                )
+                s = kick.generate_samples(self.SAMPLE_RATE, 0.13)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            if i % 4 == 2:
+                snare = SynthVoice(
+                    wave_type=WaveType.NOISE,
+                    frequency=180,
+                    amplitude=0.16,
+                    envelope=ADSR(attack=0.004, decay=0.09, sustain=0.0, release=0.04),
+                )
+                s = snare.generate_samples(self.SAMPLE_RATE, 0.1)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            hh = SynthVoice(
+                wave_type=WaveType.NOISE,
+                frequency=8500,
+                amplitude=0.05 if i % 2 == 0 else 0.035,
+                envelope=ADSR(attack=0.001, decay=0.03, sustain=0.0, release=0.01),
+            )
+            s = hh.generate_samples(self.SAMPLE_RATE, 0.04)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=55, decay=0.2)
+        self._sounds["music_brick_breaker"] = self._create_sound(mixed)
+
+    def _generate_squid_game_music(self) -> None:
+        """Squid Game music - tense chiptune pulse with urgency."""
+        voices = []
+        bpm = 138
+        beat = 60.0 / bpm
+
+        lead_notes = [392, 440, 392, 349, 330, 349, 392, 262]  # G4 A4 G4 F4 E4 F4 G4 C4
+        for i, freq in enumerate(lead_notes):
+            lead = SynthVoice(
+                wave_type=WaveType.SQUARE,
+                frequency=freq,
+                amplitude=0.17,
+                envelope=ADSR(attack=0.008, decay=0.08, sustain=0.15, release=0.06),
+                pulse_width=0.35,
+            )
+            s = lead.generate_samples(self.SAMPLE_RATE, beat * 0.32)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        bass_notes = [65, 73, 82, 73, 65, 98, 82, 73]  # C2 D2 E2 D2 C2 G2 E2 D2
+        for i, freq in enumerate(bass_notes):
+            bass = SynthVoice(
+                wave_type=WaveType.TRIANGLE,
+                frequency=freq,
+                amplitude=0.2,
+                envelope=ADSR(attack=0.01, decay=0.14, sustain=0.25, release=0.08),
+            )
+            s = bass.generate_samples(self.SAMPLE_RATE, beat * 0.5)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * i * beat * 0.5))
+            delay.extend(s)
+            voices.append(delay)
+
+        for i in range(16):
+            t = i * beat * 0.5
+            if i % 2 == 0:
+                kick = SynthVoice(
+                    wave_type=WaveType.SINE,
+                    frequency=56,
+                    amplitude=0.32,
+                    envelope=ADSR(attack=0.006, decay=0.11, sustain=0.0, release=0.05),
+                )
+                s = kick.generate_samples(self.SAMPLE_RATE, 0.12)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            if i % 4 == 2:
+                snare = SynthVoice(
+                    wave_type=WaveType.NOISE,
+                    frequency=210,
+                    amplitude=0.18,
+                    envelope=ADSR(attack=0.004, decay=0.08, sustain=0.0, release=0.04),
+                )
+                s = snare.generate_samples(self.SAMPLE_RATE, 0.09)
+                delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+                delay.extend(s)
+                voices.append(delay)
+
+            hh = SynthVoice(
+                wave_type=WaveType.NOISE,
+                frequency=9000,
+                amplitude=0.05 if i % 2 == 0 else 0.035,
+                envelope=ADSR(attack=0.001, decay=0.03, sustain=0.0, release=0.01),
+            )
+            s = hh.generate_samples(self.SAMPLE_RATE, 0.035)
+            delay = array.array('h', [0] * int(self.SAMPLE_RATE * t))
+            delay.extend(s)
+            voices.append(delay)
+
+        mixed = mix_voices(voices)
+        mixed = apply_reverb(mixed, delay_ms=55, decay=0.18)
+        self._sounds["music_squid_game"] = self._create_sound(mixed)
+
     # ═══════════════════════════════════════════════════════════════
     # PLAYBACK API
     # ═══════════════════════════════════════════════════════════════
@@ -1587,15 +1888,16 @@ class AudioEngine:
         "roast": "music_roast",
         "autopsy": "music_roast",
         "guess_me": "music_quiz",
-        "squid_game": "music_quiz",
+        "squid_game": "music_squid_game",
         "ai_prophet": "music_fortune",
         "flow_field": "music_flow_field",
         "dither_art": "music_flow_field",
         "glitch_mirror": "music_glitch_mirror",
         "particle_sculptor": "music_particle_sculptor",
         "ascii_art": "music_ascii",
-        "tower_stack": "music_roulette",
-        "bar_runner": "music_roulette",
+        "tower_stack": "music_tower_stack",
+        "bar_runner": "music_bar_runner",
+        "brick_breaker": "music_brick_breaker",
     }
 
     def play_music(self, track_name: str, fade_in_ms: int = 500) -> Optional[pygame.mixer.Channel]:

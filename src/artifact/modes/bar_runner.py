@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
-from artifact.graphics.primitives import fill, draw_rect
+from artifact.graphics.primitives import fill, draw_rect, draw_line
 from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
 
 logger = logging.getLogger(__name__)
@@ -1356,8 +1356,63 @@ class BarRunnerMode(BaseMode):
         if hasattr(self.context, "audio") and self.context.audio:
             self.context.audio.play_reward()
 
+    def _draw_starfield(self, buffer: NDArray[np.uint8], t_sec: float, max_y: int) -> None:
+        max_y = max(6, min(120, max_y))
+        for i in range(18):
+            speed = 4 + (i % 4) * 2
+            sx = int((i * 23 + t_sec * speed * 12) % 128)
+            sy = int((i * 17 + t_sec * speed * 6) % max_y)
+            twinkle = 0.6 + 0.4 * math.sin(t_sec * 3 + i)
+            color = (
+                int(60 + 60 * twinkle),
+                int(90 + 80 * twinkle),
+                int(140 + 100 * twinkle),
+            )
+            draw_rect(buffer, sx, sy, 1, 1, color, filled=True)
+            if i % 6 == 0 and sx + 1 < 128:
+                draw_rect(buffer, sx + 1, sy, 1, 1, (180, 200, 255), filled=True)
+
+    def _draw_neon_grid(
+        self,
+        buffer: NDArray[np.uint8],
+        t_sec: float,
+        horizon_y: int,
+        floor_y: int,
+        grid_color: tuple,
+        glow_color: tuple,
+    ) -> None:
+        horizon_y = max(8, min(110, horizon_y))
+        floor_y = max(horizon_y + 4, min(127, floor_y))
+        phase = (t_sec * 0.6 * (self._scroll_speed / 80.0)) % 1.0
+        lines = 7
+        for i in range(lines):
+            pct = (i / lines + phase) % 1.0
+            y = int(horizon_y + (pct * pct) * (floor_y - horizon_y))
+            draw_line(buffer, 0, y, 127, y, grid_color)
+
+        center_x = 64
+        for i in range(-6, 7):
+            top_x = center_x + i * 6
+            bottom_x = center_x + i * 14
+            draw_line(buffer, top_x, horizon_y, bottom_x, floor_y, grid_color)
+
+        draw_rect(buffer, 0, horizon_y, 128, 1, glow_color)
+
+    def _draw_speed_streaks(self, buffer: NDArray[np.uint8], t_sec: float, max_y: int) -> None:
+        if self._scroll_speed < 110:
+            return
+        max_y = max(8, max_y)
+        for i in range(7):
+            sx = int((t_sec * 90 + i * 23) % 128)
+            sy = int(8 + (i * 14) % max_y)
+            length = 4 + (i % 3)
+            draw_rect(buffer, sx, sy, length, 1, (90, 130, 200), filled=True)
+
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
         t = self._time_ms
+        t_sec = t / 1000.0
+        horizon_y = 42
+        floor_y = self.GROUND_Y + 6
 
         # Fever mode background
         if self._fever_mode:
@@ -1372,10 +1427,13 @@ class BarRunnerMode(BaseMode):
             # Background with parallax
             for y in range(128):
                 factor = y / 128
-                r = int(30 + 20 * factor + 10 * math.sin(t / 1000 + y * 0.1))
-                g = int(20 + 15 * factor)
-                b = int(50 + 30 * (1 - factor))
+                r = int(18 + 18 * factor + 8 * math.sin(t / 1200 + y * 0.12))
+                g = int(20 + 20 * factor)
+                b = int(40 + 50 * (1 - factor))
                 buffer[y, :] = [r, g, b]
+
+        # Neon sky details
+        self._draw_starfield(buffer, t_sec, horizon_y)
 
         # Background buildings (parallax)
         building_offset = int(self._bg_offset * 0.3) % 64
@@ -1383,7 +1441,16 @@ class BarRunnerMode(BaseMode):
             bx = i * 35 - building_offset
             bh = 30 + (i * 17) % 25
             by = self.GROUND_Y - bh
-            draw_rect(buffer, bx, by, 25, bh, (40, 35, 55), filled=True)
+            draw_rect(buffer, bx, by, 25, bh, (35, 30, 45), filled=True)
+
+        # Neon grid floor
+        self._draw_neon_grid(buffer, t_sec, horizon_y, floor_y, (40, 70, 110), (90, 140, 200))
+
+        # Scanline effect (background only)
+        buffer[::2] = (buffer[::2].astype(np.float32) * 0.88).astype(np.uint8)
+
+        # Speed streaks in the sky
+        self._draw_speed_streaks(buffer, t_sec, horizon_y - 6)
 
         # Flash effect
         if self._flash_timer > 0:
@@ -1430,7 +1497,7 @@ class BarRunnerMode(BaseMode):
                     is_gap = True
                     break
             if not is_gap:
-                draw_rect(buffer, x, self.GROUND_Y + shake_y + 2, 2, 2, (80, 70, 100))
+                draw_rect(buffer, x, self.GROUND_Y + shake_y + 2, 2, 2, (110, 140, 200))
 
         # Draw gap depths (dark pit)
         for gap in self._ground_gaps:
@@ -1451,7 +1518,7 @@ class BarRunnerMode(BaseMode):
                     is_gap = True
                     break
             if not is_gap:
-                draw_rect(buffer, tx, ground_y + 4, 14, 2, (50, 45, 60))
+                draw_rect(buffer, tx, ground_y + 4, 14, 2, (60, 70, 90))
 
         # Obstacles - Fun recognizable shapes!
         for obs in self._obstacles:
@@ -2096,6 +2163,7 @@ class BarRunnerMode(BaseMode):
 
         # Ticker is 48x8 pixels - shows the sky above the main game view
         t = self._time_ms
+        t_sec = t / 1000.0
 
         # Sky background
         if self._fever_mode:
@@ -2107,13 +2175,24 @@ class BarRunnerMode(BaseMode):
                 b = int(60 + 50 * math.sin(math.radians(hue + 240 + y * 25)))
                 buffer[y, :] = [r, g, b]
         else:
-            # Normal sky gradient (dark blue to lighter)
+            # Normal sky gradient (deep blue to neon haze)
             for y in range(8):
                 factor = y / 8
-                r = int(10 + 15 * factor)
-                g = int(15 + 25 * factor)
-                b = int(40 + 40 * factor)
+                r = int(12 + 10 * factor)
+                g = int(18 + 18 * factor)
+                b = int(35 + 45 * (1 - factor))
                 buffer[y, :] = [r, g, b]
+
+            # Subtle star twinkles
+            for i in range(6):
+                sx = int((i * 9 + t_sec * (6 + i)) % 48)
+                sy = i % 4
+                twinkle = 0.6 + 0.4 * math.sin(t_sec * 3 + i)
+                color = (int(80 * twinkle), int(120 * twinkle), int(180 * twinkle))
+                draw_rect(buffer, sx, sy, 1, 1, color, filled=True)
+
+            # Horizon glow line
+            draw_rect(buffer, 0, 7, 48, 1, (60, 100, 160))
 
         # Draw fever stars that extend into ticker area (stars move right to left)
         for star in self._stars:
@@ -2125,6 +2204,9 @@ class BarRunnerMode(BaseMode):
                 if 0 <= ticker_x < 48 and 0 <= ticker_y < 8:
                     size = max(1, int(star.size * 48 / 128))
                     draw_rect(buffer, ticker_x, ticker_y, size, size, star.color, filled=True)
+
+        # Scanline effect
+        buffer[::2] = (buffer[::2].astype(np.float32) * 0.9).astype(np.uint8)
 
         # Draw flying enemies that extend above main screen
         for enemy in self._flying_enemies:

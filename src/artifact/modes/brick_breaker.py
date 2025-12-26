@@ -2,21 +2,21 @@
 
 Use your hand or body movement to control the paddle and break all the bricks!
 The camera tracks horizontal motion to move the paddle left/right.
-Camera background shows you in-game!
+Neon arcade visuals with chiptune energy.
 """
 
 import math
 import random
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
-from artifact.graphics.primitives import fill, draw_rect, draw_circle
+from artifact.graphics.primitives import draw_rect, draw_circle, draw_line
 from artifact.graphics.text_utils import draw_centered_text, hsv_to_rgb
 
 logger = logging.getLogger(__name__)
@@ -75,10 +75,11 @@ class PowerUp:
     y: float
     type: str  # "wide", "multi", "slow", "life"
     vy: float = 1.0
+    pulse: float = 0.0
 
 
 class BrickBreakerMode(BaseMode):
-    """Camera-controlled Brick Breaker game with camera background."""
+    """Camera-controlled Brick Breaker game with neon arcade visuals."""
 
     name = "brick_breaker"
     display_name = "КИРПИЧИ"
@@ -115,7 +116,16 @@ class BrickBreakerMode(BaseMode):
         self._intro_time = 0.0
         self._game_over = False
         self._win = False
+        self._paddle_vx = 0.0
+        self._shake_timer = 0.0
+        self._shake_intensity = 0.0
+        self._flash_timer = 0.0
         self._outro_time = 0.0
+        self._paddle_vx = 0.0
+        self._shake_timer = 0.0
+        self._shake_intensity = 0.0
+        self._flash_timer = 0.0
+        self._flash_color = (255, 255, 255)
 
         # Colors
         self.paddle_color = (20, 184, 166)  # Teal
@@ -224,9 +234,13 @@ class BrickBreakerMode(BaseMode):
         self._update_camera()
 
         # Smooth paddle following
+        prev_x = self.paddle_x
         target_x = int(self._motion_x * SCREEN_W)
         target_x = max(self.paddle_width // 2, min(SCREEN_W - self.paddle_width // 2, target_x))
         self.paddle_x += (target_x - self.paddle_x) * 0.2
+        if dt > 0:
+            self._paddle_vx = (self.paddle_x - prev_x) / dt
+            self._paddle_vx = max(-320.0, min(320.0, self._paddle_vx))
 
         # Update balls
         self._update_balls(dt)
@@ -236,6 +250,12 @@ class BrickBreakerMode(BaseMode):
 
         # Update powerups
         self._update_powerups(dt)
+
+        # Impact timers
+        self._shake_timer = max(0.0, self._shake_timer - delta_ms)
+        self._flash_timer = max(0.0, self._flash_timer - delta_ms)
+        if self._shake_timer == 0.0:
+            self._shake_intensity = 0.0
 
         # Check win condition
         active_bricks = [b for b in self.bricks if not b.destroyed]
@@ -279,6 +299,10 @@ class BrickBreakerMode(BaseMode):
                 self.balls.remove(ball)
                 self.combo = 0
                 self.miss_count += 1  # Track misses!
+                self._flash_timer = 180
+                self._flash_color = (255, 60, 60)
+                self._shake_timer = max(self._shake_timer, 140)
+                self._shake_intensity = max(self._shake_intensity, 2.5)
 
                 if len(self.balls) == 0:
                     self.lives -= 1
@@ -295,13 +319,16 @@ class BrickBreakerMode(BaseMode):
                     and ball.vy > 0):
                 # Bounce angle based on where ball hit paddle
                 relative_x = (ball.x - self.paddle_x) / (self.paddle_width / 2)
-                angle = math.pi * 1.5 + relative_x * 0.8
+                spin = max(-0.6, min(0.6, self._paddle_vx / 260.0))
+                angle = math.pi * 1.5 + relative_x * 0.85 + spin * 0.6
                 ball.vx = math.cos(angle) * ball.speed
                 ball.vy = math.sin(angle) * ball.speed
                 ball.y = PADDLE_Y - BALL_RADIUS
 
                 # Reset miss count on successful catch!
                 self.miss_count = 0
+                self._shake_timer = max(self._shake_timer, 70)
+                self._shake_intensity = max(self._shake_intensity, 1.0)
 
                 # Add particles
                 for _ in range(5):
@@ -321,6 +348,10 @@ class BrickBreakerMode(BaseMode):
 
                 if self._ball_brick_collision(ball, brick):
                     brick.hits -= 1
+                    self._flash_timer = 90
+                    self._flash_color = brick.color
+                    self._shake_timer = max(self._shake_timer, 90)
+                    self._shake_intensity = max(self._shake_intensity, 1.5)
                     if brick.hits <= 0:
                         brick.destroyed = True
                         self.score += 10 * (self.combo + 1)
@@ -345,6 +376,17 @@ class BrickBreakerMode(BaseMode):
                                 x=brick.x + brick.width // 2,
                                 y=brick.y + brick.height // 2,
                                 type=random.choice(["wide", "multi", "slow", "life"])
+                            ))
+                    else:
+                        for _ in range(4):
+                            self.particles.append(Particle(
+                                x=brick.x + brick.width // 2,
+                                y=brick.y + brick.height // 2,
+                                vx=random.uniform(-60, 60),
+                                vy=random.uniform(-60, 60),
+                                color=brick.color,
+                                life=0.25,
+                                size=2
                             ))
                     break
 
@@ -387,6 +429,7 @@ class BrickBreakerMode(BaseMode):
 
         for powerup in self.powerups[:]:
             powerup.y += powerup.vy * 60 * dt
+            powerup.pulse += dt * 6.0
 
             # Collect with paddle
             if (PADDLE_Y - 5 <= powerup.y <= PADDLE_Y + PADDLE_HEIGHT + 5
@@ -467,9 +510,9 @@ class BrickBreakerMode(BaseMode):
         pass
 
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
-        """Render game to main display with camera background."""
-        # Render camera background (dimmed)
-        self._render_camera_background(buffer)
+        """Render game to main display with arcade background."""
+        # Render arcade background
+        self._render_arcade_background(buffer)
 
         if self.phase == ModePhase.INTRO:
             self._render_intro(buffer)
@@ -479,26 +522,76 @@ class BrickBreakerMode(BaseMode):
             self._render_outro(buffer)
             return
 
-        # Render game elements on top of camera
-        self._render_bricks(buffer)
-        self._render_particles(buffer)
-        self._render_powerups(buffer)
-        self._render_paddle(buffer)
-        self._render_balls(buffer)
+        # Screen shake for impacts
+        shake_x = shake_y = 0
+        if self._shake_timer > 0:
+            strength = self._shake_intensity * (self._shake_timer / 180.0)
+            amp = max(1, int(strength))
+            shake_x = random.randint(-amp, amp)
+            shake_y = random.randint(-amp, amp)
+
+        # Render game elements on top of background
+        self._render_bricks(buffer, shake_x, shake_y)
+        self._render_particles(buffer, shake_x, shake_y)
+        self._render_powerups(buffer, shake_x, shake_y)
+        self._render_paddle(buffer, shake_x, shake_y)
+        self._render_balls(buffer, shake_x, shake_y)
+
+        # Impact flash
+        if self._flash_timer > 0:
+            intensity = self._flash_timer / 180.0
+            for c in range(3):
+                buffer[:, :, c] = np.clip(
+                    buffer[:, :, c].astype(np.float32) + self._flash_color[c] * intensity * 0.25,
+                    0, 255
+                ).astype(np.uint8)
         self._render_hud(buffer)
 
-    def _render_camera_background(self, buffer: NDArray[np.uint8]) -> None:
-        """Render dimmed camera feed as background - you can see yourself!"""
-        from artifact.utils.camera_service import camera_service
+    def _render_arcade_background(self, buffer: NDArray[np.uint8]) -> None:
+        """Render a neon arcade background with grid and scanlines."""
+        t_sec = self._time_in_mode / 1000.0
+        horizon_y = 52
 
-        frame = camera_service.get_frame(timeout=0)
-        if frame is not None and frame.shape[:2] == (128, 128):
-            # Dim the camera feed (multiply by ~0.25 for dark background)
-            dimmed = (frame.astype(np.float32) * 0.25).astype(np.uint8)
-            np.copyto(buffer, dimmed)
-        else:
-            # Fallback to solid background
-            fill(buffer, self.bg_color)
+        # Base gradient
+        for y in range(SCREEN_H):
+            factor = y / SCREEN_H
+            r = int(10 + 16 * factor)
+            g = int(12 + 20 * factor)
+            b = int(30 + 60 * (1 - factor))
+            buffer[y, :] = [r, g, b]
+
+        # Starfield
+        for i in range(18):
+            speed = 6 + (i % 4) * 2
+            sx = int((i * 19 + t_sec * speed * 9) % SCREEN_W)
+            sy = int((i * 13 + t_sec * speed * 5) % horizon_y)
+            twinkle = 0.6 + 0.4 * math.sin(t_sec * 3 + i)
+            color = (
+                int(70 + 70 * twinkle),
+                int(100 + 90 * twinkle),
+                int(150 + 90 * twinkle),
+            )
+            draw_rect(buffer, sx, sy, 1, 1, color, filled=True)
+
+        # Horizon glow
+        draw_rect(buffer, 0, horizon_y, SCREEN_W, 1, (80, 120, 180))
+
+        # Perspective grid
+        grid_color = (40, 80, 120)
+        phase = (t_sec * 0.6) % 1.0
+        for i in range(7):
+            pct = (i / 7 + phase) % 1.0
+            y = int(horizon_y + (pct * pct) * (SCREEN_H - 1 - horizon_y))
+            draw_line(buffer, 0, y, SCREEN_W - 1, y, grid_color)
+
+        center_x = SCREEN_W // 2
+        for i in range(-6, 7):
+            top_x = center_x + i * 6
+            bottom_x = center_x + i * 14
+            draw_line(buffer, top_x, horizon_y, bottom_x, SCREEN_H - 1, grid_color)
+
+        # Scanlines
+        buffer[::2] = (buffer[::2].astype(np.float32) * 0.88).astype(np.uint8)
 
     def _render_intro(self, buffer: NDArray[np.uint8]) -> None:
         """Render intro screen."""
@@ -532,7 +625,7 @@ class BrickBreakerMode(BaseMode):
         draw_centered_text(buffer, f"СЧЁТ: {self.score}", 75, (255, 255, 255), scale=1)
         draw_centered_text(buffer, f"КОМБО: x{self.max_combo}", 90, self.paddle_color, scale=1)
 
-    def _render_bricks(self, buffer: NDArray[np.uint8]) -> None:
+    def _render_bricks(self, buffer: NDArray[np.uint8], offset_x: int = 0, offset_y: int = 0) -> None:
         """Render all bricks."""
         for brick in self.bricks:
             if brick.destroyed:
@@ -543,42 +636,77 @@ class BrickBreakerMode(BaseMode):
             if brick.hits > 1:
                 color = tuple(min(255, int(c * 1.2)) for c in color)
 
-            draw_rect(buffer, brick.x, brick.y, brick.width, brick.height, color)
+            x = int(brick.x + offset_x)
+            y = int(brick.y + offset_y)
+            w, h = brick.width, brick.height
 
-            # Border
-            draw_rect(buffer, brick.x, brick.y, brick.width, 1, (255, 255, 255))
+            draw_rect(buffer, x, y, w, h, color)
 
-    def _render_paddle(self, buffer: NDArray[np.uint8]) -> None:
+            # Highlight and shadow
+            highlight = tuple(min(255, c + 40) for c in color)
+            shadow = tuple(max(0, c - 40) for c in color)
+            draw_rect(buffer, x, y, w, 1, highlight)
+            draw_rect(buffer, x, y + h - 1, w, 1, shadow)
+            draw_rect(buffer, x, y, 1, h, shadow)
+
+            # Cracks for multi-hit bricks
+            if brick.hits > 1:
+                crack = (20, 20, 30)
+                draw_rect(buffer, x + w // 2, y + 1, 1, max(1, h - 2), crack)
+                draw_rect(buffer, x + 2, y + h // 2, max(1, w - 4), 1, crack)
+
+    def _render_paddle(self, buffer: NDArray[np.uint8], offset_x: int = 0, offset_y: int = 0) -> None:
         """Render paddle."""
-        px = int(self.paddle_x - self.paddle_width // 2)
-        draw_rect(buffer, px, PADDLE_Y, self.paddle_width, PADDLE_HEIGHT, self.paddle_color)
+        px = int(self.paddle_x - self.paddle_width // 2 + offset_x)
+        py = int(PADDLE_Y + offset_y)
 
-        # Highlight
-        draw_rect(buffer, px, PADDLE_Y, self.paddle_width, 1, (200, 255, 255))
+        glow = tuple(int(c * 0.25) for c in self.paddle_color)
+        draw_rect(buffer, px - 2, py - 2, self.paddle_width + 4, PADDLE_HEIGHT + 4, glow)
+        draw_rect(buffer, px, py, self.paddle_width, PADDLE_HEIGHT, self.paddle_color)
 
-    def _render_balls(self, buffer: NDArray[np.uint8]) -> None:
+        # Highlight and shadow
+        highlight = tuple(min(255, c + 50) for c in self.paddle_color)
+        shadow = tuple(max(0, c - 60) for c in self.paddle_color)
+        draw_rect(buffer, px, py, self.paddle_width, 1, highlight)
+        draw_rect(buffer, px, py + PADDLE_HEIGHT - 1, self.paddle_width, 1, shadow)
+
+    def _render_balls(self, buffer: NDArray[np.uint8], offset_x: int = 0, offset_y: int = 0) -> None:
         """Render all balls with trails."""
         for ball in self.balls:
+            bx = int(ball.x + offset_x)
+            by = int(ball.y + offset_y)
+
+            # Glow
+            glow = tuple(int(c * 0.25) for c in self.ball_color)
+            draw_circle(buffer, bx, by, BALL_RADIUS + 2, glow)
+
             # Trail
             for i, (tx, ty) in enumerate(ball.trail):
                 alpha = i / len(ball.trail)
                 size = int(BALL_RADIUS * alpha)
                 color = tuple(int(c * alpha * 0.5) for c in self.ball_color)
-                draw_circle(buffer, int(tx), int(ty), max(1, size), color)
+                draw_circle(buffer, int(tx + offset_x), int(ty + offset_y), max(1, size), color)
 
             # Ball
-            draw_circle(buffer, int(ball.x), int(ball.y), BALL_RADIUS, self.ball_color)
-            draw_circle(buffer, int(ball.x) - 1, int(ball.y) - 1, 1, (255, 255, 255))
+            draw_circle(buffer, bx, by, BALL_RADIUS, self.ball_color)
+            draw_circle(buffer, bx - 1, by - 1, 1, (255, 255, 255))
 
-    def _render_particles(self, buffer: NDArray[np.uint8]) -> None:
+    def _render_particles(self, buffer: NDArray[np.uint8], offset_x: int = 0, offset_y: int = 0) -> None:
         """Render particles."""
         for p in self.particles:
             size = max(1, int(p.size))
-            alpha = p.life / 0.5
+            alpha = max(0.0, min(1.0, p.life / 0.5))
             color = tuple(int(c * alpha) for c in p.color)
-            draw_rect(buffer, int(p.x) - size//2, int(p.y) - size//2, size, size, color)
+            draw_rect(
+                buffer,
+                int(p.x + offset_x) - size // 2,
+                int(p.y + offset_y) - size // 2,
+                size,
+                size,
+                color
+            )
 
-    def _render_powerups(self, buffer: NDArray[np.uint8]) -> None:
+    def _render_powerups(self, buffer: NDArray[np.uint8], offset_x: int = 0, offset_y: int = 0) -> None:
         """Render powerups."""
         colors = {
             "wide": (255, 200, 0),
@@ -588,7 +716,31 @@ class BrickBreakerMode(BaseMode):
         }
         for powerup in self.powerups:
             color = colors.get(powerup.type, (255, 255, 255))
-            draw_rect(buffer, int(powerup.x) - 4, int(powerup.y) - 4, 8, 8, color)
+            pulse = 1.0 + 0.15 * math.sin(powerup.pulse)
+            size = max(6, int(8 * pulse))
+            x0 = int(powerup.x + offset_x) - size // 2
+            y0 = int(powerup.y + offset_y) - size // 2
+
+            glow = tuple(int(c * 0.25) for c in color)
+            draw_rect(buffer, x0 - 1, y0 - 1, size + 2, size + 2, glow)
+            draw_rect(buffer, x0, y0, size, size, color)
+            draw_rect(buffer, x0, y0, size, size, (10, 10, 20), filled=False)
+
+            # Icon hints
+            if powerup.type == "wide":
+                draw_rect(buffer, x0 + 1, y0 + size // 2 - 1, size - 2, 2, (255, 255, 255))
+            elif powerup.type == "multi":
+                draw_rect(buffer, x0 + 2, y0 + 2, 2, 2, (255, 255, 255))
+                draw_rect(buffer, x0 + size // 2 - 1, y0 + size // 2 - 1, 2, 2, (255, 255, 255))
+                draw_rect(buffer, x0 + size - 4, y0 + size - 4, 2, 2, (255, 255, 255))
+            elif powerup.type == "slow":
+                draw_rect(buffer, x0 + 2, y0 + 1, size - 4, 1, (255, 255, 255))
+                draw_rect(buffer, x0 + 2, y0 + size - 2, size - 4, 1, (255, 255, 255))
+                draw_rect(buffer, x0 + size // 2 - 1, y0 + 2, 2, size - 4, (255, 255, 255))
+            elif powerup.type == "life":
+                draw_rect(buffer, x0 + 2, y0 + 2, 2, 2, (255, 255, 255))
+                draw_rect(buffer, x0 + size - 4, y0 + 2, 2, 2, (255, 255, 255))
+                draw_rect(buffer, x0 + size // 2 - 1, y0 + 3, 2, size - 4, (255, 255, 255))
 
     def _render_hud(self, buffer: NDArray[np.uint8]) -> None:
         """Render HUD."""
