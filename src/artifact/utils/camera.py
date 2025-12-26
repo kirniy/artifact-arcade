@@ -2,6 +2,10 @@
 
 Automatically uses hardware camera on Pi (ARTIFACT_ENV=hardware)
 and simulator camera on Mac/desktop.
+
+RECOMMENDED: Use the shared camera_service for instant frame access:
+    from artifact.utils.camera_service import camera_service
+    frame = camera_service.get_frame()  # Instant!
 """
 
 import os
@@ -26,6 +30,9 @@ from artifact.simulator.mock_hardware.camera import (
     create_viewfinder_overlay,
 )
 
+# Import shared camera service (recommended way to access camera)
+from artifact.utils.camera_service import camera_service, get_camera_service, CameraService
+
 __all__ = [
     "Camera",
     "create_camera",
@@ -33,4 +40,8 @@ __all__ = [
     "floyd_steinberg_dither",
     "create_viewfinder_overlay",
     "IS_HARDWARE",
+    # Shared camera service (recommended)
+    "camera_service",
+    "get_camera_service",
+    "CameraService",
 ]

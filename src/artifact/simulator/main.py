@@ -38,6 +38,7 @@ from artifact.modes.dither_art import DitherArtMode
 from artifact.modes.ascii_art import AsciiArtMode
 from artifact.modes.brick_breaker import BrickBreakerMode
 from artifact.audio.engine import AudioEngine, get_audio_engine
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,10 @@ class ArtifactSimulator:
         # Audio system - synthwave arcade sounds!
         self.audio = get_audio_engine()
         self.audio.init()
+
+        # Start shared camera service (always-on for instant frames)
+        camera_service.start()
+        logger.info(f"Camera service: running={camera_service.is_running}, has_camera={camera_service.has_camera}")
 
         # Window
         self.window_config = WindowConfig(
@@ -237,7 +242,8 @@ class ArtifactSimulator:
         # Run the window (main loop)
         await self.window.run()
 
-        # Cleanup audio
+        # Cleanup
+        camera_service.stop()
         self.audio.cleanup()
 
 

@@ -2,6 +2,7 @@
 
 Use your hand or body movement to control the paddle and break all the bricks!
 The camera tracks horizontal motion to move the paddle left/right.
+Camera background shows you in-game!
 """
 
 import math
@@ -33,6 +34,7 @@ BRICK_WIDTH = 14
 BRICK_HEIGHT = 6
 BRICK_TOP_OFFSET = 20
 INITIAL_LIVES = 3
+MAX_MISSES = 5  # Lose if you miss this many times in a row
 
 
 @dataclass
@@ -76,7 +78,7 @@ class PowerUp:
 
 
 class BrickBreakerMode(BaseMode):
-    """Camera-controlled Brick Breaker game."""
+    """Camera-controlled Brick Breaker game with camera background."""
 
     name = "brick_breaker"
     display_name = "КИРПИЧИ"
@@ -90,11 +92,9 @@ class BrickBreakerMode(BaseMode):
     def __init__(self, context: ModeContext):
         super().__init__(context)
 
-        # Camera
-        self._camera = None
-        self._last_frame = None
+        # Use shared camera service (no more opening/closing!)
         self._motion_x = 0.5  # Normalized 0-1 position
-        self._prev_centroid = None
+        self._prev_motion_x = 0.5
 
         # Game state
         self.paddle_x = SCREEN_W // 2
@@ -109,6 +109,7 @@ class BrickBreakerMode(BaseMode):
         self.level = 1
         self.combo = 0
         self.max_combo = 0
+        self.miss_count = 0  # Track consecutive misses
 
         # Animation state
         self._intro_time = 0.0
@@ -123,33 +124,9 @@ class BrickBreakerMode(BaseMode):
 
     def on_enter(self) -> None:
         """Initialize game."""
-        self._open_camera()
         self._reset_game()
         self._intro_time = 0.0
         self.change_phase(ModePhase.INTRO)
-
-    def _open_camera(self) -> None:
-        """Open camera for motion tracking."""
-        try:
-            from artifact.utils.camera import create_camera, is_pi_camera_available, IS_HARDWARE
-            if IS_HARDWARE and is_pi_camera_available():
-                self._camera = create_camera(preview_resolution=(64, 64))
-            else:
-                self._camera = create_camera(resolution=(64, 64))
-            self._camera.open()
-            logger.info("Brick Breaker: Camera opened")
-        except Exception as e:
-            logger.warning(f"Brick Breaker: Camera failed: {e}")
-            self._camera = None
-
-    def _close_camera(self) -> None:
-        """Close camera."""
-        if self._camera:
-            try:
-                self._camera.close()
-            except:
-                pass
-            self._camera = None
 
     def _reset_game(self) -> None:
         """Reset game state for new game."""
@@ -163,6 +140,7 @@ class BrickBreakerMode(BaseMode):
         self.lives = INITIAL_LIVES
         self.combo = 0
         self.max_combo = 0
+        self.miss_count = 0
         self._game_over = False
         self._win = False
 
@@ -212,54 +190,16 @@ class BrickBreakerMode(BaseMode):
                 ))
 
     def _update_camera(self) -> None:
-        """Update paddle position based on camera motion."""
-        if not self._camera or not self._camera.is_open:
-            return
+        """Update paddle position from shared camera service."""
+        from artifact.utils.camera_service import camera_service
 
-        try:
-            frame = self._camera.capture_frame()
-            if frame is None:
-                return
+        # Get motion position directly from camera service
+        new_motion = camera_service.get_motion_x()
 
-            # Convert to grayscale for motion detection
-            if len(frame.shape) == 3:
-                gray = np.mean(frame, axis=2).astype(np.uint8)
-            else:
-                gray = frame
-
-            # Resize to 64x64 if needed
-            if gray.shape[0] != 64 or gray.shape[1] != 64:
-                h, w = gray.shape
-                resized = np.zeros((64, 64), dtype=np.uint8)
-                for y in range(64):
-                    for x in range(64):
-                        sy = min(int(y * h / 64), h - 1)
-                        sx = min(int(x * w / 64), w - 1)
-                        resized[y, x] = gray[sy, sx]
-                gray = resized
-
-            # Simple motion detection: find brightest/darkest region
-            # Use column-wise intensity to find horizontal position
-            col_intensity = np.mean(gray, axis=0)
-
-            # Find weighted centroid of intensity
-            total = np.sum(col_intensity) + 1e-6
-            positions = np.arange(64)
-            centroid = np.sum(positions * col_intensity) / total
-
-            # Smooth movement
-            if self._prev_centroid is not None:
-                alpha = 0.3
-                centroid = self._prev_centroid * (1 - alpha) + centroid * alpha
-            self._prev_centroid = centroid
-
-            # Map to paddle position (flip for natural control)
-            self._motion_x = 1.0 - (centroid / 64.0)
-
-            self._last_frame = frame
-
-        except Exception as e:
-            logger.debug(f"Camera update error: {e}")
+        # Smooth the movement
+        alpha = 0.3
+        self._motion_x = self._prev_motion_x * (1 - alpha) + new_motion * alpha
+        self._prev_motion_x = self._motion_x
 
     def on_update(self, delta_ms: float) -> None:
         """Update game state."""
@@ -304,8 +244,8 @@ class BrickBreakerMode(BaseMode):
             self.change_phase(ModePhase.OUTRO)
             self._outro_time = 0.0
 
-        # Check lose condition
-        if len(self.balls) == 0 and self.lives <= 0:
+        # Check lose condition - either no lives OR too many misses
+        if (len(self.balls) == 0 and self.lives <= 0) or self.miss_count >= MAX_MISSES:
             self._game_over = True
             self.change_phase(ModePhase.OUTRO)
             self._outro_time = 0.0
@@ -338,9 +278,11 @@ class BrickBreakerMode(BaseMode):
             if ball.y > SCREEN_H + BALL_RADIUS:
                 self.balls.remove(ball)
                 self.combo = 0
+                self.miss_count += 1  # Track misses!
+
                 if len(self.balls) == 0:
                     self.lives -= 1
-                    if self.lives > 0:
+                    if self.lives > 0 and self.miss_count < MAX_MISSES:
                         self._spawn_ball()
                 continue
 
@@ -357,6 +299,9 @@ class BrickBreakerMode(BaseMode):
                 ball.vx = math.cos(angle) * ball.speed
                 ball.vy = math.sin(angle) * ball.speed
                 ball.y = PADDLE_Y - BALL_RADIUS
+
+                # Reset miss count on successful catch!
+                self.miss_count = 0
 
                 # Add particles
                 for _ in range(5):
@@ -475,6 +420,7 @@ class BrickBreakerMode(BaseMode):
                 ball.vy *= 0.7
         elif type == "life":
             self.lives = min(5, self.lives + 1)
+            self.miss_count = 0  # Reset misses on extra life
 
     def _finish_game(self) -> None:
         """End the game."""
@@ -494,13 +440,22 @@ class BrickBreakerMode(BaseMode):
 
     def on_input(self, event: Event) -> bool:
         """Handle input events."""
-        # Allow keyboard control as fallback
+        # Arrow keys + keypad 4/6 for paddle control
         if event.event_type == EventType.ARCADE_LEFT:
-            self._motion_x = max(0, self._motion_x - 0.05)
+            self._motion_x = max(0, self._motion_x - 0.08)
             return True
         elif event.event_type == EventType.ARCADE_RIGHT:
-            self._motion_x = min(1, self._motion_x + 0.05)
+            self._motion_x = min(1, self._motion_x + 0.08)
             return True
+        # Keypad 4 = left, 6 = right
+        elif event.event_type == EventType.KEYPAD_INPUT:
+            key = event.data.get("key", "")
+            if key == "4":
+                self._motion_x = max(0, self._motion_x - 0.08)
+                return True
+            elif key == "6":
+                self._motion_x = min(1, self._motion_x + 0.08)
+                return True
         elif event.event_type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.INTRO:
                 self.change_phase(ModePhase.ACTIVE)
@@ -508,12 +463,13 @@ class BrickBreakerMode(BaseMode):
         return False
 
     def on_exit(self) -> None:
-        """Cleanup."""
-        self._close_camera()
+        """Cleanup - nothing to do, camera service is shared."""
+        pass
 
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
-        """Render game to main display."""
-        fill(buffer, self.bg_color)
+        """Render game to main display with camera background."""
+        # Render camera background (dimmed)
+        self._render_camera_background(buffer)
 
         if self.phase == ModePhase.INTRO:
             self._render_intro(buffer)
@@ -523,7 +479,7 @@ class BrickBreakerMode(BaseMode):
             self._render_outro(buffer)
             return
 
-        # Render game elements
+        # Render game elements on top of camera
         self._render_bricks(buffer)
         self._render_particles(buffer)
         self._render_powerups(buffer)
@@ -531,8 +487,23 @@ class BrickBreakerMode(BaseMode):
         self._render_balls(buffer)
         self._render_hud(buffer)
 
+    def _render_camera_background(self, buffer: NDArray[np.uint8]) -> None:
+        """Render dimmed camera feed as background - you can see yourself!"""
+        from artifact.utils.camera_service import camera_service
+
+        frame = camera_service.get_frame(timeout=0)
+        if frame is not None and frame.shape[:2] == (128, 128):
+            # Dim the camera feed (multiply by ~0.25 for dark background)
+            dimmed = (frame.astype(np.float32) * 0.25).astype(np.uint8)
+            np.copyto(buffer, dimmed)
+        else:
+            # Fallback to solid background
+            fill(buffer, self.bg_color)
+
     def _render_intro(self, buffer: NDArray[np.uint8]) -> None:
         """Render intro screen."""
+        from artifact.utils.camera_service import camera_service
+
         t = self._intro_time / 1000
 
         # Title
@@ -542,13 +513,13 @@ class BrickBreakerMode(BaseMode):
         # Instructions
         if int(t * 2) % 2 == 0:
             draw_centered_text(buffer, "ДВИГАЙ РУКОЙ", 80, self.ball_color, scale=1)
-            draw_centered_text(buffer, "ВЛЕВО-ВПРАВО", 92, self.ball_color, scale=1)
+            draw_centered_text(buffer, "ИЛИ 4/6", 92, self.ball_color, scale=1)
 
-        # Camera preview hint
-        if self._last_frame is not None:
+        # Camera status
+        if camera_service.has_camera:
             draw_centered_text(buffer, "КАМЕРА ОК", 110, (0, 255, 0), scale=1)
         else:
-            draw_centered_text(buffer, "КАМЕРА...", 110, (255, 100, 0), scale=1)
+            draw_centered_text(buffer, "НЕТ КАМЕРЫ", 110, (255, 100, 0), scale=1)
 
     def _render_outro(self, buffer: NDArray[np.uint8]) -> None:
         """Render game over/win screen."""
@@ -628,8 +599,11 @@ class BrickBreakerMode(BaseMode):
         for i in range(self.lives):
             draw_rect(buffer, 120 - i * 8, 2, 5, 5, (255, 50, 50))
 
-        # Combo (if active)
-        if self.combo > 1:
+        # Miss indicator (warn when getting close to losing)
+        if self.miss_count >= MAX_MISSES - 2:
+            miss_color = (255, 0, 0) if int(self._time_in_mode * 4) % 2 == 0 else (100, 0, 0)
+            draw_centered_text(buffer, f"MISS:{self.miss_count}/{MAX_MISSES}", 10, miss_color, scale=1)
+        elif self.combo > 1:
             draw_centered_text(buffer, f"x{self.combo}", 10, self.ball_color, scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:

@@ -54,6 +54,7 @@ async def run_hardware() -> None:
     from artifact.animation.engine import AnimationEngine
     from artifact.modes.manager import ModeManager
     from artifact.core.events import Event, EventType
+    from artifact.utils.camera_service import camera_service
 
     # Import ALL game modes
     from artifact.modes.fortune import FortuneMode
@@ -127,6 +128,10 @@ async def run_hardware() -> None:
         logger.error("Hardware initialization failed")
         return
 
+    # Start shared camera service (always-on for instant frames)
+    camera_service.start()
+    logger.info(f"Camera service: running={camera_service.is_running}")
+
     # Wire up global sound effects for all button events
     def on_button_press(event: Event) -> None:
         runner.play_sound('confirm')
@@ -163,6 +168,9 @@ async def run_hardware() -> None:
 
     # Run hardware loop
     await runner.run()
+
+    # Cleanup
+    camera_service.stop()
 
 
 def main() -> None:
