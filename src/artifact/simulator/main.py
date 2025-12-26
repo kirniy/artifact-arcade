@@ -37,6 +37,15 @@ from artifact.modes.glitch_mirror import GlitchMirrorMode
 from artifact.modes.dither_art import DitherArtMode
 from artifact.modes.ascii_art import AsciiArtMode
 from artifact.modes.brick_breaker import BrickBreakerMode
+from artifact.modes.snake_classic import SnakeClassicMode
+from artifact.modes.snake_tiny import SnakeTinyMode
+from artifact.modes.lunar_lander import LunarLanderMode
+from artifact.modes.pong import PongMode
+from artifact.modes.flappy import FlappyMode
+from artifact.modes.game_2048 import Game2048Mode
+from artifact.modes.stacks import StacksMode
+from artifact.modes.towerbrock import TowerbrockMode
+from artifact.modes.hand_snake import HandSnakeMode
 from artifact.audio.engine import AudioEngine, get_audio_engine
 from artifact.utils.camera_service import camera_service
 
@@ -150,6 +159,15 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(TowerStackMode)
         self.mode_manager.register_mode(BarRunnerMode)
         self.mode_manager.register_mode(BrickBreakerMode)
+        self.mode_manager.register_mode(SnakeClassicMode)
+        self.mode_manager.register_mode(SnakeTinyMode)
+        self.mode_manager.register_mode(LunarLanderMode)
+        self.mode_manager.register_mode(PongMode)
+        self.mode_manager.register_mode(FlappyMode)
+        self.mode_manager.register_mode(Game2048Mode)
+        self.mode_manager.register_mode(StacksMode)
+        self.mode_manager.register_mode(TowerbrockMode)
+        self.mode_manager.register_mode(HandSnakeMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os

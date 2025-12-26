@@ -211,6 +211,15 @@ MODE_COLORS = {
     "ascii_art": (0, 255, 100),     # Terminal green
     "particle_sculptor": (200, 150, 255),  # Lavender
     "bar_runner": (255, 180, 80),   # Amber
+    "snake_classic": (120, 255, 120),
+    "snake_tiny": (100, 220, 140),
+    "pong": (140, 200, 255),
+    "flappy": (255, 220, 80),
+    "game_2048": (237, 194, 46),
+    "stacks": (255, 200, 120),
+    "lunar_lander": (200, 160, 80),
+    "towerbrock": (200, 190, 160),
+    "hand_snake": (120, 255, 140),
 }
 
 

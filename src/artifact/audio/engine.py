@@ -1898,6 +1898,15 @@ class AudioEngine:
         "tower_stack": "music_tower_stack",
         "bar_runner": "music_bar_runner",
         "brick_breaker": "music_brick_breaker",
+        "snake_classic": "music_ascii",
+        "snake_tiny": "music_ascii",
+        "pong": "music_bar_runner",
+        "flappy": "music_bar_runner",
+        "game_2048": "music_tower_stack",
+        "stacks": "music_tower_stack",
+        "lunar_lander": "music_flow_field",
+        "towerbrock": "music_tower_stack",
+        "hand_snake": "music_ascii",
     }
 
     def play_music(self, track_name: str, fade_in_ms: int = 500) -> Optional[pygame.mixer.Channel]:

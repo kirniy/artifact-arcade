@@ -72,6 +72,15 @@ async def run_hardware() -> None:
     from artifact.modes.dither_art import DitherArtMode
     from artifact.modes.ascii_art import AsciiArtMode
     from artifact.modes.brick_breaker import BrickBreakerMode
+    from artifact.modes.snake_classic import SnakeClassicMode
+    from artifact.modes.snake_tiny import SnakeTinyMode
+    from artifact.modes.lunar_lander import LunarLanderMode
+    from artifact.modes.pong import PongMode
+    from artifact.modes.flappy import FlappyMode
+    from artifact.modes.game_2048 import Game2048Mode
+    from artifact.modes.stacks import StacksMode
+    from artifact.modes.towerbrock import TowerbrockMode
+    from artifact.modes.hand_snake import HandSnakeMode
 
     logger = logging.getLogger(__name__)
 
@@ -113,6 +122,15 @@ async def run_hardware() -> None:
     mode_manager.register_mode(TowerStackMode)
     mode_manager.register_mode(BarRunnerMode)
     mode_manager.register_mode(BrickBreakerMode)
+    mode_manager.register_mode(SnakeClassicMode)
+    mode_manager.register_mode(SnakeTinyMode)
+    mode_manager.register_mode(LunarLanderMode)
+    mode_manager.register_mode(PongMode)
+    mode_manager.register_mode(FlappyMode)
+    mode_manager.register_mode(Game2048Mode)
+    mode_manager.register_mode(StacksMode)
+    mode_manager.register_mode(TowerbrockMode)
+    mode_manager.register_mode(HandSnakeMode)
 
     # AI Prophet mode - needs API key
     if os.environ.get("GEMINI_API_KEY"):

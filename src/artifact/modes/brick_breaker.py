@@ -518,14 +518,14 @@ class BrickBreakerMode(BaseMode):
     def on_input(self, event: Event) -> bool:
         """Handle input events."""
         # Arrow keys + keypad 4/6 for paddle control
-        if event.event_type == EventType.ARCADE_LEFT:
+        if event.type == EventType.ARCADE_LEFT:
             self._manual_nudge(-0.08)
             return True
-        elif event.event_type == EventType.ARCADE_RIGHT:
+        elif event.type == EventType.ARCADE_RIGHT:
             self._manual_nudge(0.08)
             return True
         # Keypad 4 = left, 6 = right
-        elif event.event_type == EventType.KEYPAD_INPUT:
+        elif event.type == EventType.KEYPAD_INPUT:
             key = event.data.get("key", "")
             if key == "4":
                 self._manual_nudge(-0.08)
@@ -533,7 +533,7 @@ class BrickBreakerMode(BaseMode):
             elif key == "6":
                 self._manual_nudge(0.08)
                 return True
-        elif event.event_type == EventType.BUTTON_PRESS:
+        elif event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.INTRO:
                 self.change_phase(ModePhase.ACTIVE)
                 return True
