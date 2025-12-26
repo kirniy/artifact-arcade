@@ -10,6 +10,8 @@ import time
 import random
 import array
 import subprocess
+import threading
+import select
 
 os.environ['SDL_VIDEODRIVER'] = 'kmsdrm'
 os.environ['SDL_AUDIODRIVER'] = 'alsa'
@@ -22,6 +24,97 @@ try:
     HAS_CV2 = True
 except:
     HAS_CV2 = False
+
+# Evdev for reliable USB keyboard input in kmsdrm mode
+try:
+    import evdev
+    from evdev import ecodes
+    HAS_EVDEV = True
+except:
+    HAS_EVDEV = False
+
+
+class EvdevInput:
+    """Thread-safe evdev input handler for USB keyboards/keypads."""
+
+    def __init__(self):
+        self.device = None
+        self.running = False
+        self.thread = None
+        self.pending_keys = []
+        self.lock = threading.Lock()
+
+        if not HAS_EVDEV:
+            print("evdev not available, using pygame input")
+            return
+
+        # Find USB keyboard/numpad (not HDMI CEC)
+        for path in evdev.list_devices():
+            dev = evdev.InputDevice(path)
+            # Skip HDMI and virtual devices
+            if 'hdmi' in dev.name.lower() or 'vc4' in dev.name.lower():
+                continue
+            # Look for keyboard capability
+            caps = dev.capabilities()
+            if ecodes.EV_KEY in caps:
+                # Check if it has common key codes
+                keys = caps[ecodes.EV_KEY]
+                if ecodes.KEY_ENTER in keys or ecodes.KEY_SPACE in keys:
+                    self.device = dev
+                    print(f"Input device: {dev.name} ({dev.path})")
+                    break
+
+        if not self.device:
+            print("No USB keyboard found, using pygame input")
+
+    def start(self):
+        if self.device:
+            self.running = True
+            self.thread = threading.Thread(target=self._read_loop, daemon=True)
+            self.thread.start()
+
+    def stop(self):
+        self.running = False
+        if self.thread:
+            self.thread.join(timeout=0.5)
+
+    def _read_loop(self):
+        while self.running:
+            try:
+                r, _, _ = select.select([self.device.fd], [], [], 0.1)
+                if r:
+                    for event in self.device.read():
+                        if event.type == ecodes.EV_KEY and event.value == 1:  # Key down
+                            with self.lock:
+                                self.pending_keys.append(event.code)
+            except Exception as e:
+                if self.running:
+                    print(f"Input error: {e}")
+                break
+
+    def get_keys(self):
+        """Get and clear pending key presses."""
+        with self.lock:
+            keys = self.pending_keys[:]
+            self.pending_keys.clear()
+        return keys
+
+    def is_next_pressed(self, keys):
+        """Check if 'next' action keys were pressed."""
+        next_keys = {ecodes.KEY_ENTER, ecodes.KEY_SPACE, ecodes.KEY_RIGHT,
+                     ecodes.KEY_KPENTER, ecodes.KEY_KP0, ecodes.KEY_KP1,
+                     ecodes.KEY_KP2, ecodes.KEY_KP3, ecodes.KEY_KP4,
+                     ecodes.KEY_KP5, ecodes.KEY_KP6, ecodes.KEY_KP7,
+                     ecodes.KEY_KP8, ecodes.KEY_KP9}
+        return any(k in next_keys for k in keys)
+
+    def is_prev_pressed(self, keys):
+        """Check if 'previous' action keys were pressed."""
+        return ecodes.KEY_LEFT in keys or ecodes.KEY_BACKSPACE in keys
+
+    def is_escape_pressed(self, keys):
+        """Check if escape was pressed."""
+        return ecodes.KEY_ESC in keys
 
 HDMI_W, HDMI_H = 720, 480
 LED_SIZE = 128
@@ -2765,11 +2858,16 @@ def main():
     LONG_PRESS_DURATION = 3.0  # seconds to hold for mode switch
     show_hold_indicator = False
 
-    print(f"\n{len(effects)} effects. Press ENTER to switch. HOLD 3s for ARTIFACT mode. ESC to exit.\n")
+    # Initialize evdev input for reliable USB keyboard handling
+    evdev_input = EvdevInput()
+    evdev_input.start()
+
+    print(f"\n{len(effects)} effects. Press ENTER/numpad to switch. ESC to exit.\n")
     print(f"→ {effects[current][0]}")
 
     try:
         while running:
+            # Check pygame events (for QUIT and fallback keyboard)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -2777,19 +2875,33 @@ def main():
                     if event.key == pygame.K_ESCAPE:
                         running = False
                     elif event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_RIGHT):
-                        # Play switch sound and go to next effect
                         sound.play_once('switch')
                         effects[current][1].reset()
                         current = (current + 1) % len(effects)
                         print(f"→ {effects[current][0]}")
                     elif event.key == pygame.K_LEFT:
-                        # Play switch sound and go to previous effect
                         sound.play_once('switch')
                         effects[current][1].reset()
                         current = (current - 1) % len(effects)
                         print(f"→ {effects[current][0]}")
 
-            # Each effect loops forever until ENTER pressed
+            # Check evdev input (USB keyboard/numpad - more reliable in kmsdrm mode)
+            keys = evdev_input.get_keys()
+            if keys:
+                if evdev_input.is_escape_pressed(keys):
+                    running = False
+                elif evdev_input.is_next_pressed(keys):
+                    sound.play_once('switch')
+                    effects[current][1].reset()
+                    current = (current + 1) % len(effects)
+                    print(f"→ {effects[current][0]}")
+                elif evdev_input.is_prev_pressed(keys):
+                    sound.play_once('switch')
+                    effects[current][1].reset()
+                    current = (current - 1) % len(effects)
+                    print(f"→ {effects[current][0]}")
+
+            # Each effect loops forever until key pressed
             effects[current][1].render(led)
             screen.fill((0, 0, 0))
             screen.blit(led, (0, 0))
@@ -2799,6 +2911,7 @@ def main():
     except KeyboardInterrupt:
         print("\nStopped")
 
+    evdev_input.stop()
     sound.stop()
     pygame.quit()
 
