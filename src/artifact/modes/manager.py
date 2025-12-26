@@ -379,6 +379,7 @@ class ModeManager:
         self._menu_widgets: List = []
         self._menu_index_map: List[int] = []
         self._menu_mode_count = 0
+        self._menu_render_failures = 0
 
         logger.info("ModeManager initialized")
 
@@ -447,6 +448,19 @@ class ModeManager:
             return
 
         pygame.font.init()
+        try:
+            pygame.mouse.set_visible(False)
+        except Exception:
+            pass
+
+        display_surface = pygame.display.get_surface()
+        if display_surface is None:
+            logger.warning("pygame-menu skipped: display surface not ready")
+            return
+        window_w, window_h = display_surface.get_size()
+        if window_w < 128 or window_h < 128:
+            logger.warning(f"pygame-menu skipped: window too small ({window_w}x{window_h})")
+            return
 
         theme = pygame_menu.themes.THEME_DARK.copy()
         theme.title_font_size = 10
@@ -478,6 +492,8 @@ class ModeManager:
         self._menu_surface = pygame.Surface((128, 128))
         self._menu_events = []
         self._menu_mode_count = len(self._mode_order)
+        self._menu_render_failures = 0
+        logger.info(f"pygame-menu selector ready: {len(self._menu_widgets)} modes")
 
     def _menu_start_from_menu(self, index: int) -> None:
         """Start a mode from pygame-menu selection."""
@@ -524,10 +540,10 @@ class ModeManager:
         if selected != self._selected_index:
             self._selected_index = selected
 
-    def _render_pygame_menu(self, buffer) -> None:
+    def _render_pygame_menu(self, buffer) -> bool:
         """Render pygame-menu selector to buffer."""
         if not self._menu or not self._menu_surface:
-            return
+            return False
         try:
             self._menu_surface.fill((12, 12, 16))
             self._menu.draw(self._menu_surface)
@@ -535,8 +551,14 @@ class ModeManager:
 
             menu_frame = pygame.surfarray.array3d(self._menu_surface).swapaxes(0, 1)
             buffer[:menu_frame.shape[0], :menu_frame.shape[1]] = menu_frame
+            return True
         except Exception as exc:
-            logger.debug(f"pygame-menu render error: {exc}")
+            self._menu_render_failures += 1
+            logger.warning(f"pygame-menu render error: {exc}")
+            if self._menu_render_failures >= 3:
+                self._menu_failed = True
+                logger.warning("pygame-menu disabled after repeated render failures")
+            return False
 
     def _setup_event_handlers(self) -> None:
         """Register event handlers."""
@@ -1040,7 +1062,8 @@ class ModeManager:
 
         elif self._state == ManagerState.MODE_SELECT:
             if self._menu and not self._menu_failed:
-                self._render_pygame_menu(buffer)
+                if not self._render_pygame_menu(buffer):
+                    self._render_mode_select(buffer)
             else:
                 self._render_mode_select(buffer)
 
