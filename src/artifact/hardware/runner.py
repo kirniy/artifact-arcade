@@ -177,11 +177,13 @@ class HardwareRunner:
         return success
 
     def _init_audio(self) -> bool:
-        """Initialize audio system with lightweight chiptune sounds."""
+        """Initialize full audio system with all chiptune sounds and music.
+
+        Sets up Pi 3.5mm jack (hw:2,0) and loads the complete AudioEngine
+        with procedural synthwave sounds and music loops.
+        """
         import os
         import subprocess
-        import array
-        import math
 
         try:
             pygame = _get_pygame()
@@ -191,63 +193,110 @@ class HardwareRunner:
 
             # Use 3.5mm headphone jack (card 2)
             os.environ['AUDIODEV'] = 'hw:2,0'
-            pygame.mixer.quit()
-            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
+            os.environ['SDL_AUDIODRIVER'] = 'alsa'
 
-            # Store sounds
-            self._sounds = {}
-            self._audio_channel = pygame.mixer.Channel(0)
+            # Quit existing mixer (initialized by pygame.init()) and reinitialize
+            # with correct audio device settings
+            try:
+                pygame.mixer.quit()
+            except Exception:
+                pass
 
-            # Generate UI sounds
-            # Button click (arcade blip)
-            samples = array.array('h')
-            for i in range(int(44100 * 0.08)):
-                t = i / 44100
-                env = max(0, 1 - t * 15)
-                freq = 800 + 400 * env  # Descending
-                val = (1 if math.sin(2 * math.pi * freq * t) > 0 else -1) * 0.4
-                samples.append(int(32767 * val * env * 0.5))
-            self._sounds['click'] = pygame.mixer.Sound(buffer=samples)
+            # Pre-init mixer with Pi audio settings before reinitializing
+            pygame.mixer.pre_init(
+                frequency=44100,
+                size=-16,
+                channels=2,
+                buffer=4096  # Larger buffer for Pi stability
+            )
+            pygame.mixer.init()
+            pygame.mixer.set_num_channels(16)
 
-            # Confirm sound (rising arpeggio)
-            samples = array.array('h')
-            for i in range(int(44100 * 0.15)):
-                t = i / 44100
-                env = max(0, 1 - t * 8)
-                freqs = [523, 659, 784]  # C E G
-                idx = min(int(t * 30), 2)
-                val = (1 if math.sin(2 * math.pi * freqs[idx] * t) > 0 else -1) * 0.3
-                samples.append(int(32767 * val * env * 0.5))
-            self._sounds['confirm'] = pygame.mixer.Sound(buffer=samples)
+            logger.info(f"Mixer reinitialized for hw:2,0 (3.5mm jack)")
 
-            # Error sound (descending)
-            samples = array.array('h')
-            for i in range(int(44100 * 0.2)):
-                t = i / 44100
-                env = max(0, 1 - t * 6)
-                freq = 300 - t * 200
-                val = (1 if math.sin(2 * math.pi * freq * t) > 0 else -1) * 0.4
-                samples.append(int(32767 * val * env * 0.5))
-            self._sounds['error'] = pygame.mixer.Sound(buffer=samples)
+            # Get and initialize the full audio engine (skip its mixer init)
+            self._audio_engine = get_audio_engine()
+            # Mark as initialized since we already set up the mixer
+            self._audio_engine._initialized = True
+            self._audio_engine._generate_all_sounds()
 
-            logger.info("Audio initialized: 3.5mm jack (hw:2,0)")
+            logger.info("Audio initialized: 3.5mm jack (hw:2,0) with full AudioEngine")
             self._audio_enabled = True
             return True
 
         except Exception as e:
             logger.warning(f"Audio init failed: {e}")
             self._audio_enabled = False
-            self._sounds = {}
+            self._audio_engine = None
             return False
 
     def play_sound(self, name: str) -> None:
-        """Play a UI sound effect."""
-        if hasattr(self, '_audio_enabled') and self._audio_enabled:
-            if name in self._sounds:
-                try:
-                    self._sounds[name].play()
-                except:
-                    pass
+        """Play a UI sound effect using the full AudioEngine."""
+        if not hasattr(self, '_audio_enabled') or not self._audio_enabled:
+            return
+        if not self._audio_engine:
+            return
+
+        try:
+            # Map simple names to AudioEngine methods
+            sound_map = {
+                'click': self._audio_engine.play_ui_click,
+                'confirm': self._audio_engine.play_ui_confirm,
+                'error': self._audio_engine.play_ui_error,
+                'back': self._audio_engine.play_ui_back,
+                'move': self._audio_engine.play_ui_move,
+                'success': self._audio_engine.play_success,
+                'failure': self._audio_engine.play_failure,
+                'countdown_tick': self._audio_engine.play_countdown_tick,
+                'countdown_go': self._audio_engine.play_countdown_go,
+                'wheel_tick': self._audio_engine.play_wheel_tick,
+                'wheel_stop': self._audio_engine.play_wheel_stop,
+                'jackpot': self._audio_engine.play_jackpot,
+                'shutter': self._audio_engine.play_camera_shutter,
+                'print': self._audio_engine.play_print,
+                'quiz_correct': self._audio_engine.play_quiz_correct,
+                'quiz_wrong': self._audio_engine.play_quiz_wrong,
+                'roulette_spin': self._audio_engine.play_roulette_spin,
+                'startup': self._audio_engine.play_startup,
+                'transition': self._audio_engine.play_transition,
+            }
+
+            if name in sound_map:
+                sound_map[name]()
+            else:
+                # Try direct play for any other sound
+                self._audio_engine.play(name)
+        except Exception as e:
+            logger.debug(f"Sound play error: {e}")
+
+    def play_music(self, track_name: str) -> None:
+        """Play a music track (looping).
+
+        Args:
+            track_name: Name of the track (e.g., "idle", "menu", "fortune")
+        """
+        if self._audio_engine and self._audio_enabled:
+            try:
+                self._audio_engine.play_music(track_name)
+            except Exception as e:
+                logger.debug(f"Music play error: {e}")
+
+    def stop_music(self) -> None:
+        """Stop currently playing music."""
+        if self._audio_engine:
+            try:
+                self._audio_engine.stop_music()
+            except Exception:
+                pass
+
+    def start_idle_ambient(self) -> None:
+        """Start idle ambient music and sounds."""
+        if self._audio_engine and self._audio_enabled:
+            try:
+                self._audio_engine.start_idle_ambient()
+                self._audio_engine.play_music("idle")
+            except Exception as e:
+                logger.debug(f"Idle ambient error: {e}")
 
     def _init_pygame(self) -> bool:
         """Initialize pygame for event handling."""
@@ -481,9 +530,13 @@ class HardwareRunner:
         self._running = True
         logger.info("Hardware runner started")
 
-        # Play startup sound
+        # Play startup sound and start idle music
         if self._audio_engine:
             self._audio_engine.play_startup()
+            # Start idle ambient loop after a short delay for startup fanfare
+            import time
+            time.sleep(0.5)  # Let startup fanfare play briefly
+            self.start_idle_ambient()
 
         while self._running:
             # Handle events

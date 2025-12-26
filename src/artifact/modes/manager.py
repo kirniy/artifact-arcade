@@ -359,6 +359,11 @@ class ModeManager:
         self._selector_effect_timer = 0.0  # Cycle effect every 3 seconds
         self._bayer_matrix = self._create_bayer_matrix(4)  # 4x4 Bayer matrix
 
+        # Camera preview for modes that require camera
+        self._camera_preview_frame = None
+        self._camera_preview_update_timer = 0.0
+        self._camera_preview_update_interval = 200.0  # Update every 200ms (5fps)
+
         logger.info("ModeManager initialized")
 
     def _create_bayer_matrix(self, size: int) -> list:
@@ -407,6 +412,23 @@ class ModeManager:
                     self._selector_frame = frame
             except Exception:
                 pass
+
+    def _update_camera_preview(self) -> None:
+        """Update camera preview frame using shared camera service."""
+        try:
+            from artifact.utils.camera_service import camera_service
+            from artifact.simulator.mock_hardware.camera import floyd_steinberg_dither
+
+            # Get latest frame from shared camera service
+            frame = camera_service.get_frame(timeout=0.05)
+            if frame is not None:
+                # Apply dithering for stylized preview
+                self._camera_preview_frame = floyd_steinberg_dither(frame)
+            else:
+                self._camera_preview_frame = None
+        except Exception as e:
+            logger.debug(f"Failed to update camera preview: {e}")
+            self._camera_preview_frame = None
 
     def _setup_event_handlers(self) -> None:
         """Register event handlers."""
@@ -820,6 +842,15 @@ class ModeManager:
             if mode:
                 self._selector_effect = MODE_EFFECTS.get(mode.name, SelectorEffect.DITHER)
 
+                # Update camera preview if mode requires camera
+                self._camera_preview_update_timer += delta_ms
+                if self._camera_preview_update_timer >= self._camera_preview_update_interval:
+                    self._camera_preview_update_timer = 0.0
+                    if hasattr(mode.cls, 'requires_camera') and mode.cls.requires_camera:
+                        self._update_camera_preview()
+                    else:
+                        self._camera_preview_frame = None
+
             # Timeout back to idle
             if self._time_in_state - self._last_input_time > self._idle_timeout:
                 self._return_to_idle()
@@ -961,6 +992,11 @@ class ModeManager:
         else:
             # Fallback animated gradient if no camera
             self._render_fallback_gradient(buffer, t)
+
+        # === STEP 1.5: CAMERA PREVIEW FOR CAMERA-REQUIRING MODES ===
+        # If the selected mode requires camera, show a subtle preview
+        if self._camera_preview_frame is not None:
+            self._render_camera_preview_corner(buffer)
 
         mode = self.get_selected_mode()
         if not mode:

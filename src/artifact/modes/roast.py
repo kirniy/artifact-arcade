@@ -18,7 +18,8 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +126,10 @@ class RoastMeMode(BaseMode):
         self._scroll_duration = 0.0
         self._progress_tracker.reset()
 
-        self._camera = create_camera(resolution=(640, 480))
-        if self._camera.open():
-            logger.info("Camera opened for Roast")
+        # Use shared camera service (always running)
+        self._camera = camera_service.is_running
+        if self._camera:
+            logger.info("Camera service ready for Roast")
 
         fire = ParticlePresets.fire(x=64, y=120)
         fire.color = self._red
@@ -233,19 +235,21 @@ class RoastMeMode(BaseMode):
         self._camera_countdown = 3.0
 
     def _do_capture(self) -> None:
-        if self._camera and self._camera.is_open:
-            self._photo_data = self._camera.capture_jpeg(quality=90)
+        """Capture photo for AI analysis from shared camera service."""
+        self._photo_data = camera_service.capture_jpeg(quality=90)
+        if self._photo_data:
             self._flash_alpha = 1.0
             
     def _update_camera_preview(self) -> None:
-        if not self._camera: return
+        """Update camera preview from shared camera service."""
         try:
-             from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
-             frame = self._camera.capture_frame()
-             if frame is not None:
-                 dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
-                 self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
-        except Exception: pass
+            frame = camera_service.get_full_frame()
+            if frame is not None:
+                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
+                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                self._camera = True
+        except Exception:
+            pass
 
     def _start_processing(self) -> None:
         self._sub_phase = RoastPhase.PROCESSING
@@ -346,8 +350,11 @@ class RoastMeMode(BaseMode):
         self.change_phase(ModePhase.RESULT)
 
     def on_exit(self) -> None:
-        if self._camera: self._camera.close()
-        if self._ai_task: self._ai_task.cancel()
+        """Cleanup - don't stop shared camera service."""
+        self._camera = None
+        self._camera_frame = None
+        if self._ai_task:
+            self._ai_task.cancel()
         self._particles.clear_all()
 
     def _finish(self) -> None:

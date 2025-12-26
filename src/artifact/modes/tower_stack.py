@@ -18,6 +18,7 @@ from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect
 from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -191,14 +192,9 @@ class TowerStackMode(BaseMode):
         self._bonus_timer = 0.0
         self._bonus_blocks_placed = 0
 
-        # Camera background
+        # Camera background (uses shared camera service)
         self._camera_frame: Optional[NDArray] = None
-        try:
-            from artifact.utils.camera import create_camera
-            self._camera = create_camera(resolution=(128, 128))
-            self._camera.open()
-        except Exception:
-            self._camera = None
+        self._camera = camera_service.is_running
 
     def on_enter(self) -> None:
         self._time_ms = 0.0
@@ -284,11 +280,9 @@ class TowerStackMode(BaseMode):
         self.change_phase(ModePhase.ACTIVE)
 
     def on_exit(self) -> None:
-        if hasattr(self, "_camera") and self._camera:
-            try:
-                self._camera.close()
-            except Exception:
-                pass
+        """Cleanup - don't stop shared camera service."""
+        self._camera = None
+        self._camera_frame = None
 
     def on_input(self, event: Event) -> bool:
         if self.phase != ModePhase.ACTIVE:
@@ -615,22 +609,20 @@ class TowerStackMode(BaseMode):
             self.context.audio.play_success()
 
     def _update_camera(self) -> None:
-        if getattr(self, "_camera", None) and self._camera.is_open:
-            try:
-                frame = self._camera.capture_frame()
-                if frame is not None:
-                    if frame.shape[:2] != (128, 128):
-                        try:
-                            import cv2
-                            frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_LINEAR)
-                        except ImportError:
-                            from PIL import Image
-                            img = Image.fromarray(frame)
-                            img = img.resize((128, 128), Image.Resampling.BILINEAR)
-                            frame = np.array(img)
-                    self._camera_frame = frame
-            except Exception:
-                pass
+        """Update camera frame from shared camera service."""
+        frame = camera_service.get_frame(timeout=0)
+        if frame is not None:
+            if frame.shape[:2] != (128, 128):
+                try:
+                    import cv2
+                    frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_LINEAR)
+                except ImportError:
+                    from PIL import Image
+                    img = Image.fromarray(frame)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    frame = np.array(img)
+            self._camera_frame = frame
+            self._camera = True
 
     def _drop_block(self) -> None:
         """Drop the swinging block."""

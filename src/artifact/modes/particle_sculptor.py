@@ -23,6 +23,7 @@ from artifact.graphics.primitives import fill, draw_rect, draw_circle
 from artifact.graphics.fonts import load_font, draw_text_bitmap
 from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
 from artifact.graphics.algorithmic_art import hsv_to_rgb
+from artifact.utils.camera_service import camera_service
 
 
 class ForceType(Enum):
@@ -124,24 +125,15 @@ class ParticleSculptorMode(BaseMode):
         # Initialize trail buffer
         self._trail_buffer = np.zeros((128, 128, 3), dtype=np.uint8)
 
-        # Try to open camera
-        try:
-            from artifact.utils.camera import create_camera
-            self._camera = create_camera(resolution=(128, 128))
-            self._camera.open()
-        except Exception:
-            self._camera = None
+        # Use shared camera service (always running)
+        self._camera = camera_service.is_running
 
         self.change_phase(ModePhase.ACTIVE)
 
     def on_exit(self) -> None:
-        """Cleanup."""
-        if self._camera:
-            try:
-                self._camera.close()
-            except Exception:
-                pass
-            self._camera = None
+        """Cleanup - don't stop shared camera service."""
+        self._camera = None
+        self._camera_frame = None
 
     def on_input(self, event: Event) -> bool:
         """Handle user input."""
@@ -236,19 +228,16 @@ class ParticleSculptorMode(BaseMode):
                 self._time_in_phase = 0.0
 
     def _capture_camera(self):
-        """Capture frame from camera."""
-        if self._camera and self._camera.is_open:
-            try:
-                frame = self._camera.capture_frame()
-                if frame is not None:
-                    if frame.shape[:2] != (128, 128):
-                        from PIL import Image
-                        img = Image.fromarray(frame)
-                        img = img.resize((128, 128), Image.Resampling.BILINEAR)
-                        frame = np.array(img)
-                    self._camera_frame = frame
-            except Exception:
-                pass
+        """Capture frame from shared camera service."""
+        frame = camera_service.get_frame(timeout=0)
+        if frame is not None:
+            if frame.shape[:2] != (128, 128):
+                from PIL import Image
+                img = Image.fromarray(frame)
+                img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                frame = np.array(img)
+            self._camera_frame = frame
+            self._camera = True
 
     def _create_particles_from_face(self):
         """Create particles from camera frame."""

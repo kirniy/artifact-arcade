@@ -17,7 +17,8 @@ from artifact.animation.particles import ParticleSystem
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -113,9 +114,10 @@ class AutopsyMode(BaseMode):
         # Reset progress tracker
         self._progress_tracker.reset()
 
-        self._camera = create_camera(resolution=(640, 480))
-        if self._camera.open():
-            logger.info("Camera opened for Autopsy")
+        # Use shared camera service (always running)
+        self._camera = camera_service.is_running
+        if self._camera:
+            logger.info("Camera service ready for Autopsy")
 
         self.change_phase(ModePhase.INTRO)
 
@@ -205,20 +207,21 @@ class AutopsyMode(BaseMode):
         logger.info("Scanning started")
 
     def _do_capture(self) -> None:
-        if self._camera and self._camera.is_open:
-            self._photo_data = self._camera.capture_jpeg(quality=90)
+        """Capture photo for AI analysis from shared camera service."""
+        self._photo_data = camera_service.capture_jpeg(quality=90)
+        if self._photo_data:
             logger.info("Scan capture complete")
 
     def _update_camera_preview(self) -> None:
-        if not self._camera: return
+        """Update camera preview from shared camera service."""
         try:
-            from artifact.utils.camera import floyd_steinberg_dither
-            frame = self._camera.capture_frame()
+            frame = camera_service.get_full_frame()
             if frame is not None:
                 # Green tint for medical look? Handled in render usually
                 # Just use standard dither for now
                 dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
                 self._camera_frame = dithered
+                self._camera = True
         except Exception:
             pass
 
@@ -286,8 +289,11 @@ class AutopsyMode(BaseMode):
         self.change_phase(ModePhase.RESULT)
 
     def on_exit(self) -> None:
-        if self._camera: self._camera.close()
-        if self._ai_task: self._ai_task.cancel()
+        """Cleanup - don't stop shared camera service."""
+        self._camera = None
+        self._camera_frame = None
+        if self._ai_task:
+            self._ai_task.cancel()
 
     def _finish(self) -> None:
         result = ModeResult(

@@ -19,7 +19,8 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -414,10 +415,10 @@ class QuizMode(BaseMode):
         self._camera_countdown = 0.0
         self._progress_tracker.reset()
 
-        # Initialize camera
-        self._camera = create_camera(resolution=(640, 480))
-        if self._camera.open():
-            logger.info("Camera opened for Quiz mode")
+        # Use shared camera service (always running)
+        self._camera = camera_service.is_running
+        if self._camera:
+            logger.info("Camera service ready for Quiz mode")
 
         # Gold sparkle particles
         gold_sparkle = ParticlePresets.sparkle(x=64, y=64)
@@ -627,25 +628,20 @@ class QuizMode(BaseMode):
 
     def _do_camera_capture(self) -> None:
         """Capture the photo."""
-        if self._camera and self._camera.is_open:
-            self._photo_data = self._camera.capture_jpeg(quality=90)
-            if self._photo_data:
-                logger.info(f"Quiz photo captured: {len(self._photo_data)} bytes")
-            else:
-                logger.warning("Quiz photo capture failed")
+        self._photo_data = camera_service.capture_jpeg(quality=90)
+        if self._photo_data:
+            logger.info(f"Quiz photo captured: {len(self._photo_data)} bytes")
         else:
-            logger.warning("Camera not available for Quiz")
+            logger.warning("Quiz photo capture failed")
 
     def _update_camera_preview(self) -> None:
         """Update live camera preview."""
-        if not self._camera or not self._camera.is_open:
-            return
         try:
-            import numpy as np
-            frame = self._camera.capture_frame()
+            frame = camera_service.get_full_frame()
             if frame is not None and frame.size > 0:
                 dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
                 self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                self._camera = True
         except Exception as e:
             logger.warning(f"Quiz camera preview error: {e}")
 
@@ -690,10 +686,9 @@ class QuizMode(BaseMode):
         if self._ai_task and not self._ai_task.done():
             self._ai_task.cancel()
 
-        # Close camera
-        if self._camera:
-            self._camera.close()
-            self._camera = None
+        # Clear camera reference (shared service, don't close)
+        self._camera = None
+        self._camera_frame = None
 
         self._particles.clear_all()
         self.stop_animations()
@@ -905,20 +900,20 @@ class QuizMode(BaseMode):
             draw_centered_text(buffer, f"ДУМАЕМ{dots}", 118, self._gold, scale=1)
 
     def _render_result(self, buffer) -> None:
-        """Render final result with victory doodle."""
+        """Render final result with victory doodle - POLISHED with celebration effects."""
         from artifact.graphics.text_utils import draw_centered_text
-        from artifact.graphics.primitives import draw_rect
+        from artifact.graphics.primitives import draw_rect, draw_circle
+        import numpy as np
 
         if self._won_cocktail:
             # Winner! Show doodle or celebration alternating
             show_doodle = self._victory_doodle is not None and (int(self._time_in_phase / 5000) % 2 == 0)
 
             if show_doodle:
-                # Show victory doodle
+                # Show victory doodle with VECTORIZED rendering
                 try:
                     from PIL import Image
                     from io import BytesIO
-                    import numpy as np
 
                     img = Image.open(BytesIO(self._victory_doodle.image_data))
                     img = img.convert("RGB")
@@ -928,34 +923,40 @@ class QuizMode(BaseMode):
                     x_offset = (128 - display_size) // 2
                     y_offset = 5
 
-                    for y in range(display_size):
-                        for x in range(display_size):
-                            bx = x_offset + x
-                            by = y_offset + y
-                            if 0 <= bx < 128 and 0 <= by < 128:
-                                pixel = img.getpixel((x, y))
-                                buffer[by, bx] = pixel
+                    # VECTORIZED: Copy entire image array at once
+                    img_array = np.array(img, dtype=np.uint8)
+                    y_end = min(y_offset + display_size, 128)
+                    x_end = min(x_offset + display_size, 128)
+                    img_h = y_end - y_offset
+                    img_w = x_end - x_offset
+                    buffer[y_offset:y_end, x_offset:x_end] = img_array[:img_h, :img_w]
 
-                    # Gold border
-                    draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, self._gold, filled=False)
-                    draw_centered_text(buffer, "ТВОЙ ПРИЗ!", 112, self._gold, scale=1)
+                    # Animated pulsing gold border for extra celebration
+                    pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
+                    border_color = tuple(int(c * pulse) for c in self._gold)
+                    draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, border_color, filled=False)
+                    draw_rect(buffer, x_offset - 3, y_offset - 3, display_size + 6, display_size + 6, border_color, filled=False)
+
+                    # Pulsing victory text
+                    draw_centered_text(buffer, "ТВОЙ ПРИЗ!", 112, border_color, scale=1)
 
                 except Exception as e:
                     logger.warning(f"Failed to render victory doodle: {e}")
                     # Fallback to text
                     self._render_winner_text(buffer)
             else:
-                # Show winner text
+                # Show winner text with celebration
                 self._render_winner_text(buffer)
         else:
-            # Not enough correct answers
-            draw_centered_text(buffer, "ИГРА ОКОНЧЕНА", 15, self._wrong_red, scale=1)
+            # Not enough correct answers - show encouraging feedback
+            draw_centered_text(buffer, "ХОРОШАЯ ПОПЫТКА!", 15, self._silver, scale=1)
             draw_centered_text(buffer, f"{self._score}/{len(self._questions)}", 40, self._silver, scale=2)
             pct = int(self._score / len(self._questions) * 100)
             draw_centered_text(buffer, f"{pct}%", 65, (150, 150, 180), scale=2)
-            draw_centered_text(buffer, f"Нужно {FREE_COCKTAIL_THRESHOLD}+", 90, (120, 120, 140), scale=1)
+            draw_centered_text(buffer, f"Нужно {FREE_COCKTAIL_THRESHOLD}+ для приза", 90, (120, 120, 140), scale=1)
+            draw_centered_text(buffer, "Попробуй ещё!", 104, (100, 200, 100), scale=1)
 
-            # Press to continue
+            # Press to continue - blinking
             if int(self._time_in_phase / 500) % 2 == 0:
                 draw_centered_text(buffer, "НАЖМИ КНОПКУ", 115, (100, 100, 120), scale=1)
 

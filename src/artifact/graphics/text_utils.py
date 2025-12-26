@@ -1160,7 +1160,7 @@ def render_ticker_animated(
     time_ms: float,
     color: Tuple[int, int, int],
     effect: TickerEffect = TickerEffect.SCROLL,
-    speed: float = 0.02,
+    speed: float = 0.025,
     font: Optional[PixelFont] = None,
 ) -> None:
     """Render dramatically animated ticker text with SEAMLESS endless looping.
@@ -1172,17 +1172,15 @@ def render_ticker_animated(
     When the text reaches the end, it seamlessly wraps around with no gaps.
 
     SMOOTH SCROLLING TECHNIQUE:
-    - We use integer-based scroll position calculation to prevent jitter
-    - The scroll position is calculated as floor(time * speed) to ensure
-      it only ever increments, never jumps back due to rounding
-    - This is based on sub-pixel rendering research that shows integer
-      rounding during each frame causes visible jitter
+    - Integer-based scroll position prevents sub-pixel jitter
+    - Consistent rounding ensures smooth, steady movement
+    - Seamless looping with visual separator for continuous flow
 
     RECOMMENDED SPEED VALUES:
-    - 0.012: Very slow, leisurely reading pace
-    - 0.020: Default - smooth, comfortable reading (recommended)
-    - 0.030: Medium pace, still readable
-    - 0.045: Fast scrolling, harder to read
+    - 0.015: Very slow, leisurely reading pace
+    - 0.025: Default - smooth, comfortable reading (RECOMMENDED)
+    - 0.035: Medium pace, still readable
+    - 0.050: Fast scrolling, harder to read
 
     Args:
         buffer: Ticker buffer (48x8)
@@ -1190,33 +1188,27 @@ def render_ticker_animated(
         time_ms: Current time in ms
         color: Base RGB color
         effect: Animation effect
-        speed: Scroll speed in pixels per millisecond (default 0.02)
+        speed: Scroll speed in pixels per millisecond (default 0.025)
         font: Font (defaults to cyrillic)
     """
     if font is None:
         font = load_font("cyrillic")
 
-    # Create seamless looping text by adding separator and repeating
-    # The separator provides visual break between repetitions
+    # Create seamless looping text with visual separator
     separator = "   ★   "
     loop_text = text.rstrip() + separator
 
     # Measure the single loop unit width
     loop_w, _ = font.measure_text(loop_text)
 
-    # For seamless looping, we need the text to wrap cleanly
-    # Scroll range is exactly one loop unit width
-    scroll_range = loop_w if loop_w > 0 else 1
+    # Ensure minimum width for scrolling
+    scroll_range = max(loop_w, TICKER_WIDTH)
 
-    # SMOOTH SCROLLING FIX:
-    # Convert to integer scroll position FIRST, then apply modulo.
-    # This ensures the scroll only ever moves forward by whole pixels.
-    # Using math.floor ensures consistent rounding (always down).
+    # Smooth scrolling: integer-based position for crisp movement
     total_scroll = int(time_ms * speed)
     scroll = total_scroll % scroll_range
 
-    # Calculate base position as integer
-    # Text enters from right (TICKER_WIDTH) and moves left
+    # Text enters from right edge and scrolls left
     base_x = TICKER_WIDTH - scroll
 
     # Helper function to draw text at two positions for seamless wrap

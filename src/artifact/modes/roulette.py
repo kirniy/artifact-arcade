@@ -18,7 +18,8 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -280,10 +281,10 @@ class RouletteMode(BaseMode):
         # Reset progress tracker
         self._progress_tracker.reset()
 
-        # Initialize camera
-        self._camera = create_camera(resolution=(640, 480))
-        if self._camera.open():
-            logger.info("Camera opened for Roulette mode")
+        # Use shared camera service (always running)
+        self._camera = camera_service.is_running
+        if self._camera:
+            logger.info("Camera service ready for Roulette mode")
         else:
             logger.warning("Could not open camera, using placeholder")
 
@@ -522,27 +523,23 @@ class RouletteMode(BaseMode):
         if self._ai_task and not self._ai_task.done():
             self._ai_task.cancel()
 
-        # Close camera
-        if self._camera:
-            self._camera.close()
-            self._camera = None
+        # Reset camera state (don't close - using shared service)
+        self._camera = None
+        self._camera_frame = None
 
         self._particles.clear_all()
         self.stop_animations()
 
     def _update_camera_preview(self) -> None:
         """Update the live camera preview frame with dithering."""
-        if not self._camera or not self._camera.is_open:
-            return
-
         try:
-            frame = self._camera.capture_frame()
+            frame = camera_service.get_full_frame()
             if frame is not None and frame.size > 0:
                 dithered = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=120)
                 self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                self._camera = True
         except Exception as e:
             logger.warning(f"Camera preview update error: {e}")
-            self._camera_frame = None
 
     def _start_camera_capture(self) -> None:
         """Start the camera capture sequence."""
@@ -553,15 +550,11 @@ class RouletteMode(BaseMode):
 
     def _do_camera_capture(self) -> None:
         """Actually capture the photo from camera."""
-        if self._camera and self._camera.is_open:
-            self._photo_data = self._camera.capture_jpeg(quality=90)
-            if self._photo_data:
-                logger.info(f"Roulette captured winner photo: {len(self._photo_data)} bytes")
-            else:
-                logger.warning("Failed to capture photo in Roulette mode")
+        self._photo_data = camera_service.capture_jpeg(quality=90)
+        if self._photo_data:
+            logger.info(f"Roulette captured winner photo: {len(self._photo_data)} bytes")
         else:
-            logger.warning("Camera not available for Roulette capture")
-            self._photo_data = None
+            logger.warning("Failed to capture photo in Roulette mode")
 
     def _start_ai_generation(self) -> None:
         """Start AI processing for winner portrait."""

@@ -25,7 +25,8 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -249,10 +250,10 @@ class GuessMeMode(BaseMode):
         self._question_answered = False
         self._answer_display_time = 0.0
 
-        # Camera
-        self._camera = create_camera(resolution=(640, 480))
-        if self._camera.open():
-            logger.info("Camera opened for Guess Me")
+        # Use shared camera service (always running)
+        self._camera = camera_service.is_running
+        if self._camera:
+            logger.info("Camera service ready for Guess Me")
 
         # Particles
         confetti = ParticlePresets.confetti(x=64, y=64)
@@ -413,18 +414,22 @@ class GuessMeMode(BaseMode):
         self._camera_countdown = 3.0
 
     def _do_capture(self) -> None:
-        if self._camera and self._camera.is_open:
-            self._photo_data = self._camera.capture_jpeg(quality=90)
-            self._flash_alpha = 1.0
-            logger.info("Photo captured")
+        self._photo_data = camera_service.capture_jpeg(quality=90)
+        self._flash_alpha = 1.0
+        if self._photo_data:
+            logger.info(f"Photo captured: {len(self._photo_data)} bytes")
+        else:
+            logger.warning("Failed to capture photo")
 
     def _update_camera_preview(self) -> None:
-        if not self._camera:
-            return
-        frame = self._camera.capture_frame()
-        if frame is not None:
-            dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
-            self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+        try:
+            frame = camera_service.get_full_frame()
+            if frame is not None and frame.size > 0:
+                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
+                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                self._camera = True
+        except Exception as e:
+            logger.warning(f"Camera preview error: {e}")
 
     def _build_profile_string(self) -> str:
         """Build a profile string from base answers."""
@@ -654,9 +659,10 @@ class GuessMeMode(BaseMode):
             logger.error(f"Image generation error: {e}")
 
     def on_exit(self) -> None:
-        if self._camera:
-            self._camera.close()
-        if self._ai_task:
+        # Clear camera reference (shared service, don't close)
+        self._camera = None
+        self._camera_frame = None
+        if self._ai_task and not self._ai_task.done():
             self._ai_task.cancel()
         self._particles.clear_all()
 

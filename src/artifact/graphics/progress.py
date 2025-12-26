@@ -125,6 +125,8 @@ class SmartProgressTracker:
         self._particles: List[dict] = []
         self._pulse_phase = 0.0
         self._scan_position = 0.0
+        self._shimmer_offset = 0.0  # For progress bar shimmer effect
+        self._phase_transition_anim = 0.0  # Celebration animation on phase change
 
     def start(self) -> None:
         """Start progress tracking."""
@@ -162,6 +164,7 @@ class SmartProgressTracker:
             self._phase_progress = 0.0
             self._time_in_phase = 0.0
             self._message_index = 0
+            self._phase_transition_anim = 1.0  # Trigger celebration animation
 
             # Set target to the start of this phase
             phase_min, _ = PHASE_RANGES[phase]
@@ -197,8 +200,9 @@ class SmartProgressTracker:
         self._total_time += delta_ms
         self._time_in_phase += delta_ms
 
-        # Smooth progress interpolation
-        lerp_speed = 0.003 * delta_ms
+        # Smooth progress interpolation with easing
+        # Use faster interpolation for a more responsive feel
+        lerp_speed = 0.005 * delta_ms  # Increased from 0.003 for snappier response
         self._display_progress += (self._target_progress - self._display_progress) * lerp_speed
 
         # Auto-advance within phase (slow crawl to simulate work)
@@ -210,16 +214,21 @@ class SmartProgressTracker:
             auto_increment = delta_ms / 30000  # Very slow
             self._target_progress = min(max_auto, self._target_progress + auto_increment)
 
-        # Cycle through messages
+        # Cycle through messages with smooth fading
         self._message_change_time += delta_ms
-        if self._message_change_time > 2000:  # Change message every 2 seconds
+        if self._message_change_time > 2500:  # Increased to 2.5s for better readability
             messages = PHASE_MESSAGES.get(self._phase, ["..."])
             self._message_index = (self._message_index + 1) % len(messages)
             self._message_change_time = 0.0
 
         # Update animation state
-        self._pulse_phase += delta_ms / 200
-        self._scan_position = (self._scan_position + delta_ms / 10) % 128
+        self._pulse_phase += delta_ms / 250  # Slightly slower pulse for premium feel
+        self._scan_position = (self._scan_position + delta_ms / 12) % 128
+        self._shimmer_offset = (self._shimmer_offset + delta_ms / 20) % 200
+
+        # Decay phase transition animation
+        if self._phase_transition_anim > 0:
+            self._phase_transition_anim = max(0, self._phase_transition_anim - delta_ms / 500)
 
         # Update particles
         self._update_particles(delta_ms)

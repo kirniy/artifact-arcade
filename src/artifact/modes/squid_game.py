@@ -24,7 +24,8 @@ from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.ai.caricature import CaricatureService
 from artifact.audio.engine import get_audio_engine
-from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ class SquidGameMode(BaseMode):
         self._elimination_reason: str = ""
 
         # Motion detection - BALANCED FOR CAMERA TRACKING
-        self._camera: Optional[SimulatorCamera] = None
+        self._camera: bool = False
         self._reference_frame: Optional[np.ndarray] = None
         self._current_frame: Optional[np.ndarray] = None
         self._camera_preview: Optional[np.ndarray] = None
@@ -184,10 +185,10 @@ class SquidGameMode(BaseMode):
         self._sketch_cache = {}
         self._countdown_second = 3
 
-        # Initialize camera
-        self._camera = create_camera(resolution=(320, 240))
-        if self._camera.open():
-            logger.info("Camera opened for Squid Game mode")
+        # Use shared camera service (always running)
+        self._camera = camera_service.is_running()
+        if self._camera:
+            logger.info("Camera service ready for Squid Game mode")
         else:
             logger.warning("Could not open camera")
 
@@ -347,11 +348,8 @@ class SquidGameMode(BaseMode):
 
     def _do_photo_capture(self) -> None:
         """Capture the player photo for sketching/printing."""
-        if not self._camera:
-            return
-
         try:
-            photo = self._camera.capture_jpeg(quality=90)
+            photo = camera_service.capture_jpeg(quality=90)
             if photo:
                 self._player_photo = photo
                 self._photo_captured = True
@@ -370,11 +368,8 @@ class SquidGameMode(BaseMode):
 
     def _update_camera_frame(self) -> None:
         """Update camera frame for motion detection."""
-        if not self._camera or not self._camera.is_open:
-            return
-
         try:
-            frame = self._camera.capture_frame()
+            frame = camera_service.get_full_frame()
             if frame is not None and frame.size > 0:
                 # Convert to grayscale for motion detection
                 gray = np.mean(frame, axis=2).astype(np.uint8)
@@ -673,9 +668,8 @@ class SquidGameMode(BaseMode):
 
     def on_exit(self) -> None:
         """Cleanup."""
-        if self._camera:
-            self._camera.close()
-            self._camera = None
+        # Clear camera reference (shared service, don't close)
+        self._camera = False
         if self._sketch_task and not self._sketch_task.done():
             self._sketch_task.cancel()
         self._sketch_task = None

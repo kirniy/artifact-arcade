@@ -385,98 +385,107 @@ class ParticlePresets:
 
     @staticmethod
     def stars(x: float = 64, y: float = 64) -> EmitterConfig:
-        """Gentle floating stars effect."""
+        """Gentle floating stars with shimmer effect."""
         return EmitterConfig(
             x=x, y=y,
             width=128, height=128,
-            rate=5,
-            max_particles=50,
-            speed_min=5, speed_max=15,
+            rate=8,  # More frequent for richer sky
+            max_particles=60,
+            speed_min=3, speed_max=10,  # Slower, more graceful
             angle_min=0, angle_max=360,
             gravity=0,
-            size_min=1, size_max=3,
-            size_end_min=0, size_end_max=0,
-            color=(255, 255, 200),
-            color_end=(255, 200, 100),
-            alpha_start=0.0, alpha_end=0.0,
-            lifetime_min=2000, lifetime_max=4000,
+            friction=0.02,  # Slight drag for organic feel
+            size_min=1, size_max=4,  # Larger max for brighter stars
+            size_end_min=0, size_end_max=1,  # Gentle fade
+            color=(255, 255, 220),
+            color_end=(255, 240, 180),  # Warmer fade
+            color_variance=0.1,  # Subtle color variation
+            alpha_start=0.0, alpha_end=1.0,  # Fade in/out
+            lifetime_min=2500, lifetime_max=5000,  # Longer life
         )
 
     @staticmethod
     def sparkle(x: float = 64, y: float = 64) -> EmitterConfig:
-        """Quick sparkle burst effect."""
+        """Explosive sparkle burst with rainbow shimmer."""
         return EmitterConfig(
             x=x, y=y,
             rate=0,
-            burst=20,
-            max_particles=50,
-            speed_min=50, speed_max=150,
+            burst=30,  # More particles for dramatic effect
+            max_particles=60,
+            speed_min=40, speed_max=180,  # Wider speed range
             angle_min=0, angle_max=360,
-            gravity=50,
-            size_min=2, size_max=4,
-            size_end_min=0, size_end_max=0,
+            gravity=80,  # Stronger gravity for arc effect
+            friction=0.05,  # Air resistance
+            size_min=2, size_max=6,  # Larger particles
+            size_end_min=0, size_end_max=1,
             color=(255, 255, 255),
-            color_variance=0.2,
+            color_end=(255, 220, 100),  # Fade to golden
+            color_variance=0.3,  # More color variation
             alpha_start=1.0, alpha_end=0.0,
-            lifetime_min=300, lifetime_max=600,
+            lifetime_min=400, lifetime_max=800,  # Slightly longer
+            rotation_speed_min=-360, rotation_speed_max=360,  # Spin for dynamism
         )
 
     @staticmethod
     def mist(x: float = 64, y: float = 64) -> EmitterConfig:
-        """Slow mist/fog effect."""
+        """Ethereal rising mist with depth variation."""
         return EmitterConfig(
             x=x, y=y,
-            width=128, height=20,
-            rate=2,
-            max_particles=30,
-            speed_min=5, speed_max=15,
+            width=128, height=15,
+            rate=3,  # Slightly more frequent
+            max_particles=40,  # Denser fog
+            speed_min=8, speed_max=18,
             angle_min=250, angle_max=290,
-            gravity=-5,
-            size_min=10, size_max=20,
-            size_end_min=20, size_end_max=30,
-            color=(100, 100, 150),
-            alpha_start=0.3, alpha_end=0.0,
-            lifetime_min=3000, lifetime_max=5000,
+            gravity=-8,  # More buoyant
+            friction=0.01,  # Gentle drag
+            size_min=12, size_max=24,  # Larger wisps
+            size_end_min=24, size_end_max=36,  # Expand as rising
+            color=(110, 100, 160),  # Slightly more visible
+            color_variance=0.15,  # Depth variation
+            alpha_start=0.4, alpha_end=0.0,  # Stronger initial presence
+            lifetime_min=3500, lifetime_max=6000,  # Longer drift
         )
 
     @staticmethod
     def confetti(x: float = 64, y: float = 0) -> EmitterConfig:
-        """Colorful falling confetti."""
+        """Vibrant celebration confetti with realistic physics."""
         return EmitterConfig(
             x=x, y=y,
-            width=128, height=10,
-            rate=15,
-            max_particles=100,
-            speed_min=30, speed_max=80,
-            angle_min=70, angle_max=110,
-            gravity=100,
-            friction=0.1,
-            size_min=3, size_max=5,
-            size_end_min=3, size_end_max=5,
-            color=(255, 100, 150),
-            color_variance=0.5,
-            alpha_start=1.0, alpha_end=1.0,
-            lifetime_min=2000, lifetime_max=3000,
-            rotation_speed_min=-180, rotation_speed_max=180,
+            width=140, height=8,  # Wider spawn area
+            rate=20,  # More intense
+            max_particles=120,
+            speed_min=40, speed_max=100,
+            angle_min=65, angle_max=115,  # Wider spray
+            gravity=120,  # More realistic fall
+            friction=0.15,  # Air resistance
+            size_min=3, size_max=6,  # Larger pieces
+            size_end_min=3, size_end_max=6,  # Maintain size
+            color=(255, 120, 180),
+            color_variance=0.7,  # Maximum color diversity
+            alpha_start=1.0, alpha_end=0.8,  # Slight fade
+            lifetime_min=2500, lifetime_max=4000,  # Longer celebration
+            rotation_speed_min=-240, rotation_speed_max=240,  # Faster spin
         )
 
     @staticmethod
     def magic(x: float = 64, y: float = 64) -> EmitterConfig:
-        """Magical trailing particles."""
+        """Mystical glowing magic particles with spiral motion."""
         return EmitterConfig(
             x=x, y=y,
-            rate=20,
-            max_particles=40,
-            speed_min=10, speed_max=30,
+            rate=25,  # More frequent for richer effect
+            max_particles=50,
+            speed_min=15, speed_max=40,
             angle_min=0, angle_max=360,
             gravity=0,
-            friction=0.05,
-            size_min=2, size_max=4,
-            size_end_min=0, size_end_max=0,
-            color=(150, 100, 255),
-            color_end=(255, 150, 200),
+            friction=0.08,  # More drag for swirling effect
+            size_min=2, size_max=5,  # Larger glow
+            size_end_min=0, size_end_max=1,
+            color=(180, 120, 255),  # Brighter purple
+            color_end=(255, 180, 220),  # Softer pink
+            color_variance=0.2,  # Subtle shimmer
             alpha_start=1.0, alpha_end=0.0,
-            lifetime_min=500, lifetime_max=1000,
+            lifetime_min=600, lifetime_max=1200,  # Longer trails
+            rotation_speed_min=-90, rotation_speed_max=90,  # Gentle rotation
         )
 
     @staticmethod
