@@ -16,6 +16,8 @@ import subprocess
 import random
 import io
 import json
+import uuid
+from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
 
@@ -29,6 +31,12 @@ from artifact.graphics.text_utils import draw_centered_text
 from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
+
+# Selectel S3 configuration for reliable photo uploads
+SELECTEL_ENDPOINT = "https://s3.ru-7.storage.selcloud.ru"
+SELECTEL_BUCKET = "vnvnc"
+SELECTEL_PREFIX = "artifact"
+SELECTEL_PUBLIC_URL = "https://e6aaa51f-863a-439e-9b6e-69991ff0ad6e.selstorage.ru"
 
 # Try importing QR code library
 try:
@@ -200,59 +208,43 @@ class PhotoboothMode(BaseMode):
             self._state.is_uploading = False
 
     def _do_upload(self) -> None:
-        """Background upload - creates QR code on success."""
+        """Background upload to Selectel S3 - creates QR code on success."""
         try:
-            logger.info(f"Uploading photo to file.io: {self._state.photo_path}")
+            # Generate unique filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = uuid.uuid4().hex[:8]
+            filename = f"photo_{timestamp}_{unique_id}.jpg"
+            s3_key = f"{SELECTEL_PREFIX}/{filename}"
 
-            # Try file.io first with verbose curl for debugging
+            logger.info(f"Uploading photo to Selectel S3: {s3_key}")
+
+            # Upload using AWS CLI with selectel profile
             result = subprocess.run(
-                ['curl', '-s', '-S', '--max-time', '25',
-                 '-H', 'Accept: application/json',
-                 '-F', f'file=@{self._state.photo_path}',
-                 'https://file.io/?expires=1d'],
+                ['aws', '--endpoint-url', SELECTEL_ENDPOINT,
+                 '--profile', 'selectel',
+                 's3', 'cp', self._state.photo_path,
+                 f's3://{SELECTEL_BUCKET}/{s3_key}',
+                 '--acl', 'public-read'],
                 capture_output=True,
                 timeout=30
             )
 
-            logger.debug(f"curl returncode: {result.returncode}")
             stdout = result.stdout.decode() if result.stdout else ""
             stderr = result.stderr.decode() if result.stderr else ""
-            logger.debug(f"curl stdout ({len(stdout)} chars): {stdout[:500]}")
+            logger.debug(f"aws s3 returncode: {result.returncode}")
+            if stdout:
+                logger.debug(f"aws s3 stdout: {stdout[:200]}")
             if stderr:
-                logger.debug(f"curl stderr: {stderr[:200]}")
+                logger.debug(f"aws s3 stderr: {stderr[:200]}")
 
-            url = None
-            if result.returncode == 0 and stdout.strip():
-                try:
-                    response = json.loads(stdout)
-                    logger.info(f"file.io response: success={response.get('success')}, link={response.get('link')}")
-                    if response.get('success'):
-                        url = response.get('link')
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse file.io response: {e}")
-
-            # Fallback to 0x0.st if file.io failed
-            if not url:
-                logger.info("file.io failed, trying 0x0.st fallback...")
-                result2 = subprocess.run(
-                    ['curl', '-s', '-S', '--max-time', '25',
-                     '-F', f'file=@{self._state.photo_path}',
-                     'https://0x0.st'],
-                    capture_output=True,
-                    timeout=30
-                )
-                stdout2 = result2.stdout.decode().strip() if result2.stdout else ""
-                logger.debug(f"0x0.st response: {stdout2}")
-                if result2.returncode == 0 and stdout2.startswith('http'):
-                    url = stdout2
-                    logger.info(f"0x0.st upload successful: {url}")
-
-            if url:
+            if result.returncode == 0:
+                # Construct public URL
+                url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
                 self._state.qr_url = url
-                logger.info(f"Upload successful! URL: {url}")
+                logger.info(f"Selectel S3 upload successful! URL: {url}")
                 self._generate_qr_image(url)
             else:
-                logger.error("All upload services failed")
+                logger.error(f"Selectel S3 upload failed: {stderr}")
 
         except subprocess.TimeoutExpired:
             logger.error("Upload timed out after 30 seconds")
