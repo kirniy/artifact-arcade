@@ -26,7 +26,7 @@ from numpy.typing import NDArray
 
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
-from artifact.graphics.primitives import fill, draw_rect, draw_circle
+from artifact.graphics.primitives import fill, draw_rect, draw_circle, draw_line
 from artifact.graphics.text_utils import draw_centered_text
 from artifact.utils.camera_service import camera_service
 
@@ -44,13 +44,13 @@ GESTURES = {
 
 # Gesture display names for LCD
 GESTURE_NAMES = {
-    'upward_palm': 'PALM UP',
-    'thumbs_up': 'THUMBS UP',
-    'victory': 'VICTORY',
-    'left_pointing': 'POINT LEFT',
-    'right_pointing': 'POINT RIGHT',
-    'upward_pointing': 'POINT UP',
-    'downward_pointing': 'POINT DOWN',
+    'upward_palm': 'ЛАДОНЬ ВВЕРХ',
+    'thumbs_up': 'БОЛЬШОЙ ВВЕРХ',
+    'victory': 'ПОБЕДА',
+    'left_pointing': 'ПАЛЕЦ ВЛЕВО',
+    'right_pointing': 'ПАЛЕЦ ВПРАВО',
+    'upward_pointing': 'ПАЛЕЦ ВВЕРХ',
+    'downward_pointing': 'ПАЛЕЦ ВНИЗ',
 }
 
 
@@ -397,8 +397,8 @@ class GestureGameMode(BaseMode):
                 "total": len(self._state.gesture_sequence),
                 "time": round(elapsed, 1),
             },
-            display_text=f"СЧЁТ: {self._state.score}/{len(self._state.gesture_sequence)}",
-            ticker_text=f"GESTE {self._state.score}",
+            display_text=f"СЧЕТ: {self._state.score}/{len(self._state.gesture_sequence)}",
+            ticker_text="ЖЕСТЫ",
         )
         self.complete(result)
 
@@ -425,31 +425,150 @@ class GestureGameMode(BaseMode):
         remaining = max(0, self._state.time_limit - elapsed)
 
         # Score display
-        score_text = f"SCORE {self._state.score}/{len(self._state.gesture_sequence)}"
+        score_text = f"СЧЕТ {self._state.score}/{len(self._state.gesture_sequence)}"
         draw_centered_text(buffer, score_text, 2, (200, 200, 200), scale=1)
 
         # Timer
-        time_text = f"TIME {int(remaining)}s"
+        time_text = f"ВРЕМЯ {int(remaining)}"
         draw_centered_text(buffer, time_text, 12, (255, 200, 100), scale=1)
 
         # Current gesture to match
         if self._state.current_index < len(self._state.gesture_sequence):
             current_gesture = self._state.gesture_sequence[self._state.current_index]
-            gesture_name = GESTURE_NAMES.get(current_gesture, current_gesture.upper())
-
-            # Show gesture name
-            draw_centered_text(buffer, gesture_name, 50, (255, 255, 255), scale=1)
+            self._draw_gesture_icon(buffer, current_gesture, 64, 60)
 
             # Progress indicator - adapted from HandGesture.py emoji sequence
             progress = self._state.detection_hold / self._state.detection_confirm
             if progress > 0:
                 # Show detection progress bar
                 bar_width = int(80 * min(1.0, progress))
-                draw_rect(buffer, 24, 70, bar_width, 6, (100, 255, 100), filled=True)
-                draw_rect(buffer, 24, 70, 80, 6, (100, 100, 100), filled=False)
+                draw_rect(buffer, 24, 90, bar_width, 6, (100, 255, 100), filled=True)
+                draw_rect(buffer, 24, 90, 80, 6, (100, 100, 100), filled=False)
 
         # Gesture progress indicator (dots at bottom)
         self._render_progress_dots(buffer)
+
+    def _draw_gesture_icon(self, buffer: NDArray[np.uint8], gesture: str, cx: int, cy: int) -> None:
+        color = (255, 255, 255)
+        shadow = (0, 0, 0)
+        size = 36
+        self._draw_gesture_shape(buffer, gesture, cx + 2, cy + 2, size, shadow)
+        self._draw_gesture_shape(buffer, gesture, cx, cy, size, color)
+
+    def _draw_gesture_shape(
+        self,
+        buffer: NDArray[np.uint8],
+        gesture: str,
+        cx: int,
+        cy: int,
+        size: int,
+        color: tuple,
+    ) -> None:
+        arrow_map = {
+            "left_pointing": "left",
+            "right_pointing": "right",
+            "upward_pointing": "up",
+            "downward_pointing": "down",
+        }
+
+        direction = arrow_map.get(gesture)
+        if direction:
+            self._draw_arrow_icon(buffer, cx, cy, direction, size, color)
+        elif gesture == "victory":
+            self._draw_victory_icon(buffer, cx, cy, size, color)
+        elif gesture == "thumbs_up":
+            self._draw_thumbs_up_icon(buffer, cx, cy, size, color)
+        elif gesture == "upward_palm":
+            self._draw_palm_icon(buffer, cx, cy, size, color)
+        else:
+            draw_circle(buffer, cx, cy, max(8, size // 4), color, filled=False)
+
+    def _draw_arrow_icon(
+        self,
+        buffer: NDArray[np.uint8],
+        cx: int,
+        cy: int,
+        direction: str,
+        size: int,
+        color: tuple,
+    ) -> None:
+        half = size // 2
+        head = max(6, size // 3)
+        thickness = 3
+
+        if direction == "left":
+            draw_line(buffer, cx + half, cy, cx - half, cy, color, thickness=thickness)
+            draw_line(buffer, cx - half, cy, cx - half + head, cy - head, color, thickness=thickness)
+            draw_line(buffer, cx - half, cy, cx - half + head, cy + head, color, thickness=thickness)
+        elif direction == "right":
+            draw_line(buffer, cx - half, cy, cx + half, cy, color, thickness=thickness)
+            draw_line(buffer, cx + half, cy, cx + half - head, cy - head, color, thickness=thickness)
+            draw_line(buffer, cx + half, cy, cx + half - head, cy + head, color, thickness=thickness)
+        elif direction == "up":
+            draw_line(buffer, cx, cy + half, cx, cy - half, color, thickness=thickness)
+            draw_line(buffer, cx, cy - half, cx - head, cy - half + head, color, thickness=thickness)
+            draw_line(buffer, cx, cy - half, cx + head, cy - half + head, color, thickness=thickness)
+        elif direction == "down":
+            draw_line(buffer, cx, cy - half, cx, cy + half, color, thickness=thickness)
+            draw_line(buffer, cx, cy + half, cx - head, cy + half - head, color, thickness=thickness)
+            draw_line(buffer, cx, cy + half, cx + head, cy + half - head, color, thickness=thickness)
+
+    def _draw_victory_icon(
+        self,
+        buffer: NDArray[np.uint8],
+        cx: int,
+        cy: int,
+        size: int,
+        color: tuple,
+    ) -> None:
+        half = size // 2
+        thickness = 3
+        draw_line(buffer, cx - half, cy - half, cx, cy + half, color, thickness=thickness)
+        draw_line(buffer, cx + half, cy - half, cx, cy + half, color, thickness=thickness)
+
+    def _draw_thumbs_up_icon(
+        self,
+        buffer: NDArray[np.uint8],
+        cx: int,
+        cy: int,
+        size: int,
+        color: tuple,
+    ) -> None:
+        palm_w = max(16, size // 2)
+        palm_h = max(14, size // 2)
+        palm_x = cx - palm_w // 2
+        palm_y = cy - palm_h // 2 + 8
+        draw_rect(buffer, palm_x, palm_y, palm_w, palm_h, color, filled=True)
+
+        thumb_w = max(6, palm_w // 3)
+        thumb_h = palm_h + 4
+        thumb_x = palm_x + palm_w - thumb_w
+        thumb_y = palm_y - thumb_h + 4
+        draw_rect(buffer, thumb_x, thumb_y, thumb_w, thumb_h, color, filled=True)
+
+    def _draw_palm_icon(
+        self,
+        buffer: NDArray[np.uint8],
+        cx: int,
+        cy: int,
+        size: int,
+        color: tuple,
+    ) -> None:
+        palm_w = size
+        palm_h = max(14, size // 2)
+        palm_x = cx - palm_w // 2
+        palm_y = cy - palm_h // 2 + 6
+        draw_rect(buffer, palm_x, palm_y, palm_w, palm_h, color, filled=True)
+
+        finger_w = max(3, palm_w // 6)
+        spacing = max(2, finger_w - 1)
+        total_w = finger_w * 5 + spacing * 4
+        finger_h = max(10, palm_h)
+        finger_y = palm_y - finger_h + 2
+        start_x = cx - total_w // 2
+        for i in range(5):
+            fx = start_x + i * (finger_w + spacing)
+            draw_rect(buffer, fx, finger_y, finger_w, finger_h, color, filled=True)
 
     def _render_progress_dots(self, buffer: NDArray[np.uint8]) -> None:
         """Render progress dots at bottom."""
@@ -477,44 +596,44 @@ class GestureGameMode(BaseMode):
         fill(buffer, (10, 10, 20))
 
         # Title
-        draw_centered_text(buffer, "GAME OVER", 20, (255, 100, 100), scale=2)
+        draw_centered_text(buffer, "КОНЕЦ", 20, (255, 100, 100), scale=2)
 
         # Score
-        score_text = f"SCORE: {self._state.score}/{len(self._state.gesture_sequence)}"
+        score_text = f"СЧЕТ: {self._state.score}/{len(self._state.gesture_sequence)}"
         draw_centered_text(buffer, score_text, 55, (200, 200, 200), scale=1)
 
         # Time
         elapsed = time.time() - self._state.start_time
-        time_text = f"TIME: {int(elapsed)}s"
+        time_text = f"ВРЕМЯ: {int(elapsed)}"
         draw_centered_text(buffer, time_text, 70, (150, 150, 150), scale=1)
 
         # Win/lose message
         if self._state.score == len(self._state.gesture_sequence):
-            draw_centered_text(buffer, "PERFECT!", 90, (100, 255, 100), scale=1)
+            draw_centered_text(buffer, "ОТЛИЧНО!", 90, (100, 255, 100), scale=1)
         else:
-            draw_centered_text(buffer, "TRY AGAIN", 90, (255, 150, 100), scale=1)
+            draw_centered_text(buffer, "ЕЩЕ РАЗ", 90, (255, 150, 100), scale=1)
 
-        draw_centered_text(buffer, "PRESS BTN", 110, (150, 150, 150), scale=1)
+        draw_centered_text(buffer, "НАЖМИ", 110, (150, 150, 150), scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render ticker display."""
         fill(buffer, (0, 0, 0))
 
         if self._state.game_over:
-            text = f"SCR {self._state.score}"
+            text = f"СЧ {self._state.score}"
         else:
             elapsed = time.time() - self._state.start_time
             remaining = max(0, self._state.time_limit - elapsed)
-            text = f" {int(remaining):02d}s"
+            text = f" {int(remaining):02d}С"
 
         draw_centered_text(buffer, text, 1, (255, 200, 100), scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
         if self._state.game_over:
-            return f"SCORE: {self._state.score:02d}   "[:16]
+            return f"СЧЕТ: {self._state.score:02d}   "[:16]
         elif self._state.current_index < len(self._state.gesture_sequence):
             gesture = self._state.gesture_sequence[self._state.current_index]
             name = GESTURE_NAMES.get(gesture, gesture[:10])
             return name.center(16)[:16]
-        return "   GESTURES   "[:16]
+        return "    ЖЕСТЫ    "[:16]

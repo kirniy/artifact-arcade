@@ -40,6 +40,7 @@ class PhotoboothState:
     countdown: int = 3
     countdown_timer: float = 0.0
     photo_bytes: Optional[bytes] = None
+    photo_frame: Optional[NDArray[np.uint8]] = None
     photo_path: Optional[str] = None
     qr_url: Optional[str] = None
     qr_image: Optional[NDArray[np.uint8]] = None
@@ -146,6 +147,7 @@ class PhotoboothMode(BaseMode):
         jpeg_bytes = camera_service.capture_jpeg(quality=90)
         if jpeg_bytes:
             self._state.photo_bytes = jpeg_bytes
+            self._state.photo_frame = self._decode_photo_frame(jpeg_bytes)
 
             # Save to temp file for printing
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
@@ -158,6 +160,19 @@ class PhotoboothMode(BaseMode):
         self.change_phase(ModePhase.RESULT)
         self._state.show_result = True
         self._state.countdown_timer = self.RESULT_DURATION
+
+    def _decode_photo_frame(self, jpeg_bytes: bytes) -> Optional[NDArray[np.uint8]]:
+        """Decode captured JPEG into a 128x128 RGB frame for preview."""
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(jpeg_bytes))
+            img = img.convert("RGB")
+            if img.size != (128, 128):
+                resample = getattr(Image, "Resampling", Image).BILINEAR
+                img = img.resize((128, 128), resample=resample)
+            return np.array(img, dtype=np.uint8)
+        except Exception:
+            return None
 
     def _upload_photo_async(self) -> None:
         """Upload photo for QR sharing - inspired by momentobooth ffsend."""
@@ -307,31 +322,41 @@ class PhotoboothMode(BaseMode):
 
     def _render_result(self, buffer: NDArray[np.uint8]) -> None:
         """Render result screen with QR code."""
-        fill(buffer, (10, 10, 20))
+        if self._state.photo_frame is not None:
+            np.copyto(buffer, self._state.photo_frame)
+        else:
+            frame = camera_service.get_frame(timeout=0)
+            if frame is not None and frame.shape[:2] == (128, 128):
+                np.copyto(buffer, frame)
+            else:
+                fill(buffer, (10, 10, 20))
 
-        # Title
-        draw_centered_text(buffer, "ГОТОВО!", 5, (100, 255, 100), scale=2)
+        overlay = buffer.copy()
+        buffer[:18, :, :] = (overlay[:18, :, :].astype(np.float32) * 0.4).astype(np.uint8)
+        buffer[-14:, :, :] = (overlay[-14:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
 
-        # QR code if available
+        if self._state.qr_image is not None:
+            status_text = "СКАН QR"
+        elif self._state.is_uploading:
+            status_text = "ЗАГРУЗКА..."
+        else:
+            status_text = "QR НЕ ГОТОВ"
+
+        draw_centered_text(buffer, status_text, 4, (220, 220, 220), scale=1)
+
         if self._state.qr_image is not None:
             qr_h, qr_w = self._state.qr_image.shape[:2]
-            x_offset = (128 - qr_w) // 2
-            y_offset = 30
+            x_offset = max(4, 128 - qr_w - 4)
+            y_offset = max(20, 128 - qr_h - 18)
+            draw_rect(buffer, x_offset - 2, y_offset - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
             buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._state.qr_image
-            draw_centered_text(buffer, "СКАН QR", 95, (150, 150, 255), scale=1)
-        elif self._state.is_uploading:
-            draw_centered_text(buffer, "ЗАГРУЗКА...", 60, (200, 200, 200), scale=1)
-        else:
-            # Show photo preview if no QR
-            if self._state.photo_bytes:
-                draw_centered_text(buffer, "ПЕЧАТЬ...", 60, (200, 200, 200), scale=1)
 
         # Progress bar for auto-exit
         remaining = max(0, self._state.countdown_timer / self.RESULT_DURATION)
         bar_width = int(100 * remaining)
         draw_rect(buffer, 14, 118, bar_width, 4, (80, 80, 80), filled=True)
 
-        draw_centered_text(buffer, "ЕЩЕ РАЗ?", 108, (150, 150, 150), scale=1)
+        draw_centered_text(buffer, "ЕЩЕ РАЗ?", 108, (180, 180, 180), scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render ticker display."""
@@ -342,15 +367,15 @@ class PhotoboothMode(BaseMode):
             text = f"   {self._state.countdown}   "
             draw_centered_text(buffer, text, 1, (255, 255, 0), scale=1)
         elif self._state.show_result:
-            draw_centered_text(buffer, "FOTO", 1, (100, 255, 100), scale=1)
+            draw_centered_text(buffer, "ФОТО", 1, (100, 255, 100), scale=1)
         else:
-            draw_centered_text(buffer, "FOTO", 1, (255, 150, 50), scale=1)
+            draw_centered_text(buffer, "ФОТО", 1, (255, 150, 50), scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            return f"   COUNTDOWN: {self._state.countdown}  "[:16]
+            return f" ОТСЧЕТ: {self._state.countdown} "[:16].ljust(16)
         elif self._state.show_result:
-            return "   GOTOVO!   "[:16]
+            return "    ГОТОВО    "[:16]
         else:
-            return "   FOTOBOOTH   "[:16]
+            return "   ФОТОБУДКА   "[:16]

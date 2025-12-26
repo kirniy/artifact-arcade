@@ -102,10 +102,10 @@ class TowerStackMode(BaseMode):
     """Classic tower stacking with proper physics and addictive mechanics."""
 
     name = "tower_stack"
-    display_name = "TOWER"
+    display_name = "БАШНЯ"
     icon = "tower"
     style = "arcade"
-    description = "Stack the tower as high as you can"
+    description = "Собери башню как можно выше"
     requires_camera = True
 
     # Constants
@@ -941,8 +941,8 @@ class TowerStackMode(BaseMode):
                 w = int(self._current_width)
                 self._draw_block(buffer, swing_x, swing_y, w, self.BLOCK_HEIGHT, (230, 210, 120), outline=True)
 
-        score_text = f"SCORE {self._score}"
-        lives_text = f"LIVES {self._lives}"
+        score_text = f"СЧЕТ {self._score}"
+        lives_text = f"ЖИЗНИ {self._lives}"
         lives_w, _ = measure_text(lives_text, scale=1)
 
         draw_rect(buffer, 0, 0, 64, 9, (0, 0, 0))
@@ -954,13 +954,13 @@ class TowerStackMode(BaseMode):
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         fill(buffer, (0, 0, 0))
-        text = f"S{self._score % 1000:03d} L{self._lives}"
+        text = f"С{self._score % 1000:03d} Ж{self._lives}"
         text_w, _ = measure_text(text, scale=1)
         x = max(0, (48 - text_w) // 2)
         draw_text(buffer, text, x, 0, (200, 200, 200), scale=1)
 
     def get_lcd_text(self) -> str:
-        text = f"TOWER S{self._score:03d} L{self._lives}"
+        text = f"БАШНЯ С{self._score:03d} Ж{self._lives}"
         return text.center(16)[:16]
 
     def _complete(self) -> None:
@@ -972,9 +972,9 @@ class TowerStackMode(BaseMode):
                 "height": self._best_height,
                 "max_streak": self._max_streak,
             },
-            display_text=f"SCORE {self._score}",
-            ticker_text="TOWER",
-            lcd_text=f"SCORE {self._score}",
+            display_text=f"СЧЕТ {self._score}",
+            ticker_text="БАШНЯ",
+            lcd_text=f"СЧЕТ {self._score}",
             should_print=False,
         )
         self.complete(result)
