@@ -119,10 +119,16 @@ class WS2812BDisplay(Display):
             # Initialize the strip
             self._strip.begin()
 
-            # Clear all LEDs
-            for i in range(self._led_count):
-                self._strip.setPixelColor(i, 0)
-            self._strip.show()
+            # Try to clear all LEDs - this may fail if hardware not connected
+            try:
+                for i in range(self._led_count):
+                    self._strip.setPixelColor(i, 0)
+                self._strip.show()
+            except Exception as clear_err:
+                logger.warning(f"WS2812B clear failed (hardware not connected?): {clear_err}")
+                # Hardware likely not connected - return False
+                self._strip = None
+                return False
 
             self._initialized = True
             logger.info(
@@ -133,6 +139,7 @@ class WS2812BDisplay(Display):
 
         except Exception as e:
             logger.error(f"Failed to initialize WS2812B: {e}")
+            self._strip = None
             return False
 
     def _xy_to_index(self, x: int, y: int) -> int:
@@ -153,7 +160,8 @@ class WS2812BDisplay(Display):
     def _rgb_to_color(self, r: int, g: int, b: int) -> int:
         """Convert RGB to 24-bit color value (GRB order for WS2812B)."""
         # WS2812B uses GRB order
-        return (g << 16) | (r << 8) | b
+        # Cast to int to avoid numpy type issues with C extension
+        return (int(g) << 16) | (int(r) << 8) | int(b)
 
     def set_pixel(self, x: int, y: int, r: int, g: int, b: int) -> None:
         """Set a single pixel color."""
@@ -178,16 +186,22 @@ class WS2812BDisplay(Display):
         if not self._initialized or self._strip is None:
             return
 
-        # Transfer buffer to LED strip
-        for y in range(self._height):
-            for x in range(self._width):
-                idx = self._xy_to_index(x, y)
-                r, g, b = self._buffer[y, x]
-                color = self._rgb_to_color(r, g, b)
-                self._strip.setPixelColor(idx, color)
+        try:
+            # Transfer buffer to LED strip
+            for y in range(self._height):
+                for x in range(self._width):
+                    idx = self._xy_to_index(x, y)
+                    r, g, b = self._buffer[y, x]
+                    color = self._rgb_to_color(r, g, b)
+                    self._strip.setPixelColor(idx, color)
 
-        # Update physical LEDs
-        self._strip.show()
+            # Update physical LEDs
+            self._strip.show()
+        except Exception as e:
+            # Hardware might not be connected - disable further attempts
+            logger.warning(f"WS2812B show() failed (hardware not connected?): {e}")
+            self._initialized = False
+            self._strip = None
 
     def get_buffer(self) -> NDArray[np.uint8]:
         """Get copy of current display buffer."""
@@ -207,12 +221,17 @@ class WS2812BDisplay(Display):
     def cleanup(self) -> None:
         """Clean up and turn off all LEDs."""
         if self._initialized and self._strip:
-            # Turn off all LEDs
-            for i in range(self._led_count):
-                self._strip.setPixelColor(i, 0)
-            self._strip.show()
-            self._initialized = False
-            logger.info("WS2812B cleaned up")
+            try:
+                # Turn off all LEDs
+                for i in range(self._led_count):
+                    self._strip.setPixelColor(i, 0)
+                self._strip.show()
+                logger.info("WS2812B cleaned up")
+            except Exception as e:
+                logger.warning(f"WS2812B cleanup failed: {e}")
+            finally:
+                self._initialized = False
+                self._strip = None
 
     def __del__(self):
         self.cleanup()
