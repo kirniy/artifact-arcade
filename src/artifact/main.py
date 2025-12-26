@@ -127,6 +127,23 @@ async def run_hardware() -> None:
         logger.error("Hardware initialization failed")
         return
 
+    # Wire up global sound effects for all button events
+    def on_button_press(event: Event) -> None:
+        runner.play_sound('confirm')
+
+    def on_navigation(event: Event) -> None:
+        runner.play_sound('click')
+
+    def on_keypad(event: Event) -> None:
+        runner.play_sound('click')
+
+    event_bus.subscribe(EventType.BUTTON_PRESS, on_button_press)
+    event_bus.subscribe(EventType.ARCADE_LEFT, on_navigation)
+    event_bus.subscribe(EventType.ARCADE_RIGHT, on_navigation)
+    event_bus.subscribe(EventType.ARCADE_UP, on_navigation)
+    event_bus.subscribe(EventType.ARCADE_DOWN, on_navigation)
+    event_bus.subscribe(EventType.KEYPAD_INPUT, on_keypad)
+
     # Wire up tick handler to update and render
     def on_tick(event: Event) -> None:
         delta = event.data.get("delta", 0.016)

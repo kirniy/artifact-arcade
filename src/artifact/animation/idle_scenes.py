@@ -40,6 +40,13 @@ class IdleScene(Enum):
     COSMIC_PORTAL = auto()
     CAMERA_MIRROR = auto()
     PLASMA_WAVE = auto()
+    # New scenes with camera background
+    NEON_TUNNEL = auto()      # Camera with neon ring tunnel
+    GLITCH_GRID = auto()      # Camera with glitch scanlines
+    FIRE_SILHOUETTE = auto()  # Camera with fire/heat effect
+    MATRIX_RAIN = auto()      # Camera with matrix code rain
+    KALEIDOSCOPE = auto()     # Camera with kaleidoscope mirror
+    STARFIELD_3D = auto()     # Camera with 3D starfield overlay
 
 
 @dataclass
@@ -178,12 +185,30 @@ class RotatingIdleAnimation:
             IdleScene.COSMIC_PORTAL: "ПОРТАЛ",
             IdleScene.CAMERA_MIRROR: "ЗЕРКАЛО",
             IdleScene.PLASMA_WAVE: "ПЛАЗМА",
+            IdleScene.NEON_TUNNEL: "ТОННЕЛЬ",
+            IdleScene.GLITCH_GRID: "ГЛИТЧ",
+            IdleScene.FIRE_SILHOUETTE: "ОГОНЬ",
+            IdleScene.MATRIX_RAIN: "МАТРИЦА",
+            IdleScene.KALEIDOSCOPE: "КАЛЕЙДОСКОП",
+            IdleScene.STARFIELD_3D: "ЗВЁЗДЫ",
         }
         return names.get(self.state.current_scene, "СЦЕНА")
 
+    # Scenes that use camera
+    CAMERA_SCENES = {
+        IdleScene.CAMERA_MIRROR,
+        IdleScene.NEON_TUNNEL,
+        IdleScene.GLITCH_GRID,
+        IdleScene.FIRE_SILHOUETTE,
+        IdleScene.MATRIX_RAIN,
+        IdleScene.KALEIDOSCOPE,
+        IdleScene.STARFIELD_3D,
+    }
+
     def _on_scene_enter(self) -> None:
         scene = self.state.current_scene
-        if scene == IdleScene.CAMERA_MIRROR:
+        # Open camera for all camera-based scenes
+        if scene in self.CAMERA_SCENES:
             self._open_camera()
         elif scene == IdleScene.COSMIC_PORTAL:
             # Regenerate stars with new positions
@@ -194,7 +219,7 @@ class RotatingIdleAnimation:
             ]
 
     def _on_scene_exit(self, scene: IdleScene) -> None:
-        if scene == IdleScene.CAMERA_MIRROR:
+        if scene in self.CAMERA_SCENES:
             self._close_camera()
 
     def _open_camera(self) -> None:
@@ -244,6 +269,18 @@ class RotatingIdleAnimation:
             self._render_camera(buffer)
         elif scene == IdleScene.PLASMA_WAVE:
             self._render_plasma(buffer)
+        elif scene == IdleScene.NEON_TUNNEL:
+            self._render_neon_tunnel(buffer)
+        elif scene == IdleScene.GLITCH_GRID:
+            self._render_glitch_grid(buffer)
+        elif scene == IdleScene.FIRE_SILHOUETTE:
+            self._render_fire_silhouette(buffer)
+        elif scene == IdleScene.MATRIX_RAIN:
+            self._render_matrix_rain(buffer)
+        elif scene == IdleScene.KALEIDOSCOPE:
+            self._render_kaleidoscope(buffer)
+        elif scene == IdleScene.STARFIELD_3D:
+            self._render_starfield_3d(buffer)
 
         # Apply transition fade
         if self.transitioning:
