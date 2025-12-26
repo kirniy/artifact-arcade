@@ -16,7 +16,7 @@ from artifact.utils.camera_service import camera_service
 
 class TowerbrockMode(BaseMode):
     name = "towerbrock"
-    display_name = "TOWERBROCK"
+    display_name = "TOWER"
     description = "Swing, drop, and stack the tower"
     icon = "tower"
     style = "arcade"
@@ -95,8 +95,8 @@ class TowerbrockMode(BaseMode):
             self._drop_vy += self.GRAVITY * dt
             self._drop_y += self._drop_vy * dt
             target_y = self._next_block_y()
-        if self._drop_y >= target_y:
-            self._land_block(target_y)
+            if self._drop_y >= target_y:
+                self._land_block(target_y)
 
     def _next_block_y(self) -> float:
         last = self._tower[-1]

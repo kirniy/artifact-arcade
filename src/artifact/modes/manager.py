@@ -6,6 +6,7 @@ from enum import Enum, auto
 import logging
 import random
 import math
+import os
 
 from artifact.core.events import EventBus, Event, EventType
 from artifact.core.state import StateMachine, State
@@ -371,7 +372,8 @@ class ModeManager:
         self._bayer_matrix = self._create_bayer_matrix(4)  # 4x4 Bayer matrix
 
         # Pygame-menu selector (optional)
-        self._use_pygame_menu = True
+        use_menu_env = os.getenv("ARTIFACT_USE_PYGAME_MENU", "false").lower()
+        self._use_pygame_menu = use_menu_env in ("1", "true", "yes")
         self._menu_failed = False
         self._menu = None
         self._menu_surface = None

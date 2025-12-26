@@ -154,6 +154,10 @@ class HDMIDisplay(Display):
             return
 
         pygame = _get_pygame()
+        try:
+            pygame.mouse.set_visible(False)
+        except Exception:
+            pass
 
         # Convert numpy buffer to pygame surface
         # pygame expects (width, height) but numpy is (height, width)
