@@ -177,11 +177,77 @@ class HardwareRunner:
         return success
 
     def _init_audio(self) -> bool:
-        """Initialize audio system."""
-        # TEMPORARILY DISABLED - audio synthesis too CPU-heavy, causes framerate issues
-        logger.info("Audio disabled for performance (temporary)")
-        self._audio_engine = None
-        return True
+        """Initialize audio system with lightweight chiptune sounds."""
+        import os
+        import subprocess
+        import array
+        import math
+
+        try:
+            pygame = _get_pygame()
+
+            # Load bcm2835 module for 3.5mm jack
+            subprocess.run(['modprobe', 'snd-bcm2835'], capture_output=True)
+
+            # Use 3.5mm headphone jack (card 2)
+            os.environ['AUDIODEV'] = 'hw:2,0'
+            pygame.mixer.quit()
+            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
+
+            # Store sounds
+            self._sounds = {}
+            self._audio_channel = pygame.mixer.Channel(0)
+
+            # Generate UI sounds
+            # Button click (arcade blip)
+            samples = array.array('h')
+            for i in range(int(44100 * 0.08)):
+                t = i / 44100
+                env = max(0, 1 - t * 15)
+                freq = 800 + 400 * env  # Descending
+                val = (1 if math.sin(2 * math.pi * freq * t) > 0 else -1) * 0.4
+                samples.append(int(32767 * val * env * 0.5))
+            self._sounds['click'] = pygame.mixer.Sound(buffer=samples)
+
+            # Confirm sound (rising arpeggio)
+            samples = array.array('h')
+            for i in range(int(44100 * 0.15)):
+                t = i / 44100
+                env = max(0, 1 - t * 8)
+                freqs = [523, 659, 784]  # C E G
+                idx = min(int(t * 30), 2)
+                val = (1 if math.sin(2 * math.pi * freqs[idx] * t) > 0 else -1) * 0.3
+                samples.append(int(32767 * val * env * 0.5))
+            self._sounds['confirm'] = pygame.mixer.Sound(buffer=samples)
+
+            # Error sound (descending)
+            samples = array.array('h')
+            for i in range(int(44100 * 0.2)):
+                t = i / 44100
+                env = max(0, 1 - t * 6)
+                freq = 300 - t * 200
+                val = (1 if math.sin(2 * math.pi * freq * t) > 0 else -1) * 0.4
+                samples.append(int(32767 * val * env * 0.5))
+            self._sounds['error'] = pygame.mixer.Sound(buffer=samples)
+
+            logger.info("Audio initialized: 3.5mm jack (hw:2,0)")
+            self._audio_enabled = True
+            return True
+
+        except Exception as e:
+            logger.warning(f"Audio init failed: {e}")
+            self._audio_enabled = False
+            self._sounds = {}
+            return False
+
+    def play_sound(self, name: str) -> None:
+        """Play a UI sound effect."""
+        if hasattr(self, '_audio_enabled') and self._audio_enabled:
+            if name in self._sounds:
+                try:
+                    self._sounds[name].play()
+                except:
+                    pass
 
     def _init_pygame(self) -> bool:
         """Initialize pygame for event handling."""
@@ -252,6 +318,7 @@ class HardwareRunner:
             self._running = False
         elif key == pygame.K_r:
             # Reboot to idle
+            self.play_sound('error')
             self.event_bus.emit(Event(EventType.REBOOT, source="keyboard"))
         elif key == pygame.K_BACKSPACE:
             # Start tracking for long-press shutdown
@@ -262,20 +329,26 @@ class HardwareRunner:
 
         # Center button (SPACE or RETURN)
         elif key in (pygame.K_SPACE, pygame.K_RETURN):
+            self.play_sound('confirm')
             self.event_bus.emit(Event(EventType.BUTTON_PRESS, source="center"))
 
         # Arcade buttons (regular arrows)
         elif key == pygame.K_LEFT:
+            self.play_sound('click')
             self.event_bus.emit(Event(EventType.ARCADE_LEFT, source="arcade"))
         elif key == pygame.K_RIGHT:
+            self.play_sound('click')
             self.event_bus.emit(Event(EventType.ARCADE_RIGHT, source="arcade"))
         elif key == pygame.K_UP:
+            self.play_sound('click')
             self.event_bus.emit(Event(EventType.ARCADE_UP, source="arcade"))
         elif key == pygame.K_DOWN:
+            self.play_sound('click')
             self.event_bus.emit(Event(EventType.ARCADE_DOWN, source="arcade"))
 
         # Numpad Enter - works as confirm button
         elif key == pygame.K_KP_ENTER:
+            self.play_sound('confirm')
             self.event_bus.emit(Event(EventType.BUTTON_PRESS, source="center"))
 
         # Numpad 4/6 - work as BOTH navigation AND digits
