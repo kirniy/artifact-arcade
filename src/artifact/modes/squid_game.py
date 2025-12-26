@@ -369,7 +369,7 @@ class SquidGameMode(BaseMode):
     def _update_camera_frame(self) -> None:
         """Update camera frame for motion detection."""
         try:
-            frame = camera_service.get_full_frame()
+            frame = camera_service.get_frame(timeout=0)
             if frame is not None and frame.size > 0:
                 # Convert to grayscale for motion detection
                 gray = np.mean(frame, axis=2).astype(np.uint8)

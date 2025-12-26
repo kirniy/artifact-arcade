@@ -59,12 +59,14 @@ class CameraService:
         self._camera = None
         self._running = False
         self._thread: Optional[threading.Thread] = None
+        self._camera_lock = threading.Lock()
 
         # Frame buffers (protected by lock)
         self._frame_lock = threading.Lock()
         self._latest_frame: Optional[NDArray[np.uint8]] = None
         self._latest_full_frame: Optional[NDArray[np.uint8]] = None
         self._frame_time: float = 0
+        self._full_frame_time: float = 0
         self._frame_count: int = 0
 
         # Resolution settings
@@ -164,7 +166,8 @@ class CameraService:
 
             try:
                 if self._camera and self._camera.is_open:
-                    frame = self._camera.capture_frame()
+                    with self._camera_lock:
+                        frame = self._camera.capture_frame()
 
                     if frame is not None:
                         # Create preview-sized version
@@ -172,7 +175,6 @@ class CameraService:
 
                         with self._frame_lock:
                             self._latest_frame = preview
-                            self._latest_full_frame = frame
                             self._frame_time = time.time()
                             self._frame_count += 1
 
@@ -262,10 +264,29 @@ class CameraService:
         Returns:
             RGB image (480, 640, 3) or None if no camera
         """
+        now = time.time()
         with self._frame_lock:
-            if self._latest_full_frame is not None:
+            if self._latest_full_frame is not None and (now - self._full_frame_time) < 0.5:
                 return self._latest_full_frame.copy()
-        return None
+
+        if not self._camera or not self._camera.is_open:
+            return None
+
+        try:
+            with self._camera_lock:
+                if hasattr(self._camera, "capture_full"):
+                    frame = self._camera.capture_full()
+                else:
+                    frame = self._camera.capture_frame()
+            if frame is None:
+                return None
+            with self._frame_lock:
+                self._latest_full_frame = frame
+                self._full_frame_time = time.time()
+            return frame.copy()
+        except Exception as e:
+            logger.debug(f"Full frame capture error: {e}")
+            return None
 
     def capture_jpeg(self, quality: int = 85) -> Optional[bytes]:
         """Capture full-res frame as JPEG.
@@ -278,10 +299,23 @@ class CameraService:
         Returns:
             JPEG bytes or None
         """
+        if not self._camera or not self._camera.is_open:
+            return None
+
+        try:
+            with self._camera_lock:
+                if hasattr(self._camera, "capture_jpeg"):
+                    jpeg = self._camera.capture_jpeg(quality=quality)
+                else:
+                    jpeg = None
+            if jpeg is not None:
+                return jpeg
+        except Exception as e:
+            logger.debug(f"JPEG capture error: {e}")
+
         frame = self.get_full_frame()
         if frame is None:
             return None
-
         try:
             import cv2
             frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)

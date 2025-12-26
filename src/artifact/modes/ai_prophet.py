@@ -608,7 +608,7 @@ class AIProphetMode(BaseMode):
         """Update the live camera preview frame with dithering."""
         try:
             # Capture current frame from shared camera service
-            frame = camera_service.get_full_frame()
+            frame = camera_service.get_frame(timeout=0)
             if frame is not None and frame.size > 0:
                 # Apply Floyd-Steinberg dithering for pixel art effect
                 dithered = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=120)

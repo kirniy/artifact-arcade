@@ -215,7 +215,7 @@ class AutopsyMode(BaseMode):
     def _update_camera_preview(self) -> None:
         """Update camera preview from shared camera service."""
         try:
-            frame = camera_service.get_full_frame()
+            frame = camera_service.get_frame(timeout=0)
             if frame is not None:
                 # Green tint for medical look? Handled in render usually
                 # Just use standard dither for now

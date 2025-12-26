@@ -637,7 +637,7 @@ class QuizMode(BaseMode):
     def _update_camera_preview(self) -> None:
         """Update live camera preview."""
         try:
-            frame = camera_service.get_full_frame()
+            frame = camera_service.get_frame(timeout=0)
             if frame is not None and frame.size > 0:
                 dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
                 self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()

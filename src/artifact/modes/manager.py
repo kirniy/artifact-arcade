@@ -351,7 +351,6 @@ class ModeManager:
         self._audio.play_music("idle", fade_in_ms=1000)
 
         # Mode selector camera and effects
-        self._selector_camera = None
         self._selector_frame = None
         self._selector_effect = SelectorEffect.DITHER
         self._selector_effect_index = 0
@@ -384,34 +383,30 @@ class ModeManager:
             return result
 
     def _open_selector_camera(self) -> None:
-        """Open camera for mode selector background."""
-        if self._selector_camera is None:
-            try:
-                from artifact.utils.camera import create_camera
-                self._selector_camera = create_camera(resolution=(128, 128))
-                self._selector_camera.open()
-            except Exception:
-                self._selector_camera = None
+        """Ensure shared camera service is running for selector background."""
+        try:
+            from artifact.utils.camera_service import camera_service
+            if not camera_service.is_running:
+                camera_service.start()
+        except Exception:
+            pass
 
     def _close_selector_camera(self) -> None:
-        """Close the selector camera."""
-        if self._selector_camera:
-            try:
-                self._selector_camera.close()
-            except Exception:
-                pass
-            self._selector_camera = None
-            self._selector_frame = None
+        """Clear selector camera frame (shared service stays running)."""
+        self._selector_frame = None
 
     def _update_selector_camera(self) -> None:
-        """Capture a frame from the selector camera."""
-        if self._selector_camera:
-            try:
-                frame = self._selector_camera.capture_frame()
-                if frame is not None:
-                    self._selector_frame = frame
-            except Exception:
-                pass
+        """Capture a frame from the shared camera service."""
+        try:
+            from artifact.utils.camera_service import camera_service
+            if not camera_service.is_running:
+                self._selector_frame = None
+                return
+            frame = camera_service.get_frame(timeout=0)
+            if frame is not None:
+                self._selector_frame = frame
+        except Exception:
+            self._selector_frame = None
 
     def _update_camera_preview(self) -> None:
         """Update camera preview frame using shared camera service."""
@@ -993,11 +988,6 @@ class ModeManager:
             # Fallback animated gradient if no camera
             self._render_fallback_gradient(buffer, t)
 
-        # === STEP 1.5: CAMERA PREVIEW FOR CAMERA-REQUIRING MODES ===
-        # If the selected mode requires camera, show a subtle preview
-        if self._camera_preview_frame is not None:
-            self._render_camera_preview_corner(buffer)
-
         mode = self.get_selected_mode()
         if not mode:
             draw_centered_text(buffer, "НЕТ РЕЖИМОВ", 60, (255, 100, 100), scale=1)
@@ -1007,6 +997,11 @@ class ModeManager:
         mode_color = MODE_COLORS.get(mode.name, (255, 200, 0))
         pulse = 0.7 + 0.3 * math.sin(t * 4)
         glow_color = tuple(int(c * pulse) for c in mode_color)
+
+        # === STEP 1.5: CAMERA PREVIEW FOR CAMERA-REQUIRING MODES ===
+        # If the selected mode requires camera, show a subtle preview
+        if self._camera_preview_frame is not None:
+            self._render_camera_preview_corner(buffer, mode_color)
 
         # === STEP 2: SEMI-TRANSPARENT CENTER PANEL FOR TEXT ===
         # Darken center area slightly for text readability - VECTORIZED
@@ -1125,6 +1120,41 @@ class ModeManager:
             self._apply_thermal_effect(buffer, frame, t)
         elif self._selector_effect == SelectorEffect.MATRIX:
             self._apply_matrix_effect(buffer, frame, t)
+
+    def _render_camera_preview_corner(self, buffer, border_color=(80, 200, 240)) -> None:
+        """Render a small camera preview in the top-right corner."""
+        import numpy as np
+        from artifact.graphics.primitives import draw_rect
+
+        frame = self._camera_preview_frame
+        if frame is None or not isinstance(frame, np.ndarray):
+            return
+
+        preview_size = 32
+        margin = 4
+        h, w = buffer.shape[:2]
+        x0 = w - preview_size - margin
+        y0 = margin
+
+        if x0 < 0 or y0 < 0:
+            return
+
+        src_h, src_w = frame.shape[:2]
+        if src_h <= 0 or src_w <= 0:
+            return
+
+        y_idx = (np.arange(preview_size) * src_h // preview_size).clip(0, src_h - 1)
+        x_idx = (np.arange(preview_size) * src_w // preview_size).clip(0, src_w - 1)
+        preview = frame[y_idx[:, np.newaxis], x_idx]
+
+        buffer[y0:y0 + preview_size, x0:x0 + preview_size] = preview
+        draw_rect(buffer, x0 - 1, y0 - 1, preview_size + 2, preview_size + 2,
+                  border_color, filled=False, thickness=1)
+
+        rec_x = x0 + preview_size - 4
+        rec_y = y0 + 3
+        if 0 <= rec_x < w and 0 <= rec_y < h:
+            buffer[rec_y:rec_y + 2, rec_x:rec_x + 2] = (255, 60, 60)
 
     def _apply_dither_effect(self, buffer, frame, t: float) -> None:
         """Apply Bayer ordered dithering to camera frame - VECTORIZED."""
