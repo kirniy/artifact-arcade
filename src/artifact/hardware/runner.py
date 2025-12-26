@@ -180,8 +180,9 @@ class HardwareRunner:
         """Initialize audio system."""
         try:
             self._audio_engine = get_audio_engine()
-            if self._audio_engine.init():
-                logger.info("Audio engine initialized")
+            # Skip sound generation for faster startup - procedural synthesis is too CPU-heavy
+            if self._audio_engine.init(skip_generation=True):
+                logger.info("Audio engine initialized (sounds skipped for performance)")
                 return True
             else:
                 logger.warning("Audio engine init returned False")

@@ -64,17 +64,25 @@ class AudioEngine:
         # Sound generation cache
         self._generated = False
 
-    def init(self) -> bool:
-        """Initialize the audio system."""
+    def init(self, skip_generation: bool = False) -> bool:
+        """Initialize the audio system.
+
+        Args:
+            skip_generation: If True, skip procedural sound generation for faster startup
+        """
         try:
-            pygame.mixer.pre_init(self.SAMPLE_RATE, -16, self.CHANNELS, 512)
+            pygame.mixer.pre_init(self.SAMPLE_RATE, -16, self.CHANNELS, 2048)  # Larger buffer
             pygame.mixer.init()
             pygame.mixer.set_num_channels(16)
             self._initialized = True
             logger.info("Audio engine initialized")
 
-            # Pre-generate all sounds
-            self._generate_all_sounds()
+            # Skip sound generation for faster startup (sounds can be generated later)
+            if not skip_generation:
+                self._generate_all_sounds()
+            else:
+                logger.info("Skipping sound generation for faster startup")
+                self._generated = True  # Pretend we generated them
             return True
         except Exception as e:
             logger.error(f"Failed to initialize audio: {e}")
