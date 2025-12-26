@@ -204,35 +204,55 @@ class PhotoboothMode(BaseMode):
         try:
             logger.info(f"Uploading photo to file.io: {self._state.photo_path}")
 
-            # Try file.io (simpler than ffsend, works without special client)
+            # Try file.io first with verbose curl for debugging
             result = subprocess.run(
-                ['curl', '-s', '-F', f'file=@{self._state.photo_path}',
+                ['curl', '-s', '-S', '--max-time', '25',
+                 '-H', 'Accept: application/json',
+                 '-F', f'file=@{self._state.photo_path}',
                  'https://file.io/?expires=1d'],
                 capture_output=True,
                 timeout=30
             )
 
             logger.debug(f"curl returncode: {result.returncode}")
-            logger.debug(f"curl stdout: {result.stdout.decode()[:500]}")
-            if result.stderr:
-                logger.debug(f"curl stderr: {result.stderr.decode()[:200]}")
+            stdout = result.stdout.decode() if result.stdout else ""
+            stderr = result.stderr.decode() if result.stderr else ""
+            logger.debug(f"curl stdout ({len(stdout)} chars): {stdout[:500]}")
+            if stderr:
+                logger.debug(f"curl stderr: {stderr[:200]}")
 
-            if result.returncode == 0:
+            url = None
+            if result.returncode == 0 and stdout.strip():
                 try:
-                    response = json.loads(result.stdout.decode())
+                    response = json.loads(stdout)
                     logger.info(f"file.io response: success={response.get('success')}, link={response.get('link')}")
-
                     if response.get('success'):
                         url = response.get('link')
-                        self._state.qr_url = url
-                        logger.info(f"Upload successful! URL: {url}")
-                        self._generate_qr_image(url)
-                    else:
-                        logger.error(f"file.io returned success=false: {response}")
                 except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse file.io response: {e}, raw: {result.stdout.decode()[:200]}")
+                    logger.warning(f"Failed to parse file.io response: {e}")
+
+            # Fallback to 0x0.st if file.io failed
+            if not url:
+                logger.info("file.io failed, trying 0x0.st fallback...")
+                result2 = subprocess.run(
+                    ['curl', '-s', '-S', '--max-time', '25',
+                     '-F', f'file=@{self._state.photo_path}',
+                     'https://0x0.st'],
+                    capture_output=True,
+                    timeout=30
+                )
+                stdout2 = result2.stdout.decode().strip() if result2.stdout else ""
+                logger.debug(f"0x0.st response: {stdout2}")
+                if result2.returncode == 0 and stdout2.startswith('http'):
+                    url = stdout2
+                    logger.info(f"0x0.st upload successful: {url}")
+
+            if url:
+                self._state.qr_url = url
+                logger.info(f"Upload successful! URL: {url}")
+                self._generate_qr_image(url)
             else:
-                logger.error(f"curl failed with returncode {result.returncode}")
+                logger.error("All upload services failed")
 
         except subprocess.TimeoutExpired:
             logger.error("Upload timed out after 30 seconds")

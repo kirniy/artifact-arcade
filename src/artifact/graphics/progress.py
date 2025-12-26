@@ -13,7 +13,7 @@ Phases for AI modes (Fortune, AI Prophet, Roast):
 
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Optional, Tuple, List, Callable
+from typing import Optional, Tuple, List, Callable, Dict
 import math
 import random
 
@@ -120,6 +120,7 @@ class SmartProgressTracker:
         self._message_index = 0
         self._message_change_time = 0.0
         self._started = False
+        self._custom_messages: Optional[dict] = None  # Override default messages
 
         # Animation state for loading visuals
         self._particles: List[dict] = []
@@ -245,9 +246,21 @@ class SmartProgressTracker:
         """Get current phase."""
         return self._phase
 
+    def set_custom_messages(self, custom_messages: Dict[ProgressPhase, List[str]]) -> None:
+        """Set custom messages to override defaults for specific phases.
+
+        Args:
+            custom_messages: Dict mapping ProgressPhase to list of message strings
+        """
+        self._custom_messages = custom_messages
+
     def get_message(self) -> str:
         """Get current status message."""
-        messages = PHASE_MESSAGES.get(self._phase, ["..."])
+        # Check custom messages first, then fall back to defaults
+        if self._custom_messages and self._phase in self._custom_messages:
+            messages = self._custom_messages[self._phase]
+        else:
+            messages = PHASE_MESSAGES.get(self._phase, ["..."])
         return messages[self._message_index % len(messages)]
 
     def get_state(self) -> ProgressState:

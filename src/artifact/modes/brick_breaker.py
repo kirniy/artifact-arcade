@@ -33,7 +33,7 @@ BRICK_COLS = 8
 BRICK_WIDTH = 14
 BRICK_HEIGHT = 6
 BRICK_TOP_OFFSET = 20
-INITIAL_LIVES = 5
+INITIAL_LIVES = 10
 MAX_MISSES = 8  # Lose if you miss this many times in a row
 
 
@@ -43,7 +43,7 @@ class Ball:
     y: float
     vx: float
     vy: float
-    speed: float = 1.5
+    speed: float = 0.9
     trail: List[Tuple[float, float]] = field(default_factory=list)
 
 
@@ -173,7 +173,7 @@ class BrickBreakerMode(BaseMode):
     def _spawn_ball(self) -> None:
         """Spawn a new ball on the paddle."""
         angle = random.uniform(-0.5, 0.5) + math.pi * 1.5  # Upward with slight random
-        speed = 1.1 + self.level * 0.05
+        speed = 0.7 + self.level * 0.03  # Slower ball speed
         self.balls.append(Ball(
             x=self.paddle_x,
             y=PADDLE_Y - 5,
@@ -267,9 +267,9 @@ class BrickBreakerMode(BaseMode):
         # Update camera and paddle
         self._update_camera(delta_ms)
 
-        # Smooth paddle following
+        # Smooth paddle following (invert motion_x so paddle follows hand direction)
         prev_x = self.paddle_x
-        target_x = int(self._motion_x * SCREEN_W)
+        target_x = int((1.0 - self._motion_x) * SCREEN_W)
         target_x = max(self.paddle_width // 2, min(SCREEN_W - self.paddle_width // 2, target_x))
         self.paddle_x += (target_x - self.paddle_x) * 0.2
         if dt > 0:
