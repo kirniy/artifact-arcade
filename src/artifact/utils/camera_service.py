@@ -78,6 +78,20 @@ class CameraService:
         self._last_fps_time: float = 0
         self._fps_frame_count: int = 0
 
+        # Motion tracking state
+        self._motion_bg: Optional[NDArray[np.float32]] = None
+        self._motion_last_x: float = 0.5
+        self._motion_last_seen: float = 0.0
+        self._motion_hold_sec: float = 0.35
+
+        # Optional hand tracking (MediaPipe)
+        self._hand_tracker = None
+        self._hand_tracker_err: Optional[str] = None
+        self._hand_last_x: float = 0.5
+        self._hand_last_seen: float = 0.0
+        self._hand_hold_sec: float = 0.3
+        self._hand_smooth: float = 0.3
+
         logger.info("CameraService initialized")
 
     @property
@@ -256,7 +270,7 @@ class CameraService:
         # Return placeholder
         return self._generate_placeholder()
 
-    def get_full_frame(self) -> Optional[NDArray[np.uint8]]:
+    def get_full_frame(self, max_age: float = 0.5) -> Optional[NDArray[np.uint8]]:
         """Get latest full-resolution frame (640x480).
 
         Use this for AI analysis, face detection, etc.
@@ -266,7 +280,7 @@ class CameraService:
         """
         now = time.time()
         with self._frame_lock:
-            if self._latest_full_frame is not None and (now - self._full_frame_time) < 0.5:
+            if self._latest_full_frame is not None and (now - self._full_frame_time) < max_age:
                 return self._latest_full_frame.copy()
 
         if not self._camera or not self._camera.is_open:
@@ -333,6 +347,116 @@ class CameraService:
             except:
                 return None
 
+    def _get_hand_tracker(self):
+        """Lazily initialize MediaPipe Hands tracker (optional dependency)."""
+        if self._hand_tracker_err:
+            return None
+        if self._hand_tracker:
+            return self._hand_tracker
+
+        try:
+            import mediapipe as mp
+        except Exception as e:
+            self._hand_tracker_err = str(e)
+            return None
+
+        try:
+            self._hand_tracker = mp.solutions.hands.Hands(
+                static_image_mode=False,
+                max_num_hands=1,
+                model_complexity=0,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5,
+            )
+            return self._hand_tracker
+        except Exception as e:
+            self._hand_tracker_err = str(e)
+            return None
+
+    def get_hand_position(self, max_age: float = 0.15) -> Optional[Tuple[float, float]]:
+        """Get hand X position using MediaPipe (if available).
+
+        Args:
+            max_age: Max age for cached full frame (seconds)
+
+        Returns:
+            Tuple of (x, confidence) or None if no hand detected
+        """
+        tracker = self._get_hand_tracker()
+        if not tracker:
+            return None
+
+        frame = self.get_full_frame(max_age=max_age)
+        if frame is None:
+            frame = self.get_frame(timeout=0)
+            if frame is None:
+                return None
+
+        try:
+            results = tracker.process(frame)
+        except Exception as e:
+            logger.debug(f"Hand tracking error: {e}")
+            return None
+
+        if not results.multi_hand_landmarks:
+            if (time.time() - self._hand_last_seen) < self._hand_hold_sec:
+                return (self._hand_last_x, 0.1)
+            return None
+
+        landmarks = results.multi_hand_landmarks[0].landmark
+        palm_indices = [0, 5, 9, 13, 17]
+        xs = [landmarks[i].x for i in palm_indices]
+        raw_x = float(np.median(xs))
+
+        x = 1.0 - max(0.0, min(1.0, raw_x))
+        self._hand_last_x += (x - self._hand_last_x) * self._hand_smooth
+        self._hand_last_seen = time.time()
+        return (self._hand_last_x, 1.0)
+
+    def get_motion_position(self) -> Tuple[float, float]:
+        """Get horizontal motion position with confidence.
+
+        Returns:
+            Tuple of (x, confidence) where confidence is 0-1
+        """
+        with self._frame_lock:
+            frame = self._latest_frame
+
+        if frame is None:
+            return (0.5, 0.0)
+
+        gray = np.mean(frame, axis=2).astype(np.float32)
+
+        if self._motion_bg is None:
+            self._motion_bg = gray.copy()
+            return (self._motion_last_x, 0.0)
+
+        diff = np.abs(gray - self._motion_bg)
+        self._motion_bg = self._motion_bg * 0.92 + gray * 0.08
+
+        mask = diff > 12
+        if not np.any(mask):
+            if (time.time() - self._motion_last_seen) > self._motion_hold_sec:
+                self._motion_last_x += (0.5 - self._motion_last_x) * 0.05
+            return (self._motion_last_x, 0.0)
+
+        col_energy = np.sum(diff * mask, axis=0)
+        total = float(np.sum(col_energy))
+        if total < 1200:
+            if (time.time() - self._motion_last_seen) > self._motion_hold_sec:
+                self._motion_last_x += (0.5 - self._motion_last_x) * 0.05
+            return (self._motion_last_x, 0.0)
+
+        positions = np.arange(len(col_energy))
+        centroid = float(np.sum(positions * col_energy) / (total + 1e-6))
+        x = 1.0 - (centroid / len(col_energy))
+        x = max(0.0, min(1.0, x))
+
+        self._motion_last_x += (x - self._motion_last_x) * 0.25
+        self._motion_last_seen = time.time()
+        confidence = min(1.0, total / 45000.0)
+        return (self._motion_last_x, confidence)
+
     def get_motion_x(self) -> float:
         """Get horizontal motion position (0.0-1.0).
 
@@ -342,25 +466,8 @@ class CameraService:
         Returns:
             Normalized X position (0=left, 1=right)
         """
-        with self._frame_lock:
-            frame = self._latest_frame
-
-        if frame is None:
-            return 0.5
-
-        # Convert to grayscale
-        gray = np.mean(frame, axis=2)
-
-        # Column intensity
-        col_intensity = np.mean(gray, axis=0)
-
-        # Weighted centroid
-        total = np.sum(col_intensity) + 1e-6
-        positions = np.arange(len(col_intensity))
-        centroid = np.sum(positions * col_intensity) / total
-
-        # Normalize and flip for natural control
-        return 1.0 - (centroid / len(col_intensity))
+        motion_x, _confidence = self.get_motion_position()
+        return motion_x
 
     def _generate_placeholder(self) -> NDArray[np.uint8]:
         """Generate placeholder frame when no camera."""

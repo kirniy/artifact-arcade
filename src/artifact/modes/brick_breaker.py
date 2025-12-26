@@ -120,12 +120,22 @@ class BrickBreakerMode(BaseMode):
         self._shake_timer = 0.0
         self._shake_intensity = 0.0
         self._flash_timer = 0.0
+        self._manual_control_x = 0.5
+        self._manual_control_timer = 0.0
+        self._control_x = 0.5
+        self._control_source = "motion"
+        self._control_confidence = 0.0
         self._outro_time = 0.0
         self._paddle_vx = 0.0
         self._shake_timer = 0.0
         self._shake_intensity = 0.0
         self._flash_timer = 0.0
         self._flash_color = (255, 255, 255)
+        self._manual_control_x = 0.5
+        self._manual_control_timer = 0.0
+        self._control_x = 0.5
+        self._control_source = "motion"
+        self._control_confidence = 0.0
 
         # Colors
         self.paddle_color = (20, 184, 166)  # Teal
@@ -199,17 +209,41 @@ class BrickBreakerMode(BaseMode):
                     color=color, hits=hits
                 ))
 
-    def _update_camera(self) -> None:
+    def _update_camera(self, delta_ms: float) -> None:
         """Update paddle position from shared camera service."""
         from artifact.utils.camera_service import camera_service
 
-        # Get motion position directly from camera service
-        new_motion = camera_service.get_motion_x()
+        self._manual_control_timer = max(0.0, self._manual_control_timer - delta_ms)
+
+        hand = camera_service.get_hand_position()
+        if hand is not None:
+            new_motion, confidence = hand
+            self._control_source = "hand"
+        else:
+            new_motion, confidence = camera_service.get_motion_position()
+            self._control_source = "motion"
+
+        if self._manual_control_timer > 0:
+            self._control_source = "manual"
+            if hand is not None:
+                new_motion = self._manual_control_x * 0.85 + new_motion * 0.15
+            else:
+                new_motion = self._manual_control_x
+            confidence = max(confidence, 0.6)
+
+        self._control_x = new_motion
+        self._control_confidence = confidence
 
         # Smooth the movement
-        alpha = 0.3
+        alpha = 0.25 if confidence > 0.4 else 0.18
         self._motion_x = self._prev_motion_x * (1 - alpha) + new_motion * alpha
         self._prev_motion_x = self._motion_x
+
+    def _manual_nudge(self, delta: float) -> None:
+        if self._manual_control_timer <= 0:
+            self._manual_control_x = self._motion_x
+        self._manual_control_x = max(0.0, min(1.0, self._manual_control_x + delta))
+        self._manual_control_timer = 900.0
 
     def on_update(self, delta_ms: float) -> None:
         """Update game state."""
@@ -231,7 +265,7 @@ class BrickBreakerMode(BaseMode):
             return
 
         # Update camera and paddle
-        self._update_camera()
+        self._update_camera(delta_ms)
 
         # Smooth paddle following
         prev_x = self.paddle_x
@@ -485,19 +519,19 @@ class BrickBreakerMode(BaseMode):
         """Handle input events."""
         # Arrow keys + keypad 4/6 for paddle control
         if event.event_type == EventType.ARCADE_LEFT:
-            self._motion_x = max(0, self._motion_x - 0.08)
+            self._manual_nudge(-0.08)
             return True
         elif event.event_type == EventType.ARCADE_RIGHT:
-            self._motion_x = min(1, self._motion_x + 0.08)
+            self._manual_nudge(0.08)
             return True
         # Keypad 4 = left, 6 = right
         elif event.event_type == EventType.KEYPAD_INPUT:
             key = event.data.get("key", "")
             if key == "4":
-                self._motion_x = max(0, self._motion_x - 0.08)
+                self._manual_nudge(-0.08)
                 return True
             elif key == "6":
-                self._motion_x = min(1, self._motion_x + 0.08)
+                self._manual_nudge(0.08)
                 return True
         elif event.event_type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.INTRO:
@@ -750,6 +784,22 @@ class BrickBreakerMode(BaseMode):
         # Lives (top right as hearts)
         for i in range(self.lives):
             draw_rect(buffer, 120 - i * 8, 2, 5, 5, (255, 50, 50))
+
+        # Control indicator (hand/camera/manual)
+        indicator_y = 16
+        bar_x = 10
+        bar_w = 108
+        draw_rect(buffer, bar_x, indicator_y, bar_w, 1, (40, 50, 70))
+        dot_x = bar_x + int(self._control_x * (bar_w - 1))
+        if self._control_source == "manual":
+            dot_color = (255, 200, 80)
+        elif self._control_source == "hand":
+            dot_color = (120, 255, 180)
+        else:
+            dot_color = (120, 180, 255)
+        if self._control_confidence < 0.2:
+            dot_color = (120, 120, 120)
+        draw_rect(buffer, dot_x - 1, indicator_y - 1, 3, 3, dot_color)
 
         # Miss indicator (warn when getting close to losing)
         if self.miss_count >= MAX_MISSES - 2:
