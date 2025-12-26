@@ -70,7 +70,7 @@ async def run_hardware() -> None:
     from artifact.modes.glitch_mirror import GlitchMirrorMode
     from artifact.modes.dither_art import DitherArtMode
     from artifact.modes.ascii_art import AsciiArtMode
-    from artifact.modes.particle_sculptor import ParticleSculptorMode
+    from artifact.modes.brick_breaker import BrickBreakerMode
 
     logger = logging.getLogger(__name__)
 
@@ -109,9 +109,9 @@ async def run_hardware() -> None:
     mode_manager.register_mode(GlitchMirrorMode)
     mode_manager.register_mode(DitherArtMode)
     mode_manager.register_mode(AsciiArtMode)
-    mode_manager.register_mode(ParticleSculptorMode)
     mode_manager.register_mode(TowerStackMode)
     mode_manager.register_mode(BarRunnerMode)
+    mode_manager.register_mode(BrickBreakerMode)
 
     # AI Prophet mode - needs API key
     if os.environ.get("GEMINI_API_KEY"):

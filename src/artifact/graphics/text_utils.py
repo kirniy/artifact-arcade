@@ -79,6 +79,36 @@ def _safe_bottom(scale: int) -> int:
     return MAIN_SAFE_BOTTOM_S2 if scale >= 2 else MAIN_SAFE_BOTTOM_S1
 
 
+def draw_text(
+    buffer: NDArray[np.uint8],
+    text: str,
+    x: int,
+    y: int,
+    color: Tuple[int, int, int],
+    scale: int = 1,
+    font: Optional[PixelFont] = None,
+) -> Tuple[int, int]:
+    """Draw text at specific position (not centered).
+
+    Simple wrapper for draw_text_bitmap with default font.
+
+    Args:
+        buffer: Target buffer
+        text: Text to draw
+        x: X position
+        y: Y position
+        color: RGB color
+        scale: Scale factor
+        font: Font (defaults to cyrillic)
+
+    Returns:
+        Tuple of (width, height) of rendered text
+    """
+    if font is None:
+        font = load_font("cyrillic")
+    return draw_text_bitmap(buffer, text, x, y, color, font, scale)
+
+
 def _clamp_x_within_margin(
     x: int,
     text_width: int,

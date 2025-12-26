@@ -36,7 +36,7 @@ from artifact.modes.flow_field import FlowFieldMode
 from artifact.modes.glitch_mirror import GlitchMirrorMode
 from artifact.modes.dither_art import DitherArtMode
 from artifact.modes.ascii_art import AsciiArtMode
-from artifact.modes.particle_sculptor import ParticleSculptorMode
+from artifact.modes.brick_breaker import BrickBreakerMode
 from artifact.audio.engine import AudioEngine, get_audio_engine
 
 logger = logging.getLogger(__name__)
@@ -142,9 +142,9 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(GlitchMirrorMode)
         self.mode_manager.register_mode(DitherArtMode)
         self.mode_manager.register_mode(AsciiArtMode)
-        self.mode_manager.register_mode(ParticleSculptorMode)
         self.mode_manager.register_mode(TowerStackMode)
         self.mode_manager.register_mode(BarRunnerMode)
+        self.mode_manager.register_mode(BrickBreakerMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os

@@ -594,12 +594,8 @@ class RotatingIdleAnimation:
                         if 0 <= gpx < 128 and 0 <= gpy < 128:
                             buffer[gpy, gpx] = tuple(min(255, int(c * 0.5)) for c in color)
 
-        # Title
-        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
-        draw_centered_text(buffer, "ТОННЕЛЬ", 4, self.pink, scale=1)
-
+        # Blinking prompt
         if int(t * 2) % 2 == 0:
-            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, self.teal, scale=1)
 
     def _render_glitch_grid(self, buffer: NDArray[np.uint8]) -> None:
@@ -653,14 +649,10 @@ class RotatingIdleAnimation:
         for y in range(0, 128, 2):
             buffer[y, :] = (buffer[y, :].astype(np.int16) * 0.8).astype(np.uint8)
 
-        # Title with glitch
-        offset = random.randint(-2, 2) if random.random() < 0.1 else 0
-        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
-        draw_centered_text(buffer, "ГЛИТЧ", 4 + offset, (0, 255, 100), scale=1)
-
+        # Blinking prompt with glitch
         if int(t * 2) % 2 == 0:
-            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
-            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (255, 0, 100), scale=1)
+            offset = random.randint(-2, 2) if random.random() < 0.1 else 0
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114 + offset, (255, 0, 100), scale=1)
 
     def _render_fire_silhouette(self, buffer: NDArray[np.uint8]) -> None:
         """Render fire/heat effect with camera silhouette."""
@@ -711,12 +703,8 @@ class RotatingIdleAnimation:
                         # Darken for silhouette
                         buffer[y, x] = (buffer[y, x].astype(np.int16) * 0.2).astype(np.uint8)
 
-        # Title
-        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
-        draw_centered_text(buffer, "ОГОНЬ", 4, (255, 200, 50), scale=1)
-
+        # Blinking prompt
         if int(t * 2) % 2 == 0:
-            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (255, 100, 50), scale=1)
 
     def _render_matrix_rain(self, buffer: NDArray[np.uint8]) -> None:
@@ -776,12 +764,8 @@ class RotatingIdleAnimation:
                                 if 0 <= px < 128 and 0 <= py < 128:
                                     buffer[py, px] = color
 
-        # Title
-        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
-        draw_centered_text(buffer, "МАТРИЦА", 4, (0, 255, 100), scale=1)
-
+        # Blinking prompt
         if int(t * 2) % 2 == 0:
-            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (100, 255, 100), scale=1)
 
     def _render_kaleidoscope(self, buffer: NDArray[np.uint8]) -> None:
@@ -834,12 +818,8 @@ class RotatingIdleAnimation:
                     buffer[127-y, x] = color
                     buffer[127-y, 127-x] = color
 
-        # Title
-        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
-        draw_centered_text(buffer, "КАЛЕЙДОСКОП", 4, self.pink, scale=1)
-
+        # Blinking prompt
         if int(t * 2) % 2 == 0:
-            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, self.teal, scale=1)
 
     def _render_starfield_3d(self, buffer: NDArray[np.uint8]) -> None:
@@ -906,12 +886,8 @@ class RotatingIdleAnimation:
                         fade = brightness // (trail + 1)
                         buffer[ty, tx] = (fade, fade, min(255, fade + 20))
 
-        # Title
-        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
-        draw_centered_text(buffer, "ЗВЁЗДЫ", 4, (200, 200, 255), scale=1)
-
+        # Blinking prompt
         if int(t * 2) % 2 == 0:
-            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (150, 150, 255), scale=1)
 
     # =========================================================================
