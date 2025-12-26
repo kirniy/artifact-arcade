@@ -45,8 +45,13 @@ class IdleScene(Enum):
     GLITCH_GRID = auto()      # Camera with glitch scanlines
     FIRE_SILHOUETTE = auto()  # Camera with fire/heat effect
     MATRIX_RAIN = auto()      # Camera with matrix code rain
-    KALEIDOSCOPE = auto()     # Camera with kaleidoscope mirror
     STARFIELD_3D = auto()     # Camera with 3D starfield overlay
+    # EPIC demo effects (ported from led_demo.py)
+    PLASMA_VORTEX = auto()    # Intense plasma vortex
+    NEON_GRID = auto()        # Retro synthwave grid
+    ELECTRIC_STORM = auto()   # Lightning storm
+    QUANTUM_FIELD = auto()    # Quantum particles
+    DNA_HELIX = auto()        # DNA double helix
 
 
 @dataclass
@@ -107,6 +112,16 @@ class RotatingIdleAnimation:
         self.gold = (251, 191, 36)
         self.teal = (20, 184, 166)
         self.pink = (236, 72, 153)
+
+        # Quantum field particles (for QUANTUM_FIELD scene)
+        self.quantum_particles = [
+            {'x': random.random(), 'y': random.random(), 'vx': 0, 'vy': 0}
+            for _ in range(60)
+        ]
+
+        # Electric storm lightning state
+        self.lightning = []
+        self.lightning_flash = 0
 
     def update(self, delta_ms: float) -> None:
         """Update animation state."""
@@ -189,8 +204,12 @@ class RotatingIdleAnimation:
             IdleScene.GLITCH_GRID: "ГЛИТЧ",
             IdleScene.FIRE_SILHOUETTE: "ОГОНЬ",
             IdleScene.MATRIX_RAIN: "МАТРИЦА",
-            IdleScene.KALEIDOSCOPE: "КАЛЕЙДОСКОП",
             IdleScene.STARFIELD_3D: "ЗВЁЗДЫ",
+            IdleScene.PLASMA_VORTEX: "ВОРТЕКС",
+            IdleScene.NEON_GRID: "СЕТКА",
+            IdleScene.ELECTRIC_STORM: "ШТОРМ",
+            IdleScene.QUANTUM_FIELD: "КВАНТ",
+            IdleScene.DNA_HELIX: "ДНК",
         }
         return names.get(self.state.current_scene, "СЦЕНА")
 
@@ -201,7 +220,6 @@ class RotatingIdleAnimation:
         IdleScene.GLITCH_GRID,
         IdleScene.FIRE_SILHOUETTE,
         IdleScene.MATRIX_RAIN,
-        IdleScene.KALEIDOSCOPE,
         IdleScene.STARFIELD_3D,
     }
 
@@ -253,6 +271,33 @@ class RotatingIdleAnimation:
             except:
                 pass
 
+    def _resize_camera_fill(self, frame: NDArray[np.uint8]) -> NDArray[np.uint8]:
+        """Resize camera frame to 128x128 using CROP-TO-FILL (no black bars)."""
+        if frame.shape[0] == 128 and frame.shape[1] == 128:
+            return frame
+
+        h, w = frame.shape[:2]
+
+        # Calculate scale factor to FILL 128x128 (crop excess, no black bars)
+        scale = max(128 / w, 128 / h)
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+
+        # Calculate crop offset (center crop)
+        crop_x = (new_w - 128) // 2
+        crop_y = (new_h - 128) // 2
+
+        # Resize with crop-to-fill
+        new_frame = np.zeros((128, 128, 3), dtype=np.uint8)
+        for y in range(128):
+            for x in range(128):
+                src_x = (x + crop_x) / scale
+                src_y = (y + crop_y) / scale
+                sx = max(0, min(int(src_x), w - 1))
+                sy = max(0, min(int(src_y), h - 1))
+                new_frame[y, x] = frame[sy, sx]
+        return new_frame
+
     # =========================================================================
     # MAIN DISPLAY RENDERING - Efficient pygame-style drawing
     # =========================================================================
@@ -277,10 +322,19 @@ class RotatingIdleAnimation:
             self._render_fire_silhouette(buffer)
         elif scene == IdleScene.MATRIX_RAIN:
             self._render_matrix_rain(buffer)
-        elif scene == IdleScene.KALEIDOSCOPE:
-            self._render_kaleidoscope(buffer)
         elif scene == IdleScene.STARFIELD_3D:
             self._render_starfield_3d(buffer)
+        # EPIC demo effects
+        elif scene == IdleScene.PLASMA_VORTEX:
+            self._render_plasma_vortex(buffer)
+        elif scene == IdleScene.NEON_GRID:
+            self._render_neon_grid(buffer)
+        elif scene == IdleScene.ELECTRIC_STORM:
+            self._render_electric_storm(buffer)
+        elif scene == IdleScene.QUANTUM_FIELD:
+            self._render_quantum_field(buffer)
+        elif scene == IdleScene.DNA_HELIX:
+            self._render_dna_helix(buffer)
 
         # Apply transition fade
         if self.transitioning:
@@ -289,127 +343,218 @@ class RotatingIdleAnimation:
             buffer[:] = np.clip(buffer.astype(np.int16) - fade_amount, 0, 255).astype(np.uint8)
 
     def _render_eye(self, buffer: NDArray[np.uint8]) -> None:
-        """Render mystical all-seeing eye - PREMIUM version."""
+        """Render ALIVE all-seeing eye - FULL SCREEN, WATCHING, BREATHING."""
         t = self.state.scene_time / 1000
         cx, cy = 64, 64
 
-        # Deep space background with subtle gradient
+        # === BREATHING/PULSING BACKGROUND ===
+        # The whole screen breathes with the eye
+        breath = 0.8 + 0.2 * math.sin(t * 1.5)  # Slow breathing
+        pulse = 0.9 + 0.1 * math.sin(t * 4)  # Fast pulse
+
+        # Deep void background with radial gradient from center
         for y in range(128):
-            darkness = 0.7 + 0.3 * (y / 128)
-            r = int(15 * darkness)
-            g = int(10 * darkness)
-            b = int(35 * darkness)
-            buffer[y, :] = [r, g, b]
+            for x in range(128):
+                dx, dy = x - cx, y - cy
+                dist = math.sqrt(dx*dx + dy*dy)
+                dist_norm = min(1.0, dist / 90)  # Normalize to 0-1
 
-        # Animated cosmic particles in background
-        for i in range(20):
-            px = int((t * 20 + i * 37) % 128)
-            py = int((t * 15 + i * 23) % 128)
-            twinkle = 0.5 + 0.5 * math.sin(t * 5 + i)  # Range 0-1 (not negative!)
-            color = (max(0, int(100 * twinkle)), max(0, int(80 * twinkle)), max(0, int(150 * twinkle)))
+                # Dark purple void at edges, warmer at center
+                r = int(15 + 30 * (1 - dist_norm) * breath)
+                g = int(5 + 10 * (1 - dist_norm) * breath)
+                b = int(35 + 40 * (1 - dist_norm) * breath)
+                buffer[y, x] = (r, g, b)
+
+        # === MYSTICAL PARTICLES floating around ===
+        for i in range(40):
+            angle = t * 0.3 + i * 0.157  # Golden angle spacing
+            orbit = 45 + 20 * math.sin(t * 0.5 + i * 0.3)
+            px = int(cx + orbit * math.cos(angle + i * 0.5))
+            py = int(cy + orbit * math.sin(angle + i * 0.5))
+            sparkle = 0.5 + 0.5 * math.sin(t * 8 + i * 2)
             if 0 <= px < 128 and 0 <= py < 128:
+                color = (int(180 * sparkle), int(100 * sparkle), int(255 * sparkle))
                 buffer[py, px] = color
+                # Glow
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    gx, gy = px + dx, py + dy
+                    if 0 <= gx < 128 and 0 <= gy < 128:
+                        buffer[gy, gx] = (int(80 * sparkle), int(40 * sparkle), int(120 * sparkle))
 
-        # Multiple pulsing aura rings with glow
-        for ring in range(6):
-            base_r = 58 - ring * 6
-            pulse = 0.6 + 0.4 * math.sin(t * 2.5 + ring * 0.8)
-            radius = base_r + int(3 * math.sin(t * 3 + ring))
-            hue = (t * 25 + ring * 50) % 360
-            color = hsv_to_rgb(hue, 0.9, 0.5 * pulse)
+        # === PULSING AURA RINGS - FULL SCREEN ===
+        for ring in range(8):
+            base_r = 20 + ring * 12  # Rings from center to edge
+            ring_pulse = 0.5 + 0.5 * math.sin(t * 3 - ring * 0.5)
+            radius = base_r + int(5 * math.sin(t * 2 + ring * 0.7))
+            hue = (t * 40 + ring * 45) % 360
+            color = hsv_to_rgb(hue, 0.9, 0.4 * ring_pulse * breath)
 
-            # Draw thick glowing ring
-            for angle in range(0, 360, 3):
-                rad = math.radians(angle + t * 30)
-                for dr in [-1, 0, 1]:  # Ring thickness
+            # Draw ring with rotation
+            rotation = t * (1 + ring * 0.1) * (1 if ring % 2 == 0 else -1)
+            for angle_step in range(0, 360, 2):
+                rad = math.radians(angle_step + rotation * 30)
+                for dr in [-2, -1, 0, 1, 2]:
                     px = int(cx + (radius + dr) * math.cos(rad))
                     py = int(cy + (radius + dr) * math.sin(rad))
                     if 0 <= px < 128 and 0 <= py < 128:
-                        brightness = 1.0 if dr == 0 else 0.4
-                        buffer[py, px] = tuple(max(0, min(255, int(c * brightness))) for c in color)
+                        fade = 1.0 - abs(dr) * 0.25
+                        c = tuple(max(0, min(255, int(v * fade))) for v in color)
+                        # Blend with existing
+                        existing = buffer[py, px]
+                        buffer[py, px] = tuple(min(255, existing[i] + c[i]) for i in range(3))
 
-        # Eye white with subtle gradient
-        eye_h, eye_w = 30, 45
+        # === THE EYE - FULL SCREEN SIZE ===
+        # Eye shape fills most of display
+        eye_h = int(50 + 5 * math.sin(t * 1.2))  # Breathing height
+        eye_w = 60
+
+        # Calculate eye pupil position - WATCHING behavior
+        # Smooth random targeting with occasional quick movements
+        lerp_speed = 0.005 if random.random() > 0.02 else 0.05  # Occasionally quick
+        self.eye_x += (self.eye_target_x - self.eye_x) * lerp_speed
+        self.eye_y += (self.eye_target_y - self.eye_y) * lerp_speed
+
+        # Eye white with glowing edge
         for y in range(-eye_h, eye_h + 1):
             row_width = int(eye_w * math.sqrt(max(0, 1 - (y / eye_h) ** 2)))
             for x in range(-row_width, row_width + 1):
                 px, py = cx + x, cy + y
                 if 0 <= px < 128 and 0 <= py < 128:
-                    # Gradient from white center to pink edges
-                    dist_from_edge = 1 - abs(x) / row_width if row_width > 0 else 1
-                    white = int(220 + 35 * dist_from_edge)
-                    buffer[py, px] = (min(255, white), max(0, white - 10), max(0, white - 5))
+                    # Distance from edge for glow effect
+                    edge_dist = (row_width - abs(x)) / max(1, row_width)
+                    vert_dist = (eye_h - abs(y)) / eye_h
 
-        # Animated iris with spiral pattern
-        iris_cx = int(cx + self.eye_x)
-        iris_cy = int(cy + self.eye_y)
-        iris_r = 20
+                    # Bloodshot effect near edges
+                    bloodshot = max(0, 1 - edge_dist * 3 - vert_dist * 2)
+                    bloodshot *= 0.3 + 0.1 * math.sin(t * 5 + x * 0.1)
 
-        for y in range(-iris_r, iris_r + 1):
-            for x in range(-iris_r, iris_r + 1):
+                    # Base white with pink tint at edges
+                    white = int((200 + 55 * edge_dist * vert_dist) * breath)
+                    r = min(255, white + int(60 * bloodshot))
+                    g = max(0, white - int(30 * bloodshot) - 10)
+                    b = max(0, white - int(20 * bloodshot))
+                    buffer[py, px] = (r, g, b)
+
+        # === IRIS - Large and dynamic ===
+        iris_cx = int(cx + self.eye_x * 1.5)  # More movement range
+        iris_cy = int(cy + self.eye_y * 1.2)
+        iris_r = int(28 + 3 * math.sin(t * 2))  # Pulsing iris
+
+        for y in range(-iris_r - 3, iris_r + 4):
+            for x in range(-iris_r - 3, iris_r + 4):
                 dist_sq = x*x + y*y
-                if dist_sq <= iris_r*iris_r:
+                dist = math.sqrt(dist_sq)
+
+                if dist <= iris_r + 3:
                     px, py = iris_cx + x, iris_cy + y
                     if 0 <= px < 128 and 0 <= py < 128:
-                        dist = math.sqrt(dist_sq) / iris_r
-                        angle = math.atan2(y, x)
+                        if dist <= iris_r:
+                            # Inside iris
+                            norm_dist = dist / iris_r
+                            angle = math.atan2(y, x)
 
-                        # Spiral pattern
-                        spiral = math.sin(angle * 3 + dist * 5 - t * 4) * 0.3 + 0.7
+                            # Multi-layer spiral pattern
+                            spiral1 = math.sin(angle * 6 + norm_dist * 8 - t * 5)
+                            spiral2 = math.sin(angle * 3 - norm_dist * 5 + t * 3)
+                            pattern = (spiral1 * 0.4 + spiral2 * 0.3 + 0.7) * pulse
 
-                        # Color: golden center to deep purple edge
-                        r = max(0, min(255, int((255 * (1 - dist) + 100 * dist) * spiral)))
-                        g = max(0, min(255, int((200 * (1 - dist) + 30 * dist) * spiral)))
-                        b = max(0, min(255, int((50 * (1 - dist) + 200 * dist) * spiral)))
-                        buffer[py, px] = (r, g, b)
+                            # Golden amber center fading to emerald/purple edge
+                            center_mix = 1 - norm_dist
+                            r = int((255 * center_mix + 50 * (1 - center_mix)) * pattern)
+                            g = int((200 * center_mix + 150 * (1 - center_mix) * 0.5) * pattern)
+                            b = int((50 * center_mix + 200 * (1 - center_mix)) * pattern)
+                            buffer[py, px] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+                        else:
+                            # Iris edge glow
+                            glow = max(0, 1 - (dist - iris_r) / 3)
+                            buffer[py, px] = (int(100 * glow), int(50 * glow), int(150 * glow))
 
-        # Pulsing pupil with depth effect
-        pupil_r = int(7 + 2 * math.sin(t * 1.5))
-        pupil_cx = int(iris_cx + self.eye_x * 0.15)
-        pupil_cy = int(iris_cy + self.eye_y * 0.15)
+        # === PUPIL - Deep void that stares into your soul ===
+        pupil_r = int(12 + 4 * math.sin(t * 1.8) + 2 * pulse)  # Dilating pupil
+        pupil_cx = int(iris_cx + self.eye_x * 0.1)
+        pupil_cy = int(iris_cy + self.eye_y * 0.1)
 
-        for y in range(-pupil_r - 2, pupil_r + 3):
-            for x in range(-pupil_r - 2, pupil_r + 3):
+        for y in range(-pupil_r - 4, pupil_r + 5):
+            for x in range(-pupil_r - 4, pupil_r + 5):
                 dist_sq = x*x + y*y
-                if dist_sq <= (pupil_r + 2)**2:
+                dist = math.sqrt(dist_sq)
+                if dist <= pupil_r + 4:
                     px, py = pupil_cx + x, pupil_cy + y
                     if 0 <= px < 128 and 0 <= py < 128:
-                        dist = math.sqrt(dist_sq)
                         if dist <= pupil_r:
-                            # Deep void
-                            buffer[py, px] = (5, 5, 20)
+                            # Void black with subtle color
+                            void_pulse = 0.05 + 0.03 * math.sin(t * 6)
+                            buffer[py, px] = (int(5 * void_pulse), int(3 * void_pulse), int(15 * void_pulse))
                         else:
-                            # Soft edge glow
-                            alpha = max(0, 1 - (dist - pupil_r) / 2)
-                            buffer[py, px] = (max(0, int(50 * alpha)), max(0, int(30 * alpha)), max(0, int(100 * alpha)))
+                            # Gradient edge
+                            edge = max(0, 1 - (dist - pupil_r) / 4)
+                            buffer[py, px] = (int(30 * edge), int(15 * edge), int(60 * edge))
 
-        # Glowing highlights
-        for dx, dy, size, bright in [(-4, -4, 3, 1.0), (-2, -6, 2, 0.7), (3, -3, 1, 0.5)]:
-            hx, hy = pupil_cx + dx, pupil_cy + dy
+        # === GLINTING HIGHLIGHTS - Makes it look wet/alive ===
+        highlights = [
+            (-8, -8, 5, 1.0),   # Main highlight
+            (-4, -12, 3, 0.8),  # Secondary
+            (6, -6, 2, 0.5),    # Small accent
+            (-10, -5, 2, 0.4),  # Tiny
+        ]
+        for dx, dy, size, intensity in highlights:
+            hx = pupil_cx + dx + int(self.eye_x * 0.05)
+            hy = pupil_cy + dy + int(self.eye_y * 0.05)
+            # Shimmer
+            shimmer = 0.8 + 0.2 * math.sin(t * 10 + dx)
             for sy in range(-size, size + 1):
                 for sx in range(-size, size + 1):
                     if sx*sx + sy*sy <= size*size:
-                        px, py = hx + sx, hy + sy
-                        if 0 <= px < 128 and 0 <= py < 128:
-                            val = max(0, min(255, int(255 * bright)))
-                            buffer[py, px] = (val, val, val)
+                        hpx, hpy = hx + sx, hy + sy
+                        if 0 <= hpx < 128 and 0 <= hpy < 128:
+                            val = int(255 * intensity * shimmer)
+                            buffer[hpy, hpx] = (min(255, val), min(255, val), min(255, int(val * 0.9)))
 
-        # Blink overlay
+        # === FULL SCREEN BLINK - Eyelids close from top and bottom ===
         if self.blink > 0:
-            blink_h = int(eye_h * self.blink)
-            for y in range(-eye_h, -eye_h + blink_h * 2):
-                row_width = int(eye_w * math.sqrt(max(0, 1 - (y / eye_h) ** 2)))
-                for x in range(-row_width, row_width + 1):
-                    px, py = cx + x, cy + y
-                    if 0 <= px < 128 and 0 <= py < 128:
-                        buffer[py, px] = (60, 40, 90)
+            # Eyelid color - flesh tone
+            lid_color = (80, 50, 70)
+            lid_dark = (40, 25, 35)
 
-        # Elegant title
-        draw_centered_text(buffer, "VNVNC", 6, self.gold, scale=2)
+            # Top eyelid comes down
+            top_close = int(64 * self.blink)  # How far down it's closed
+            # Bottom eyelid comes up
+            bottom_close = int(64 * self.blink)
 
-        # Blinking prompt
-        if int(t * 2) % 2 == 0:
-            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, self.teal, scale=1)
+            for y in range(128):
+                for x in range(128):
+                    dx = x - cx
+                    # Eyelid shape follows eye curve
+                    lid_curve_top = top_close - int(15 * (1 - (dx / 64) ** 2))
+                    lid_curve_bottom = 127 - bottom_close + int(15 * (1 - (dx / 64) ** 2))
+
+                    if y < lid_curve_top:
+                        # Top lid
+                        edge_dist = max(0, lid_curve_top - y)
+                        if edge_dist < 5:
+                            buffer[y, x] = lid_dark  # Eyelash line
+                        else:
+                            buffer[y, x] = lid_color
+                    elif y > lid_curve_bottom:
+                        # Bottom lid
+                        edge_dist = max(0, y - lid_curve_bottom)
+                        if edge_dist < 3:
+                            buffer[y, x] = lid_dark
+                        else:
+                            buffer[y, x] = lid_color
+
+        # === TEXT - Only when eye is open ===
+        if self.blink < 0.3:
+            # VNVNC with glow
+            for ox in [-1, 0, 1]:
+                for oy in [-1, 0, 1]:
+                    if ox != 0 or oy != 0:
+                        draw_centered_text(buffer, "VNVNC", 4 + oy, (80, 40, 100), scale=2)
+            draw_centered_text(buffer, "VNVNC", 4, self.gold, scale=2)
+
+            # Prompt blinks
+            if int(t * 2) % 2 == 0:
+                draw_centered_text(buffer, "НАЖМИ СТАРТ", 116, self.teal, scale=1)
 
     def _render_portal(self, buffer: NDArray[np.uint8]) -> None:
         """Render cosmic portal - EFFICIENT version."""
@@ -487,16 +632,31 @@ class RotatingIdleAnimation:
             draw_centered_text(buffer, "КАМЕРА...", 75, self.pink, scale=1)
             return
 
-        # Get camera frame and resize if needed
+        # Get camera frame and resize with CROP-TO-FILL (no black bars!)
         frame = self._camera_frame
         if frame.shape[0] != 128 or frame.shape[1] != 128:
-            # Simple nearest-neighbor resize
             h, w = frame.shape[:2]
+
+            # Calculate scale factor to FILL 128x128 (crop excess, no black bars)
+            scale = max(128 / w, 128 / h)
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+
+            # Calculate crop offset (center crop)
+            crop_x = (new_w - 128) // 2
+            crop_y = (new_h - 128) // 2
+
+            # Resize with crop-to-fill
             new_frame = np.zeros((128, 128, 3), dtype=np.uint8)
             for y in range(128):
                 for x in range(128):
-                    sy = min(int(y * h / 128), h - 1)
-                    sx = min(int(x * w / 128), w - 1)
+                    # Map back to source coordinates
+                    src_x = (x + crop_x) / scale
+                    src_y = (y + crop_y) / scale
+                    sx = min(int(src_x), w - 1)
+                    sy = min(int(src_y), h - 1)
+                    sx = max(0, sx)
+                    sy = max(0, sy)
                     new_frame[y, x] = frame[sy, sx]
             frame = new_frame
 
@@ -517,17 +677,25 @@ class RotatingIdleAnimation:
                     else:
                         frame[y:y+2, x:x+2] = [20, 15, 40]
 
-        # Copy to buffer
+        # Copy to buffer - FULL SCREEN, no black bars!
         np.copyto(buffer, frame)
 
-        # Effect label
+        # Overlay text with outline (no solid bars!)
         effect_names = {"normal": "ЗЕРКАЛО", "negative": "НЕГАТИВ", "dither": "ПИКСЕЛИ"}
-        draw_rect(buffer, 0, 108, 128, 20, (0, 0, 0))
-        draw_centered_text(buffer, effect_names.get(effect, "ЭФФЕКТ"), 110, self.teal, scale=1)
+        # Effect label with outline
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, effect_names.get(effect, "ЭФФЕКТ"), 116 + oy, (0, 0, 0), scale=1)
+        draw_centered_text(buffer, effect_names.get(effect, "ЭФФЕКТ"), 116, self.teal, scale=1)
 
-        # Top bar
-        draw_rect(buffer, 0, 0, 128, 14, (0, 0, 0))
-        draw_centered_text(buffer, "НАЖМИ СТАРТ", 4, self.pink, scale=1)
+        # Top text with outline
+        if int(t * 2) % 2 == 0:
+            for ox in [-1, 0, 1]:
+                for oy in [-1, 0, 1]:
+                    if ox != 0 or oy != 0:
+                        draw_centered_text(buffer, "НАЖМИ СТАРТ", 4 + oy, (0, 0, 0), scale=1)
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 4, self.pink, scale=1)
 
     def _render_plasma(self, buffer: NDArray[np.uint8]) -> None:
         """Render plasma wave - EFFICIENT version using numpy vectorization."""
@@ -933,6 +1101,336 @@ class RotatingIdleAnimation:
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (150, 150, 255), scale=1)
 
     # =========================================================================
+    # EPIC DEMO EFFECTS (Ported from led_demo.py)
+    # =========================================================================
+
+    def _render_plasma_vortex(self, buffer: NDArray[np.uint8]) -> None:
+        """Render intense plasma vortex - mesmerizing spiral of color."""
+        t = self.state.scene_time / 1000
+        cx, cy = 64, 64
+
+        for y in range(128):
+            for x in range(128):
+                dx, dy = x - cx, y - cy
+                dist = math.sqrt(dx*dx + dy*dy)
+                angle = math.atan2(dy, dx)
+
+                # Vortex twist - spiraling inward
+                twist = angle + dist / 15 + t * 2
+                v = math.sin(twist * 5) * 0.5 + 0.5
+
+                # Radial pulse
+                pulse = math.sin(dist / 10 - t * 3) * 0.3 + 0.7
+
+                # Hue based on angle and distance
+                hue = (math.degrees(angle) + dist * 2 + t * 50) % 360
+                brightness = v * pulse * min(1, (70 - dist + 20) / 20) if dist < 70 else 0
+
+                if brightness > 0:
+                    color = hsv_to_rgb(hue, 0.9, max(0, min(1, brightness)))
+                    buffer[y, x] = color
+                else:
+                    buffer[y, x] = (5, 0, 10)
+
+        # VNVNC branding with outline
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, "VNVNC", 4 + oy, (0, 0, 0), scale=2)
+        draw_centered_text(buffer, "VNVNC", 4, (255, 200, 255), scale=2)
+
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 116, (200, 100, 255), scale=1)
+
+    def _render_neon_grid(self, buffer: NDArray[np.uint8]) -> None:
+        """Render retro synthwave neon grid - outrun aesthetic."""
+        t = self.state.scene_time / 1000
+
+        # Fill with dark purple/black
+        fill(buffer, (10, 0, 20))
+
+        horizon = 74  # Horizon line
+
+        # Sun (circle at horizon)
+        sun_y = horizon - 30
+        for r in range(25, 0, -1):
+            brightness = (25 - r) * 10
+            color = (min(255, brightness), brightness // 3, brightness // 2)
+            # Draw sun circle
+            for angle in range(0, 360, 3):
+                rad = math.radians(angle)
+                px = int(64 + r * math.cos(rad))
+                py = int(sun_y + r * 0.6 * math.sin(rad))  # Squished vertically
+                if 0 <= px < 128 and 0 <= py < 128:
+                    buffer[py, px] = color
+
+        # Horizontal lines with perspective
+        for i in range(1, 15):
+            progress = i / 15
+            y = horizon + int(progress * progress * (128 - horizon))
+            if y >= 128:
+                continue
+            intensity = int(200 * (1 - progress * 0.5))
+            hue = (t * 30 + i * 20) % 360
+            color = hsv_to_rgb(hue, 0.8, intensity / 255)
+            for x in range(128):
+                buffer[y, x] = color
+
+        # Vertical lines with perspective (converging to horizon)
+        for i in range(-10, 11, 2):
+            x1 = 64 + i * 3  # Top (at horizon)
+            x2 = 64 + i * 20  # Bottom
+            y1 = horizon
+            y2 = 127
+            hue = (t * 30 + abs(i) * 15) % 360
+            color = hsv_to_rgb(hue, 0.7, 0.6)
+            # Draw line
+            steps = 54
+            for step in range(steps):
+                progress = step / steps
+                x = int(x1 + (x2 - x1) * progress)
+                y = int(y1 + (y2 - y1) * progress)
+                if 0 <= x < 128 and 0 <= y < 128:
+                    buffer[y, x] = color
+
+        # Scrolling horizontal lines for motion effect
+        scroll = (t * 50) % 20
+        for i in range(5):
+            y = horizon + 10 + i * 20 + int(scroll)
+            if 0 <= y < 128:
+                for x in range(128):
+                    buffer[y, x] = (100, 0, 100)
+
+        # Branding
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, "VNVNC", 4 + oy, (0, 0, 0), scale=2)
+        draw_centered_text(buffer, "VNVNC", 4, self.pink, scale=2)
+
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 116, (255, 100, 200), scale=1)
+
+    def _render_electric_storm(self, buffer: NDArray[np.uint8]) -> None:
+        """Render electric storm with dramatic lightning."""
+        t = self.state.scene_time / 1000
+
+        # Dark stormy background gradient
+        for y in range(128):
+            darkness = 10 + y // 10
+            buffer[y, :] = [darkness // 3, darkness // 3, darkness]
+
+        # Generate new lightning bolt randomly
+        if random.random() < 0.05:
+            x = random.randint(20, 107)
+            self.lightning = [(x, 0)]
+            y = 0
+            while y < 128:
+                y += random.randint(5, 15)
+                x += random.randint(-10, 10)
+                x = max(5, min(122, x))
+                self.lightning.append((x, min(127, y)))
+            self.lightning_flash = 1.0
+
+        # Flash effect when lightning strikes
+        if self.lightning_flash > 0:
+            flash_brightness = int(30 * self.lightning_flash)
+            buffer[:] = np.clip(buffer.astype(np.int16) + flash_brightness, 0, 255).astype(np.uint8)
+            self.lightning_flash = max(0, self.lightning_flash - 0.1)
+
+        # Draw lightning with glow
+        if self.lightning and random.random() > 0.3:
+            for i in range(len(self.lightning) - 1):
+                p1, p2 = self.lightning[i], self.lightning[i + 1]
+                # Main bolt
+                steps = max(abs(p2[0] - p1[0]), abs(p2[1] - p1[1]), 1)
+                for step in range(steps):
+                    px = int(p1[0] + (p2[0] - p1[0]) * step / steps)
+                    py = int(p1[1] + (p2[1] - p1[1]) * step / steps)
+                    if 0 <= px < 128 and 0 <= py < 128:
+                        buffer[py, px] = (255, 255, 255)
+                        # Glow
+                        for gx in range(-2, 3):
+                            for gy in range(-2, 3):
+                                gpx, gpy = px + gx, py + gy
+                                if 0 <= gpx < 128 and 0 <= gpy < 128:
+                                    dist = abs(gx) + abs(gy)
+                                    if dist > 0:
+                                        glow = max(0, 200 - dist * 50)
+                                        existing = buffer[gpy, gpx]
+                                        buffer[gpy, gpx] = (
+                                            min(255, int(existing[0]) + glow),
+                                            min(255, int(existing[1]) + glow),
+                                            min(255, int(existing[2]) + glow)
+                                        )
+
+            # Branches
+            for point in self.lightning[::3]:
+                if random.random() < 0.5:
+                    ex = point[0] + random.randint(-20, 20)
+                    ey = point[1] + random.randint(10, 30)
+                    # Draw branch
+                    steps = max(abs(ex - point[0]), abs(ey - point[1]), 1)
+                    for step in range(steps):
+                        px = int(point[0] + (ex - point[0]) * step / steps)
+                        py = int(point[1] + (ey - point[1]) * step / steps)
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            buffer[py, px] = (150, 150, 255)
+
+        # Rain
+        for _ in range(30):
+            rx = random.randint(0, 127)
+            ry = random.randint(0, 127)
+            for dy in range(8):
+                rpy = ry + dy
+                rpx = rx + dy // 4
+                if 0 <= rpx < 128 and 0 <= rpy < 128:
+                    buffer[rpy, rpx] = (100, 100, 150)
+
+        # Branding
+        draw_centered_text(buffer, "VNVNC", 4, (150, 200, 255), scale=2)
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 116, (100, 150, 255), scale=1)
+
+    def _render_quantum_field(self, buffer: NDArray[np.uint8]) -> None:
+        """Render quantum particle field with connections."""
+        t = self.state.scene_time / 1000
+
+        # Dark space background
+        fill(buffer, (0, 5, 15))
+
+        # Update particles with wave function behavior
+        for p in self.quantum_particles:
+            # Quantum tunneling / wave behavior
+            p['vx'] += (random.random() - 0.5) * 0.02 + math.sin(t + p['y'] * 10) * 0.01
+            p['vy'] += (random.random() - 0.5) * 0.02 + math.cos(t + p['x'] * 10) * 0.01
+            p['x'] += p['vx']
+            p['y'] += p['vy']
+
+            # Wrap around
+            if p['x'] < 0: p['x'] = 1
+            if p['x'] > 1: p['x'] = 0
+            if p['y'] < 0: p['y'] = 1
+            if p['y'] > 1: p['y'] = 0
+
+            # Damping
+            p['vx'] *= 0.98
+            p['vy'] *= 0.98
+
+        # Draw connections between nearby particles
+        for i, p1 in enumerate(self.quantum_particles):
+            px1 = int(p1['x'] * 127)
+            py1 = int(p1['y'] * 127)
+
+            for p2 in self.quantum_particles[i+1:]:
+                px2 = int(p2['x'] * 127)
+                py2 = int(p2['y'] * 127)
+                dist = math.sqrt((px1 - px2)**2 + (py1 - py2)**2)
+
+                if dist < 40 and dist > 0:
+                    alpha = (1 - dist / 40)
+                    hue = (t * 30 + i * 5) % 360
+                    color = hsv_to_rgb(hue, 0.7, alpha)
+                    # Draw line
+                    steps = max(int(dist), 1)
+                    for step in range(steps):
+                        lx = int(px1 + (px2 - px1) * step / steps)
+                        ly = int(py1 + (py2 - py1) * step / steps)
+                        if 0 <= lx < 128 and 0 <= ly < 128:
+                            buffer[ly, lx] = color
+
+            # Draw particle
+            hue = (p1['x'] * 180 + t * 50) % 360
+            color = hsv_to_rgb(hue, 0.9, 0.9)
+            if 0 <= px1 < 128 and 0 <= py1 < 128:
+                buffer[py1, px1] = color
+                # Glow
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    gpx, gpy = px1 + dx, py1 + dy
+                    if 0 <= gpx < 128 and 0 <= gpy < 128:
+                        glow_color = tuple(max(0, c // 2) for c in color)
+                        buffer[gpy, gpx] = glow_color
+
+        # Branding
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, "VNVNC", 4 + oy, (0, 0, 0), scale=2)
+        draw_centered_text(buffer, "VNVNC", 4, (100, 200, 255), scale=2)
+
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 116, (50, 150, 255), scale=1)
+
+    def _render_dna_helix(self, buffer: NDArray[np.uint8]) -> None:
+        """Render DNA double helix animation."""
+        t = self.state.scene_time / 1000
+        cx = 64
+
+        # Dark blue/green background
+        fill(buffer, (0, 10, 20))
+
+        for y in range(128):
+            phase = y / 20 + t * 2
+
+            # Double helix strands
+            x1 = int(cx + math.sin(phase) * 25)
+            x2 = int(cx + math.sin(phase + math.pi) * 25)
+
+            depth1 = math.cos(phase)
+            depth2 = math.cos(phase + math.pi)
+
+            # Draw strand 1 (front when depth > 0)
+            if depth1 > 0:
+                # Front strand - bright
+                for dx in range(-2, 3):
+                    px = x1 + dx
+                    if 0 <= px < 128:
+                        brightness = 1.0 - abs(dx) * 0.2
+                        buffer[y, px] = (int(200 * brightness), int(50 * brightness), int(50 * brightness))
+
+            # Draw strand 2 (front when depth > 0)
+            if depth2 > 0:
+                for dx in range(-2, 3):
+                    px = x2 + dx
+                    if 0 <= px < 128:
+                        brightness = 1.0 - abs(dx) * 0.2
+                        buffer[y, px] = (int(50 * brightness), int(50 * brightness), int(200 * brightness))
+
+            # Base pairs (rungs) - only when strands are at similar depth
+            if y % 8 == 0 and abs(depth1 - depth2) < 0.5:
+                hue = (y * 3 + t * 30) % 360
+                color = hsv_to_rgb(hue, 0.7, 0.8)
+                # Draw rung
+                start_x = min(x1, x2)
+                end_x = max(x1, x2)
+                for x in range(start_x, end_x + 1):
+                    if 0 <= x < 128:
+                        buffer[y, x] = color
+
+            # Draw back strands (dimmer)
+            if depth1 <= 0:
+                for dx in range(-1, 2):
+                    px = x1 + dx
+                    if 0 <= px < 128:
+                        buffer[y, px] = (100, 25, 25)
+
+            if depth2 <= 0:
+                for dx in range(-1, 2):
+                    px = x2 + dx
+                    if 0 <= px < 128:
+                        buffer[y, px] = (25, 25, 100)
+
+        # Branding
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, "VNVNC", 4 + oy, (0, 0, 0), scale=2)
+        draw_centered_text(buffer, "VNVNC", 4, (100, 255, 150), scale=2)
+
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 116, (50, 200, 100), scale=1)
+
+    # =========================================================================
     # TICKER DISPLAY RENDERING
     # =========================================================================
 
@@ -951,8 +1449,12 @@ class RotatingIdleAnimation:
             IdleScene.GLITCH_GRID: "СБОЙ В МАТРИЦЕ",
             IdleScene.FIRE_SILHOUETTE: "ОГНЕННЫЙ СИЛУЭТ",
             IdleScene.MATRIX_RAIN: "ДОБРО ПОЖАЛОВАТЬ В МАТРИЦУ",
-            IdleScene.KALEIDOSCOPE: "КАЛЕЙДОСКОП РЕАЛЬНОСТИ",
             IdleScene.STARFIELD_3D: "ПОЛЁТ К ЗВЁЗДАМ",
+            IdleScene.PLASMA_VORTEX: "ПЛАЗМЕННЫЙ ВОРТЕКС",
+            IdleScene.NEON_GRID: "РЕТРО ВОЛНА 80-Х",
+            IdleScene.ELECTRIC_STORM: "ЭЛЕКТРИЧЕСКИЙ ШТОРМ",
+            IdleScene.QUANTUM_FIELD: "КВАНТОВОЕ ПОЛЕ",
+            IdleScene.DNA_HELIX: "СПИРАЛЬ ЖИЗНИ",
         }
         text = texts.get(scene, "VNVNC ARCADE")
 
@@ -965,8 +1467,12 @@ class RotatingIdleAnimation:
             IdleScene.GLITCH_GRID: (0, 255, 100),
             IdleScene.FIRE_SILHOUETTE: (255, 150, 50),
             IdleScene.MATRIX_RAIN: (100, 255, 100),
-            IdleScene.KALEIDOSCOPE: self.pink,
             IdleScene.STARFIELD_3D: (150, 150, 255),
+            IdleScene.PLASMA_VORTEX: (200, 100, 255),
+            IdleScene.NEON_GRID: (255, 100, 200),
+            IdleScene.ELECTRIC_STORM: (100, 150, 255),
+            IdleScene.QUANTUM_FIELD: (100, 200, 255),
+            IdleScene.DNA_HELIX: (100, 255, 150),
         }
         color = colors.get(scene, (255, 255, 255))
 
@@ -991,8 +1497,12 @@ class RotatingIdleAnimation:
             IdleScene.GLITCH_GRID: ["  ГЛИТЧ     ", "  СИСТЕМА   ", " НАЖМИ СТАРТ "],
             IdleScene.FIRE_SILHOUETTE: ["  ОГНЕННЫЙ  ", "  СИЛУЭТ    ", " НАЖМИ СТАРТ "],
             IdleScene.MATRIX_RAIN: ["  МАТРИЦА   ", "   ДОЖДЬ    ", " НАЖМИ СТАРТ "],
-            IdleScene.KALEIDOSCOPE: ["КАЛЕЙДОСКОП ", "  ЗЕРКАЛ    ", " НАЖМИ СТАРТ "],
             IdleScene.STARFIELD_3D: [" ЗВЁЗДНЫЙ   ", "  ПОЛЁТ     ", " НАЖМИ СТАРТ "],
+            IdleScene.PLASMA_VORTEX: ["  ВОРТЕКС   ", " ГИПНОТИЗМ  ", " НАЖМИ СТАРТ "],
+            IdleScene.NEON_GRID: [" SYNTHWAVE  ", "   80-Х     ", " НАЖМИ СТАРТ "],
+            IdleScene.ELECTRIC_STORM: ["   ШТОРМ    ", "   МОЛНИИ   ", " НАЖМИ СТАРТ "],
+            IdleScene.QUANTUM_FIELD: ["  КВАНТОВОЕ ", "    ПОЛЕ    ", " НАЖМИ СТАРТ "],
+            IdleScene.DNA_HELIX: ["   СПИРАЛЬ  ", "   ЖИЗНИ    ", " НАЖМИ СТАРТ "],
         }
         scene_texts = texts.get(scene, ["    VNVNC    ", " НАЖМИ СТАРТ ", "    ★★★★    "])
         return scene_texts[idx].center(16)[:16]
