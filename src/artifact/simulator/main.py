@@ -42,8 +42,7 @@ from artifact.modes.lunar_lander import LunarLanderMode
 from artifact.modes.pong import PongMode
 from artifact.modes.flappy import FlappyMode
 from artifact.modes.game_2048 import Game2048Mode
-from artifact.modes.stacks import StacksMode
-from artifact.modes.towerbrock import TowerbrockMode
+from artifact.modes.tower_stack import TowerStackMode
 from artifact.modes.hand_snake import HandSnakeMode
 from artifact.modes.rocketpy import RocketPyMode
 from artifact.modes.skii import SkiiMode
@@ -168,8 +167,7 @@ class ArtifactSimulator:
         self.mode_manager.register_mode(PongMode)
         self.mode_manager.register_mode(FlappyMode)
         self.mode_manager.register_mode(Game2048Mode)
-        self.mode_manager.register_mode(StacksMode)
-        self.mode_manager.register_mode(TowerbrockMode)
+        self.mode_manager.register_mode(TowerStackMode)
         self.mode_manager.register_mode(HandSnakeMode)
         self.mode_manager.register_mode(RocketPyMode)
         self.mode_manager.register_mode(SkiiMode)

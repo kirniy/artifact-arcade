@@ -77,8 +77,7 @@ async def run_hardware() -> None:
     from artifact.modes.pong import PongMode
     from artifact.modes.flappy import FlappyMode
     from artifact.modes.game_2048 import Game2048Mode
-    from artifact.modes.stacks import StacksMode
-    from artifact.modes.towerbrock import TowerbrockMode
+    from artifact.modes.tower_stack import TowerStackMode
     from artifact.modes.hand_snake import HandSnakeMode
     from artifact.modes.rocketpy import RocketPyMode
     from artifact.modes.skii import SkiiMode
@@ -131,8 +130,7 @@ async def run_hardware() -> None:
     mode_manager.register_mode(PongMode)
     mode_manager.register_mode(FlappyMode)
     mode_manager.register_mode(Game2048Mode)
-    mode_manager.register_mode(StacksMode)
-    mode_manager.register_mode(TowerbrockMode)
+    mode_manager.register_mode(TowerStackMode)
     mode_manager.register_mode(HandSnakeMode)
     mode_manager.register_mode(RocketPyMode)
     mode_manager.register_mode(SkiiMode)

@@ -17,7 +17,7 @@ from numpy.typing import NDArray
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect
-from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
+from artifact.graphics.text_utils import draw_text, measure_text
 from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
@@ -102,10 +102,11 @@ class TowerStackMode(BaseMode):
     """Classic tower stacking with proper physics and addictive mechanics."""
 
     name = "tower_stack"
-    display_name = "БАШНЯ"
+    display_name = "TOWER"
     icon = "tower"
     style = "arcade"
-    description = "Строй башню ровно, не промахнись!"
+    description = "Stack the tower as high as you can"
+    requires_camera = True
 
     # Constants
     BLOCK_HEIGHT = 10
@@ -334,36 +335,22 @@ class TowerStackMode(BaseMode):
         if self.phase != ModePhase.ACTIVE:
             return
 
-        # Slow-mo effect
-        time_scale = 0.4 if self._slow_mo_timer > 0 else 1.0
-        dt = (delta_ms / 1000.0) * time_scale
+        dt = delta_ms / 1000.0
         self._time_ms += delta_ms
 
-        # Game over countdown
         if self._game_over:
             self._game_over_timer += delta_ms
             if self._game_over_timer > 2500:
                 self._complete()
-            # Still update falling pieces for visual
             self._update_falling_pieces(dt)
-            self._update_particles(dt)
             return
 
-        # Lock flash decay
-        self._lock_flash_timer = max(0.0, self._lock_flash_timer - delta_ms)
-
-        # Drop animation or swing movement
         if self._dropping:
             self._update_drop(dt)
         else:
-            # Swing the block
             actual_speed = self._swing_speed
-            if self._slow_mo_timer > 0:
-                actual_speed *= 0.4
-
             self._swing_x += self._swing_dir * actual_speed * dt
 
-            # Bounce off edges with some margin for block width
             half_w = self._current_width / 2
             if self._swing_x - half_w <= 5:
                 self._swing_x = 5 + half_w
@@ -372,72 +359,12 @@ class TowerStackMode(BaseMode):
                 self._swing_x = 123 - half_w
                 self._swing_dir = -1
 
-        # Update falling pieces
         self._update_falling_pieces(dt)
 
-        # Update particles
-        self._update_particles(dt)
-
-        # Update power-ups
-        self._update_powerups(dt)
-
-        # Decay timers
-        self._shake_timer = max(0.0, self._shake_timer - delta_ms)
-        self._flash_timer = max(0.0, self._flash_timer - delta_ms)
-        self._placement_timer = max(0.0, self._placement_timer - delta_ms)
-        self._slow_mo_timer = max(0.0, self._slow_mo_timer - delta_ms)
-        self._wide_block_timer = max(0.0, self._wide_block_timer - delta_ms)
-        self._tutorial_timer = max(0.0, self._tutorial_timer - delta_ms)
-
-        # Fever mode timer and effects
-        if self._fever_mode:
-            self._fever_timer -= delta_ms
-            if self._fever_timer <= 0:
-                self._fever_mode = False
-                self._fever_multiplier = 1.0
-            else:
-                # Spawn fever stars
-                if random.random() < 0.3:
-                    self._spawn_fever_star()
-
-        # Update fever stars
-        self._update_fever_stars(dt)
-
-        # Update bonus blocks
-        self._update_bonus_blocks(dt)
-
-        # Smooth camera scroll (freeze while dropping to avoid target drift)
         if not self._dropping:
             camera_diff = self._target_camera_y - self._camera_y
             self._camera_y += camera_diff * 4.0 * dt
 
-        # Background pulse
-        self._bg_pulse = (self._bg_pulse + delta_ms * 0.003) % (2 * math.pi)
-
-        # Spawn power-ups occasionally (increased rate)
-        if random.random() < 0.0008 * delta_ms and len(self._powerups) < 3:
-            self._spawn_powerup()
-
-        # Update difficulty based on tower height
-        self._update_difficulty()
-
-        # Bonus stage timer
-        if self._bonus_stage:
-            self._bonus_timer -= delta_ms
-            if self._bonus_timer <= 0:
-                self._end_bonus_stage()
-
-        # Check for high score
-        if self._score > self._high_score:
-            if not self._is_new_high_score and self._high_score > 0:
-                self._is_new_high_score = True
-                self._placement_text = "НОВЫЙ РЕКОРД!"
-                self._placement_timer = 1500
-                self._flash_timer = 500
-                self._flash_color = (255, 215, 0)
-            self._high_score = self._score
-
-        # Update camera frame
         self._update_camera()
 
     def _update_falling_pieces(self, dt: float) -> None:
@@ -769,10 +696,6 @@ class TowerStackMode(BaseMode):
         # Prepare next block
         self._current_width = overlap_width
 
-        # Wide block power-up active?
-        if self._wide_block_timer > 0:
-            self._current_width = min(self.INITIAL_WIDTH, self._current_width + 10)
-
         self._next_block_y -= self.BLOCK_HEIGHT
 
         # Update camera
@@ -800,144 +723,34 @@ class TowerStackMode(BaseMode):
             return PlacementQuality.MISS
 
     def _apply_placement_rewards(self, quality: PlacementQuality, overlap_width: float) -> None:
-        """Apply rewards based on placement quality."""
-        base_score = int(overlap_width * 2)
-
-        # Apply fever multiplier if active
-        fever_mult = self._fever_multiplier if self._fever_mode else 1.0
-
-        # Track consecutive hits for alternative fever trigger
-        self._consecutive_hits += 1
-        self._recent_misses = max(0, self._recent_misses - 1)  # Decay recent misses
-
-        # Quality-based speed increase (gentler curve)
-        # PERFECT: +0.5 speed, GREAT: +0.7, GOOD: +0.9, OK: +1.1
-        speed_increments = {
-            PlacementQuality.PERFECT: 0.5,
-            PlacementQuality.GREAT: 0.7,
-            PlacementQuality.GOOD: 0.9,
-            PlacementQuality.OK: 1.1
-        }
-        speed_inc = speed_increments.get(quality, 0.8)
-
-        # Catch-up mechanic: if struggling (recent misses), reduce speed increase
-        if self._recent_misses >= 2:
-            speed_inc *= 0.5
-            self._swing_speed = max(60.0, self._swing_speed - 5)  # Also reduce current speed
-
-        self._swing_speed = min(160.0, self._swing_speed + speed_inc)  # Lower cap too
-
-        # Check for milestone celebrations
-        height = len(self._tower)
-        if height in [5, 10, 15, 20, 25, 30] and height > self._last_milestone:
-            self._celebrate_milestone(height)
-            self._last_milestone = height
+        """Apply simplified rewards based on placement quality."""
+        base_score = max(1, int(overlap_width))
 
         if quality == PlacementQuality.PERFECT:
+            multiplier = 3.0
             self._streak += 1
-            self._perfect_streak += 1
-            self._total_perfects += 1
-            self._combo_multiplier = min(5.0, 1.0 + self._streak * 0.5)
-            score = int(base_score * 3 * self._combo_multiplier * fever_mult)
-            self._score += score
-
-            # Different text for fever mode
-            if self._fever_mode:
-                self._placement_text = f"ИДЕАЛЬНО! +{score}"
-            else:
-                self._placement_text = f"ИДЕАЛЬНО! +{score}"
-            self._placement_timer = 1500  # Longer display time
-
-            self._flash_timer = 300
-            self._flash_color = (255, 255, 150) if not self._fever_mode else (255, 150, 50)
-
-            self._spawn_celebration(self._swing_x, self.SWING_Y + self.BLOCK_HEIGHT, 30)
-
-            # Restore more width on perfect! (+8 instead of +5)
-            self._current_width = min(self.INITIAL_WIDTH, self._current_width + 8)
-
-            # Rescue mechanic: if dangerously narrow, give extra help
-            if self._current_width < 20:
-                self._current_width = min(self.INITIAL_WIDTH, self._current_width + 5)
-
-            # Activate fever mode on 3 perfect streak (was 5)
-            # OR 8 consecutive non-misses
-            if (self._perfect_streak >= 3 or self._consecutive_hits >= 8) and not self._fever_mode:
-                self._activate_fever_mode()
-
-            if hasattr(self.context, "audio") and self.context.audio:
-                self.context.audio.play_reward()
-
+            self._current_width = min(self.INITIAL_WIDTH, self._current_width + 6)
         elif quality == PlacementQuality.GREAT:
+            multiplier = 2.0
             self._streak += 1
-            self._perfect_streak = 0  # Reset perfect streak on non-perfect
-            self._combo_multiplier = min(4.0, 1.0 + self._streak * 0.3)
-            score = int(base_score * 2 * self._combo_multiplier * fever_mult)
-            self._score += score
-
-            if self._fever_mode:
-                self._placement_text = f"ОТЛИЧНО! +{score}"
-            else:
-                self._placement_text = f"ОТЛИЧНО! +{score}"
-            self._placement_timer = 1200  # Longer display
-
-            self._flash_timer = 200
-            self._flash_color = (200, 255, 150)
-
-            # Alternative fever: 8 consecutive hits
-            if self._consecutive_hits >= 8 and not self._fever_mode:
-                self._activate_fever_mode()
-
-            self._spawn_celebration(self._swing_x, self.SWING_Y + self.BLOCK_HEIGHT, 15)
-
-            if hasattr(self.context, "audio") and self.context.audio:
-                self.context.audio.play_success()
-
         elif quality == PlacementQuality.GOOD:
+            multiplier = 1.5
             self._streak += 1
-            self._perfect_streak = 0
-            self._combo_multiplier = min(3.0, 1.0 + self._streak * 0.2)
-            score = int(base_score * 1.5 * self._combo_multiplier * fever_mult)
-            self._score += score
-
-            self._placement_text = f"ХОРОШО +{score}"
-            self._placement_timer = 1000  # Extended from 500ms
-
-            self._spawn_celebration(self._swing_x, self.SWING_Y + self.BLOCK_HEIGHT, 8)
-
-            # Alternative fever: 8 consecutive hits works for GOOD too
-            if self._consecutive_hits >= 8 and not self._fever_mode:
-                self._activate_fever_mode()
-
-            if hasattr(self.context, "audio") and self.context.audio:
-                self.context.audio.play_ui_confirm()
-
-        elif quality == PlacementQuality.OK:
+        else:
+            multiplier = 1.0
             self._streak = 0
-            self._perfect_streak = 0
-            self._combo_multiplier = 1.0
-            self._score += int(base_score * fever_mult)
 
-            self._placement_text = f"+{int(base_score * fever_mult)}"
-            self._placement_timer = 800  # Extended from 400ms
-
-            self._shake_timer = 100
-            self._shake_intensity = 2
-
-            if hasattr(self.context, "audio") and self.context.audio:
-                self.context.audio.play_ui_move()
-
+        self._score += int(base_score * multiplier)
         self._max_streak = max(self._max_streak, self._streak)
 
-        # Check if we should spawn a bonus block
-        tower_height = len(self._tower)
-        if tower_height >= self._next_bonus_height:
-            self._spawn_bonus_block()
-            self._next_bonus_height += 5 + random.randint(0, 3)
-
-        # Track bonus stage progress
-        if self._bonus_stage:
-            self._bonus_blocks_placed += 1
+        speed_increments = {
+            PlacementQuality.PERFECT: 1.0,
+            PlacementQuality.GREAT: 0.8,
+            PlacementQuality.GOOD: 0.6,
+            PlacementQuality.OK: 0.4,
+            PlacementQuality.MISS: 0.0,
+        }
+        self._swing_speed = min(140.0, self._swing_speed + speed_increments.get(quality, 0.4))
 
     def _handle_miss(self) -> None:
         """Handle a complete miss."""
@@ -946,18 +759,8 @@ class TowerStackMode(BaseMode):
         self._perfect_streak = 0
         self._combo_multiplier = 1.0
 
-        # Track for catch-up mechanic
         self._consecutive_hits = 0
         self._recent_misses = min(3, self._recent_misses + 1)
-
-        self._shake_timer = 500
-        self._shake_intensity = 5
-
-        self._flash_timer = 300
-        self._flash_color = (255, 50, 50)
-
-        self._placement_text = "МИМО!"
-        self._placement_timer = 1000
 
         # Create falling block
         self._create_falling_piece(
@@ -975,8 +778,6 @@ class TowerStackMode(BaseMode):
         if self._lives <= 0:
             self._game_over = True
             self._game_over_timer = 0
-            self._placement_text = "ИГРА ОКОНЧЕНА"
-            self._placement_timer = 3000
         else:
             # Reset block width
             if self._tower:
@@ -1091,76 +892,22 @@ class TowerStackMode(BaseMode):
         if outline:
             draw_rect(buffer, x, y, w, h, (0, 0, 0), filled=False)
 
-    def render_main(self, buffer: NDArray[np.uint8]) -> None:
-        t = self._time_ms
-
-        # Fever mode background effect
-        if self._fever_mode:
-            # Rainbow cycling background
-            hue = (t / 20) % 360
-            r = int(128 + 40 * math.sin(math.radians(hue)))
-            g = int(128 + 40 * math.sin(math.radians(hue + 120)))
-            b = int(128 + 40 * math.sin(math.radians(hue + 240)))
-            for y in range(128):
-                factor = y / 128
-                buffer[y, :] = [
-                    int(r * 0.2 * (1 - factor)),
-                    int(g * 0.2 * (1 - factor)),
-                    int(b * 0.3 + 20 * factor)
-                ]
-        # Background
-        elif self._camera_frame is not None:
-            # Styled camera - dark with color tint
-            styled = (self._camera_frame * 0.25).astype(np.uint8)
-            # Height-based tint
-            height_factor = min(1.0, len(self._tower) / 15)
-            pulse = 0.5 + 0.5 * math.sin(self._bg_pulse)
-
-            # Add purple/blue tint that shifts with height
-            tint_r = int(15 + 10 * height_factor * pulse)
-            tint_g = int(10 + 5 * pulse)
-            tint_b = int(30 + 20 * height_factor)
-
-            styled[:, :, 0] = np.clip(styled[:, :, 0].astype(np.int16) + tint_r, 0, 255).astype(np.uint8)
-            styled[:, :, 1] = np.clip(styled[:, :, 1].astype(np.int16) + tint_g, 0, 255).astype(np.uint8)
-            styled[:, :, 2] = np.clip(styled[:, :, 2].astype(np.int16) + tint_b, 0, 255).astype(np.uint8)
-            buffer[:] = styled
+    def _render_camera_background(self, buffer: NDArray[np.uint8]) -> None:
+        if self._camera_frame is not None:
+            dimmed = (self._camera_frame.astype(np.float32) * 0.35).astype(np.uint8)
+            np.copyto(buffer, dimmed)
         else:
-            # Gradient background
-            for y in range(128):
-                factor = y / 128
-                r = int(25 + 15 * factor + 5 * math.sin(self._bg_pulse))
-                g = int(20 + 10 * factor)
-                b = int(50 - 20 * factor)
-                buffer[y, :] = [r, g, b]
+            fill(buffer, (8, 8, 12))
 
-        # Flash effect
-        if self._flash_timer > 0:
-            intensity = self._flash_timer / 300
-            for c in range(3):
-                buffer[:, :, c] = np.clip(
-                    buffer[:, :, c].astype(np.float32) + self._flash_color[c] * intensity * 0.3,
-                    0, 255
-                ).astype(np.uint8)
-
-        # Shake
-        shake_x = shake_y = 0
-        if self._shake_timer > 0:
-            amp = int(self._shake_intensity * self._shake_timer / 500)
-            shake_x = random.randint(-amp, amp)
-            shake_y = random.randint(-amp, amp)
+    def render_main(self, buffer: NDArray[np.uint8]) -> None:
+        self._render_camera_background(buffer)
+        shake_x = 0
+        shake_y = 0
 
         # Draw ground
         ground_screen_y = int(self.GROUND_Y + self._camera_y) + shake_y
-        if ground_screen_y < 128:
-            # Ground gradient
-            for y in range(max(0, ground_screen_y), 128):
-                darkness = (y - ground_screen_y) / 20
-                color = (int(40 - 10 * darkness), int(35 - 8 * darkness), int(55 - 12 * darkness))
-                buffer[y, :] = color
-            # Ground line
-            if 0 <= ground_screen_y < 128:
-                draw_rect(buffer, 0, ground_screen_y, 128, 2, (100, 90, 130))
+        if 0 <= ground_screen_y < 128:
+            draw_rect(buffer, 0, ground_screen_y, 128, 1, (50, 50, 60))
 
         # Draw tower
         for block in self._tower:
@@ -1172,17 +919,6 @@ class TowerStackMode(BaseMode):
             if -h < screen_y < 128:
                 self._draw_block(buffer, screen_x, screen_y, w, h, block.color, outline=True)
 
-                if self._lock_flash_timer > 0 and block is self._lock_flash_block:
-                    intensity = self._lock_flash_timer / 160
-                    flash = int(120 * intensity)
-                    flash_color = (
-                        min(255, block.color[0] + flash),
-                        min(255, block.color[1] + flash),
-                        min(255, block.color[2] + flash),
-                    )
-                    draw_rect(buffer, screen_x - 1, screen_y - 1, w + 2, h + 2,
-                              flash_color, filled=False, thickness=1)
-
         # Draw falling pieces
         for piece in self._falling_pieces:
             screen_y = int(piece.y + self._camera_y) + shake_y
@@ -1192,385 +928,40 @@ class TowerStackMode(BaseMode):
             if -piece.height < screen_y < 140:
                 self._draw_block(buffer, screen_x, screen_y, w, piece.height, piece.color, outline=True)
 
-        # Draw particles
-        for p in self._particles:
-            screen_y = int(p.y + self._camera_y) + shake_y
-            screen_x = int(p.x) + shake_x
-
-            if 0 < screen_x < 127 and 0 < screen_y < 127:
-                alpha = p.life / p.max_life
-                size = max(1, int(p.size))
-                color = tuple(int(c * alpha) for c in p.color)
-                draw_rect(buffer, screen_x, screen_y, size, size, color, filled=True)
-
-        # Draw fever stars (background effect)
-        for star in self._stars:
-            sx = int(star.x)
-            sy = int(star.y)
-            if 0 < sx < 127 and 0 < sy < 127:
-                size = max(1, int(star.size))
-                draw_rect(buffer, sx, sy, size, size, star.color, filled=True)
-
-        # Draw bonus blocks
-        for bb in self._bonus_blocks:
-            if bb.collected:
-                continue
-            screen_y = int(bb.y + self._camera_y) + shake_y
-            screen_x = int(bb.x - bb.width / 2) + shake_x
-
-            if -20 < screen_y < 128:
-                pulse = 1.0 + 0.3 * math.sin(bb.pulse)
-                w = int(bb.width * pulse)
-                h = 8
-
-                if bb.type == "gold":
-                    color = (255, 220, 50)
-                    glow = (255, 200, 0)
-                elif bb.type == "rainbow":
-                    hue = (t / 10 + bb.pulse * 30) % 360
-                    color = (
-                        int(128 + 127 * math.sin(math.radians(hue))),
-                        int(128 + 127 * math.sin(math.radians(hue + 120))),
-                        int(128 + 127 * math.sin(math.radians(hue + 240)))
-                    )
-                    glow = color
-                else:  # bomb
-                    color = (255, 80, 80)
-                    glow = (255, 50, 50)
-
-                # Glow
-                draw_rect(buffer, screen_x - 2, screen_y - 2, w + 4, h + 4,
-                         tuple(int(c * 0.5) for c in glow), filled=True)
-                # Body
-                draw_rect(buffer, screen_x, screen_y, w, h, color, filled=True)
-                # Sparkle
-                if int(t / 100) % 2 == 0:
-                    draw_rect(buffer, screen_x + w // 2, screen_y, 2, 2, (255, 255, 255))
-
-        # Draw power-ups with distinctive icons
-        for pu in self._powerups:
-            screen_y = int(pu.y + self._camera_y) + shake_y
-            screen_x = int(pu.x) + shake_x
-
-            if 0 < screen_y < 128:
-                pulse = 1.0 + 0.2 * math.sin(pu.pulse * 2)
-                size = int(8 * pulse)
-                cx, cy = screen_x, screen_y
-
-                if pu.type == "wide":
-                    # Double arrow icon (wide block)
-                    color = (100, 255, 100)
-                    glow = (50, 180, 50)
-                    # Background glow
-                    draw_rect(buffer, cx - size - 2, cy - size // 2 - 2, size * 2 + 4, size + 4, glow, filled=True)
-                    # Main body
-                    draw_rect(buffer, cx - size, cy - size // 2, size * 2, size, color, filled=True)
-                    # Left arrow head
-                    for i in range(3):
-                        draw_rect(buffer, cx - size - 2 + i, cy - 1 - i, 2, 2 + i * 2, (255, 255, 255), filled=True)
-                    # Right arrow head
-                    for i in range(3):
-                        draw_rect(buffer, cx + size - i, cy - 1 - i, 2, 2 + i * 2, (255, 255, 255), filled=True)
-                    # Center line
-                    draw_rect(buffer, cx - size + 2, cy - 1, size * 2 - 4, 2, (255, 255, 255), filled=True)
-
-                elif pu.type == "slow":
-                    # Hourglass/clock icon (slow-mo)
-                    color = (100, 200, 255)
-                    glow = (50, 120, 180)
-                    # Background glow
-                    draw_rect(buffer, cx - size // 2 - 2, cy - size - 2, size + 4, size * 2 + 4, glow, filled=True)
-                    # Top triangle
-                    for i in range(size):
-                        w = size - i
-                        draw_rect(buffer, cx - w // 2, cy - size + i, w, 1, color, filled=True)
-                    # Bottom triangle (inverted)
-                    for i in range(size):
-                        w = i + 1
-                        draw_rect(buffer, cx - w // 2, cy + i, w, 1, color, filled=True)
-                    # Center pinch
-                    draw_rect(buffer, cx - 1, cy - 1, 2, 2, (255, 255, 255), filled=True)
-                    # Border
-                    draw_rect(buffer, cx - size // 2, cy - size, size, 1, (255, 255, 255), filled=True)
-                    draw_rect(buffer, cx - size // 2, cy + size - 1, size, 1, (255, 255, 255), filled=True)
-
-                else:  # life - heart icon
-                    color = (255, 100, 150)
-                    glow = (180, 50, 80)
-                    # Background glow
-                    draw_rect(buffer, cx - size // 2 - 2, cy - size // 2 - 2, size + 4, size + 4, glow, filled=True)
-                    # Heart shape (pixel art)
-                    # Top bumps
-                    draw_rect(buffer, cx - size // 2 + 1, cy - size // 2, size // 2 - 1, size // 3, color, filled=True)
-                    draw_rect(buffer, cx + 1, cy - size // 2, size // 2 - 1, size // 3, color, filled=True)
-                    # Middle body
-                    draw_rect(buffer, cx - size // 2, cy - size // 3, size, size // 2, color, filled=True)
-                    # Bottom point
-                    for i in range(size // 2):
-                        w = size - i * 2
-                        if w > 0:
-                            draw_rect(buffer, cx - w // 2, cy + size // 6 + i, w, 1, color, filled=True)
-                    # Plus sign overlay
-                    draw_rect(buffer, cx - 1, cy - size // 3, 2, size // 2 + 2, (255, 255, 255), filled=True)
-                    draw_rect(buffer, cx - size // 3, cy - 1, size // 2 + 2, 2, (255, 255, 255), filled=True)
-
-                # Sparkle effect
-                sparkle_phase = (t / 100 + pu.pulse) % (2 * math.pi)
-                if sparkle_phase < 0.5:
-                    sx = cx + int(6 * math.cos(pu.pulse * 3))
-                    sy = cy + int(6 * math.sin(pu.pulse * 3))
-                    draw_rect(buffer, sx, sy, 2, 2, (255, 255, 255), filled=True)
-
         # Draw swinging or dropping block
         if not self._game_over:
-            pulse = 0.7 + 0.3 * math.sin(t / 80)
-            glow_color = (int(255 * pulse), int(230 * pulse), int(100 * pulse))
-
-            # Ghost outline where the block will land (Tetris-style)
-            if self._tower and not self._dropping:
-                ghost_y = int(self._next_block_y + self._camera_y) + shake_y
-                ghost_x = int(self._swing_x - self._current_width / 2) + shake_x
-                ghost_w = int(self._current_width)
-                if -self.BLOCK_HEIGHT < ghost_y < 128:
-                    for x in range(ghost_x, ghost_x + ghost_w, 3):
-                        if 0 <= x < 128 and 0 <= ghost_y < 128:
-                            buffer[ghost_y, x] = (80, 80, 110)
-                        if 0 <= x < 128 and 0 <= ghost_y + self.BLOCK_HEIGHT - 1 < 128:
-                            buffer[ghost_y + self.BLOCK_HEIGHT - 1, x] = (80, 80, 110)
-
             if self._dropping:
                 drop_y = int(self._drop_y) + shake_y
                 drop_x = int(self._drop_x - self._drop_width / 2) + shake_x
                 drop_w = int(self._drop_width)
-
-                glow_size = 2
-                draw_rect(buffer, drop_x - glow_size, drop_y - glow_size,
-                          drop_w + glow_size * 2, self.BLOCK_HEIGHT + glow_size * 2,
-                          (80, 70, 50), filled=True)
-                self._draw_block(buffer, drop_x, drop_y, drop_w, self.BLOCK_HEIGHT, glow_color, outline=True)
+                self._draw_block(buffer, drop_x, drop_y, drop_w, self.BLOCK_HEIGHT, (230, 210, 120), outline=True)
             else:
                 swing_y = self.SWING_Y + shake_y
                 swing_x = int(self._swing_x - self._current_width / 2) + shake_x
                 w = int(self._current_width)
+                self._draw_block(buffer, swing_x, swing_y, w, self.BLOCK_HEIGHT, (230, 210, 120), outline=True)
 
-                glow_size = 2
-                draw_rect(buffer, swing_x - glow_size, swing_y - glow_size,
-                          w + glow_size * 2, self.BLOCK_HEIGHT + glow_size * 2,
-                          (80, 70, 50), filled=True)
-                self._draw_block(buffer, swing_x, swing_y, w, self.BLOCK_HEIGHT, glow_color, outline=True)
+        score_text = f"SCORE {self._score}"
+        lives_text = f"LIVES {self._lives}"
+        lives_w, _ = measure_text(lives_text, scale=1)
 
-                # Guide lines to show target area
-                if self._tower:
-                    top = self._tower[-1]
-                    top_screen_y = int(top.y + self._camera_y) + shake_y
-                    guide_left = int(top.x - top.width / 2) + shake_x
-                    guide_right = int(top.x + top.width / 2) + shake_x
+        draw_rect(buffer, 0, 0, 64, 9, (0, 0, 0))
+        draw_text(buffer, score_text, 2, 1, (240, 240, 240), scale=1)
 
-                    # Dashed vertical lines
-                    for y in range(swing_y + self.BLOCK_HEIGHT + 2, top_screen_y, 3):
-                        if 0 < y < 128:
-                            if 0 < guide_left < 128:
-                                buffer[y, guide_left] = [80, 80, 100]
-                            if 0 < guide_right < 128:
-                                buffer[y, guide_right] = [80, 80, 100]
-
-        # HUD
-        # Score (top left)
-        score_color = (255, 215, 0) if self._is_new_high_score else (255, 255, 255)
-        draw_centered_text(buffer, f"СЧЁТ {self._score:05d}", 2, score_color, scale=1)
-
-        # High score (if exists)
-        if self._high_score > 0:
-            draw_rect(buffer, 2, 11, 40, 7, (30, 30, 50))
-            hs_text = f"HS:{self._high_score}"
-            # Draw manually at left
-            from artifact.graphics.text_utils import draw_text
-            draw_text(buffer, hs_text, 3, 12, (150, 150, 200), scale=1)
-
-        # Lives (top right area) - draw as hearts
-        lives_x = 100
-        for i in range(self._lives):
-            draw_rect(buffer, lives_x + i * 9, 2, 7, 7, (255, 80, 100), filled=True)
-
-        # Height and difficulty
-        height = len(self._tower) - 1
-        diff_colors = {
-            1: (100, 255, 100),  # Easy - green
-            2: (255, 255, 100),  # Medium - yellow
-            3: (255, 180, 100),  # Hard - orange
-            4: (255, 100, 100),  # Master - red
-            5: (255, 100, 255),  # Insane - purple
-        }
-        diff_color = diff_colors.get(self._difficulty_level, (255, 255, 255))
-        draw_centered_text(buffer, f"ВЫС {height} · {self._difficulty_name}", 12, diff_color, scale=1)
-
-        # Bonus stage indicator
-        if self._bonus_stage:
-            bonus_pct = self._bonus_timer / 8000
-            bar_width = int(50 * bonus_pct)
-            draw_rect(buffer, 39, 22, bar_width, 4, (255, 215, 0))
-            draw_centered_text(buffer, "БОНУС!", 18, (255, 215, 0), scale=1)
-
-        # Streak/combo indicator
-        if self._streak >= 2:
-            combo_color = (255, 255, 100) if int(t / 150) % 2 == 0 else (255, 200, 50)
-            draw_centered_text(buffer, f"x{self._streak} КОМБО", 22, combo_color, scale=1)
-
-        # Fever mode indicator
-        if self._fever_mode:
-            fever_pct = self._fever_timer / 5000
-            bar_width = int(60 * fever_pct)
-            # Rainbow bar
-            hue = (t / 5) % 360
-            fever_color = (
-                int(128 + 127 * math.sin(math.radians(hue))),
-                int(128 + 127 * math.sin(math.radians(hue + 120))),
-                int(128 + 127 * math.sin(math.radians(hue + 240)))
-            )
-            draw_rect(buffer, 34, 32, bar_width, 4, fever_color)
-            draw_centered_text(buffer, "ОГОНЬ!", 28, fever_color, scale=1)
-
-        # Placement feedback text
-        if self._placement_timer > 0:
-            alpha = min(1.0, self._placement_timer / 200)
-            y_offset = int(5 * (1 - self._placement_timer / 800))
-            color = (int(255 * alpha), int(255 * alpha), int(100 * alpha))
-            draw_centered_text(buffer, self._placement_text, 40 - y_offset, color, scale=1)
-
-        # Power-up indicators
-        indicator_y = 118
-        if self._slow_mo_timer > 0:
-            pct = self._slow_mo_timer / 4000
-            draw_rect(buffer, 4, indicator_y, int(30 * pct), 4, (100, 200, 255))
-
-        if self._wide_block_timer > 0:
-            pct = self._wide_block_timer / 5000
-            draw_rect(buffer, 94, indicator_y, int(30 * pct), 4, (100, 255, 100))
-
-        # Game over overlay
-        if self._game_over:
-            # Darken
-            buffer[:] = (buffer * 0.4).astype(np.uint8)
-
-            # Game over text with animation
-            bob = int(3 * math.sin(t / 200))
-            draw_centered_text(buffer, "ИГРА", 45 + bob, (255, 80, 80), scale=2)
-            draw_centered_text(buffer, "ОКОНЧЕНА", 65 + bob, (255, 80, 80), scale=2)
-
-            draw_centered_text(buffer, f"ВЫСОТА: {self._best_height}", 88, (255, 255, 255), scale=1)
-            draw_centered_text(buffer, f"СЧЁТ: {self._score}", 100, (255, 255, 255), scale=1)
-
-            if self._max_streak >= 3:
-                draw_centered_text(buffer, f"МАКС КОМБО: {self._max_streak}x", 112, (255, 200, 100), scale=1)
-        else:
-            # Tutorial hint for new players
-            if self._tutorial_timer > 0 and len(self._tower) <= 2:
-                alpha = min(1.0, self._tutorial_timer / 500)
-                hint_color = (int(200 * alpha), int(255 * alpha), int(200 * alpha))
-                draw_centered_text(buffer, "ЛОВИ МОМЕНТ!", 55, hint_color, scale=1)
-                draw_centered_text(buffer, "ЖМАКАЙ КНОПКУ", 65, hint_color, scale=1)
-            else:
-                # Regular hint
-                draw_animated_text(buffer, "ЖМАКАЙ", 108, (150, 150, 150), t, TextEffect.PULSE, scale=1)
+        lives_x = max(0, 128 - lives_w - 4)
+        draw_rect(buffer, lives_x, 0, lives_w + 4, 9, (0, 0, 0))
+        draw_text(buffer, lives_text, lives_x + 2, 1, (240, 200, 200), scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker as extension of main display - shows area above the main screen."""
-        from artifact.graphics.primitives import clear, draw_rect
-
-        clear(buffer)
-
-        # Ticker is 48x8 pixels - show as extension above main display
-        # The ticker represents the sky/upper area above the main game view
-        # Map main display x (0-127) to ticker x (0-47) by scaling: ticker_x = main_x * 48 / 128
-
-        t = self._time_ms
-
-        # Background gradient (sky)
-        if self._fever_mode:
-            # Rainbow cycling for fever mode
-            hue = (t / 20) % 360
-            for y in range(8):
-                r = int(80 + 40 * math.sin(math.radians(hue + y * 20)))
-                g = int(80 + 40 * math.sin(math.radians(hue + 120 + y * 20)))
-                b = int(80 + 40 * math.sin(math.radians(hue + 240 + y * 20)))
-                buffer[y, :] = [r, g, b]
-        else:
-            # Normal sky gradient (darker at top)
-            for y in range(8):
-                factor = y / 8
-                pulse = 0.5 + 0.5 * math.sin(self._bg_pulse)
-                r = int(15 + 10 * factor + 5 * pulse)
-                g = int(10 + 15 * factor)
-                b = int(40 + 20 * factor)
-                buffer[y, :] = [r, g, b]
-
-        # Draw fever stars that extend into ticker area
-        for star in self._stars:
-            if star.y < 0:  # Star is above main display
-                # Map to ticker coordinates
-                ticker_x = int(star.x * 48 / 128)
-                ticker_y = int((star.y + 8) * 8 / 8)  # y=-8 maps to ticker y=0
-                if 0 <= ticker_x < 47 and 0 <= ticker_y < 8:
-                    size = max(1, int(star.size * 48 / 128))
-                    color = star.color
-                    draw_rect(buffer, ticker_x, ticker_y, size, size, color, filled=True)
-
-        # Draw particles that extend into ticker area
-        for p in self._particles:
-            screen_y = p.y + self._camera_y
-            if screen_y < 0:  # Particle above main display
-                ticker_x = int(p.x * 48 / 128)
-                ticker_y = int((screen_y + 8))  # Map -8..0 to 0..8
-                if 0 <= ticker_x < 47 and 0 <= ticker_y < 8:
-                    alpha = p.life / p.max_life
-                    size = max(1, int(p.size * 48 / 128))
-                    color = tuple(int(c * alpha) for c in p.color)
-                    draw_rect(buffer, ticker_x, ticker_y, size, size, color, filled=True)
-
-        # Show score on ticker if not in fever mode (small indicator)
-        if not self._fever_mode:
-            # Draw small score indicator on right side
-            score_text = f"{self._score:04d}"
-            # Simple 3x5 digit rendering (very small for ticker)
-            digit_x = 30
-            digit_color = (150, 255, 200) if not self._game_over else (255, 100, 100)
-            for ch in score_text[-4:]:
-                self._draw_tiny_digit(buffer, ch, digit_x, 2, digit_color)
-                digit_x += 4
-
-        # Streak indicator on left
-        if self._streak >= 2:
-            streak_color = (255, 220, 100) if int(t / 150) % 2 == 0 else (255, 180, 50)
-            # Draw small 'x' and number
-            self._draw_tiny_digit(buffer, 'x', 2, 2, streak_color)
-            self._draw_tiny_digit(buffer, str(min(9, self._streak)), 6, 2, streak_color)
-
-    def _draw_tiny_digit(self, buffer: NDArray[np.uint8], char: str, x: int, y: int, color: tuple) -> None:
-        """Draw a tiny 3x5 digit on the ticker display."""
-        # Simple 3x5 pixel font for digits
-        patterns = {
-            '0': [(0,0),(1,0),(2,0),(0,1),(2,1),(0,2),(2,2),(0,3),(2,3),(0,4),(1,4),(2,4)],
-            '1': [(1,0),(1,1),(1,2),(1,3),(1,4)],
-            '2': [(0,0),(1,0),(2,0),(2,1),(0,2),(1,2),(2,2),(0,3),(0,4),(1,4),(2,4)],
-            '3': [(0,0),(1,0),(2,0),(2,1),(1,2),(2,2),(2,3),(0,4),(1,4),(2,4)],
-            '4': [(0,0),(2,0),(0,1),(2,1),(0,2),(1,2),(2,2),(2,3),(2,4)],
-            '5': [(0,0),(1,0),(2,0),(0,1),(0,2),(1,2),(2,2),(2,3),(0,4),(1,4),(2,4)],
-            '6': [(0,0),(1,0),(2,0),(0,1),(0,2),(1,2),(2,2),(0,3),(2,3),(0,4),(1,4),(2,4)],
-            '7': [(0,0),(1,0),(2,0),(2,1),(2,2),(2,3),(2,4)],
-            '8': [(0,0),(1,0),(2,0),(0,1),(2,1),(0,2),(1,2),(2,2),(0,3),(2,3),(0,4),(1,4),(2,4)],
-            '9': [(0,0),(1,0),(2,0),(0,1),(2,1),(0,2),(1,2),(2,2),(2,3),(0,4),(1,4),(2,4)],
-            'x': [(0,0),(2,0),(1,1),(1,2),(0,3),(2,3),(0,4),(2,4)],
-        }
-        if char in patterns:
-            for dx, dy in patterns[char]:
-                px, py = x + dx, y + dy
-                if 0 <= px < 48 and 0 <= py < 8:
-                    buffer[py, px] = color
+        fill(buffer, (0, 0, 0))
+        text = f"S{self._score % 1000:03d} L{self._lives}"
+        text_w, _ = measure_text(text, scale=1)
+        x = max(0, (48 - text_w) // 2)
+        draw_text(buffer, text, x, 0, (200, 200, 200), scale=1)
 
     def get_lcd_text(self) -> str:
-        if self._game_over:
-            return f"KONEC VYS{self._best_height:02d}"[:16]
-        return f"BASH VYS{len(self._tower) - 1:02d}"[:16]
+        text = f"TOWER S{self._score:03d} L{self._lives}"
+        return text.center(16)[:16]
 
     def _complete(self) -> None:
         result = ModeResult(
@@ -1581,9 +972,9 @@ class TowerStackMode(BaseMode):
                 "height": self._best_height,
                 "max_streak": self._max_streak,
             },
-            display_text=f"ВЫС {self._best_height} СЧЁТ {self._score}",
-            ticker_text="ЕЩЁ РАЗ?",
-            lcd_text=f"VYS{self._best_height:02d} OK",
+            display_text=f"SCORE {self._score}",
+            ticker_text="TOWER",
+            lcd_text=f"SCORE {self._score}",
             should_print=False,
         )
         self.complete(result)
