@@ -26,9 +26,16 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.simulator.mock_hardware.camera import (
-    SimulatorCamera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
-)
+import os
+
+# Use hardware camera on Pi, simulator camera on Mac
+if os.getenv("ARTIFACT_ENV") == "hardware":
+    from artifact.hardware.camera import PiCamera, create_camera
+else:
+    from artifact.simulator.mock_hardware.camera import SimulatorCamera as PiCamera, create_camera
+
+# Import dithering utilities (always from simulator, they work on any platform)
+from artifact.simulator.mock_hardware.camera import floyd_steinberg_dither, create_viewfinder_overlay
 
 logger = logging.getLogger(__name__)
 
@@ -287,7 +294,7 @@ class FortuneMode(BaseMode):
         self._progress_tracker = SmartProgressTracker(mode_theme="fortune")
 
         # Camera state
-        self._camera: Optional[SimulatorCamera] = None
+        self._camera: Optional[PiCamera] = None
         self._camera_frame: Optional[bytes] = None
         self._photo_data: Optional[bytes] = None
         self._camera_countdown: float = 0.0
