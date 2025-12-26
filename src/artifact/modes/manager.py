@@ -16,6 +16,7 @@ from artifact.animation.reveal_effects import RevealAnimator, RevealStyle
 from artifact.graphics.renderer import Renderer
 from artifact.graphics.display_coordinator import DisplayCoordinator, CrossDisplayEffect
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
+from artifact.modes.rapgod import RapGodMode
 from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
@@ -194,6 +195,18 @@ MODE_ICONS = {
         "  █████████ ",
         "     ██     ",
     ],
+    "rap_god": [  # Microphone
+        "    ████    ",
+        "   ██████   ",
+        "   ██████   ",
+        "   ██████   ",
+        "    ████    ",
+        "     ██     ",
+        "     ██     ",
+        "     ██     ",
+        "    ████    ",
+        "   ██████   ",
+    ],
 }
 
 # Mode colors for visual identity
@@ -223,6 +236,7 @@ MODE_COLORS = {
     "rocketpy": (180, 220, 255),
     "skii": (180, 200, 220),
     "ninja_fruit": (255, 200, 120),
+    "rap_god": (255, 50, 200),  # Hot pink/magenta for rap
 }
 
 

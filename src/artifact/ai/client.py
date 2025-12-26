@@ -22,10 +22,16 @@ class GeminiModel(Enum):
     # Text generation (predictions) - Gemini 2.5 Flash with thinking
     FLASH = "gemini-2.5-flash"
 
+    # Gemini 3 Flash - latest and fastest (Dec 2025)
+    FLASH_3 = "gemini-3-flash-preview"
+
     # Image understanding (photo analysis) - Gemini 2.5 Flash supports vision
     FLASH_VISION = "gemini-2.5-flash"
 
     # Image generation (caricatures/sketches) - Gemini 3.0 Pro Image Preview
+    PRO_IMAGE = "gemini-3-pro-image-preview"
+
+    # Legacy alias for backward compatibility
     IMAGEN = "gemini-3-pro-image-preview"
 
 

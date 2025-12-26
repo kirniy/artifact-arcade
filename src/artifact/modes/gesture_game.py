@@ -16,6 +16,7 @@ Gestures (from original HandGesture.py):
 - right_palm: 🫱
 """
 
+import logging
 import random
 import time
 from typing import Optional, Dict, List, Tuple
@@ -30,6 +31,7 @@ from artifact.graphics.primitives import fill, draw_rect, draw_circle, draw_line
 from artifact.graphics.text_utils import draw_centered_text
 from artifact.utils.camera_service import camera_service
 
+logger = logging.getLogger(__name__)
 
 # Gesture dictionary - adapted from HandGesture.py
 GESTURES = {
@@ -274,10 +276,13 @@ class GestureGameMode(BaseMode):
     def _init_mediapipe(self) -> bool:
         """Initialize MediaPipe hands - lazy load."""
         if self._mp_initialized:
+            logger.debug(f"MediaPipe already initialized: hands={self._mp_hands is not None}")
             return self._mp_hands is not None
 
+        logger.info("Initializing MediaPipe Hands...")
         try:
             import mediapipe as mp
+            logger.debug(f"MediaPipe version: {mp.__version__}")
             self._mp_hands = mp.solutions.hands.Hands(
                 static_image_mode=False,
                 max_num_hands=1,
@@ -286,8 +291,14 @@ class GestureGameMode(BaseMode):
                 min_tracking_confidence=0.5,
             )
             self._mp_initialized = True
+            logger.info("MediaPipe Hands initialized successfully")
             return True
-        except ImportError:
+        except ImportError as e:
+            logger.error(f"MediaPipe not available: {e}")
+            self._mp_initialized = True
+            return False
+        except Exception as e:
+            logger.error(f"Failed to initialize MediaPipe: {e}", exc_info=True)
             self._mp_initialized = True
             return False
 
@@ -334,6 +345,7 @@ class GestureGameMode(BaseMode):
     def _detect_gesture(self, delta_ms: float) -> None:
         """Detect hand gesture using MediaPipe."""
         if not self._mp_hands:
+            logger.warning("MediaPipe hands not available, skipping detection")
             return
 
         # Get camera frame
@@ -341,16 +353,41 @@ class GestureGameMode(BaseMode):
         if frame is None:
             frame = camera_service.get_frame(timeout=0)
             if frame is None:
+                # Only log occasionally to avoid spam
+                if not hasattr(self, '_no_frame_count'):
+                    self._no_frame_count = 0
+                self._no_frame_count += 1
+                if self._no_frame_count % 60 == 1:  # Log every ~1 second at 60fps
+                    logger.warning(f"No camera frame available (count: {self._no_frame_count})")
                 return
 
+        # Reset frame counter when we get frames
+        self._no_frame_count = 0
+
         try:
+            # Log frame info once at start
+            if not hasattr(self, '_logged_frame_info'):
+                logger.info(f"Processing frames: shape={frame.shape}, dtype={frame.dtype}")
+                self._logged_frame_info = True
+
             # Process with MediaPipe - from HandGesture.py
             results = self._mp_hands.process(frame)
 
             if not results.multi_hand_landmarks:
+                # Only log occasionally
+                if not hasattr(self, '_no_hand_count'):
+                    self._no_hand_count = 0
+                self._no_hand_count += 1
+                if self._no_hand_count % 120 == 1:  # Log every ~2 seconds
+                    logger.debug(f"No hand detected (count: {self._no_hand_count})")
                 self._state.last_detected = None
                 self._state.detection_hold = 0.0
                 return
+
+            # Reset no-hand counter when hand is detected
+            if hasattr(self, '_no_hand_count') and self._no_hand_count > 0:
+                logger.info(f"Hand detected after {self._no_hand_count} frames without")
+                self._no_hand_count = 0
 
             # Get landmarks - from HandGesture.py
             landmarks = results.multi_hand_landmarks[0].landmark
@@ -364,16 +401,31 @@ class GestureGameMode(BaseMode):
                 if self._state.last_detected == current_gesture:
                     self._state.detection_hold += delta_ms / 1000.0
                     if self._state.detection_hold >= self._state.detection_confirm:
+                        logger.info(f"Gesture matched: {current_gesture} (held for {self._state.detection_hold:.2f}s)")
                         self._gesture_matched()
                 else:
+                    logger.debug(f"Gesture detected: {current_gesture}, starting hold timer")
                     self._state.last_detected = current_gesture
                     self._state.detection_hold = 0.0
             else:
+                # Check what gesture WAS detected (for debugging)
+                detected_any = None
+                for gesture_name, check_fn in GESTURE_CHECKERS.items():
+                    try:
+                        if check_fn(landmarks):
+                            detected_any = gesture_name
+                            break
+                    except Exception:
+                        pass
+
+                if detected_any and detected_any != self._state.last_detected:
+                    logger.debug(f"Wrong gesture detected: {detected_any} (expected: {current_gesture})")
+
                 self._state.last_detected = None
                 self._state.detection_hold = 0.0
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Gesture detection error: {e}", exc_info=True)
 
     def _gesture_matched(self) -> None:
         """Handle successful gesture match - from HandGesture.py score update."""

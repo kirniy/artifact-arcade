@@ -9,11 +9,13 @@ Original: https://github.com/kriskbx/raspi-photo-booth
 QR sharing: Inspired by https://github.com/momentobooth/momentobooth
 """
 
+import logging
 import time
 import tempfile
 import subprocess
 import random
 import io
+import json
 from typing import Optional
 from dataclasses import dataclass
 
@@ -26,12 +28,16 @@ from artifact.graphics.primitives import fill, draw_rect
 from artifact.graphics.text_utils import draw_centered_text
 from artifact.utils.camera_service import camera_service
 
+logger = logging.getLogger(__name__)
+
 # Try importing QR code library
 try:
     import qrcode
     HAS_QRCODE = True
-except ImportError:
+    logger.info("qrcode library loaded successfully")
+except ImportError as e:
     HAS_QRCODE = False
+    logger.warning(f"qrcode library not available: {e}")
 
 
 @dataclass
@@ -177,8 +183,10 @@ class PhotoboothMode(BaseMode):
     def _upload_photo_async(self) -> None:
         """Upload photo for QR sharing - inspired by momentobooth ffsend."""
         if not self._state.photo_path:
+            logger.warning("No photo path set, skipping upload")
             return
 
+        logger.info(f"Starting async upload of {self._state.photo_path}")
         self._state.is_uploading = True
 
         # Use file.io for simple upload (alternative to ffsend)
@@ -186,12 +194,16 @@ class PhotoboothMode(BaseMode):
             import threading
             thread = threading.Thread(target=self._do_upload, daemon=True)
             thread.start()
-        except Exception:
+            logger.debug("Upload thread started")
+        except Exception as e:
+            logger.error(f"Failed to start upload thread: {e}")
             self._state.is_uploading = False
 
     def _do_upload(self) -> None:
         """Background upload - creates QR code on success."""
         try:
+            logger.info(f"Uploading photo to file.io: {self._state.photo_path}")
+
             # Try file.io (simpler than ffsend, works without special client)
             result = subprocess.run(
                 ['curl', '-s', '-F', f'file=@{self._state.photo_path}',
@@ -200,24 +212,46 @@ class PhotoboothMode(BaseMode):
                 timeout=30
             )
 
-            if result.returncode == 0:
-                import json
-                response = json.loads(result.stdout.decode())
-                if response.get('success'):
-                    url = response.get('link')
-                    self._state.qr_url = url
-                    self._generate_qr_image(url)
+            logger.debug(f"curl returncode: {result.returncode}")
+            logger.debug(f"curl stdout: {result.stdout.decode()[:500]}")
+            if result.stderr:
+                logger.debug(f"curl stderr: {result.stderr.decode()[:200]}")
 
-        except Exception:
-            pass
+            if result.returncode == 0:
+                try:
+                    response = json.loads(result.stdout.decode())
+                    logger.info(f"file.io response: success={response.get('success')}, link={response.get('link')}")
+
+                    if response.get('success'):
+                        url = response.get('link')
+                        self._state.qr_url = url
+                        logger.info(f"Upload successful! URL: {url}")
+                        self._generate_qr_image(url)
+                    else:
+                        logger.error(f"file.io returned success=false: {response}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse file.io response: {e}, raw: {result.stdout.decode()[:200]}")
+            else:
+                logger.error(f"curl failed with returncode {result.returncode}")
+
+        except subprocess.TimeoutExpired:
+            logger.error("Upload timed out after 30 seconds")
+        except Exception as e:
+            logger.error(f"Upload failed with exception: {e}", exc_info=True)
         finally:
             self._state.is_uploading = False
+            logger.debug("Upload finished, is_uploading=False")
 
     def _generate_qr_image(self, url: str) -> None:
         """Generate QR code image for display."""
-        if not HAS_QRCODE or not url:
+        if not HAS_QRCODE:
+            logger.warning("Cannot generate QR: qrcode library not available")
+            return
+        if not url:
+            logger.warning("Cannot generate QR: no URL provided")
             return
 
+        logger.info(f"Generating QR code for: {url}")
         try:
             qr = qrcode.QRCode(
                 version=1,
@@ -238,9 +272,10 @@ class PhotoboothMode(BaseMode):
 
             # Convert to numpy array
             self._state.qr_image = np.array(img, dtype=np.uint8)
+            logger.info(f"QR code generated successfully, shape: {self._state.qr_image.shape}")
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to generate QR code: {e}", exc_info=True)
 
     def _update_result(self, delta_ms: float) -> None:
         """Update result display timer."""

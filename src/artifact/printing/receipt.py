@@ -85,6 +85,8 @@ class ReceiptGenerator:
             layout = self._create_autopsy_receipt(data)
         elif mode_name == "photobooth":
             layout = self._create_photobooth_receipt(data)
+        elif mode_name == "rap_god":
+            layout = self._create_rapgod_receipt(data)
         else:
             layout = self._create_generic_receipt(mode_name, data)
 
@@ -439,6 +441,68 @@ class ReceiptGenerator:
                 layout.add_text(qr_url[32:], size=TextSize.SMALL)
             else:
                 layout.add_text(qr_url, size=TextSize.SMALL)
+
+        layout.add_space(1)
+        layout.add_separator("double")
+
+        self._create_footer(layout)
+        return layout
+
+    def _create_rapgod_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for RapGod mode.
+
+        Includes song title, artist, hook lyrics, and download QR code.
+        """
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("RAP GOD", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        # Song title and artist
+        song_title = data.get("song_title") or "Untitled"
+        artist = data.get("artist") or "ARTIFACT AI"
+
+        layout.add_text(song_title, size=TextSize.MEDIUM, bold=True)
+        layout.add_text(artist, size=TextSize.SMALL)
+        layout.add_space(1)
+
+        # Genre and BPM
+        genre = data.get("genre") or "trap"
+        bpm = data.get("bpm") or 140
+        layout.add_text(f"{genre.upper()} / {bpm} BPM", size=TextSize.SMALL)
+        layout.add_separator("line")
+        layout.add_space(1)
+
+        # Hook lyrics (4-6 lines)
+        hook = data.get("hook") or ""
+        if hook:
+            layout.add_text("ПРИПЕВ:", size=TextSize.SMALL, bold=True)
+            # Split and print each line
+            lines = hook.split("\n")[:6]  # Max 6 lines
+            for line in lines:
+                if line.strip():
+                    layout.add_text(line.strip()[:40], size=TextSize.SMALL)
+            layout.add_space(1)
+
+        # One-liner tagline
+        one_liner = data.get("one_liner")
+        if one_liner:
+            layout.add_text(f'"{one_liner}"', size=TextSize.SMALL)
+            layout.add_space(1)
+
+        # Download URL with QR
+        download_url = data.get("download_url")
+        if download_url:
+            layout.add_separator("line")
+            layout.add_text("СКАЧАТЬ ТРЕК:", size=TextSize.SMALL, bold=True)
+            # Wrap long URL
+            if len(download_url) > 32:
+                layout.add_text(download_url[:32], size=TextSize.SMALL)
+                layout.add_text(download_url[32:], size=TextSize.SMALL)
+            else:
+                layout.add_text(download_url, size=TextSize.SMALL)
 
         layout.add_space(1)
         layout.add_separator("double")
