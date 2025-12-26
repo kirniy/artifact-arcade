@@ -278,21 +278,26 @@ class FlowFieldMode(BaseMode):
             self._face_brightness = (self._face_brightness - min_val) / (max_val - min_val) * 255
 
     def _create_demo_face(self):
-        """Create a demo pattern if no camera."""
+        """Create a demo pattern if no camera - VECTORIZED."""
         self._face_brightness = np.zeros((128, 128), dtype=np.float32)
         cx, cy = 64, 64
 
-        # Simple face shape
-        for y in range(128):
-            for x in range(128):
-                dist = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-                if dist < 45:
-                    # Face oval
-                    self._face_brightness[y, x] = 200 * (1 - dist / 45)
-                    # Eyes
-                    if 20 < y < 50:
-                        if abs(x - 45) < 10 or abs(x - 83) < 10:
-                            self._face_brightness[y, x] = 255
+        # Create coordinate grids
+        y_coords = np.arange(128)[:, np.newaxis]
+        x_coords = np.arange(128)[np.newaxis, :]
+
+        # Distance from center
+        dist = np.sqrt((x_coords - cx) ** 2 + (y_coords - cy) ** 2)
+
+        # Face oval - apply where dist < 45
+        face_mask = dist < 45
+        self._face_brightness[face_mask] = (200 * (1 - dist[face_mask] / 45))
+
+        # Eyes - override in specific regions
+        eye_mask = (y_coords > 20) & (y_coords < 50) & (
+            (np.abs(x_coords - 45) < 10) | (np.abs(x_coords - 83) < 10)
+        )
+        self._face_brightness[eye_mask] = 255
 
     def _spawn_particles_from_face(self):
         """Spawn particles from bright areas of face."""
@@ -379,53 +384,57 @@ class FlowFieldMode(BaseMode):
             return hsv_to_rgb(hue, 1.0, brightness)
 
     def _update_flow_pattern(self):
-        """Update flow field based on current pattern."""
-        noise = self._flow_field.noise
+        """Update flow field based on current pattern - VECTORIZED."""
         t = self._flow_evolution
+        cx, cy = 64, 64
 
-        for y in range(128):
-            for x in range(128):
-                cx, cy = 64, 64
-                dx, dy = x - cx, y - cy
-                dist = math.sqrt(dx * dx + dy * dy)
-                angle_to_center = math.atan2(dy, dx)
+        # Create coordinate grids (cache these if needed for more speed)
+        y_coords = np.arange(128)[:, np.newaxis].astype(np.float32)
+        x_coords = np.arange(128)[np.newaxis, :].astype(np.float32)
 
-                if self._pattern == FlowPattern.ORBITAL:
-                    # Circular orbital flow
-                    base_angle = angle_to_center + math.pi / 2
-                    noise_val = noise.fbm(x * 0.03 + t, y * 0.03, 2) - 0.5
-                    self._flow_field.field[y, x] = base_angle + noise_val * 0.5
+        # Distance and angle from center
+        dx = x_coords - cx
+        dy = y_coords - cy
+        dist = np.sqrt(dx * dx + dy * dy)
+        angle_to_center = np.arctan2(dy, dx)
 
-                elif self._pattern == FlowPattern.WAVES:
-                    # Horizontal waves
-                    wave = math.sin(y * 0.1 + t * 2) * 0.3
-                    self._flow_field.field[y, x] = wave
+        if self._pattern == FlowPattern.ORBITAL:
+            # Circular orbital flow with simplified noise
+            base_angle = angle_to_center + np.pi / 2
+            noise_val = np.sin(x_coords * 0.03 + t) * np.cos(y_coords * 0.03) * 0.5 - 0.25
+            self._flow_field.field = base_angle + noise_val * 0.5
 
-                elif self._pattern == FlowPattern.SPIRAL:
-                    # Spiral inward
-                    spiral = angle_to_center - dist * 0.05 + math.pi
-                    self._flow_field.field[y, x] = spiral
+        elif self._pattern == FlowPattern.WAVES:
+            # Horizontal waves
+            self._flow_field.field = np.sin(y_coords * 0.1 + t * 2) * 0.3
 
-                elif self._pattern == FlowPattern.CHAOS:
-                    # Pure Perlin noise
-                    self._flow_field.field[y, x] = noise.fbm(x * 0.05 + t, y * 0.05 + t, 4) * math.pi * 4
+        elif self._pattern == FlowPattern.SPIRAL:
+            # Spiral inward
+            self._flow_field.field = angle_to_center - dist * 0.05 + np.pi
 
-                elif self._pattern == FlowPattern.EXPLOSION:
-                    # Radial outward
-                    self._flow_field.field[y, x] = angle_to_center
+        elif self._pattern == FlowPattern.CHAOS:
+            # Simplified chaos using trig functions instead of Perlin
+            chaos = np.sin(x_coords * 0.05 + t) * np.cos(y_coords * 0.05 + t) * np.pi * 4
+            self._flow_field.field = chaos
 
-                elif self._pattern == FlowPattern.VORTEX:
-                    # Double vortex
-                    vortex1_x, vortex1_y = 40, 64
-                    vortex2_x, vortex2_y = 88, 64
-                    angle1 = math.atan2(y - vortex1_y, x - vortex1_x) + math.pi / 2
-                    angle2 = math.atan2(y - vortex2_y, x - vortex2_x) - math.pi / 2
-                    dist1 = math.sqrt((x - vortex1_x) ** 2 + (y - vortex1_y) ** 2)
-                    dist2 = math.sqrt((x - vortex2_x) ** 2 + (y - vortex2_y) ** 2)
-                    # Blend based on distance
-                    w1 = 1 / (dist1 + 1)
-                    w2 = 1 / (dist2 + 1)
-                    self._flow_field.field[y, x] = (angle1 * w1 + angle2 * w2) / (w1 + w2)
+        elif self._pattern == FlowPattern.EXPLOSION:
+            # Radial outward
+            self._flow_field.field = angle_to_center
+
+        elif self._pattern == FlowPattern.VORTEX:
+            # Double vortex
+            vortex1_x, vortex1_y = 40, 64
+            vortex2_x, vortex2_y = 88, 64
+
+            angle1 = np.arctan2(y_coords - vortex1_y, x_coords - vortex1_x) + np.pi / 2
+            angle2 = np.arctan2(y_coords - vortex2_y, x_coords - vortex2_x) - np.pi / 2
+            dist1 = np.sqrt((x_coords - vortex1_x) ** 2 + (y_coords - vortex1_y) ** 2)
+            dist2 = np.sqrt((x_coords - vortex2_x) ** 2 + (y_coords - vortex2_y) ** 2)
+
+            # Blend based on distance
+            w1 = 1 / (dist1 + 1)
+            w2 = 1 / (dist2 + 1)
+            self._flow_field.field = (angle1 * w1 + angle2 * w2) / (w1 + w2)
 
     def _capture_moment(self):
         """Capture current visual as an image."""
@@ -478,30 +487,34 @@ class FlowFieldMode(BaseMode):
         draw_animated_text(buffer, "НАЖМИ СТАРТ", 110, (100, 150, 100), t, TextEffect.PULSE, scale=1)
 
     def _render_camera_capture(self, buffer: NDArray[np.uint8], t: float):
-        """Render camera capture phase with live camera preview."""
+        """Render camera capture phase with live camera preview - VECTORIZED."""
         fill(buffer, (20, 10, 30))
 
         # Show camera preview with flow-style coloring
         if self._camera_frame is not None:
-            for y in range(128):
-                for x in range(128):
-                    pixel = self._camera_frame[y, x]
-                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+            # Calculate brightness from camera frame (vectorized)
+            brightness = np.mean(self._camera_frame, axis=2) / 255.0
 
-                    # Apply flow-style purple/blue tint
-                    hue_shift = math.sin(x * 0.05 + y * 0.05 + t / 300) * 30
-                    r = int((80 + hue_shift) * brightness)
-                    g = int((100 + hue_shift * 0.5) * brightness)
-                    b = int((200) * brightness)
-                    buffer[y, x] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+            # Create coordinate grids for hue shift
+            y_coords = np.arange(128)[:, np.newaxis]
+            x_coords = np.arange(128)[np.newaxis, :]
+            hue_shift = np.sin(x_coords * 0.05 + y_coords * 0.05 + t / 300) * 30
+
+            # Apply flow-style purple/blue tint
+            r = np.clip((80 + hue_shift) * brightness, 0, 255).astype(np.uint8)
+            g = np.clip((100 + hue_shift * 0.5) * brightness, 0, 255).astype(np.uint8)
+            b = np.clip(200 * brightness, 0, 255).astype(np.uint8)
+
+            buffer[:, :, 0] = r
+            buffer[:, :, 1] = g
+            buffer[:, :, 2] = b
 
         # Scanning line overlay
         scan_y = int((t % 2000) / 2000 * 128)
-        for x in range(128):
-            if 0 <= scan_y < 128:
-                buffer[scan_y, x] = (0, 255, 200)
-            if 0 <= scan_y + 1 < 128:
-                buffer[scan_y + 1, x] = (0, 200, 150)
+        if 0 <= scan_y < 128:
+            buffer[scan_y, :] = (0, 255, 200)
+        if 0 <= scan_y + 1 < 128:
+            buffer[scan_y + 1, :] = (0, 200, 150)
 
         # Pulsing circle overlay
         pulse = 0.7 + 0.3 * math.sin(t / 150)
@@ -510,28 +523,29 @@ class FlowFieldMode(BaseMode):
         draw_centered_text(buffer, "СКАНИРУЮ...", 100, (150, 200, 200), scale=1)
 
     def _render_flowing(self, buffer: NDArray[np.uint8], t: float):
-        """Render the flowing particles with live camera background."""
+        """Render the flowing particles with live camera background - VECTORIZED."""
         # First, render camera as a subtle background
         if self._camera_frame is not None:
-            for y in range(128):
-                for x in range(128):
-                    pixel = self._camera_frame[y, x]
-                    # Very dim, tinted camera background
-                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
-                    # Deep blue/purple tint at 15% intensity
-                    r = int(10 + 15 * brightness)
-                    g = int(5 + 12 * brightness)
-                    b = int(20 + 25 * brightness)
-                    buffer[y, x] = (r, g, b)
+            # Calculate brightness from camera frame (vectorized)
+            brightness = np.mean(self._camera_frame, axis=2) / 255.0
+
+            # Deep blue/purple tint at 15% intensity
+            buffer[:, :, 0] = (10 + 15 * brightness).astype(np.uint8)
+            buffer[:, :, 1] = (5 + 12 * brightness).astype(np.uint8)
+            buffer[:, :, 2] = (20 + 25 * brightness).astype(np.uint8)
         else:
             # Clear to dark background
             buffer[:] = (10, 5, 20)
 
-        # Fade trail buffer
-        self._trail_buffer = (self._trail_buffer.astype(np.float32) * 0.92).astype(np.uint8)
+        # Fade trail buffer (in-place for efficiency)
+        self._trail_buffer[:] = (self._trail_buffer * 0.92).astype(np.uint8)
 
-        # Render particles to trail buffer
-        for particle in self._flow_field.particles:
+        # Render particles to trail buffer (keep particle loop - necessary for trails)
+        # Limit particles processed per frame for performance
+        particles = self._flow_field.particles
+        max_per_frame = min(len(particles), 500)
+        for i in range(max_per_frame):
+            particle = particles[i]
             alpha = particle.life
             color = (
                 int(particle.color[0] * alpha),
@@ -548,15 +562,10 @@ class FlowFieldMode(BaseMode):
             elif 0 <= px < 128 and 0 <= py < 128:
                 self._trail_buffer[py, px] = color
 
-        # Blend trail buffer on top of camera background (additive)
-        for y in range(128):
-            for x in range(128):
-                trail = self._trail_buffer[y, x]
-                base = buffer[y, x]
-                r = min(255, int(base[0]) + int(trail[0]))
-                g = min(255, int(base[1]) + int(trail[1]))
-                b = min(255, int(base[2]) + int(trail[2]))
-                buffer[y, x] = (r, g, b)
+        # Blend trail buffer on top of camera background (additive) - VECTORIZED
+        blended = buffer.astype(np.int16) + self._trail_buffer.astype(np.int16)
+        np.clip(blended, 0, 255, out=blended)
+        buffer[:] = blended.astype(np.uint8)
 
         # UI overlay
         self._render_ui_overlay(buffer, t)
@@ -637,7 +646,7 @@ class FlowFieldMode(BaseMode):
         draw_centered_text(buffer, "ПОТОК ИСКУССТВА", 110, (200, 200, 255), scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display as camera continuation."""
+        """Render ticker display as camera continuation - VECTORIZED."""
         from artifact.graphics.text_utils import render_ticker_animated, TickerEffect
         from artifact.graphics.primitives import clear
 
@@ -645,24 +654,25 @@ class FlowFieldMode(BaseMode):
         t = self._time_in_phase
 
         if self._sub_phase == FlowPhase.FLOWING and self._camera_frame is not None:
-            # Show camera-based flow effect on ticker (48x8)
-            for ty in range(8):
-                for tx in range(48):
-                    # Map to camera coordinates (top part of frame)
-                    cam_y = (ty * 128) // 8
-                    cam_x = (tx * 128) // 48
+            # Map ticker coords to camera coords
+            ty_coords = np.arange(8)[:, np.newaxis]
+            tx_coords = np.arange(48)[np.newaxis, :]
+            cam_y = (ty_coords * 128) // 8
+            cam_x = (tx_coords * 128) // 48
 
-                    if cam_y < 128 and cam_x < 128:
-                        # Get brightness and apply flow-style coloring
-                        pixel = self._camera_frame[cam_y, cam_x]
-                        brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+            # Sample camera at mapped coordinates
+            sampled = self._camera_frame[cam_y, cam_x]
+            brightness = np.mean(sampled, axis=2) / 255.0
 
-                        # Flow field colors (blue-purple)
-                        hue_shift = math.sin(tx * 0.2 + self._total_time / 1000) * 30
-                        r = int((100 + hue_shift) * brightness)
-                        g = int((150 + hue_shift * 0.5) * brightness)
-                        b = int((255) * brightness)
-                        buffer[ty, tx] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+            # Flow field colors (blue-purple)
+            hue_shift = np.sin(tx_coords * 0.2 + self._total_time / 1000) * 30
+            r = np.clip((100 + hue_shift) * brightness, 0, 255).astype(np.uint8)
+            g = np.clip((150 + hue_shift * 0.5) * brightness, 0, 255).astype(np.uint8)
+            b = np.clip(255 * brightness, 0, 255).astype(np.uint8)
+
+            buffer[:, :, 0] = r
+            buffer[:, :, 1] = g
+            buffer[:, :, 2] = b
         else:
             render_ticker_animated(buffer, "ПОТОК ЧАСТИЦ", t, (200, 150, 255), TickerEffect.SPARKLE_SCROLL)
 

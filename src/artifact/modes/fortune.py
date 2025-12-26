@@ -1217,13 +1217,13 @@ class FortuneMode(BaseMode):
             x_offset = (128 - display_size) // 2
             y_offset = 5
 
-            for y in range(display_size):
-                for x in range(display_size):
-                    bx = x_offset + x
-                    by = y_offset + y
-                    if 0 <= bx < 128 and 0 <= by < 128:
-                        pixel = img.getpixel((x, y))
-                        buffer[by, bx] = pixel
+            # Copy image to buffer - VECTORIZED
+            img_array = np.array(img, dtype=np.uint8)
+            y_end = min(y_offset + display_size, 128)
+            x_end = min(x_offset + display_size, 128)
+            img_h = y_end - y_offset
+            img_w = x_end - x_offset
+            buffer[y_offset:y_end, x_offset:x_end] = img_array[:img_h, :img_w]
 
             # Show hint at bottom - blinking "НАЖМИ" to print
             if int(self._time_in_phase / 500) % 2 == 0:

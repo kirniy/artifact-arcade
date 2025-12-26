@@ -239,28 +239,30 @@ class GlitchMirrorMode(BaseMode):
             self._create_demo_frame()
 
     def _create_demo_frame(self):
-        """Create demo pattern if no camera."""
-        frame = np.zeros((128, 128, 3), dtype=np.uint8)
+        """Create demo pattern if no camera - VECTORIZED."""
         t = self._total_time / 1000
 
-        # Animated gradient
-        for y in range(128):
-            for x in range(128):
-                r = int(127 + 127 * math.sin(x * 0.1 + t))
-                g = int(127 + 127 * math.sin(y * 0.1 + t * 1.3))
-                b = int(127 + 127 * math.sin((x + y) * 0.05 + t * 0.7))
-                frame[y, x] = (r, g, b)
+        # Create coordinate grids
+        y_coords = np.arange(128)[:, np.newaxis]
+        x_coords = np.arange(128)[np.newaxis, :]
 
-        # Add some shapes
+        # Animated gradient (vectorized)
+        r = (127 + 127 * np.sin(x_coords * 0.1 + t)).astype(np.uint8)
+        g = (127 + 127 * np.sin(y_coords * 0.1 + t * 1.3)).astype(np.uint8)
+        b = (127 + 127 * np.sin((x_coords + y_coords) * 0.05 + t * 0.7)).astype(np.uint8)
+
+        frame = np.stack([r, g, b], axis=-1).reshape(128, 128, 3).astype(np.uint8)
+
+        # Add some shapes using pygame-style rectangle draws
         cx, cy = 64, 64
         for angle in range(0, 360, 45):
             rad = math.radians(angle + t * 50)
             px = int(cx + 30 * math.cos(rad))
             py = int(cy + 30 * math.sin(rad))
-            for dy in range(-5, 6):
-                for dx in range(-5, 6):
-                    if 0 <= px+dx < 128 and 0 <= py+dy < 128:
-                        frame[py+dy, px+dx] = (255, 255, 255)
+            # Draw 11x11 white square centered at (px, py)
+            y1, y2 = max(0, py - 5), min(128, py + 6)
+            x1, x2 = max(0, px - 5), min(128, px + 6)
+            frame[y1:y2, x1:x2] = (255, 255, 255)
 
         self._camera_frame = frame
 
@@ -347,52 +349,37 @@ class GlitchMirrorMode(BaseMode):
         return result
 
     def _apply_chromatic_aberration(self, frame: NDArray, intensity: float) -> NDArray:
-        """Apply chromatic aberration effect."""
-        # Radial distortion
-        height, width = frame.shape[:2]
-        cx, cy = width // 2, height // 2
+        """Apply chromatic aberration effect - SIMPLIFIED for performance."""
+        # Simple channel shift based on intensity (much faster than radial)
+        offset = int(2 + intensity * 3)
 
-        result = np.zeros_like(frame)
+        result = frame.copy()
 
-        for y in range(height):
-            for x in range(width):
-                dx = x - cx
-                dy = y - cy
-                dist = math.sqrt(dx * dx + dy * dy)
+        # Red channel - shift right/down
+        result[:, :-offset, 0] = frame[:, offset:, 0]
 
-                # Offset based on distance from center
-                offset = int(dist * 0.02 * intensity)
+        # Green channel - no shift
+        # Already copied
 
-                # Red channel - offset outward
-                rx = int(x + dx * 0.02 * offset)
-                ry = int(y + dy * 0.02 * offset)
-                if 0 <= rx < width and 0 <= ry < height:
-                    result[y, x, 0] = frame[ry, rx, 0]
-
-                # Green channel - no offset
-                result[y, x, 1] = frame[y, x, 1]
-
-                # Blue channel - offset inward
-                bx = int(x - dx * 0.02 * offset)
-                by = int(y - dy * 0.02 * offset)
-                if 0 <= bx < width and 0 <= by < height:
-                    result[y, x, 2] = frame[by, bx, 2]
+        # Blue channel - shift left/up
+        result[:, offset:, 2] = frame[:, :-offset, 2]
 
         return result
 
     def _apply_wave_distortion(self, frame: NDArray, intensity: float) -> NDArray:
-        """Apply wave distortion effect."""
+        """Apply wave distortion effect - VECTORIZED."""
         height, width = frame.shape[:2]
+
+        # Calculate wave offset per row (vectorized)
+        y_coords = np.arange(height)
+        wave = np.sin(y_coords * 0.1 + self._wave_phase) * intensity * 15
+        wave += np.sin(y_coords * 0.05 + self._wave_phase * 0.7) * intensity * 10
+        wave = wave.astype(np.int32)
+
+        # Apply horizontal roll per row
         result = np.zeros_like(frame)
-
         for y in range(height):
-            # Calculate wave offset
-            wave = math.sin(y * 0.1 + self._wave_phase) * intensity * 15
-            wave += math.sin(y * 0.05 + self._wave_phase * 0.7) * intensity * 10
-
-            for x in range(width):
-                src_x = int(x + wave) % width
-                result[y, x] = frame[y, src_x]
+            result[y] = np.roll(frame[y], wave[y], axis=0)
 
         return result
 
@@ -459,10 +446,8 @@ class GlitchMirrorMode(BaseMode):
             color = tuple(int(c * alpha) for c in color)
             draw_rect(buffer, x, y, w, h, color)
 
-        # Scanlines
-        for y in range(0, 128, 3):
-            for x in range(128):
-                buffer[y, x] = tuple(max(0, int(c * 0.7)) for c in buffer[y, x])
+        # Scanlines - VECTORIZED
+        buffer[::3] = (buffer[::3].astype(np.float32) * 0.7).astype(np.uint8)
 
         # Title with glitch effect
         if random.random() < 0.1:
@@ -517,17 +502,12 @@ class GlitchMirrorMode(BaseMode):
             hint_color = tuple(int(c * hint_alpha) for c in (100, 150, 100))
             draw_centered_text(buffer, "<ЭФФЕКТ  ВЗРЫВ>", 118, hint_color, scale=1)
 
-        # Burst indicator
+        # Burst indicator - VECTORIZED
         if self._burst_active:
             flash = int(100 * self._burst_intensity)
-            # Add chromatic border
-            for i in range(3):
-                y = i
-                for x in range(128):
-                    buffer[y, x, 0] = min(255, buffer[y, x, 0] + flash)
-                y = 127 - i
-                for x in range(128):
-                    buffer[y, x, 2] = min(255, buffer[y, x, 2] + flash)
+            # Add chromatic border (top = red boost, bottom = blue boost)
+            buffer[:3, :, 0] = np.clip(buffer[:3, :, 0].astype(np.int16) + flash, 0, 255).astype(np.uint8)
+            buffer[-3:, :, 2] = np.clip(buffer[-3:, :, 2].astype(np.int16) + flash, 0, 255).astype(np.uint8)
 
     def _render_capture(self, buffer: NDArray[np.uint8], t: float):
         """Render capture confirmation."""
@@ -545,59 +525,96 @@ class GlitchMirrorMode(BaseMode):
 
         draw_centered_text(buffer, "ЗАХВАЧЕНО!", 55, (255, 100, 200), scale=2)
 
-        # Animated border
+        # Animated border - VECTORIZED
         phase = int(t / 100) % 4
         colors = [(255, 0, 100), (0, 255, 200), (255, 200, 0), (200, 100, 255)]
         border_color = colors[phase]
-        for i in range(128):
-            if (i + int(t / 50)) % 8 < 4:
-                buffer[0, i] = border_color
-                buffer[127, i] = border_color
-                buffer[i, 0] = border_color
-                buffer[i, 127] = border_color
+        offset = int(t / 50)
+        # Create mask for dashed pattern
+        indices = np.arange(128)
+        mask = ((indices + offset) % 8) < 4
+        # Apply to borders
+        buffer[0, mask] = border_color
+        buffer[127, mask] = border_color
+        buffer[mask, 0] = border_color
+        buffer[mask, 127] = border_color
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display as camera continuation with glitch effect."""
-        from artifact.graphics.primitives import clear
-
-        clear(buffer)
+        """Render ticker display as camera continuation with glitch effect - VECTORIZED."""
+        buffer[:] = 0
         t = self._total_time
 
         if self._sub_phase == GlitchPhase.MIRROR and self._camera_frame is not None:
-            # Show camera-based glitch on ticker (continuation of main display)
-            for ty in range(8):
-                for tx in range(48):
-                    # Map to camera coordinates (top band)
-                    cam_y = (ty * 128) // 8
-                    cam_x = (tx * 128) // 48
+            # Map camera to ticker coordinates - VECTORIZED
+            ty_coords = np.arange(8)[:, np.newaxis]
+            tx_coords = np.arange(48)[np.newaxis, :]
+            cam_y = (ty_coords * 128) // 8
+            cam_x = (tx_coords * 128) // 48
 
-                    if cam_y < 128 and cam_x < 128:
-                        pixel = self._camera_frame[cam_y, cam_x]
+            # Sample camera (clipped to bounds)
+            cam_y = np.clip(cam_y, 0, 127)
+            cam_x = np.clip(cam_x, 0, 127)
+            sampled = self._camera_frame[cam_y, cam_x]
 
-                        # Apply glitch-style color shift
-                        if random.random() < 0.1:  # 10% chance of glitch
-                            # Random color glitch
-                            buffer[ty, tx] = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
-                        else:
-                            # Style-tinted pixel
-                            hue = (self._style_index * 45 + tx * 2 + t / 20) % 360
-                            brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
-                            color = hsv_to_rgb(hue, 0.8, brightness)
-                            buffer[ty, tx] = color
+            # Calculate brightness from RGB average
+            brightness = sampled.astype(np.float32).mean(axis=-1) / 255.0
 
-            # Scanline sync with main display
+            # Calculate hue gradient across ticker
+            hue = (self._style_index * 45 + tx_coords * 2 + t / 20) % 360
+
+            # HSV to RGB for tinted pixels (vectorized approximation)
+            h60 = hue / 60.0
+            h_i = (h60.astype(int) % 6)
+            f = h60 - h60.astype(int)
+            s = 0.8
+            p = brightness * (1 - s)
+            q = brightness * (1 - s * f)
+            t_val = brightness * (1 - s * (1 - f))
+
+            r = np.zeros((8, 48), dtype=np.float32)
+            g = np.zeros((8, 48), dtype=np.float32)
+            b = np.zeros((8, 48), dtype=np.float32)
+
+            # Sector 0: r=v, g=t, b=p
+            m0 = h_i == 0
+            r[m0] = brightness[m0]; g[m0] = t_val[m0]; b[m0] = p[m0]
+            # Sector 1: r=q, g=v, b=p
+            m1 = h_i == 1
+            r[m1] = q[m1]; g[m1] = brightness[m1]; b[m1] = p[m1]
+            # Sector 2: r=p, g=v, b=t
+            m2 = h_i == 2
+            r[m2] = p[m2]; g[m2] = brightness[m2]; b[m2] = t_val[m2]
+            # Sector 3: r=p, g=q, b=v
+            m3 = h_i == 3
+            r[m3] = p[m3]; g[m3] = q[m3]; b[m3] = brightness[m3]
+            # Sector 4: r=t, g=p, b=v
+            m4 = h_i == 4
+            r[m4] = t_val[m4]; g[m4] = p[m4]; b[m4] = brightness[m4]
+            # Sector 5: r=v, g=p, b=q
+            m5 = h_i == 5
+            r[m5] = brightness[m5]; g[m5] = p[m5]; b[m5] = q[m5]
+
+            buffer[:, :, 0] = (r * 255).astype(np.uint8)
+            buffer[:, :, 1] = (g * 255).astype(np.uint8)
+            buffer[:, :, 2] = (b * 255).astype(np.uint8)
+
+            # Apply random glitch to ~10% of pixels
+            glitch_mask = np.random.random((8, 48)) < 0.1
+            glitch_colors = np.random.randint(50, 256, (8, 48, 3), dtype=np.uint8)
+            buffer[glitch_mask] = glitch_colors[glitch_mask]
+
+            # Scanline sync - vertical white line
             scan_x = int((self._scanline_y / 128) * 48)
-            for y in range(8):
-                if 0 <= scan_x < 48:
-                    buffer[y, scan_x] = (255, 255, 255)
+            if 0 <= scan_x < 48:
+                buffer[:, scan_x] = (255, 255, 255)
 
         elif self._sub_phase == GlitchPhase.INTRO:
-            # Static glitch noise
-            for y in range(8):
-                for x in range(48):
-                    if random.random() < 0.3:
-                        v = random.randint(0, 255)
-                        buffer[y, x] = (v, v, v)
+            # Static glitch noise - VECTORIZED
+            noise_mask = np.random.random((8, 48)) < 0.3
+            noise_vals = np.random.randint(0, 256, (8, 48), dtype=np.uint8)
+            buffer[noise_mask, 0] = noise_vals[noise_mask]
+            buffer[noise_mask, 1] = noise_vals[noise_mask]
+            buffer[noise_mask, 2] = noise_vals[noise_mask]
 
         else:
             # Capture - flash

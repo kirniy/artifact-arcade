@@ -495,56 +495,53 @@ class ParticleSculptorMode(BaseMode):
         """Render camera capture phase with live preview."""
         fill(buffer, (20, 10, 30))
 
-        # Show camera preview with sculptor-style coloring
+        # Show camera preview with sculptor-style coloring - VECTORIZED
         if self._camera_frame is not None:
-            for y in range(128):
-                for x in range(128):
-                    pixel = self._camera_frame[y, x]
-                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+            brightness = self._camera_frame.astype(np.float32).mean(axis=-1) / 255.0
 
-                    # Apply sculptor purple/pink tint
-                    hue_shift = math.sin(x * 0.04 + y * 0.04 + t / 200) * 40
-                    r = int((180 + hue_shift) * brightness)
-                    g = int((80) * brightness)
-                    b = int((200 - hue_shift * 0.5) * brightness)
-                    buffer[y, x] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+            # Apply sculptor purple/pink tint with wave
+            y_coords = np.arange(128)[:, np.newaxis]
+            x_coords = np.arange(128)[np.newaxis, :]
+            hue_shift = np.sin(x_coords * 0.04 + y_coords * 0.04 + t / 200) * 40
+
+            r = np.clip((180 + hue_shift) * brightness, 0, 255).astype(np.uint8)
+            g = np.clip(80 * brightness, 0, 255).astype(np.uint8)
+            b = np.clip((200 - hue_shift * 0.5) * brightness, 0, 255).astype(np.uint8)
+
+            buffer[:, :, 0] = r
+            buffer[:, :, 1] = g
+            buffer[:, :, 2] = b
 
         # Pulsing capture indicator overlay
         pulse = 0.5 + 0.5 * math.sin(t / 150)
         draw_circle(buffer, 64, 64, int(40 * pulse), (100, 50, 150))
         draw_circle(buffer, 64, 64, int(30 * pulse), (150, 80, 200))
 
-        # Scanning effect
+        # Scanning effect - VECTORIZED
         scan_y = int((t / 30) % 128)
-        for x in range(128):
-            if 0 <= scan_y < 128:
-                buffer[scan_y, x] = (200, 100, 255)
+        if 0 <= scan_y < 128:
+            buffer[scan_y, :] = (200, 100, 255)
 
         draw_centered_text(buffer, "СКАНИРУЮ", 55, (200, 150, 255), scale=2)
         draw_centered_text(buffer, "ЛИЦО...", 80, (150, 100, 200), scale=1)
 
     def _render_sculpting(self, buffer: NDArray[np.uint8], t: float):
-        """Render sculpting view with live camera background."""
-        # First, render camera as a subtle background
+        """Render sculpting view with live camera background - VECTORIZED."""
+        # First, render camera as a subtle background - VECTORIZED
         if self._camera_frame is not None:
-            for y in range(128):
-                for x in range(128):
-                    pixel = self._camera_frame[y, x]
-                    # Very dim, purple-tinted camera background
-                    brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
-                    # Purple/pink tint at 15% intensity
-                    r = int(15 + 15 * brightness)
-                    g = int(5 + 8 * brightness)
-                    b = int(20 + 20 * brightness)
-                    buffer[y, x] = (r, g, b)
+            brightness = self._camera_frame.astype(np.float32).mean(axis=-1) / 255.0
+            # Purple/pink tint at 15% intensity
+            buffer[:, :, 0] = (15 + 15 * brightness).astype(np.uint8)
+            buffer[:, :, 1] = (5 + 8 * brightness).astype(np.uint8)
+            buffer[:, :, 2] = (20 + 20 * brightness).astype(np.uint8)
         else:
             # Clear to dark background
             buffer[:] = (15, 5, 20)
 
-        # Fade trail buffer
+        # Fade trail buffer - already vectorized
         self._trail_buffer = (self._trail_buffer.astype(np.float32) * 0.85).astype(np.uint8)
 
-        # Render particles to trail buffer
+        # Render particles to trail buffer (particles are sparse, loop is OK)
         for particle in self._particles:
             if not particle.active:
                 continue
@@ -558,27 +555,19 @@ class ParticleSculptorMode(BaseMode):
                 color = tuple(int(c * intensity) for c in particle.color)
                 self._trail_buffer[py, px] = color
 
-                # Glow for fast particles
+                # Glow for fast particles (3x3 area, small loop OK)
                 if speed > 1:
-                    for dx in [-1, 0, 1]:
-                        for dy in [-1, 0, 1]:
-                            nx, ny = px + dx, py + dy
-                            if 0 <= nx < 128 and 0 <= ny < 128:
-                                glow_color = tuple(int(c * 0.3) for c in particle.color)
-                                existing = self._trail_buffer[ny, nx]
-                                self._trail_buffer[ny, nx] = tuple(
-                                    max(e, g) for e, g in zip(existing, glow_color)
-                                )
+                    glow_color = np.array([int(c * 0.3) for c in particle.color], dtype=np.uint8)
+                    y1, y2 = max(0, py - 1), min(128, py + 2)
+                    x1, x2 = max(0, px - 1), min(128, px + 2)
+                    self._trail_buffer[y1:y2, x1:x2] = np.maximum(
+                        self._trail_buffer[y1:y2, x1:x2], glow_color
+                    )
 
-        # Blend trail buffer on top of camera background (additive)
-        for y in range(128):
-            for x in range(128):
-                trail = self._trail_buffer[y, x]
-                base = buffer[y, x]
-                r = min(255, int(base[0]) + int(trail[0]))
-                g = min(255, int(base[1]) + int(trail[1]))
-                b = min(255, int(base[2]) + int(trail[2]))
-                buffer[y, x] = (r, g, b)
+        # Blend trail buffer on top of camera background (additive) - VECTORIZED
+        buffer[:] = np.clip(
+            buffer.astype(np.int16) + self._trail_buffer.astype(np.int16), 0, 255
+        ).astype(np.uint8)
 
         # UI overlay
         force_names = {
@@ -628,34 +617,31 @@ class ParticleSculptorMode(BaseMode):
         draw_centered_text(buffer, "ШЕДЕВР!", 55, (200, 150, 255), scale=2)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display as camera continuation with particle overlay."""
-        from artifact.graphics.primitives import clear
-
-        clear(buffer)
+        """Render ticker display as camera continuation with particle overlay - VECTORIZED."""
+        buffer[:] = 0
 
         if self._sub_phase in (SculptorPhase.SCULPTING, SculptorPhase.CAPTURE) and self._camera_frame is not None:
-            # Show camera-based effect on ticker (48x8)
-            for ty in range(8):
-                for tx in range(48):
-                    # Map to camera coordinates (top part of frame)
-                    cam_y = (ty * 128) // 8
-                    cam_x = (tx * 128) // 48
+            # Map camera to ticker coordinates - VECTORIZED
+            ty_coords = np.arange(8)[:, np.newaxis]
+            tx_coords = np.arange(48)[np.newaxis, :]
+            cam_y = np.clip((ty_coords * 128) // 8, 0, 127)
+            cam_x = np.clip((tx_coords * 128) // 48, 0, 127)
 
-                    if cam_y < 128 and cam_x < 128:
-                        # Get brightness and apply sculptor-style coloring
-                        pixel = self._camera_frame[cam_y, cam_x]
-                        brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+            sampled = self._camera_frame[cam_y, cam_x]
+            brightness = sampled.astype(np.float32).mean(axis=-1) / 255.0
 
-                        # Purple/pink tint
-                        hue_shift = math.sin(tx * 0.15 + self._total_time / 800) * 30
-                        r = int((180 + hue_shift) * brightness)
-                        g = int((80) * brightness)
-                        b = int((200 - hue_shift * 0.5) * brightness)
-                        buffer[ty, tx] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+            # Purple/pink tint with wave
+            hue_shift = np.sin(tx_coords * 0.15 + self._total_time / 800) * 30
+            r = np.clip((180 + hue_shift) * brightness, 0, 255).astype(np.uint8)
+            g = np.clip(80 * brightness, 0, 255).astype(np.uint8)
+            b = np.clip((200 - hue_shift * 0.5) * brightness, 0, 255).astype(np.uint8)
 
-            # Overlay particle indicators if sculpting
+            buffer[:, :, 0] = r
+            buffer[:, :, 1] = g
+            buffer[:, :, 2] = b
+
+            # Overlay particle indicators (sparse, loop OK)
             if self._sub_phase == SculptorPhase.SCULPTING and self._particles:
-                # Show brighter spots where particles are moving fast
                 for particle in self._particles[:48]:
                     speed = math.sqrt(particle.vx ** 2 + particle.vy ** 2)
                     if speed > 0.5:
@@ -665,19 +651,29 @@ class ParticleSculptorMode(BaseMode):
                             buffer[ty, tx] = (255, 150, 255)
 
         elif self._sub_phase == SculptorPhase.REFORMING:
-            # Progress bar
+            # Rainbow progress bar - VECTORIZED
             progress_width = int(48 * self._reform_progress)
-            for x in range(progress_width):
-                for y in range(8):
-                    hue = (x * 5 + self._total_time / 10) % 360
-                    buffer[y, x] = hsv_to_rgb(hue, 0.6, 0.8)
+            if progress_width > 0:
+                x_coords = np.arange(progress_width)
+                hue = (x_coords * 5 + self._total_time / 10) % 360
+                # Vectorized HSV to RGB
+                h60 = hue / 60.0
+                h_i = (h60.astype(int) % 6)
+                f = h60 - h60.astype(int)
+                p, q, t_val = 0.2 * 0.8, 0.8 * (1 - 0.6 * f), 0.8 * (1 - 0.6 * (1 - f))
+                r = np.where(h_i == 0, 0.8, np.where(h_i == 1, q, np.where(h_i == 2, p, np.where(h_i == 3, p, np.where(h_i == 4, t_val, 0.8)))))
+                g = np.where(h_i == 0, t_val, np.where(h_i == 1, 0.8, np.where(h_i == 2, 0.8, np.where(h_i == 3, q, np.where(h_i == 4, p, p)))))
+                b_arr = np.where(h_i == 0, p, np.where(h_i == 1, p, np.where(h_i == 2, t_val, np.where(h_i == 3, 0.8, np.where(h_i == 4, 0.8, q)))))
+                buffer[:, :progress_width, 0] = (r * 255).astype(np.uint8)
+                buffer[:, :progress_width, 1] = (g * 255).astype(np.uint8)
+                buffer[:, :progress_width, 2] = (b_arr * 255).astype(np.uint8)
 
         else:
-            # Idle animation
+            # Idle wave animation - VECTORIZED
+            x_coords = np.arange(48)
+            wave = (3 + 3 * np.sin(x_coords * 0.2 + self._total_time / 200)).astype(int)
             for x in range(48):
-                wave = int(3 + 3 * math.sin(x * 0.2 + self._total_time / 200))
-                for y in range(8 - wave, 8):
-                    buffer[y, x] = (150, 100, 200)
+                buffer[8 - wave[x]:8, x] = (150, 100, 200)
 
     def get_lcd_text(self) -> str:
         """Get LCD text - shows current force."""

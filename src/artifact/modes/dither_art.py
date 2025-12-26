@@ -263,40 +263,41 @@ class DitherArtMode(BaseMode):
             self._create_demo_frame()
 
     def _create_demo_frame(self):
-        """Create demo pattern if no camera."""
+        """Create demo pattern if no camera - VECTORIZED."""
         frame = np.zeros((128, 128, 3), dtype=np.uint8)
-        t = self._total_time / 1000
 
-        # Create a face-like pattern
+        # Create coordinate grids
+        y_coords = np.arange(128)[:, np.newaxis]
+        x_coords = np.arange(128)[np.newaxis, :]
         cx, cy = 64, 64
 
-        for y in range(128):
-            for x in range(128):
-                dx = x - cx
-                dy = y - cy
-                dist = math.sqrt(dx * dx + dy * dy)
+        # Distance from center
+        dx = x_coords - cx
+        dy = y_coords - cy
+        dist = np.sqrt(dx * dx + dy * dy)
 
-                # Face oval
-                if dist < 50:
-                    brightness = 200 - dist * 2
-                    # Add some noise for texture
-                    noise = random.randint(-20, 20)
-                    v = max(0, min(255, int(brightness + noise)))
-                    frame[y, x] = (v, v, v)
+        # Face oval
+        face_mask = dist < 50
+        brightness = 200 - dist * 2
+        noise = np.random.randint(-20, 21, (128, 128))
+        face_v = np.clip(brightness + noise, 0, 255).astype(np.uint8)
+        frame[face_mask, 0] = face_v[face_mask]
+        frame[face_mask, 1] = face_v[face_mask]
+        frame[face_mask, 2] = face_v[face_mask]
 
-                # Eyes
-                eye_l_dist = math.sqrt((x - 45) ** 2 + (y - 50) ** 2)
-                eye_r_dist = math.sqrt((x - 83) ** 2 + (y - 50) ** 2)
-                if eye_l_dist < 10 or eye_r_dist < 10:
-                    frame[y, x] = (30, 30, 30)
-                if eye_l_dist < 5 or eye_r_dist < 5:
-                    frame[y, x] = (0, 0, 0)
+        # Eyes
+        eye_l_dist = np.sqrt((x_coords - 45) ** 2 + (y_coords - 50) ** 2)
+        eye_r_dist = np.sqrt((x_coords - 83) ** 2 + (y_coords - 50) ** 2)
+        eye_outer = (eye_l_dist < 10) | (eye_r_dist < 10)
+        eye_inner = (eye_l_dist < 5) | (eye_r_dist < 5)
+        frame[eye_outer] = (30, 30, 30)
+        frame[eye_inner] = (0, 0, 0)
 
-                # Mouth
-                if 70 < y < 85 and 50 < x < 78:
-                    mouth_curve = abs(y - 77 - (x - 64) * 0.1)
-                    if mouth_curve < 3:
-                        frame[y, x] = (50, 50, 50)
+        # Mouth
+        mouth_mask = (y_coords > 70) & (y_coords < 85) & (x_coords > 50) & (x_coords < 78)
+        mouth_curve = np.abs(y_coords - 77 - (x_coords - 64) * 0.1)
+        mouth_visible = mouth_mask & (mouth_curve < 3)
+        frame[mouth_visible] = (50, 50, 50)
 
         self._camera_frame = frame
 
@@ -352,33 +353,45 @@ class DitherArtMode(BaseMode):
             return result
 
         elif self._color_mode == ColorMode.NEON:
-            # Neon glow effect
-            result = image.copy()
+            # Neon glow effect - VECTORIZED
+            result = np.zeros_like(image)
             brightness = np.mean(image, axis=2)
-            hue = (self._total_time / 20) % 360
+            base_hue = (self._total_time / 20) % 360
 
-            for y in range(128):
-                for x in range(128):
-                    if brightness[y, x] > 128:
-                        # Bright pixels - neon color
-                        result[y, x] = hsv_to_rgb(hue + x, 1.0, 1.0)
-                    else:
-                        # Dark pixels - deep black with hint of color
-                        result[y, x] = hsv_to_rgb(hue + x, 0.5, 0.1)
+            x_coords = np.arange(128)[np.newaxis, :]
+            hue = (base_hue + x_coords) % 360
+            h60 = hue / 60.0
+            h_i = (h60.astype(int) % 6)
+            f = h60 - h60.astype(int)
+
+            bright_mask = brightness > 128
+            # Bright: full saturation, full value
+            # Dark: half saturation, 0.1 value
+
+            # For bright pixels (s=1.0, v=1.0)
+            p_b, q_b, t_b = 0, 1 - f, f
+            r_b = np.where(h_i == 0, 1.0, np.where(h_i == 1, q_b, np.where(h_i == 2, 0, np.where(h_i == 3, 0, np.where(h_i == 4, t_b, 1.0)))))
+            g_b = np.where(h_i == 0, t_b, np.where(h_i == 1, 1.0, np.where(h_i == 2, 1.0, np.where(h_i == 3, q_b, np.where(h_i == 4, 0, 0)))))
+            b_b = np.where(h_i == 0, 0, np.where(h_i == 1, 0, np.where(h_i == 2, t_b, np.where(h_i == 3, 1.0, np.where(h_i == 4, 1.0, q_b)))))
+
+            # For dark pixels (s=0.5, v=0.1)
+            p_d, q_d, t_d = 0.05, 0.1 * (1 - 0.5 * f), 0.1 * (1 - 0.5 * (1 - f))
+            r_d = np.where(h_i == 0, 0.1, np.where(h_i == 1, q_d, np.where(h_i == 2, p_d, np.where(h_i == 3, p_d, np.where(h_i == 4, t_d, 0.1)))))
+            g_d = np.where(h_i == 0, t_d, np.where(h_i == 1, 0.1, np.where(h_i == 2, 0.1, np.where(h_i == 3, q_d, np.where(h_i == 4, p_d, p_d)))))
+            b_d = np.where(h_i == 0, p_d, np.where(h_i == 1, p_d, np.where(h_i == 2, t_d, np.where(h_i == 3, 0.1, np.where(h_i == 4, 0.1, q_d)))))
+
+            result[:, :, 0] = np.where(bright_mask, r_b * 255, r_d * 255).astype(np.uint8)
+            result[:, :, 1] = np.where(bright_mask, g_b * 255, g_d * 255).astype(np.uint8)
+            result[:, :, 2] = np.where(bright_mask, b_b * 255, b_d * 255).astype(np.uint8)
             return result
 
         elif self._color_mode == ColorMode.AMBER:
-            # Amber phosphor monitor
-            result = image.copy()
-            brightness = np.mean(image, axis=2)
-            for y in range(128):
-                for x in range(128):
-                    v = brightness[y, x] / 255
-                    result[y, x] = (
-                        int(255 * v),
-                        int(180 * v),
-                        int(50 * v)
-                    )
+            # Amber phosphor monitor - VECTORIZED
+            brightness = np.mean(image, axis=2) / 255.0
+            result = np.zeros_like(image)
+            result[:, :, 0] = (255 * brightness).astype(np.uint8)
+            result[:, :, 1] = (180 * brightness).astype(np.uint8)
+            result[:, :, 2] = (50 * brightness).astype(np.uint8)
             return result
 
         return image
@@ -405,23 +418,22 @@ class DitherArtMode(BaseMode):
             self._render_capture(buffer, t)
 
     def _render_intro(self, buffer: NDArray[np.uint8], t: float):
-        """Render intro screen."""
-        fill(buffer, (20, 30, 20))
-
+        """Render intro screen - VECTORIZED."""
         # Animated dither pattern demo
-        for y in range(128):
-            for x in range(128):
-                # Gradient
-                gradient = x / 128
+        y_coords = np.arange(128)[:, np.newaxis]
+        x_coords = np.arange(128)[np.newaxis, :]
 
-                # Apply bayer dithering to gradient
-                bayer = Dithering.BAYER_8X8[y % 8, x % 8]
-                threshold = gradient + (bayer - 0.5) * 0.5 + math.sin(t / 200 + x * 0.1) * 0.1
+        # Gradient
+        gradient = x_coords / 128.0
 
-                if threshold > 0.5:
-                    buffer[y, x] = (180, 220, 180)
-                else:
-                    buffer[y, x] = (20, 40, 20)
+        # Apply bayer dithering to gradient
+        bayer = Dithering.BAYER_8X8[y_coords % 8, x_coords % 8]
+        threshold = gradient + (bayer - 0.5) * 0.5 + np.sin(t / 200 + x_coords * 0.1) * 0.1
+
+        bright = threshold > 0.5
+        buffer[:, :, 0] = np.where(bright, 180, 20)
+        buffer[:, :, 1] = np.where(bright, 220, 40)
+        buffer[:, :, 2] = np.where(bright, 180, 20)
 
         # Title
         draw_rect(buffer, 20, 25, 88, 30, (0, 0, 0))
@@ -516,46 +528,40 @@ class DitherArtMode(BaseMode):
                 draw_rect(buffer, i, 124, 8, 4, (100, 255, 100))
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display as camera continuation with dither effect."""
-        from artifact.graphics.primitives import clear
-
-        clear(buffer)
+        """Render ticker display as camera continuation with dither effect - VECTORIZED."""
+        buffer[:] = 0
 
         if self._sub_phase == DitherPhase.LIVE and self._camera_frame is not None:
-            # Show camera-based dithered ticker (continuation of main display)
+            # Map camera to ticker coordinates - VECTORIZED
             color = self._get_mode_color()
+            ty_coords = np.arange(8)[:, np.newaxis]
+            tx_coords = np.arange(48)[np.newaxis, :]
+            cam_y = np.clip((ty_coords * 128) // 8, 0, 127)
+            cam_x = np.clip((tx_coords * 128) // 48, 0, 127)
 
-            for ty in range(8):
-                for tx in range(48):
-                    # Map to camera coordinates (top band)
-                    cam_y = (ty * 128) // 8
-                    cam_x = (tx * 128) // 48
+            sampled = self._camera_frame[cam_y, cam_x]
+            brightness = sampled.astype(np.float32).mean(axis=-1) / 255.0
 
-                    if cam_y < 128 and cam_x < 128:
-                        # Get brightness from camera
-                        pixel = self._camera_frame[cam_y, cam_x]
-                        brightness = (int(pixel[0]) + int(pixel[1]) + int(pixel[2])) // 3 / 255
+            # Apply bayer dithering
+            bayer = Dithering.BAYER_4X4[ty_coords % 4, tx_coords % 4]
+            threshold = brightness + (bayer - 0.5) * 0.4
+            bright = threshold > 0.5
 
-                        # Apply dithering
-                        bayer = Dithering.BAYER_4X4[ty % 4, tx % 4]
-                        threshold = brightness + (bayer - 0.5) * 0.4
-
-                        if threshold > 0.5:
-                            buffer[ty, tx] = color
-                        else:
-                            buffer[ty, tx] = (10, 15, 10)
+            buffer[:, :, 0] = np.where(bright, color[0], 10)
+            buffer[:, :, 1] = np.where(bright, color[1], 15)
+            buffer[:, :, 2] = np.where(bright, color[2], 10)
 
         elif self._sub_phase == DitherPhase.INTRO:
-            # Animated gradient dither
-            for x in range(48):
-                gradient = x / 48
-                bayer_col = x % 4
-                for y in range(8):
-                    bayer = Dithering.BAYER_4X4[y % 4, bayer_col]
-                    if gradient + bayer * 0.5 > 0.5:
-                        buffer[y, x] = (100, 200, 100)
-                    else:
-                        buffer[y, x] = (20, 40, 20)
+            # Animated gradient dither - VECTORIZED
+            y_coords = np.arange(8)[:, np.newaxis]
+            x_coords = np.arange(48)[np.newaxis, :]
+            gradient = x_coords / 48.0
+            bayer = Dithering.BAYER_4X4[y_coords % 4, x_coords % 4]
+            bright = (gradient + bayer * 0.5) > 0.5
+
+            buffer[:, :, 0] = np.where(bright, 100, 20)
+            buffer[:, :, 1] = np.where(bright, 200, 40)
+            buffer[:, :, 2] = np.where(bright, 100, 20)
 
         else:  # CAPTURE
             # Flash
