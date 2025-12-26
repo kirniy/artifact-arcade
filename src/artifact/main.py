@@ -83,6 +83,8 @@ async def run_hardware() -> None:
     from artifact.modes.rocketpy import RocketPyMode
     from artifact.modes.skii import SkiiMode
     from artifact.modes.ninja_fruit import NinjaFruitMode
+    from artifact.modes.photobooth import PhotoboothMode
+    from artifact.modes.gesture_game import GestureGameMode
 
     logger = logging.getLogger(__name__)
 
@@ -135,6 +137,8 @@ async def run_hardware() -> None:
     mode_manager.register_mode(RocketPyMode)
     mode_manager.register_mode(SkiiMode)
     mode_manager.register_mode(NinjaFruitMode)
+    mode_manager.register_mode(PhotoboothMode)
+    mode_manager.register_mode(GestureGameMode)
 
     # AI Prophet mode - needs API key
     if os.environ.get("GEMINI_API_KEY"):

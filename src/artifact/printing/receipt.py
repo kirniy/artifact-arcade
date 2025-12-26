@@ -83,6 +83,8 @@ class ReceiptGenerator:
             layout = self._create_roast_receipt(data)
         elif mode_name == "autopsy":
             layout = self._create_autopsy_receipt(data)
+        elif mode_name == "photobooth":
+            layout = self._create_photobooth_receipt(data)
         else:
             layout = self._create_generic_receipt(mode_name, data)
 
@@ -403,6 +405,43 @@ class ReceiptGenerator:
 
         layout.add_space(1)
         layout.add_separator("line")
+
+        self._create_footer(layout)
+        return layout
+
+    def _create_photobooth_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Photobooth mode.
+
+        Adapted from raspi-photo-booth thermal printing pattern.
+        Includes photo and optional QR code for sharing.
+        """
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("ФОТОБУДКА", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        # Photo image - FULL WIDTH, adapted from raspi-photo-booth printPhoto()
+        photo = data.get("caricature") or data.get("photo")
+        if photo:
+            layout.add_image(photo, width=384, dither=True)
+            layout.add_space(1)
+
+        # QR code URL if available (from file.io upload)
+        qr_url = data.get("qr_url")
+        if qr_url:
+            layout.add_separator("line")
+            layout.add_text("СКАЧАТЬ ФОТО:", size=TextSize.SMALL)
+            # Wrap long URL
+            if len(qr_url) > 32:
+                layout.add_text(qr_url[:32], size=TextSize.SMALL)
+                layout.add_text(qr_url[32:], size=TextSize.SMALL)
+            else:
+                layout.add_text(qr_url, size=TextSize.SMALL)
+
+        layout.add_space(1)
+        layout.add_separator("double")
 
         self._create_footer(layout)
         return layout

@@ -16,6 +16,8 @@ from artifact.modes.glitch_mirror import GlitchMirrorMode
 from artifact.modes.dither_art import DitherArtMode
 from artifact.modes.ascii_art import AsciiArtMode
 from artifact.modes.particle_sculptor import ParticleSculptorMode
+from artifact.modes.photobooth import PhotoboothMode
+from artifact.modes.gesture_game import GestureGameMode
 
 __all__ = [
     "BaseMode",
@@ -37,4 +39,6 @@ __all__ = [
     "DitherArtMode",
     "AsciiArtMode",
     "ParticleSculptorMode",
+    "PhotoboothMode",
+    "GestureGameMode",
 ]

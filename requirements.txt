@@ -15,3 +15,6 @@ aiohttp>=3.9.0
 # Camera (for simulator)
 opencv-python>=4.8.0
 mediapipe>=0.10.11; python_version < "3.12"
+
+# QR code generation (for photobooth)
+qrcode[pil]>=7.4.0
