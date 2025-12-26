@@ -6,3 +6,4 @@ python-escpos>=3.0
 gpiozero>=2.0
 evdev>=1.6.0
 picamera2>=0.3.12
+mediapipe>=0.10.11; python_version < "3.12"
