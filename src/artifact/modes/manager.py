@@ -1037,9 +1037,9 @@ class ModeManager:
                         for gy in range(-1, 2):
                             if 0 <= x + gx - 3 < 128 and 0 <= dot_y + gy - 3 < 128:
                                 buffer[dot_y + gy - 3, x + gx - 3] = [
-                                    min(255, buffer[dot_y + gy - 3, x + gx - 3, 0] + 30),
-                                    min(255, buffer[dot_y + gy - 3, x + gx - 3, 1] + 30),
-                                    min(255, buffer[dot_y + gy - 3, x + gx - 3, 2] + 30)
+                                    min(255, int(buffer[dot_y + gy - 3, x + gx - 3, 0]) + 30),
+                                    min(255, int(buffer[dot_y + gy - 3, x + gx - 3, 1]) + 30),
+                                    min(255, int(buffer[dot_y + gy - 3, x + gx - 3, 2]) + 30)
                                 ]
                 else:
                     # Other modes - small dim dot
