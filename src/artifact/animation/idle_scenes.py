@@ -289,68 +289,110 @@ class RotatingIdleAnimation:
             buffer[:] = np.clip(buffer.astype(np.int16) - fade_amount, 0, 255).astype(np.uint8)
 
     def _render_eye(self, buffer: NDArray[np.uint8]) -> None:
-        """Render mystical eye - EFFICIENT version."""
+        """Render mystical all-seeing eye - PREMIUM version."""
         t = self.state.scene_time / 1000
         cx, cy = 64, 64
 
-        # Dark purple background
-        fill(buffer, (20, 15, 40))
+        # Deep space background with subtle gradient
+        for y in range(128):
+            darkness = 0.7 + 0.3 * (y / 128)
+            r = int(15 * darkness)
+            g = int(10 * darkness)
+            b = int(35 * darkness)
+            buffer[y, :] = [r, g, b]
 
-        # Simple aura rings (just 3 rings, not 6)
-        for ring in range(3):
-            radius = 55 - ring * 8
-            pulse = 0.5 + 0.5 * math.sin(t * 2 + ring)
-            hue = (t * 30 + ring * 40) % 360
-            color = hsv_to_rgb(hue, 0.8, 0.3 * pulse)
-            # Draw circle as ring of pixels (fast)
-            for angle in range(0, 360, 6):  # Every 6 degrees = 60 points
-                rad = math.radians(angle)
-                px = int(cx + radius * math.cos(rad))
-                py = int(cy + radius * math.sin(rad))
-                if 0 <= px < 128 and 0 <= py < 128:
-                    buffer[py, px] = color
+        # Animated cosmic particles in background
+        for i in range(20):
+            px = int((t * 20 + i * 37) % 128)
+            py = int((t * 15 + i * 23) % 128)
+            twinkle = 0.5 + 0.5 * math.sin(t * 5 + i)  # Range 0-1 (not negative!)
+            color = (max(0, int(100 * twinkle)), max(0, int(80 * twinkle)), max(0, int(150 * twinkle)))
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = color
 
-        # Eye white (simple filled ellipse approximation)
-        eye_h, eye_w = 28, 42
-        for y in range(-eye_h, eye_h + 1, 2):  # Step by 2 for speed
-            row_width = int(eye_w * math.sqrt(1 - (y / eye_h) ** 2))
+        # Multiple pulsing aura rings with glow
+        for ring in range(6):
+            base_r = 58 - ring * 6
+            pulse = 0.6 + 0.4 * math.sin(t * 2.5 + ring * 0.8)
+            radius = base_r + int(3 * math.sin(t * 3 + ring))
+            hue = (t * 25 + ring * 50) % 360
+            color = hsv_to_rgb(hue, 0.9, 0.5 * pulse)
+
+            # Draw thick glowing ring
+            for angle in range(0, 360, 3):
+                rad = math.radians(angle + t * 30)
+                for dr in [-1, 0, 1]:  # Ring thickness
+                    px = int(cx + (radius + dr) * math.cos(rad))
+                    py = int(cy + (radius + dr) * math.sin(rad))
+                    if 0 <= px < 128 and 0 <= py < 128:
+                        brightness = 1.0 if dr == 0 else 0.4
+                        buffer[py, px] = tuple(max(0, min(255, int(c * brightness))) for c in color)
+
+        # Eye white with subtle gradient
+        eye_h, eye_w = 30, 45
+        for y in range(-eye_h, eye_h + 1):
+            row_width = int(eye_w * math.sqrt(max(0, 1 - (y / eye_h) ** 2)))
             for x in range(-row_width, row_width + 1):
                 px, py = cx + x, cy + y
                 if 0 <= px < 128 and 0 <= py < 128:
-                    buffer[py, px] = (220, 215, 210)
+                    # Gradient from white center to pink edges
+                    dist_from_edge = 1 - abs(x) / row_width if row_width > 0 else 1
+                    white = int(220 + 35 * dist_from_edge)
+                    buffer[py, px] = (min(255, white), max(0, white - 10), max(0, white - 5))
 
-        # Iris (simple filled circle)
+        # Animated iris with spiral pattern
         iris_cx = int(cx + self.eye_x)
         iris_cy = int(cy + self.eye_y)
-        iris_r = 18
-        for y in range(-iris_r, iris_r + 1, 2):
-            for x in range(-iris_r, iris_r + 1, 2):
-                if x*x + y*y <= iris_r*iris_r:
+        iris_r = 20
+
+        for y in range(-iris_r, iris_r + 1):
+            for x in range(-iris_r, iris_r + 1):
+                dist_sq = x*x + y*y
+                if dist_sq <= iris_r*iris_r:
                     px, py = iris_cx + x, iris_cy + y
                     if 0 <= px < 128 and 0 <= py < 128:
-                        dist = math.sqrt(x*x + y*y) / iris_r
-                        # Gold to purple gradient
-                        r = int(self.gold[0] * (1 - dist) + self.purple[0] * dist)
-                        g = int(self.gold[1] * (1 - dist) + self.purple[1] * dist)
-                        b = int(self.gold[2] * (1 - dist) + self.purple[2] * dist)
+                        dist = math.sqrt(dist_sq) / iris_r
+                        angle = math.atan2(y, x)
+
+                        # Spiral pattern
+                        spiral = math.sin(angle * 3 + dist * 5 - t * 4) * 0.3 + 0.7
+
+                        # Color: golden center to deep purple edge
+                        r = max(0, min(255, int((255 * (1 - dist) + 100 * dist) * spiral)))
+                        g = max(0, min(255, int((200 * (1 - dist) + 30 * dist) * spiral)))
+                        b = max(0, min(255, int((50 * (1 - dist) + 200 * dist) * spiral)))
                         buffer[py, px] = (r, g, b)
 
-        # Pupil (small black circle)
-        pupil_r = int(6 + 2 * math.sin(t))
-        pupil_cx = int(iris_cx + self.eye_x * 0.2)
-        pupil_cy = int(iris_cy + self.eye_y * 0.2)
-        for y in range(-pupil_r, pupil_r + 1):
-            for x in range(-pupil_r, pupil_r + 1):
-                if x*x + y*y <= pupil_r*pupil_r:
+        # Pulsing pupil with depth effect
+        pupil_r = int(7 + 2 * math.sin(t * 1.5))
+        pupil_cx = int(iris_cx + self.eye_x * 0.15)
+        pupil_cy = int(iris_cy + self.eye_y * 0.15)
+
+        for y in range(-pupil_r - 2, pupil_r + 3):
+            for x in range(-pupil_r - 2, pupil_r + 3):
+                dist_sq = x*x + y*y
+                if dist_sq <= (pupil_r + 2)**2:
                     px, py = pupil_cx + x, pupil_cy + y
                     if 0 <= px < 128 and 0 <= py < 128:
-                        buffer[py, px] = (5, 5, 15)
+                        dist = math.sqrt(dist_sq)
+                        if dist <= pupil_r:
+                            # Deep void
+                            buffer[py, px] = (5, 5, 20)
+                        else:
+                            # Soft edge glow
+                            alpha = max(0, 1 - (dist - pupil_r) / 2)
+                            buffer[py, px] = (max(0, int(50 * alpha)), max(0, int(30 * alpha)), max(0, int(100 * alpha)))
 
-        # Highlight
-        hl_x, hl_y = pupil_cx - 3, pupil_cy - 3
-        if 0 <= hl_x < 127 and 0 <= hl_y < 127:
-            buffer[hl_y, hl_x] = (255, 255, 255)
-            buffer[hl_y, hl_x + 1] = (200, 200, 255)
+        # Glowing highlights
+        for dx, dy, size, bright in [(-4, -4, 3, 1.0), (-2, -6, 2, 0.7), (3, -3, 1, 0.5)]:
+            hx, hy = pupil_cx + dx, pupil_cy + dy
+            for sy in range(-size, size + 1):
+                for sx in range(-size, size + 1):
+                    if sx*sx + sy*sy <= size*size:
+                        px, py = hx + sx, hy + sy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            val = max(0, min(255, int(255 * bright)))
+                            buffer[py, px] = (val, val, val)
 
         # Blink overlay
         if self.blink > 0:
@@ -360,12 +402,12 @@ class RotatingIdleAnimation:
                 for x in range(-row_width, row_width + 1):
                     px, py = cx + x, cy + y
                     if 0 <= px < 128 and 0 <= py < 128:
-                        buffer[py, px] = (80, 50, 100)
+                        buffer[py, px] = (60, 40, 90)
 
-        # Title text
-        draw_centered_text(buffer, "VNVNC", 8, self.gold, scale=2)
+        # Elegant title
+        draw_centered_text(buffer, "VNVNC", 6, self.gold, scale=2)
 
-        # "Press start" with blink
+        # Blinking prompt
         if int(t * 2) % 2 == 0:
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, self.teal, scale=1)
 
@@ -433,8 +475,8 @@ class RotatingIdleAnimation:
             # Pulsing circle
             pulse = int(20 + 5 * math.sin(t * 3))
             for r in range(pulse, 10, -3):
-                alpha = (pulse - r) / pulse
-                color = (int(20 * alpha), int(180 * alpha), int(160 * alpha))
+                alpha = max(0.0, (pulse - r) / max(1, pulse))  # Prevent division by zero
+                color = (max(0, min(255, int(20 * alpha))), max(0, min(255, int(180 * alpha))), max(0, min(255, int(160 * alpha))))
                 for angle in range(0, 360, 15):
                     rad = math.radians(angle)
                     px = int(64 + r * math.cos(rad))
@@ -592,7 +634,7 @@ class RotatingIdleAnimation:
                     for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                         gpx, gpy = px + dx, py + dy
                         if 0 <= gpx < 128 and 0 <= gpy < 128:
-                            buffer[gpy, gpx] = tuple(min(255, int(c * 0.5)) for c in color)
+                            buffer[gpy, gpx] = tuple(max(0, min(255, int(c * 0.5))) for c in color)
 
         # Blinking prompt
         if int(t * 2) % 2 == 0:
@@ -665,10 +707,10 @@ class RotatingIdleAnimation:
         for y in range(128):
             fire_intensity = 1.0 - (y / 128)  # Brighter at bottom
             wave = 0.1 * math.sin(y * 0.2 + t * 5)
-            intensity = max(0, min(1, fire_intensity + wave))
-            r = int(255 * intensity)
-            g = int(100 * intensity * intensity)
-            b = int(20 * intensity * intensity * intensity)
+            intensity = max(0.0, min(1.0, fire_intensity + wave))  # Clamp to 0-1
+            r = max(0, min(255, int(255 * intensity)))
+            g = max(0, min(255, int(100 * intensity * intensity)))
+            b = max(0, min(255, int(20 * intensity * intensity * intensity)))
             buffer[y, :] = [r, g, b]
 
         # Rising fire particles
@@ -677,7 +719,7 @@ class RotatingIdleAnimation:
             py = int(127 - (t * 50 + random.random() * 100) % 128)
             if 0 <= py < 128:
                 brightness = random.uniform(0.5, 1.0)
-                buffer[py, px] = (255, int(200 * brightness), int(50 * brightness))
+                buffer[py, px] = (255, max(0, min(255, int(200 * brightness))), max(0, min(255, int(50 * brightness))))
 
         # Camera silhouette overlay
         if self._camera_frame is not None:
@@ -866,11 +908,11 @@ class RotatingIdleAnimation:
             # Size based on depth (closer = bigger)
             size = max(1, int(3 * (100 - star_z) / 100))
 
-            # Brightness based on depth
-            brightness = int(255 * (100 - star_z) / 100)
+            # Brightness based on depth (clamped to prevent negative)
+            brightness = max(0, min(255, int(255 * (100 - star_z) / 100)))
 
             if 0 <= sx < 128 and 0 <= sy < 128:
-                color = (brightness, brightness, min(255, brightness + 50))
+                color = (brightness, brightness, min(255, max(0, brightness + 50)))
                 for dy in range(-size//2, size//2 + 1):
                     for dx in range(-size//2, size//2 + 1):
                         px, py = sx + dx, sy + dy
@@ -883,8 +925,8 @@ class RotatingIdleAnimation:
                     tx = int(sx - (sx - cx) * trail * 0.1)
                     ty = int(sy - (sy - cy) * trail * 0.1)
                     if 0 <= tx < 128 and 0 <= ty < 128:
-                        fade = brightness // (trail + 1)
-                        buffer[ty, tx] = (fade, fade, min(255, fade + 20))
+                        fade = max(0, brightness // (trail + 1))
+                        buffer[ty, tx] = (fade, fade, min(255, max(0, fade + 20)))
 
         # Blinking prompt
         if int(t * 2) % 2 == 0:
