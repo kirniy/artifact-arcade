@@ -113,6 +113,7 @@ class TowerStackMode(BaseMode):
     INITIAL_WIDTH = 50
     MIN_WIDTH = 6
     SWING_Y = 15  # Y position of swinging block
+    CAMERA_TARGET_Y = 70  # Keep next block landing around this screen Y
     DROP_GRAVITY = 1600.0
     DROP_MAX_SPEED = 900.0
     DROP_SNAP = 2
@@ -405,9 +406,10 @@ class TowerStackMode(BaseMode):
         # Update bonus blocks
         self._update_bonus_blocks(dt)
 
-        # Smooth camera scroll
-        camera_diff = self._target_camera_y - self._camera_y
-        self._camera_y += camera_diff * 4.0 * dt
+        # Smooth camera scroll (freeze while dropping to avoid target drift)
+        if not self._dropping:
+            camera_diff = self._target_camera_y - self._camera_y
+            self._camera_y += camera_diff * 4.0 * dt
 
         # Background pulse
         self._bg_pulse = (self._bg_pulse + delta_ms * 0.003) % (2 * math.pi)
@@ -656,8 +658,7 @@ class TowerStackMode(BaseMode):
 
     def _update_drop(self, dt: float) -> None:
         """Animate the dropping block with a crisp, Tetris-like fall."""
-        target_y = self._next_block_y + self._camera_y
-        self._drop_target_y = target_y
+        target_y = self._drop_target_y
 
         self._drop_vy = min(self._drop_vy + self.DROP_GRAVITY * dt, self.DROP_MAX_SPEED)
         self._drop_y += self._drop_vy * dt
@@ -777,7 +778,9 @@ class TowerStackMode(BaseMode):
         # Update camera
         blocks_on_screen = 8
         if len(self._tower) > blocks_on_screen:
-            self._target_camera_y = -((len(self._tower) - blocks_on_screen) * self.BLOCK_HEIGHT)
+            self._target_camera_y = max(0.0, self.CAMERA_TARGET_Y - self._next_block_y)
+        else:
+            self._target_camera_y = 0.0
 
         # Too narrow = game over (but with rescue mechanic)
         if self._current_width < self.MIN_WIDTH:

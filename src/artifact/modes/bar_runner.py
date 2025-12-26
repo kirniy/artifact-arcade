@@ -195,8 +195,8 @@ class BarRunnerMode(BaseMode):
         self._powerup_cd = 5000.0
 
         # Difficulty
-        self._scroll_speed = 80.0
-        self._base_speed = 80.0
+        self._scroll_speed = 65.0
+        self._base_speed = 65.0
         self._difficulty = 1.0
 
         # Visual effects
@@ -294,8 +294,8 @@ class BarRunnerMode(BaseMode):
         self._powerup_cd = 8000.0
 
         # Reset difficulty
-        self._scroll_speed = 80.0
-        self._base_speed = 80.0
+        self._scroll_speed = 65.0
+        self._base_speed = 65.0
         self._difficulty = 1.0
 
         # Reset effects
@@ -377,7 +377,7 @@ class BarRunnerMode(BaseMode):
 
         elif event.type == EventType.ARCADE_RIGHT:
             # Speed boost (temporary)
-            self._scroll_speed = min(self._base_speed * 1.5, self._scroll_speed + 20)
+            self._scroll_speed = min(self._base_speed * 1.25, self._scroll_speed + 12)
             return True
 
         return False
@@ -464,8 +464,8 @@ class BarRunnerMode(BaseMode):
 
         # Update distance and difficulty
         self._distance += self._scroll_speed * dt
-        self._difficulty = 1.0 + self._distance / 5000.0
-        self._base_speed = 80.0 + self._difficulty * 20.0
+        self._difficulty = 1.0 + self._distance / 8000.0
+        self._base_speed = 60.0 + self._difficulty * 15.0
 
         # Gradually return to base speed
         speed_diff = self._base_speed - self._scroll_speed
@@ -498,7 +498,7 @@ class BarRunnerMode(BaseMode):
 
         # Trail particles while running fast
         self._trail_timer -= delta_ms
-        if self._trail_timer <= 0 and self._scroll_speed > 100:
+        if self._trail_timer <= 0 and self._scroll_speed > 90:
             self._spawn_trail_particle()
             self._trail_timer = 50
 
@@ -1358,19 +1358,19 @@ class BarRunnerMode(BaseMode):
 
     def _draw_starfield(self, buffer: NDArray[np.uint8], t_sec: float, max_y: int) -> None:
         max_y = max(6, min(120, max_y))
-        for i in range(18):
-            speed = 4 + (i % 4) * 2
+        for i in range(12):
+            speed = 3 + (i % 4) * 2
             sx = int((i * 23 + t_sec * speed * 12) % 128)
             sy = int((i * 17 + t_sec * speed * 6) % max_y)
             twinkle = 0.6 + 0.4 * math.sin(t_sec * 3 + i)
             color = (
-                int(60 + 60 * twinkle),
-                int(90 + 80 * twinkle),
-                int(140 + 100 * twinkle),
+                int(40 + 40 * twinkle),
+                int(60 + 50 * twinkle),
+                int(90 + 60 * twinkle),
             )
             draw_rect(buffer, sx, sy, 1, 1, color, filled=True)
-            if i % 6 == 0 and sx + 1 < 128:
-                draw_rect(buffer, sx + 1, sy, 1, 1, (180, 200, 255), filled=True)
+            if i % 8 == 0 and sx + 1 < 128:
+                draw_rect(buffer, sx + 1, sy, 1, 1, (120, 140, 180), filled=True)
 
     def _draw_neon_grid(
         self,
@@ -1399,14 +1399,14 @@ class BarRunnerMode(BaseMode):
         draw_rect(buffer, 0, horizon_y, 128, 1, glow_color)
 
     def _draw_speed_streaks(self, buffer: NDArray[np.uint8], t_sec: float, max_y: int) -> None:
-        if self._scroll_speed < 110:
+        if self._scroll_speed < 130:
             return
         max_y = max(8, max_y)
         for i in range(7):
             sx = int((t_sec * 90 + i * 23) % 128)
             sy = int(8 + (i * 14) % max_y)
             length = 4 + (i % 3)
-            draw_rect(buffer, sx, sy, length, 1, (90, 130, 200), filled=True)
+            draw_rect(buffer, sx, sy, length, 1, (70, 100, 150), filled=True)
 
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
         t = self._time_ms
@@ -1427,9 +1427,9 @@ class BarRunnerMode(BaseMode):
             # Background with parallax
             for y in range(128):
                 factor = y / 128
-                r = int(18 + 18 * factor + 8 * math.sin(t / 1200 + y * 0.12))
-                g = int(20 + 20 * factor)
-                b = int(40 + 50 * (1 - factor))
+                r = int(14 + 14 * factor + 6 * math.sin(t / 1400 + y * 0.1))
+                g = int(18 + 16 * factor)
+                b = int(32 + 40 * (1 - factor))
                 buffer[y, :] = [r, g, b]
 
         # Neon sky details
@@ -1444,10 +1444,10 @@ class BarRunnerMode(BaseMode):
             draw_rect(buffer, bx, by, 25, bh, (35, 30, 45), filled=True)
 
         # Neon grid floor
-        self._draw_neon_grid(buffer, t_sec, horizon_y, floor_y, (40, 70, 110), (90, 140, 200))
+        self._draw_neon_grid(buffer, t_sec, horizon_y, floor_y, (25, 45, 70), (60, 90, 140))
 
         # Scanline effect (background only)
-        buffer[::2] = (buffer[::2].astype(np.float32) * 0.88).astype(np.uint8)
+        buffer[::2] = (buffer[::2].astype(np.float32) * 0.93).astype(np.uint8)
 
         # Speed streaks in the sky
         self._draw_speed_streaks(buffer, t_sec, horizon_y - 6)
@@ -1922,6 +1922,14 @@ class BarRunnerMode(BaseMode):
             show_player = int(t / 80) % 2 == 0
 
         if show_player:
+            # Contrast outline to keep player readable on busy backgrounds
+            outline_x = px - 8
+            outline_y = py - 22
+            outline_w = 16
+            outline_h = 24
+            draw_rect(buffer, outline_x + 1, outline_y + 1, outline_w, outline_h, (10, 10, 20), filled=False)
+            draw_rect(buffer, outline_x, outline_y, outline_w, outline_h, (220, 220, 220), filled=False)
+
             # Animation phase
             run_phase = self._run_frame
             bob = int(2 * abs(math.sin(run_phase * 2)))  # Body bob
