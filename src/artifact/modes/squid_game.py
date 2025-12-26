@@ -24,9 +24,7 @@ from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.ai.caricature import CaricatureService
 from artifact.audio.engine import get_audio_engine
-from artifact.simulator.mock_hardware.camera import (
-    SimulatorCamera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
-)
+from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
 
 logger = logging.getLogger(__name__)
 

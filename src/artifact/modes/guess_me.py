@@ -25,9 +25,7 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.simulator.mock_hardware.camera import (
-    SimulatorCamera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
-)
+from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
 
 logger = logging.getLogger(__name__)
 

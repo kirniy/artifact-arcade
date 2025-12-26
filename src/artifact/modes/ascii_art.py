@@ -131,7 +131,7 @@ class AsciiArtMode(BaseMode):
 
         # Try to open camera
         try:
-            from artifact.simulator.mock_hardware.camera import create_camera
+            from artifact.utils.camera import create_camera
             self._camera = create_camera(resolution=(128, 128))
             self._camera.open()
         except Exception:

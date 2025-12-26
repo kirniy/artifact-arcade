@@ -10,7 +10,7 @@ This document contains all information about the LED display output system for A
 ┌─────────────────┐    HDMI      ┌─────────────┐   Ethernet   ┌─────────────┐   HUB75E    ┌────────────────┐
 │  Raspberry Pi 4 │ ──────────▶  │  NovaStar   │ ───────────▶ │  NovaStar   │ ──────────▶│ 4× P3 64×64    │
 │  720×480 HDMI   │              │  T50        │              │  DH418      │            │ LED Panels     │
-│  pygame/SDL2    │              │  (sender)   │              │ (receiver)  │   8 cables │ 128×128 total  │
+│  pygame/SDL2    │              │  (sender)   │              │ (receiver)  │   4 cables │ 128×128 total  │
 └─────────────────┘              └─────────────┘              └─────────────┘            └────────────────┘
 ```
 
@@ -31,7 +31,7 @@ This document contains all information about the LED display output system for A
 | Driver Chip | CHIPONE ICN2153 (ICND2153AP) |
 | Row Decoder | ICN2013 |
 | Interface | HUB75E |
-| HUB Connectors | 2 per panel (BOTH ARE INPUTS, no daisy-chain!) |
+| HUB Connectors | 1 per panel |
 | Power | 5V DC from Mean Well LRS-200-5 (40A) |
 
 ### 2. NovaStar T50 (Taurus Multimedia Player)
@@ -213,37 +213,39 @@ This compositor holds exclusive access to `/dev/dri/card0`, preventing pygame fr
 
 ### SOLUTION: kmsdrm + sudo (WORKING!)
 
-**Tested and confirmed working on Dec 25, 2024.**
+**Tested and confirmed working on Dec 26, 2024.**
 
 The key requirements:
-1. **Stop lightdm/labwc** - compositor must not hold DRM device
-2. **Use kmsdrm driver** - SDL_VIDEODRIVER=kmsdrm
-3. **Run with sudo** - kmsdrm needs root access to /dev/dri/card1
-4. **card1 is HDMI** - NOT card0 (card0 is v3d GPU only)
+1. **Stop labwc** - compositor must not hold DRM device
+2. **DO NOT set SDL_VIDEODRIVER** - let pygame auto-detect kmsdrm
+3. **Run with sudo** - kmsdrm needs root access to DRM device
+
+**CRITICAL for Debian Trixie**: Do NOT set `SDL_VIDEODRIVER=kmsdrm` explicitly!
+Explicit setting breaks initialization. Let pygame auto-detect the driver.
 
 ### Working Command
 ```bash
 # 1. Stop desktop compositor
-sudo systemctl stop lightdm
+sudo killall -9 labwc wf-panel-pi 2>/dev/null
 
-# 2. Run pygame with kmsdrm
-sudo SDL_VIDEODRIVER=kmsdrm SDL_AUDIODRIVER=dummy python3 your_app.py
+# 2. Run pygame - let it auto-detect kmsdrm (NO SDL_VIDEODRIVER!)
+sudo python3 your_app.py
 ```
 
 ### Working Test Script
 ```python
 #!/usr/bin/env python3
-import os
-os.environ['SDL_VIDEODRIVER'] = 'kmsdrm'
-os.environ['SDL_AUDIODRIVER'] = 'dummy'
-
+# DO NOT set SDL_VIDEODRIVER on Debian Trixie!
 import pygame
 import time
 
 pygame.init()
-print(f"Driver: {pygame.display.get_driver()}")  # Should print "KMSDRM"
 
-screen = pygame.display.set_mode((720, 480))
+# Initialize display FIRST - required for kmsdrm
+screen = pygame.display.set_mode((720, 480), pygame.FULLSCREEN)
+pygame.mouse.set_visible(False)  # Must be AFTER set_mode()
+
+print(f"Driver: {pygame.display.get_driver()}")  # Should print "KMSDRM"
 
 # Colors test
 for color, name in [((255,0,0),'RED'), ((0,255,0),'GREEN'), ((0,0,255),'BLUE')]:

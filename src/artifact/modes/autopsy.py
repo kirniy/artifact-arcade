@@ -17,7 +17,7 @@ from artifact.animation.particles import ParticleSystem
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.simulator.mock_hardware.camera import SimulatorCamera, create_camera
+from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +212,7 @@ class AutopsyMode(BaseMode):
     def _update_camera_preview(self) -> None:
         if not self._camera: return
         try:
-            from artifact.simulator.mock_hardware.camera import floyd_steinberg_dither
+            from artifact.utils.camera import floyd_steinberg_dither
             frame = self._camera.capture_frame()
             if frame is not None:
                 # Green tint for medical look? Handled in render usually

@@ -201,16 +201,11 @@ class RotatingIdleAnimation:
         if self._camera is not None:
             return
         try:
-            from artifact.hardware.camera.picamera import create_camera, is_pi_camera_available
-            if is_pi_camera_available():
+            from artifact.utils.camera import create_camera, is_pi_camera_available, IS_HARDWARE
+            if IS_HARDWARE and is_pi_camera_available():
                 self._camera = create_camera(preview_resolution=(128, 128))
-                self._camera.open()
-                return
-        except:
-            pass
-        try:
-            from artifact.simulator.mock_hardware.camera import create_camera
-            self._camera = create_camera(resolution=(128, 128))
+            else:
+                self._camera = create_camera(resolution=(128, 128))
             self._camera.open()
         except:
             self._camera = None

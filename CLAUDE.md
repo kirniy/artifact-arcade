@@ -243,9 +243,9 @@ The main 128×128 display uses NovaStar professional LED control equipment, prov
 └─────────────┘             └─────────────┘              └─────────────┘            └────────────┘
 ```
 
-### Physical Wiring (4 Direct Cables)
+### Physical Wiring (4 Cables)
 
-Each panel connects directly to DH418 with its own HUB75E cable (NO daisy-chain):
+Each panel connects to DH418 with ONE HUB75E cable:
 
 ```
 Panel Layout (as seen from FRONT):
@@ -253,17 +253,18 @@ Panel Layout (as seen from FRONT):
   ┌───────────────┬───────────────┐
   │   Panel 2     │   Panel 3     │
   │  (top-left)   │  (top-right)  │
-  │    HUB2       │    HUB3       │
+  │   ← HUB2      │   ← HUB3      │
   ├───────────────┼───────────────┤
   │   Panel 1     │   Panel 4     │
   │ (bottom-left) │(bottom-right) │
-  │    HUB1       │    HUB4       │
+  │   ← HUB1      │   ← HUB4      │
   └───────────────┴───────────────┘
 
-DH418 → 4 cables → 4 panels (each panel gets 1 cable)
+DH418 HUB1-4 → 4 panels (1 cable per panel)
 ```
 
-See `docs/hardware/novastar-setup.md` for complete wiring guide.
+**Configuration Files**: `configs/novastar/` contains backup configs.
+See `docs/hardware/novastar-setup.md` for complete setup guide.
 
 ### Power Connections
 
@@ -301,7 +302,10 @@ See `docs/hardware/novastar-setup.md` for detailed configuration guide.
 ### Accessing NovaLCT
 
 Options for Mac users:
-- **Azure Windows VM** + Tailscale (recommended)
+- **Local QEMU VM** (recommended) - see `docs/hardware/novastar-setup.md`
+  ```bash
+  cd ~/win11-qemu && ./run.sh
+  ```
 - Parallels/VMware with Windows
 - Borrow a Windows laptop
 

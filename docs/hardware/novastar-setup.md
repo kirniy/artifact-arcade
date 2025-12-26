@@ -2,19 +2,20 @@
 
 Complete setup guide for the NovaStar LED control system with P3 64x64 panels.
 
+**Last Updated**: December 26, 2024
+
 ---
 
 ## Table of Contents
 
 1. [Hardware Overview](#hardware-overview)
-2. [Panel Specifications](#panel-specifications)
-3. [Critical Discovery: No Daisy-Chaining](#critical-discovery-no-daisy-chaining)
-4. [Wiring Diagram](#wiring-diagram)
-5. [NovaLCT Configuration](#novalct-configuration)
-6. [Raspberry Pi HDMI Setup](#raspberry-pi-hdmi-setup)
-7. [Windows VM Setup for NovaLCT](#windows-vm-setup-for-novalct)
-8. [Troubleshooting](#troubleshooting)
-9. [Session Log: Dec 24-25, 2024](#session-log-dec-24-25-2024)
+2. [Physical Wiring](#physical-wiring)
+3. [NovaLCT Software Setup](#novalct-software-setup)
+4. [Configuration Procedure](#configuration-procedure)
+5. [Backup and Restore](#backup-and-restore)
+6. [Windows VM Setup (QEMU on Mac)](#windows-vm-setup-qemu-on-mac)
+7. [Troubleshooting](#troubleshooting)
+8. [Configuration Files](#configuration-files)
 
 ---
 
@@ -29,159 +30,58 @@ Complete setup guide for the NovaStar LED control system with P3 64x64 panels.
 | **Panels** | P3-2121-64x64-32S-v3 (x4) | 64x64 LED modules, 2x2 grid = 128x128 total |
 | **Power** | Mean Well LRS-200-5 | 5V 40A for panels |
 
-### Signal Flow
-
-```
-┌─────────────┐    HDMI     ┌─────────────┐   Ethernet   ┌─────────────┐   HUB75E    ┌────────────┐
-│ Raspberry   │ ─────────►  │  NovaStar   │ ───────────► │  NovaStar   │ ──────────► │ 4× P3 64×64│
-│ Pi 4        │             │  T50        │              │  DH418      │  (8 cables) │ Panels     │
-│ (pygame)    │             │  (sender)   │              │  (receiver) │             │ (128×128)  │
-└─────────────┘             └─────────────┘              └─────────────┘             └────────────┘
-```
-
-### T50 Taurus Multimedia Player
-
-| Specification | Value |
-|---------------|-------|
-| Model ID | 38428 |
-| Max Load | 650,000 pixels per port |
-| Outputs | 1× Ethernet to receiver |
-| Inputs | HDMI, USB |
-| WiFi AP | `AP00006151` / Password: `12345678` |
-| Network IP | Usually `192.168.0.10` (can vary) |
-
-### DH418 Receiving Card
-
-| Specification | Value |
-|---------------|-------|
-| Firmware | DH418_V4.5.1.0 |
-| Max Load | 256×256 pixels |
-| HUB Outputs | 8× HUB75E connectors |
-| Control | Via T50 over Ethernet |
-
----
-
-## Panel Specifications
-
-### P3-2121-64x64-32S-v3
+### Panel Specifications
 
 | Parameter | Value |
 |-----------|-------|
 | Resolution | 64×64 pixels |
 | Pixel Pitch | 3mm (P3) |
-| Physical Size | 192×192mm |
-| Driver Chip | **ICND2153** (CHIPONE ICN2153) |
+| Driver Chip | **ICND2153** (CHIPONE) |
 | Row Decoder | **ICN2013** |
-| Scan Rate | 1/32 (32S) |
-| Data Groups | **2 per panel** |
-| HUB Connectors | **2 per panel (both are INPUTS)** |
-| Interface | HUB75E |
+| Scan Rate | **1/32** (32S) |
+| Data Groups | 2 per panel (software concept) |
+| HUB Connector | 1 per panel |
 
-### Why These Panels Need NovaStar
-
-The ICND2153 driver chips are "smart" chips with internal PWM and memory. They require a proprietary initialization protocol that standard HUB75 libraries (like `rpi-rgb-led-matrix`) cannot provide.
-
-NovaStar receiving cards have native firmware support for ICND2153, making configuration straightforward once properly set up.
-
----
-
-## Critical Discovery: No Daisy-Chaining
-
-### The Problem
-
-These panels have **2 HUB connectors each**, but **BOTH ARE INPUTS** - there is no output for daisy-chaining.
+### Signal Flow
 
 ```
-Each P3 64×64 Panel (viewed from back):
-┌─────────────────────────────┐
-│                             │
-│   [HUB-A]       [HUB-B]     │  ← BOTH ARE INPUTS!
-│   (Input)       (Input)     │
-│                             │
-│      TOP HALF    BOT HALF   │
-│      (32 rows)   (32 rows)  │
-│                             │
-└─────────────────────────────┘
-
-HUB-A → Drives top 32 rows (data groups 0-1 of that panel)
-HUB-B → Drives bottom 32 rows (data groups 2-3 of that panel)
-```
-
-### What This Means
-
-- **NO daisy-chaining** is possible
-- Each panel needs **2 separate HUB cables** from DH418
-- 4 panels × 2 inputs = **8 HUB connections total**
-- DH418 has exactly 8 HUB outputs - perfect match
-
-### Previous Incorrect Wiring (Did NOT Work)
-
-```
-WRONG - Daisy-chain attempt:
-DH418 HUB1 → Panel1 → Panel2 → Panel3 → Panel4
-
-Result: Only Panel 4 showed content (cyan color), others dark
+┌─────────────┐    HDMI     ┌─────────────┐   Ethernet   ┌─────────────┐   HUB75E   ┌────────────┐
+│ Raspberry   │ ─────────►  │  NovaStar   │ ───────────► │  NovaStar   │ ─────────► │ 4× P3 64×64│
+│ Pi 4        │             │  T50        │              │  DH418      │            │ Panels     │
+│ (pygame)    │             │  (sender)   │              │  (receiver) │            │ (128×128)  │
+└─────────────┘             └─────────────┘              └─────────────┘            └────────────┘
 ```
 
 ---
 
-## Wiring Diagram
+## Physical Wiring
 
-### Correct Wiring: 8 Separate Cables
+### Panel Connections: 4 Cables Total
 
-Each DH418 HUB output connects directly to one panel input:
-
-```
-DH418 Receiving Card (8 HUB outputs):
-┌──────────────────────────────────────────┐
-│                                          │
-│  [HUB1] [HUB2] [HUB3] [HUB4]            │
-│  [HUB5] [HUB6] [HUB7] [HUB8]            │
-│                                          │
-└──────────────────────────────────────────┘
-     │      │      │      │
-     │      │      │      └─────► Panel 2 - BOTTOM half
-     │      │      └────────────► Panel 2 - TOP half
-     │      └───────────────────► Panel 1 - BOTTOM half
-     └──────────────────────────► Panel 1 - TOP half
-
-     (Same pattern for HUB5-8 → Panels 3-4)
-```
-
-### Panel Physical Layout (viewed from FRONT)
+Each panel connects to the DH418 with **ONE HUB75E cable**. The 8 data groups in the software configuration are a logical concept - physically there are only 4 cables.
 
 ```
-Screen Layout (128×128 total):
-┌───────────────┬───────────────┐
-│               │               │
-│   Panel 2     │   Panel 3     │   Row 0-63
-│  (top-left)   │  (top-right)  │
-│               │               │
-├───────────────┼───────────────┤
-│               │               │
-│   Panel 1     │   Panel 4     │   Row 64-127
-│ (bottom-left) │(bottom-right) │
-│               │               │
-└───────────────┴───────────────┘
-   Col 0-63       Col 64-127
+Panel Layout (viewed from FRONT):
+
+  ┌───────────────┬───────────────┐
+  │   Panel 2     │   Panel 3     │
+  │  (top-left)   │  (top-right)  │
+  │   ← HUB2      │   ← HUB3      │
+  ├───────────────┼───────────────┤
+  │   Panel 1     │   Panel 4     │
+  │ (bottom-left) │(bottom-right) │
+  │   ← HUB1      │   ← HUB4      │
+  └───────────────┴───────────────┘
 ```
 
-### Recommended HUB Mapping
+### DH418 to Panel Mapping
 
-Based on NovaLCT Construct Cabinet configuration (8 data groups):
-
-| DH418 Output | Panel | Half | Data Groups | Screen Position |
-|--------------|-------|------|-------------|-----------------|
-| HUB1 | Panel 1 | TOP | 1 | Bottom-left, rows 64-95 |
-| HUB2 | Panel 1 | BOTTOM | 2 | Bottom-left, rows 96-127 |
-| HUB3 | Panel 2 | TOP | 3 | Top-left, rows 0-31 |
-| HUB4 | Panel 2 | BOTTOM | 4 | Top-left, rows 32-63 |
-| HUB5 | Panel 3 | TOP | 5 | Top-right, rows 0-31 |
-| HUB6 | Panel 3 | BOTTOM | 6 | Top-right, rows 32-63 |
-| HUB7 | Panel 4 | TOP | 7 | Bottom-right, rows 64-95 |
-| HUB8 | Panel 4 | BOTTOM | 8 | Bottom-right, rows 96-127 |
-
-**Note**: The exact mapping may need adjustment based on how NovaLCT assigned data groups. If panels display wrong content, swap cables between HUB outputs.
+| DH418 Port | Panel | Screen Position |
+|------------|-------|-----------------|
+| HUB1 | Panel 1 | Bottom-left (rows 64-127, cols 0-63) |
+| HUB2 | Panel 2 | Top-left (rows 0-63, cols 0-63) |
+| HUB3 | Panel 3 | Top-right (rows 0-63, cols 64-127) |
+| HUB4 | Panel 4 | Bottom-right (rows 64-127, cols 64-127) |
 
 ### Power Wiring
 
@@ -197,283 +97,321 @@ Mean Well LRS-200-5:
 
 CRITICAL:
 - V- is GROUND (0V), not negative voltage
-- Use thick wires (18 AWG minimum) for power
+- Use thick wires (18 AWG minimum)
 - Common ground between panels and DH418
 ```
 
 ---
 
-## NovaLCT Configuration
+## NovaLCT Software Setup
 
-### Module Settings (Smart Settings Guide)
+### Requirements
 
-| Parameter | Value |
-|-----------|-------|
-| Driver Chip | ICND2153 |
-| Driver Version | 1.0.0 |
-| Data Type | **Parallel drive** |
-| Module Type | **Irregular Module** |
-| Row Decoder | ICN2013 |
-| Pixels | 64 × 64 |
-| Data Groups per module | 2 |
+- **NovaLCT Version**: V5.8.1 (MUST match config file version)
+- **Platform**: Windows only (use VM on Mac - see below)
+- **Connection**: WiFi or Ethernet to T50
 
-### Cabinet Configuration
+### T50 Connection
 
-| Parameter | Value |
-|-----------|-------|
-| Cabinet Type | **Irregular** |
-| Width | 128 |
-| Height | 128 |
-| Data Groups of Cabinet | **8** |
+| Method | Details |
+|--------|---------|
+| **WiFi** | SSID: `AP00006151` / Password: `12345678` |
+| **T50 IP** | `192.168.0.10` (default) |
+| **Port** | 5200 |
 
-### Construct Cabinet Layout
+### Opening NovaLCT Screen Configuration
 
-In NovaLCT's "Construct Irregular-Cabinet" dialog:
-- Set 8 data groups
-- Arrange modules in 2×4 grid (representing 4 panels × 2 halves each)
-- Each module represents one half of a panel (64×32 effective area mapped to 64×64 group)
-
-### Performance Settings
-
-| Parameter | Value |
-|-----------|-------|
-| Refresh Rate | 3840 |
-| DCLK Frequency | 12.5 |
-| Data Phase | 2 |
-| GCLK Frequency | 20.8 MHz |
-| GCLK Phase | 5 |
-| GCLK Duty Cycle | 50% |
-| Line Change | 3 |
-| Row Blanking | 27 (1.30us) |
-| Ghost Control | 24 |
-| Brightness | ~76% |
+1. Launch NovaLCT
+2. Menu: **User** → **Advanced User Login** (password: `admin`)
+3. Menu: **Screen Configuration** → **Screen Configuration**
+4. Enter T50 IP: `192.168.0.10`
+5. Click **Connect**
 
 ---
 
-## Raspberry Pi HDMI Setup
+## Configuration Procedure
 
-### Required Configuration
+### Loading Saved Configuration
 
-The Pi must output exactly 128×128 resolution over HDMI.
+If you have backup config files (`.rcfgx` and `.oscfg`):
 
-#### /boot/firmware/config.txt
+1. **Receiving Card tab**:
+   - Click **"Load from..."** → select `working_receiver.rcfgx`
+   - Verify Module Information shows:
+     - Chip: **ICND2153**
+     - Size: **64W×64H**
+     - Scanning Type: **1/32 scan**
+     - Data Groups: **2**
 
-Add these lines:
+2. **Screen Connection tab**:
+   - Click **"Open Mapping"** ← **THIS IS CRITICAL!**
+   - This loads and activates the screen mapping configuration
 
-```ini
-# Force HDMI output even without monitor detection
-hdmi_force_hotplug=1
+3. **Send to Hardware**:
+   - Click **"Send"** (sends to DH418 RAM)
+   - Click **"Save"** (writes to DH418 flash - persists after power cycle)
 
-# Custom resolution mode
-hdmi_group=2
-hdmi_cvt=128 128 60
-hdmi_mode=87
+### Creating New Configuration (Smart Settings)
 
-# Framebuffer size
-framebuffer_width=128
-framebuffer_height=128
-```
+If no backup exists:
 
-#### /boot/firmware/cmdline.txt
+1. **Receiving Card tab** → Click **"Smart Set..."**
+2. Select chip type: **ICND2153**
+3. Set module size: **64×64**
+4. Set scan: **1/32**
+5. Set data groups: **2**
+6. Click **"Construct Ca..."** to set up cabinet:
+   - Data Groups of Cabinet: **8**
+   - Cabinet Type: **Irregular**
+   - Width: **128**, Height: **128**
+7. Map the 8 data groups to their positions
+8. Click **OK** → **Send** → **Save**
 
-Add to the end of the single line (space-separated):
+### The Critical "Open Mapping" Step
 
-```
-video=HDMI-A-1:128x128@60
-```
+**If panels show garbled content or one panel is black after loading config:**
 
-### Verification
+Go to **Screen Connection** tab → Click **"Open Mapping"**
 
-After reboot, verify with:
-
-```bash
-# Check current resolution
-xrandr
-
-# Should show:
-# HDMI-1 connected 128x128+0+0
-#    128x128       60.00*+
-```
-
-### VPN Note
-
-If Pi has VPN enabled (sing-box), you may need to disable it for local network access:
-
-```bash
-# Stop VPN temporarily
-sudo systemctl stop sing-box
-
-# Re-enable when done
-sudo systemctl start sing-box
-```
+This step activates the screen topology mapping. Without it, the receiver config is loaded but the sender doesn't know how to map video to the panels.
 
 ---
 
-## Windows VM Setup for NovaLCT
+## Backup and Restore
 
-NovaLCT only runs on Windows. Options for Mac users:
+### Export Configuration Files
 
-### Option 1: Azure Windows VM (Recommended)
+From Screen Configuration window:
 
-1. Create Windows 11 VM on Azure
-2. Install Tailscale on both Mac and VM for networking
-3. Connect to VM via Microsoft Remote Desktop
-4. Install NovaLCT V5.8.1 from NovaStar website
+| Button | File Type | Purpose |
+|--------|-----------|---------|
+| **Receiving Card** → **Export** | `.rcfgx` | Module/chip settings |
+| **Export Screen M...** | `.oscfg` | Screen mapping topology |
+| **Bottom** → **Save** | N/A | Saves to hardware flash |
 
-**Tailscale Setup**:
+### Required Files for Full Restore
+
+Keep these files backed up:
+
 ```
-Mac IP: (your Tailscale IP)
-VM IP: (VM's Tailscale IP)
-
-Both must be on same Tailscale network for USB/IP forwarding
+configs/novastar/
+├── working_receiver.rcfgx    # Receiving card configuration
+├── screenmapping.oscfg       # Screen mapping (CRITICAL!)
+└── screen.scr                # Screen connection
 ```
 
-### Option 2: Local VM
+### Restore Procedure
 
-- Parallels Desktop or VMware Fusion
-- Windows 10/11 VM
-- USB passthrough for direct T50 connection
+1. **Load** `working_receiver.rcfgx` in Receiving Card tab
+2. Go to **Screen Connection** tab
+3. Click **"Open Mapping"** or load `.oscfg` file
+4. Click **Send**
+5. Click **Save**
+6. **Verify** all 4 panels display correctly
 
-### Option 3: Borrow Windows Laptop
+---
 
-- Temporary solution for one-time configuration
+## Windows VM Setup (QEMU on Mac)
 
-### Connecting NovaLCT to T50
+NovaLCT requires Windows. On Apple Silicon Macs, use QEMU with Windows 11 ARM64.
 
-1. **WiFi Method**:
-   - Connect to T50's WiFi AP: `AP00006151` / `12345678`
-   - T50 IP is usually `192.168.0.10`
+### Prerequisites
 
-2. **Ethernet Method**:
-   - Direct Ethernet from PC to T50
-   - Configure PC to same subnet (e.g., `192.168.0.100`)
+```bash
+# Install QEMU
+brew install qemu
 
-3. **USB Method** (if available):
-   - Direct USB connection
-   - May require USB/IP forwarding for VMs
+# Create VM directory
+mkdir -p ~/win11-qemu
+cd ~/win11-qemu
+```
+
+### Download Required Files
+
+1. **Windows 11 ARM64 ISO**: Download from Microsoft (Insider or retail)
+2. **UEFI Firmware**: Get `QEMU_EFI.fd` for aarch64
+
+### Setup Script
+
+Create `~/win11-qemu/setup.sh`:
+
+```bash
+#!/bin/bash
+cd ~/win11-qemu
+
+# Create UEFI firmware copies
+cp /opt/homebrew/share/qemu/edk2-aarch64-code.fd efi.img
+truncate -s 64M efi.img
+truncate -s 64M vars.img
+
+# Create virtual disk (64GB)
+qemu-img create -f qcow2 disk.qcow2 64G
+
+# Create transfer disk for file sharing (500MB FAT32)
+dd if=/dev/zero of=transfer.img bs=1M count=500
+mkfs.fat -F 32 transfer.img
+```
+
+### Run VM Script
+
+Create `~/win11-qemu/run.sh`:
+
+```bash
+#!/bin/bash
+cd ~/win11-qemu
+qemu-system-aarch64 \
+  -m 4G \
+  -smp 4 \
+  -cpu host \
+  -M virt \
+  -accel hvf \
+  -drive if=pflash,format=raw,file=efi.img,readonly=on \
+  -drive if=pflash,format=raw,file=vars.img \
+  -device ramfb \
+  -device qemu-xhci \
+  -device usb-kbd \
+  -device usb-tablet \
+  -nic user,model=virtio-net-pci \
+  -device virtio-blk-pci,drive=system \
+  -drive if=none,id=system,format=qcow2,file=disk.qcow2 \
+  -device usb-storage,drive=transfer \
+  -drive if=none,id=transfer,format=raw,file=transfer.img
+```
+
+### First-Time Installation
+
+```bash
+# Add ISO for installation
+qemu-system-aarch64 \
+  ... (same as run.sh) \
+  -cdrom /path/to/Windows11_ARM64.iso
+```
+
+### Transferring Files to VM
+
+```bash
+# Mount transfer disk on Mac
+hdiutil attach ~/win11-qemu/transfer.img
+
+# Copy files
+cp ~/dev/modular-arcade/configs/novastar/* /Volumes/TRANSFER/
+
+# Unmount
+hdiutil detach /Volumes/TRANSFER
+```
+
+In Windows VM, the transfer disk appears as `D:` drive.
+
+### Network Configuration
+
+The VM uses NAT networking. To reach T50 at `192.168.0.10`:
+
+1. Connect Mac to T50's WiFi (`AP00006151`)
+2. In QEMU, use `-nic user` (default) - it shares Mac's network
+3. VM can reach T50 via Mac's WiFi connection
+
+### Installing NovaLCT in VM
+
+1. Download NovaLCT V5.8.1 from NovaStar website
+2. Copy installer to transfer disk
+3. In VM, run installer from D: drive
+4. Launch NovaLCT
+
+**Note**: VM resolution is limited to 800×600 with ramfb driver. It's cramped but usable.
 
 ---
 
 ## Troubleshooting
 
-### Problem: Only one panel shows content
+### Problem: Panels show garbled content after loading config
 
-**Cause**: Daisy-chain wiring with panels that don't support it.
+**Solution**: Go to **Screen Connection** tab → Click **"Open Mapping"**
 
-**Solution**: Use 8 separate HUB cables, one per panel input.
+This is the most common issue. The screen mapping must be explicitly activated.
 
-### Problem: T50 shows "DVI Signal Exception"
-
-**Cause**: Pi not outputting video or wrong resolution.
-
-**Solution**:
-1. Check Pi HDMI config (see above)
-2. Verify `xrandr` shows 128×128
-3. Restart Pi after config changes
-
-### Problem: NovaLCT can't find T50
-
-**Solutions**:
-1. Check T50 WiFi connection (AP00006151)
-2. Try Ethernet instead of WiFi
-3. Ensure PC/VM is on same subnet
-4. Disable VPN if using Tailscale between networks
-
-### Problem: Panels show wrong colors/positions
-
-**Cause**: HUB cable mapping doesn't match NovaLCT data group configuration.
-
-**Solution**:
-1. Note which panel shows what
-2. Swap HUB cables to correct positions
-3. Or reconfigure data groups in NovaLCT
-
-### Problem: Panels flicker or show artifacts
+### Problem: One panel is completely black
 
 **Causes & Solutions**:
-- Power insufficient → Check 5V supply, use thicker wires
-- Bad HUB cable → Try different cable
-- Timing issues → Adjust DCLK/GCLK in NovaLCT
+1. **Screen mapping not loaded**: Click "Open Mapping" in Screen Connection tab
+2. **Wrong config file**: Ensure you're using the correct `.rcfgx` that matches your panel layout
+3. **HUB cable issue**: Try swapping cables between working and non-working panel
+
+### Problem: NovaLCT shows wrong chip type (LS9930, 1/60 scan)
+
+**Cause**: Wrong config file loaded or readback from corrupted hardware state
+
+**Solution**:
+1. Click **"Load from..."** and load the correct `.rcfgx` file
+2. Verify Module Information shows: ICND2153, 64×64, 1/32 scan, 2 data groups
+3. Send and Save
+
+### Problem: Config doesn't persist after power cycle
+
+**Solution**: After clicking **Send**, you MUST also click **Save** to write to flash memory.
+
+- **Send** = writes to RAM (temporary)
+- **Save** = writes to FLASH (persistent)
+
+### Problem: NovaLCT can't connect to T50
+
+**Solutions**:
+1. Connect to T50 WiFi: `AP00006151` / `12345678`
+2. Verify T50 IP is `192.168.0.10`
+3. If using VM, ensure Mac is connected to T50's WiFi (VM uses Mac's network)
+4. Try disabling any VPN on Mac
+
+### Problem: Config file won't load ("Failed to load configuration file!")
+
+**Cause**: NovaLCT version mismatch
+
+**Solution**: Config files are version-specific. Use NovaLCT V5.8.1 for the provided config files.
 
 ---
 
-## Session Log: Dec 24-25, 2024
+## Configuration Files
 
-### Timeline
+### Location
 
-**~22:00** - Started troubleshooting display not working
-- Only Panel 4 (bottom-right) showing cyan color
-- Other 3 panels dark
+```
+~/dev/modular-arcade/configs/novastar/
+```
 
-**~23:00** - Discovered Pi outputting 1920×1080 instead of 128×128
-- Modified `/boot/firmware/config.txt`
-- Added `hdmi_cvt=128 128 60`, `hdmi_mode=87`
-- Added `video=HDMI-A-1:128x128@60` to cmdline.txt
-- After reboot: Pi correctly outputs 128×128
+### Files
 
-**~00:00** - Display still not working after Pi fix
-- Tried multiple .rcfgx config files
-- All showed same result: only Panel 4 lit
+| File | Size | Purpose |
+|------|------|---------|
+| `working_receiver.rcfgx` | 426 KB | Receiving card config (ICND2153, 64×64, 1/32, 2 groups) |
+| `screenmapping.oscfg` | 711 KB | Screen mapping topology (8 data groups, 128×128) |
+| `screen.scr` | 587 B | Screen connection settings |
+| `FINAL_4hub_128x128.rcfgx` | 424 KB | Original/backup receiver config |
 
-**~02:00** - Attempted protocol-based configuration
-- Found sarakusha/novastar library on GitHub
-- Created configure-2x2.mjs and configure-dh418.mjs scripts
-- T50 Taurus returns "UnknownCommand" for most protocol addresses
-- Protocol approach abandoned
+### Module Settings in Config
 
-**~05:00** - Used NovaLCT Construct Cabinet wizard
-- Configured 8 data groups
-- Set ICND2153 chip, ICN2013 decoder
-- Sent configuration to DH418
-
-**~07:00** - Key realization
-- Each panel has 2 HUB connectors
-- Both are INPUTS, not input+output
-- **No daisy-chaining possible**
-- Need 8 separate cables from DH418
-
-**~08:00** - Session ended, wiring to be completed next day
-
-### Key Learnings
-
-1. **Panel architecture**: Each 64×64 panel uses 2 HUB inputs for top/bottom halves
-2. **No daisy-chain**: These panels cannot be daisy-chained
-3. **8 cables required**: DH418's 8 outputs match the 8 panel inputs perfectly
-4. **T50 protocol**: T50 Taurus uses different protocol than older NovaStar devices
-5. **NovaLCT required**: GUI configuration through NovaLCT is the supported method
-
-### Files Created During Session
-
-| File | Purpose |
-|------|---------|
-| `/tmp/novastar/configure-2x2.mjs` | Protocol config attempt (failed) |
-| `/tmp/novastar/configure-dh418.mjs` | Direct RC config attempt (failed) |
-| `/tmp/novastar/packages/` | Cloned sarakusha/novastar library |
-
-### Configuration Files
-
-The working NovaLCT configuration was sent directly to DH418. Export using:
-- NovaLCT → Export Screen Module → saves .rcfgx file
-- NovaLCT → Save System Configuration → saves to hardware
+| Parameter | Value |
+|-----------|-------|
+| Chip | ICND2153 |
+| Decoder | ICN2013 (ICN2012WEA in file) |
+| Module Size | 64×64 |
+| Scan Type | 1/32 (Scan_32) |
+| Data Groups per Module | 2 |
+| Total Data Groups | 8 |
+| Cabinet | Irregular, 128×128 |
 
 ---
 
 ## Quick Reference
 
-### Connections Checklist
+### Restore Steps (TL;DR)
 
-- [ ] Pi HDMI → T50 HDMI In
-- [ ] T50 Ethernet Out → DH418 Ethernet In
-- [ ] DH418 HUB1 → Panel 1 Input A
-- [ ] DH418 HUB2 → Panel 1 Input B
-- [ ] DH418 HUB3 → Panel 2 Input A
-- [ ] DH418 HUB4 → Panel 2 Input B
-- [ ] DH418 HUB5 → Panel 3 Input A
-- [ ] DH418 HUB6 → Panel 3 Input B
-- [ ] DH418 HUB7 → Panel 4 Input A
-- [ ] DH418 HUB8 → Panel 4 Input B
-- [ ] 5V power to all panels
-- [ ] Common ground (panels + DH418)
+```
+1. Launch NovaLCT V5.8.1
+2. Screen Configuration → connect to 192.168.0.10
+3. Receiving Card tab → Load from... → working_receiver.rcfgx
+4. Screen Connection tab → Open Mapping    ← DON'T FORGET THIS!
+5. Click Send
+6. Click Save
+7. Done - all 4 panels should work
+```
 
 ### T50 WiFi Quick Connect
 
@@ -483,9 +421,16 @@ Password: 12345678
 T50 IP: 192.168.0.10
 ```
 
-### Pi SSH Access
+### Launch Windows VM
 
 ```bash
-ssh kirniy@artifact.local
-# Password: qaz123
+cd ~/win11-qemu && ./run.sh
+```
+
+### Transfer Files to VM
+
+```bash
+hdiutil attach ~/win11-qemu/transfer.img
+cp files/* /Volumes/TRANSFER/
+hdiutil detach /Volumes/TRANSFER
 ```

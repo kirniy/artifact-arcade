@@ -18,7 +18,7 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.simulator.mock_hardware.camera import SimulatorCamera, create_camera
+from artifact.utils.camera import Camera, create_camera, floyd_steinberg_dither, create_viewfinder_overlay
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +240,7 @@ class RoastMeMode(BaseMode):
     def _update_camera_preview(self) -> None:
         if not self._camera: return
         try:
-             from artifact.simulator.mock_hardware.camera import floyd_steinberg_dither, create_viewfinder_overlay
+             from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
              frame = self._camera.capture_frame()
              if frame is not None:
                  dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
