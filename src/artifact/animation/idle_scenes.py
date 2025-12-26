@@ -550,6 +550,370 @@ class RotatingIdleAnimation:
                         draw_centered_text(buffer, "НАЖМИ СТАРТ", 114 + oy, (0, 0, 0), scale=1)
             draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (255, 200, 100), scale=1)
 
+    def _render_neon_tunnel(self, buffer: NDArray[np.uint8]) -> None:
+        """Render neon tunnel effect with camera background."""
+        t = self.state.scene_time / 1000
+        cx, cy = 64, 64
+
+        # Update and show camera
+        self._update_camera()
+        if self._camera_frame is not None:
+            frame = self._camera_frame
+            if frame.shape[0] != 128 or frame.shape[1] != 128:
+                frame = np.zeros((128, 128, 3), dtype=np.uint8)
+                h, w = self._camera_frame.shape[:2]
+                for y in range(128):
+                    for x in range(128):
+                        sy = min(int(y * h / 128), h - 1)
+                        sx = min(int(x * w / 128), w - 1)
+                        frame[y, x] = self._camera_frame[sy, sx]
+            # Darken camera for overlay visibility
+            np.copyto(buffer, (frame * 0.4).astype(np.uint8))
+        else:
+            fill(buffer, (10, 5, 20))
+
+        # Neon tunnel rings
+        for ring in range(8):
+            # Pulsing radius
+            base_r = 10 + ring * 12 + int(5 * math.sin(t * 2 - ring * 0.5))
+            # Cycling hue per ring
+            hue = (t * 60 + ring * 45) % 360
+            brightness = 0.8 + 0.2 * math.sin(t * 3 + ring)
+            color = hsv_to_rgb(hue, 1.0, brightness)
+
+            # Draw ring
+            for angle in range(0, 360, 4):
+                rad = math.radians(angle)
+                px = int(cx + base_r * math.cos(rad))
+                py = int(cy + base_r * math.sin(rad))
+                if 0 <= px < 128 and 0 <= py < 128:
+                    buffer[py, px] = color
+                    # Glow effect
+                    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                        gpx, gpy = px + dx, py + dy
+                        if 0 <= gpx < 128 and 0 <= gpy < 128:
+                            buffer[gpy, gpx] = tuple(min(255, int(c * 0.5)) for c in color)
+
+        # Title
+        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
+        draw_centered_text(buffer, "ТОННЕЛЬ", 4, self.pink, scale=1)
+
+        if int(t * 2) % 2 == 0:
+            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, self.teal, scale=1)
+
+    def _render_glitch_grid(self, buffer: NDArray[np.uint8]) -> None:
+        """Render glitch grid effect with camera background."""
+        t = self.state.scene_time / 1000
+
+        # Update and show camera
+        self._update_camera()
+        if self._camera_frame is not None:
+            frame = self._camera_frame
+            if frame.shape[0] != 128 or frame.shape[1] != 128:
+                frame = np.zeros((128, 128, 3), dtype=np.uint8)
+                h, w = self._camera_frame.shape[:2]
+                for y in range(128):
+                    for x in range(128):
+                        sy = min(int(y * h / 128), h - 1)
+                        sx = min(int(x * w / 128), w - 1)
+                        frame[y, x] = self._camera_frame[sy, sx]
+            np.copyto(buffer, frame)
+        else:
+            fill(buffer, (20, 20, 30))
+
+        # Glitch scanlines
+        for y in range(0, 128, 4):
+            if random.random() < 0.3:
+                # Horizontal shift
+                shift = random.randint(-10, 10)
+                if shift > 0:
+                    buffer[y:y+2, shift:] = buffer[y:y+2, :-shift]
+                elif shift < 0:
+                    buffer[y:y+2, :shift] = buffer[y:y+2, -shift:]
+
+        # RGB split effect
+        split = int(2 + 2 * math.sin(t * 5))
+        if split > 0:
+            # Shift red channel
+            buffer[:-split, :, 0] = buffer[split:, :, 0]
+            # Shift blue channel
+            buffer[split:, :, 2] = buffer[:-split, :, 2]
+
+        # Random glitch blocks
+        if random.random() < 0.2:
+            gx = random.randint(0, 100)
+            gy = random.randint(0, 100)
+            gw = random.randint(10, 30)
+            gh = random.randint(5, 15)
+            # Invert block
+            buffer[gy:gy+gh, gx:gx+gw] = 255 - buffer[gy:gy+gh, gx:gx+gw]
+
+        # Scanline overlay
+        for y in range(0, 128, 2):
+            buffer[y, :] = (buffer[y, :].astype(np.int16) * 0.8).astype(np.uint8)
+
+        # Title with glitch
+        offset = random.randint(-2, 2) if random.random() < 0.1 else 0
+        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
+        draw_centered_text(buffer, "ГЛИТЧ", 4 + offset, (0, 255, 100), scale=1)
+
+        if int(t * 2) % 2 == 0:
+            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (255, 0, 100), scale=1)
+
+    def _render_fire_silhouette(self, buffer: NDArray[np.uint8]) -> None:
+        """Render fire/heat effect with camera silhouette."""
+        t = self.state.scene_time / 1000
+
+        # Update camera
+        self._update_camera()
+
+        # Fire gradient background
+        for y in range(128):
+            fire_intensity = 1.0 - (y / 128)  # Brighter at bottom
+            wave = 0.1 * math.sin(y * 0.2 + t * 5)
+            intensity = max(0, min(1, fire_intensity + wave))
+            r = int(255 * intensity)
+            g = int(100 * intensity * intensity)
+            b = int(20 * intensity * intensity * intensity)
+            buffer[y, :] = [r, g, b]
+
+        # Rising fire particles
+        for _ in range(20):
+            px = random.randint(0, 127)
+            py = int(127 - (t * 50 + random.random() * 100) % 128)
+            if 0 <= py < 128:
+                brightness = random.uniform(0.5, 1.0)
+                buffer[py, px] = (255, int(200 * brightness), int(50 * brightness))
+
+        # Camera silhouette overlay
+        if self._camera_frame is not None:
+            frame = self._camera_frame
+            if frame.shape[0] != 128 or frame.shape[1] != 128:
+                h, w = frame.shape[:2]
+                resized = np.zeros((128, 128, 3), dtype=np.uint8)
+                for y in range(128):
+                    for x in range(128):
+                        sy = min(int(y * h / 128), h - 1)
+                        sx = min(int(x * w / 128), w - 1)
+                        resized[y, x] = frame[sy, sx]
+                frame = resized
+
+            # Convert to grayscale silhouette
+            gray = np.mean(frame, axis=2)
+            threshold = 100 + 20 * math.sin(t * 2)
+
+            # Dark silhouette cuts through fire
+            for y in range(128):
+                for x in range(128):
+                    if gray[y, x] < threshold:
+                        # Darken for silhouette
+                        buffer[y, x] = (buffer[y, x].astype(np.int16) * 0.2).astype(np.uint8)
+
+        # Title
+        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
+        draw_centered_text(buffer, "ОГОНЬ", 4, (255, 200, 50), scale=1)
+
+        if int(t * 2) % 2 == 0:
+            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (255, 100, 50), scale=1)
+
+    def _render_matrix_rain(self, buffer: NDArray[np.uint8]) -> None:
+        """Render Matrix-style code rain with camera background."""
+        t = self.state.scene_time / 1000
+
+        # Update camera
+        self._update_camera()
+
+        # Dark background with camera hint
+        if self._camera_frame is not None:
+            frame = self._camera_frame
+            if frame.shape[0] != 128 or frame.shape[1] != 128:
+                h, w = frame.shape[:2]
+                resized = np.zeros((128, 128, 3), dtype=np.uint8)
+                for y in range(128):
+                    for x in range(128):
+                        sy = min(int(y * h / 128), h - 1)
+                        sx = min(int(x * w / 128), w - 1)
+                        resized[y, x] = frame[sy, sx]
+                frame = resized
+            # Very dark green tint
+            buffer[:, :, 0] = (frame[:, :, 0] * 0.1).astype(np.uint8)
+            buffer[:, :, 1] = (frame[:, :, 1] * 0.3).astype(np.uint8)
+            buffer[:, :, 2] = (frame[:, :, 2] * 0.1).astype(np.uint8)
+        else:
+            fill(buffer, (0, 10, 0))
+
+        # Matrix rain columns
+        num_columns = 16
+        col_width = 128 // num_columns
+
+        for col in range(num_columns):
+            # Each column has its own speed and offset
+            speed = 30 + (col * 7) % 20
+            offset = (col * 17) % 50
+            rain_y = int((t * speed + offset) % 150) - 20
+
+            # Draw falling characters
+            for char_idx in range(8):
+                cy = rain_y - char_idx * 8
+                if 0 <= cy < 128:
+                    cx = col * col_width + col_width // 2
+                    # Brightness fades with trail
+                    brightness = max(0, 1.0 - char_idx * 0.12)
+                    if char_idx == 0:
+                        color = (200, 255, 200)  # Lead char is brighter
+                    else:
+                        color = (0, int(255 * brightness), 0)
+
+                    # Draw a simple "character" (random pixels)
+                    for dy in range(6):
+                        for dx in range(4):
+                            if random.random() < 0.5:
+                                px = cx + dx - 2
+                                py = cy + dy
+                                if 0 <= px < 128 and 0 <= py < 128:
+                                    buffer[py, px] = color
+
+        # Title
+        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
+        draw_centered_text(buffer, "МАТРИЦА", 4, (0, 255, 100), scale=1)
+
+        if int(t * 2) % 2 == 0:
+            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (100, 255, 100), scale=1)
+
+    def _render_kaleidoscope(self, buffer: NDArray[np.uint8]) -> None:
+        """Render kaleidoscope mirror effect with camera."""
+        t = self.state.scene_time / 1000
+
+        # Update camera
+        self._update_camera()
+
+        if self._camera_frame is not None:
+            frame = self._camera_frame
+            if frame.shape[0] != 128 or frame.shape[1] != 128:
+                h, w = frame.shape[:2]
+                resized = np.zeros((128, 128, 3), dtype=np.uint8)
+                for y in range(128):
+                    for x in range(128):
+                        sy = min(int(y * h / 128), h - 1)
+                        sx = min(int(x * w / 128), w - 1)
+                        resized[y, x] = frame[sy, sx]
+                frame = resized
+
+            # Create kaleidoscope by mirroring quadrants
+            # Top-left quadrant is source
+            quadrant = frame[:64, :64].copy()
+
+            # Mirror to other quadrants
+            buffer[:64, :64] = quadrant  # Top-left
+            buffer[:64, 64:] = quadrant[:, ::-1]  # Top-right (flip horizontal)
+            buffer[64:, :64] = quadrant[::-1, :]  # Bottom-left (flip vertical)
+            buffer[64:, 64:] = quadrant[::-1, ::-1]  # Bottom-right (flip both)
+
+            # Rotating color shift
+            hue_shift = int(t * 30) % 360
+            if hue_shift > 0:
+                # Simple hue rotation by channel swapping
+                phase = int(t * 2) % 3
+                if phase == 1:
+                    buffer[:, :, 0], buffer[:, :, 1] = buffer[:, :, 1].copy(), buffer[:, :, 0].copy()
+                elif phase == 2:
+                    buffer[:, :, 1], buffer[:, :, 2] = buffer[:, :, 2].copy(), buffer[:, :, 1].copy()
+        else:
+            # Placeholder pattern
+            fill(buffer, (30, 20, 50))
+            for y in range(64):
+                for x in range(64):
+                    hue = (x + y + t * 50) % 360
+                    color = hsv_to_rgb(hue, 0.8, 0.8)
+                    buffer[y, x] = color
+                    buffer[y, 127-x] = color
+                    buffer[127-y, x] = color
+                    buffer[127-y, 127-x] = color
+
+        # Title
+        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
+        draw_centered_text(buffer, "КАЛЕЙДОСКОП", 4, self.pink, scale=1)
+
+        if int(t * 2) % 2 == 0:
+            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, self.teal, scale=1)
+
+    def _render_starfield_3d(self, buffer: NDArray[np.uint8]) -> None:
+        """Render 3D starfield flying through space with camera background."""
+        t = self.state.scene_time / 1000
+        cx, cy = 64, 64
+
+        # Update camera
+        self._update_camera()
+
+        # Camera as subtle background
+        if self._camera_frame is not None:
+            frame = self._camera_frame
+            if frame.shape[0] != 128 or frame.shape[1] != 128:
+                h, w = frame.shape[:2]
+                resized = np.zeros((128, 128, 3), dtype=np.uint8)
+                for y in range(128):
+                    for x in range(128):
+                        sy = min(int(y * h / 128), h - 1)
+                        sx = min(int(x * w / 128), w - 1)
+                        resized[y, x] = frame[sy, sx]
+                frame = resized
+            # Very dark, blue-tinted
+            buffer[:, :, 0] = (frame[:, :, 0] * 0.15).astype(np.uint8)
+            buffer[:, :, 1] = (frame[:, :, 1] * 0.15).astype(np.uint8)
+            buffer[:, :, 2] = (frame[:, :, 2] * 0.25).astype(np.uint8)
+        else:
+            fill(buffer, (5, 5, 15))
+
+        # 3D stars flying toward viewer
+        num_stars = 50
+        for i in range(num_stars):
+            # Deterministic star position based on index and time
+            seed = i * 1337
+            star_z = ((t * 30 + seed % 100) % 100) + 1  # 1-100 depth
+            star_angle = (seed % 360) * math.pi / 180
+            star_dist = (seed % 50) + 10
+
+            # Project 3D to 2D
+            scale = 100 / star_z
+            sx = int(cx + star_dist * math.cos(star_angle) * scale)
+            sy = int(cy + star_dist * math.sin(star_angle) * scale)
+
+            # Size based on depth (closer = bigger)
+            size = max(1, int(3 * (100 - star_z) / 100))
+
+            # Brightness based on depth
+            brightness = int(255 * (100 - star_z) / 100)
+
+            if 0 <= sx < 128 and 0 <= sy < 128:
+                color = (brightness, brightness, min(255, brightness + 50))
+                for dy in range(-size//2, size//2 + 1):
+                    for dx in range(-size//2, size//2 + 1):
+                        px, py = sx + dx, sy + dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            buffer[py, px] = color
+
+                # Star trail (streak effect)
+                trail_len = int(size * 2 * star_z / 30)
+                for trail in range(1, trail_len + 1):
+                    tx = int(sx - (sx - cx) * trail * 0.1)
+                    ty = int(sy - (sy - cy) * trail * 0.1)
+                    if 0 <= tx < 128 and 0 <= ty < 128:
+                        fade = brightness // (trail + 1)
+                        buffer[ty, tx] = (fade, fade, min(255, fade + 20))
+
+        # Title
+        draw_rect(buffer, 0, 0, 128, 16, (0, 0, 0))
+        draw_centered_text(buffer, "ЗВЁЗДЫ", 4, (200, 200, 255), scale=1)
+
+        if int(t * 2) % 2 == 0:
+            draw_rect(buffer, 0, 112, 128, 16, (0, 0, 0))
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 114, (150, 150, 255), scale=1)
+
     # =========================================================================
     # TICKER DISPLAY RENDERING
     # =========================================================================
@@ -565,6 +929,12 @@ class RotatingIdleAnimation:
             IdleScene.COSMIC_PORTAL: "ПОРТАЛ В НЕИЗВЕДАННОЕ",
             IdleScene.CAMERA_MIRROR: "ПОСМОТРИ НА СЕБЯ",
             IdleScene.PLASMA_WAVE: "МАГИЯ ЦВЕТА",
+            IdleScene.NEON_TUNNEL: "ЛЕТИ СКВОЗЬ НЕОН",
+            IdleScene.GLITCH_GRID: "СБОЙ В МАТРИЦЕ",
+            IdleScene.FIRE_SILHOUETTE: "ОГНЕННЫЙ СИЛУЭТ",
+            IdleScene.MATRIX_RAIN: "ДОБРО ПОЖАЛОВАТЬ В МАТРИЦУ",
+            IdleScene.KALEIDOSCOPE: "КАЛЕЙДОСКОП РЕАЛЬНОСТИ",
+            IdleScene.STARFIELD_3D: "ПОЛЁТ К ЗВЁЗДАМ",
         }
         text = texts.get(scene, "VNVNC ARCADE")
 
@@ -573,6 +943,12 @@ class RotatingIdleAnimation:
             IdleScene.COSMIC_PORTAL: self.pink,
             IdleScene.CAMERA_MIRROR: self.teal,
             IdleScene.PLASMA_WAVE: (255, 200, 100),
+            IdleScene.NEON_TUNNEL: self.pink,
+            IdleScene.GLITCH_GRID: (0, 255, 100),
+            IdleScene.FIRE_SILHOUETTE: (255, 150, 50),
+            IdleScene.MATRIX_RAIN: (100, 255, 100),
+            IdleScene.KALEIDOSCOPE: self.pink,
+            IdleScene.STARFIELD_3D: (150, 150, 255),
         }
         color = colors.get(scene, (255, 255, 255))
 
@@ -593,6 +969,12 @@ class RotatingIdleAnimation:
             IdleScene.COSMIC_PORTAL: [" КОСМОС ЖДЁТ ", "  ТВОЙ ПУТЬ  ", " НАЖМИ СТАРТ "],
             IdleScene.CAMERA_MIRROR: ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "],
             IdleScene.PLASMA_WAVE: ["  ПЛАЗМЕННЫЙ  ", "   ТАНЕЦ    ", " НАЖМИ СТАРТ "],
+            IdleScene.NEON_TUNNEL: ["НЕОНОВЫЙ    ", "  ТОННЕЛЬ   ", " НАЖМИ СТАРТ "],
+            IdleScene.GLITCH_GRID: ["  ГЛИТЧ     ", "  СИСТЕМА   ", " НАЖМИ СТАРТ "],
+            IdleScene.FIRE_SILHOUETTE: ["  ОГНЕННЫЙ  ", "  СИЛУЭТ    ", " НАЖМИ СТАРТ "],
+            IdleScene.MATRIX_RAIN: ["  МАТРИЦА   ", "   ДОЖДЬ    ", " НАЖМИ СТАРТ "],
+            IdleScene.KALEIDOSCOPE: ["КАЛЕЙДОСКОП ", "  ЗЕРКАЛ    ", " НАЖМИ СТАРТ "],
+            IdleScene.STARFIELD_3D: [" ЗВЁЗДНЫЙ   ", "  ПОЛЁТ     ", " НАЖМИ СТАРТ "],
         }
         scene_texts = texts.get(scene, ["    VNVNC    ", " НАЖМИ СТАРТ ", "    ★★★★    "])
         return scene_texts[idx].center(16)[:16]
