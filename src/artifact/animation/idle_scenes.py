@@ -221,11 +221,41 @@ class RotatingIdleAnimation:
                 if diff == 2:
                     self.hypercube_edges.append((i, j))
 
-        # Pac-Man state
-        self.pacman_x = -20.0
-        self.pacman_pellets = [{'x': i * 12 + 6, 'eaten': False} for i in range(12)]
-        self.pacman_power_mode = False
-        self.pacman_power_timer = 0
+        # Pac-Man maze and state
+        self.pacman_tile = 8
+        self.pacman_maze = [
+            "################",
+            "#..............#",
+            "#.####.##.####.#",
+            "#.#....##....#.#",
+            "#.#.########.#.#",
+            "#.#....##....#.#",
+            "#.####.##.####.#",
+            "#..............#",
+            "#.####.##.####.#",
+            "#.#....##....#.#",
+            "#.#.########.#.#",
+            "#.#....##....#.#",
+            "#.####.##.####.#",
+            "#..............#",
+            "#.############.#",
+            "################",
+        ]
+        self.pacman_open_tiles = [
+            (x, y)
+            for y, row in enumerate(self.pacman_maze)
+            for x, cell in enumerate(row)
+            if cell != "#"
+        ]
+        self.pacman_power_tiles = {(1, 1), (14, 1), (1, 13), (14, 13)}
+        self.pacman_eaten = set()
+        self.pacman_pos = [0.0, 0.0]
+        self.pacman_dir = (1, 0)
+        self.pacman_speed = 28.0
+        self.pacman_last_time = 0.0
+        self.pacman_power_timer = 0.0
+        self.pacman_ghosts: List[dict] = []
+        self._reset_pacman_scene()
 
         # Nyan Cat state
         self.nyan_rainbow_trail = []
@@ -368,6 +398,8 @@ class RotatingIdleAnimation:
                  random.uniform(0.3, 1.0), random.uniform(0, 6.28))
                 for _ in range(30)
             ]
+        elif scene == IdleScene.PACMAN:
+            self._reset_pacman_scene()
 
     def _on_scene_exit(self, scene: IdleScene) -> None:
         if scene in self.CAMERA_SCENES:
@@ -2189,112 +2221,268 @@ class RotatingIdleAnimation:
     # ICONIC/CHARACTER SCENES
     # =========================================================================
 
+    def _pacman_tile_center(self, col: int, row: int) -> Tuple[int, int]:
+        tile = self.pacman_tile
+        return col * tile + tile // 2, row * tile + tile // 2
+
+    def _pacman_tile_from_pos(self, pos: List[float]) -> Tuple[int, int]:
+        tile = self.pacman_tile
+        col = int(pos[0] // tile)
+        row = int(pos[1] // tile)
+        col = max(0, min(col, len(self.pacman_maze[0]) - 1))
+        row = max(0, min(row, len(self.pacman_maze) - 1))
+        return col, row
+
+    def _pacman_is_open(self, col: int, row: int) -> bool:
+        if row < 0 or col < 0:
+            return False
+        if row >= len(self.pacman_maze) or col >= len(self.pacman_maze[0]):
+            return False
+        return self.pacman_maze[row][col] != "#"
+
+    def _pacman_available_dirs(self, col: int, row: int) -> List[Tuple[int, int]]:
+        dirs = []
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if self._pacman_is_open(col + dx, row + dy):
+                dirs.append((dx, dy))
+        return dirs
+
+    def _pacman_manhattan(self, a: Tuple[int, int], b: Tuple[int, int]) -> int:
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    def _reset_pacman_scene(self) -> None:
+        self.pacman_eaten = set()
+        self.pacman_power_timer = 0.0
+        start_col, start_row = 1, 7
+        cx, cy = self._pacman_tile_center(start_col, start_row)
+        self.pacman_pos = [float(cx), float(cy)]
+        self.pacman_dir = (1, 0)
+        self.pacman_last_time = self.state.scene_time
+
+        ghost_tiles = [(7, 7), (8, 7), (9, 7), (10, 7)]
+        ghost_colors = [
+            ((255, 0, 0), "red", (14, 1)),
+            ((255, 184, 255), "pink", (1, 1)),
+            ((0, 255, 255), "cyan", (14, 13)),
+            ((255, 184, 82), "orange", (1, 13)),
+        ]
+        self.pacman_ghosts = []
+        for (gx, gy), (color, personality, scatter) in zip(ghost_tiles, ghost_colors):
+            px, py = self._pacman_tile_center(gx, gy)
+            self.pacman_ghosts.append({
+                "pos": [float(px), float(py)],
+                "dir": (-1, 0),
+                "color": color,
+                "speed": 24.0,
+                "personality": personality,
+                "scatter": scatter,
+            })
+
     def _render_pacman(self, buffer: NDArray[np.uint8]) -> None:
-        """Render Pac-Man chase scene."""
+        """Render Pac-Man chase scene with roaming maze navigation."""
         t = self.state.scene_time / 1000
 
         # Maze background
-        fill(buffer, (0, 0, 20))
+        fill(buffer, (0, 0, 0))
 
-        # Walls
-        wall_color = (33, 33, 255)
-        for x in range(128):
-            buffer[20:24, x] = wall_color
-            buffer[104:108, x] = wall_color
-        for y in range(20, 108):
-            buffer[y, 0:4] = wall_color
-            buffer[y, 124:128] = wall_color
-        # Middle obstacles
-        for dy in range(20):
-            for dx in range(25):
-                buffer[45 + dy, 30 + dx] = wall_color
-                buffer[45 + dy, 73 + dx] = wall_color
-                buffer[85 + dy, 30 + dx] = wall_color
-                buffer[85 + dy, 73 + dx] = wall_color
+        # Maze walls (tile-based)
+        wall_color = (30, 60, 220)
+        wall_inner = (8, 20, 80)
+        tile = self.pacman_tile
+        for row_idx, row in enumerate(self.pacman_maze):
+            for col_idx, cell in enumerate(row):
+                if cell == "#":
+                    x = col_idx * tile
+                    y = row_idx * tile
+                    draw_rect(buffer, x, y, tile, tile, wall_color)
+                    draw_rect(buffer, x + 1, y + 1, tile - 2, tile - 2, wall_inner,
+                              filled=False, thickness=1)
 
         # Pellets
-        pellet_y = 64
-        for pellet in self.pacman_pellets:
-            if not pellet['eaten']:
-                px = int(pellet['x'])
-                if pellet['x'] % 48 < 12:
-                    size = 4
-                else:
-                    size = 2
-                if 0 <= px < 128:
-                    for dy in range(-size, size + 1):
-                        for dx in range(-size, size + 1):
-                            if dx * dx + dy * dy <= size * size:
-                                npx, npy = px + dx, pellet_y + dy
-                                if 0 <= npx < 128 and 0 <= npy < 128:
-                                    buffer[npy, npx] = (255, 184, 174)
+        pellet_color = (255, 184, 174)
+        for col, row in self.pacman_open_tiles:
+            if (col, row) in self.pacman_eaten:
+                continue
+            cx, cy = self._pacman_tile_center(col, row)
+            if (col, row) in self.pacman_power_tiles:
+                size = 3 if int(t * 4) % 2 == 0 else 2
+            else:
+                size = 1
+            for dy in range(-size, size + 1):
+                for dx in range(-size, size + 1):
+                    if dx * dx + dy * dy <= size * size:
+                        npx, npy = cx + dx, cy + dy
+                        if 0 <= npx < 128 and 0 <= npy < 128:
+                            buffer[npy, npx] = pellet_color
 
-        # Move Pac-Man
-        self.pacman_x += 1.5
-        if self.pacman_x > 148:
-            self.pacman_x = -30
-            for pellet in self.pacman_pellets:
-                pellet['eaten'] = False
+        # Time step for movement
+        dt = (self.state.scene_time - self.pacman_last_time) / 1000.0
+        if dt < 0 or dt > 0.2:
+            dt = 0.016
+        self.pacman_last_time = self.state.scene_time
 
-        # Eat pellets
-        for pellet in self.pacman_pellets:
-            if not pellet['eaten'] and abs(pellet['x'] - self.pacman_x) < 8:
-                pellet['eaten'] = True
-                if pellet['x'] % 48 < 12:
-                    self.pacman_power_mode = True
-                    self.pacman_power_timer = 60
-
+        # Power pellet timer
         if self.pacman_power_timer > 0:
-            self.pacman_power_timer -= 1
-        else:
-            self.pacman_power_mode = False
+            self.pacman_power_timer = max(0.0, self.pacman_power_timer - dt)
+        power_mode = self.pacman_power_timer > 0
+
+        # Move Pac-Man on grid
+        pac_tile = self._pacman_tile_from_pos(self.pacman_pos)
+        pac_cx, pac_cy = self._pacman_tile_center(*pac_tile)
+        at_center = abs(self.pacman_pos[0] - pac_cx) < 0.5 and abs(self.pacman_pos[1] - pac_cy) < 0.5
+        if at_center:
+            self.pacman_pos[0] = float(pac_cx)
+            self.pacman_pos[1] = float(pac_cy)
+            dirs = self._pacman_available_dirs(*pac_tile)
+            if dirs:
+                reverse = (-self.pacman_dir[0], -self.pacman_dir[1])
+                if self.pacman_dir not in dirs:
+                    self.pacman_dir = random.choice(dirs)
+                elif len(dirs) >= 3 and random.random() < 0.35:
+                    turn_dirs = [d for d in dirs if d != reverse] or dirs
+                    self.pacman_dir = random.choice(turn_dirs)
+
+            if pac_tile in self.pacman_open_tiles and pac_tile not in self.pacman_eaten:
+                self.pacman_eaten.add(pac_tile)
+                if pac_tile in self.pacman_power_tiles:
+                    self.pacman_power_timer = 6.0
+
+            if len(self.pacman_eaten) >= len(self.pacman_open_tiles):
+                self._reset_pacman_scene()
+
+        self.pacman_pos[0] += self.pacman_dir[0] * self.pacman_speed * dt
+        self.pacman_pos[1] += self.pacman_dir[1] * self.pacman_speed * dt
+
+        # Move ghosts
+        pac_tile = self._pacman_tile_from_pos(self.pacman_pos)
+        for ghost in self.pacman_ghosts:
+            ghost_tile = self._pacman_tile_from_pos(ghost["pos"])
+            ghost_cx, ghost_cy = self._pacman_tile_center(*ghost_tile)
+            at_center = abs(ghost["pos"][0] - ghost_cx) < 0.5 and abs(ghost["pos"][1] - ghost_cy) < 0.5
+            if at_center:
+                ghost["pos"][0] = float(ghost_cx)
+                ghost["pos"][1] = float(ghost_cy)
+                dirs = self._pacman_available_dirs(*ghost_tile)
+                if dirs:
+                    reverse = (-ghost["dir"][0], -ghost["dir"][1])
+                    if len(dirs) > 1:
+                        dirs = [d for d in dirs if d != reverse] or dirs
+
+                    target = pac_tile
+                    if ghost["personality"] == "pink":
+                        target = (pac_tile[0] + self.pacman_dir[0] * 2,
+                                  pac_tile[1] + self.pacman_dir[1] * 2)
+                    elif ghost["personality"] == "cyan":
+                        target = (pac_tile[0] + self.pacman_dir[0] * 4,
+                                  pac_tile[1] + self.pacman_dir[1] * 4)
+                    elif ghost["personality"] == "orange":
+                        if self._pacman_manhattan(ghost_tile, pac_tile) > 6:
+                            target = pac_tile
+                        else:
+                            target = ghost["scatter"]
+
+                    if not self._pacman_is_open(*target):
+                        target = pac_tile
+
+                    if power_mode:
+                        ghost["dir"] = max(
+                            dirs,
+                            key=lambda d: self._pacman_manhattan(
+                                (ghost_tile[0] + d[0], ghost_tile[1] + d[1]), pac_tile
+                            )
+                        )
+                    else:
+                        ghost["dir"] = min(
+                            dirs,
+                            key=lambda d: self._pacman_manhattan(
+                                (ghost_tile[0] + d[0], ghost_tile[1] + d[1]), target
+                            )
+                        )
+
+            ghost_speed = ghost["speed"] * (0.7 if power_mode else 1.0)
+            ghost["pos"][0] += ghost["dir"][0] * ghost_speed * dt
+            ghost["pos"][1] += ghost["dir"][1] * ghost_speed * dt
+
+            if power_mode:
+                dx = ghost["pos"][0] - self.pacman_pos[0]
+                dy = ghost["pos"][1] - self.pacman_pos[1]
+                if dx * dx + dy * dy < (tile * 0.4) ** 2:
+                    sx, sy = self._pacman_tile_center(*ghost["scatter"])
+                    ghost["pos"] = [float(sx), float(sy)]
+                    ghost["dir"] = (-ghost["dir"][0], -ghost["dir"][1])
 
         # Draw Pac-Man
-        pac_x = int(self.pacman_x)
-        mouth_open = int(t * 20) % 2
-        if 0 <= pac_x < 128:
-            # Yellow circle
-            for dy in range(-10, 11):
-                for dx in range(-10, 11):
-                    if dx * dx + dy * dy <= 100:
-                        npx, npy = pac_x + dx, 64 + dy
-                        if 0 <= npx < 128 and 0 <= npy < 128:
-                            # Cut mouth
-                            if mouth_open and dx > 0 and abs(dy) < dx // 2:
-                                continue
-                            buffer[npy, npx] = (255, 255, 0)
-            # Eye
-            if pac_x - 2 >= 0 and pac_x - 2 < 128:
-                buffer[60, pac_x - 2] = (0, 0, 0)
+        pac_x = int(self.pacman_pos[0])
+        pac_y = int(self.pacman_pos[1])
+        radius = 5
+        mouth_open = int(t * 8) % 2 == 0
+        dir_angle = 0.0
+        if self.pacman_dir == (-1, 0):
+            dir_angle = math.pi
+        elif self.pacman_dir == (0, -1):
+            dir_angle = -math.pi / 2
+        elif self.pacman_dir == (0, 1):
+            dir_angle = math.pi / 2
 
-        # Draw ghosts chasing
-        ghost_colors = [(255, 0, 0), (255, 184, 255), (0, 255, 255), (255, 184, 82)]
-        for i, gc in enumerate(ghost_colors):
-            gx = int(self.pacman_x - 25 - i * 18)
-            color = (0, 0, 200) if self.pacman_power_mode else gc
-            if 0 <= gx < 128:
-                # Ghost body
-                for dy in range(-10, 11):
-                    for dx in range(-10, 11):
-                        if dy < 5:
-                            if dx * dx + (dy + 5) * (dy + 5) <= 100:
-                                npx, npy = gx + dx, 64 + dy
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                if dx * dx + dy * dy <= radius * radius:
+                    if mouth_open:
+                        angle = math.atan2(dy, dx)
+                        diff = math.atan2(math.sin(angle - dir_angle), math.cos(angle - dir_angle))
+                        if abs(diff) < math.pi / 6 and (dx * self.pacman_dir[0] + dy * self.pacman_dir[1]) > 0:
+                            continue
+                    npx, npy = pac_x + dx, pac_y + dy
+                    if 0 <= npx < 128 and 0 <= npy < 128:
+                        buffer[npy, npx] = (255, 255, 0)
+
+        eye_offset = (-2, -2)
+        if self.pacman_dir == (-1, 0):
+            eye_offset = (2, -2)
+        elif self.pacman_dir == (0, -1):
+            eye_offset = (-2, 2)
+        elif self.pacman_dir == (0, 1):
+            eye_offset = (-2, -2)
+        ex, ey = pac_x + eye_offset[0], pac_y + eye_offset[1]
+        if 0 <= ex < 128 and 0 <= ey < 128:
+            buffer[ey, ex] = (0, 0, 0)
+
+        # Draw ghosts
+        for ghost in self.pacman_ghosts:
+            gx, gy = int(ghost["pos"][0]), int(ghost["pos"][1])
+            if power_mode:
+                blink = power_mode and self.pacman_power_timer < 1.5 and int(t * 8) % 2 == 0
+                color = (200, 200, 255) if blink else (0, 0, 200)
+            else:
+                color = ghost["color"]
+
+            for dy in range(-radius, radius + 1):
+                for dx in range(-radius, radius + 1):
+                    if dy <= 0:
+                        if dx * dx + dy * dy <= radius * radius:
+                            npx, npy = gx + dx, gy + dy
+                            if 0 <= npx < 128 and 0 <= npy < 128:
+                                buffer[npy, npx] = color
+                    else:
+                        if abs(dx) <= radius:
+                            wave = (dx + dy + int(t * 8)) % 4 < 2
+                            if wave:
+                                npx, npy = gx + dx, gy + dy
                                 if 0 <= npx < 128 and 0 <= npy < 128:
                                     buffer[npy, npx] = color
-                        else:
-                            if abs(dx) <= 10:
-                                wave = (int(t * 10) + dx) % 4 < 2
-                                if wave:
-                                    npx, npy = gx + dx, 64 + dy
-                                    if 0 <= npx < 128 and 0 <= npy < 128:
-                                        buffer[npy, npx] = color
-                # Eyes
-                if not self.pacman_power_mode:
-                    for ex in [-4, 4]:
-                        ex_pos = gx + ex
-                        if 0 <= ex_pos < 128:
-                            buffer[61, ex_pos] = (255, 255, 255)
-                            buffer[62, ex_pos] = (0, 0, 200)
+
+            if not power_mode:
+                pupil_dx = ghost["dir"][0]
+                pupil_dy = ghost["dir"][1]
+                for ex in (-2, 2):
+                    eye_x = gx + ex
+                    eye_y = gy - 2
+                    if 0 <= eye_x < 128 and 0 <= eye_y < 128:
+                        buffer[eye_y, eye_x] = (255, 255, 255)
+                        px = eye_x + pupil_dx
+                        py = eye_y + pupil_dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            buffer[py, px] = (0, 0, 120)
 
         # Branding
         draw_centered_text(buffer, "VNVNC", 4, (255, 255, 0), scale=2)
