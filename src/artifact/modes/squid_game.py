@@ -186,7 +186,7 @@ class SquidGameMode(BaseMode):
         self._countdown_second = 3
 
         # Use shared camera service (always running)
-        self._camera = camera_service.is_running()
+        self._camera = camera_service.is_running
         if self._camera:
             logger.info("Camera service ready for Squid Game mode")
         else:

@@ -113,6 +113,9 @@ class TowerStackMode(BaseMode):
     INITIAL_WIDTH = 50
     MIN_WIDTH = 6
     SWING_Y = 15  # Y position of swinging block
+    DROP_GRAVITY = 1600.0
+    DROP_MAX_SPEED = 900.0
+    DROP_SNAP = 2
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
@@ -130,6 +133,16 @@ class TowerStackMode(BaseMode):
         self._swing_speed = 70.0
         self._current_width = self.INITIAL_WIDTH
         self._next_block_y = self.GROUND_Y - self.BLOCK_HEIGHT
+
+        # Drop animation state (screen coordinates)
+        self._dropping = False
+        self._drop_x = 0.0
+        self._drop_width = 0.0
+        self._drop_y = 0.0
+        self._drop_target_y = 0.0
+        self._drop_vy = 0.0
+        self._lock_flash_timer = 0.0
+        self._lock_flash_block: Optional[StackedBlock] = None
 
         # Camera
         self._camera_y = 0.0
@@ -221,6 +234,14 @@ class TowerStackMode(BaseMode):
         self._swing_speed = 70.0
         self._current_width = self.INITIAL_WIDTH
         self._next_block_y = self.GROUND_Y - 2 * self.BLOCK_HEIGHT
+        self._dropping = False
+        self._drop_x = self._swing_x
+        self._drop_width = self._current_width
+        self._drop_y = self.SWING_Y
+        self._drop_target_y = self.SWING_Y
+        self._drop_vy = 0.0
+        self._lock_flash_timer = 0.0
+        self._lock_flash_block = None
 
         # Reset camera
         self._camera_y = 0.0
@@ -292,6 +313,8 @@ class TowerStackMode(BaseMode):
             return False
 
         if event.type == EventType.BUTTON_PRESS:
+            if self._dropping:
+                return True
             logger.info("TowerStack: DROP!")
             self._drop_block()
             return True
@@ -325,21 +348,28 @@ class TowerStackMode(BaseMode):
             self._update_particles(dt)
             return
 
-        # Swing the block
-        actual_speed = self._swing_speed
-        if self._slow_mo_timer > 0:
-            actual_speed *= 0.4
+        # Lock flash decay
+        self._lock_flash_timer = max(0.0, self._lock_flash_timer - delta_ms)
 
-        self._swing_x += self._swing_dir * actual_speed * dt
+        # Drop animation or swing movement
+        if self._dropping:
+            self._update_drop(dt)
+        else:
+            # Swing the block
+            actual_speed = self._swing_speed
+            if self._slow_mo_timer > 0:
+                actual_speed *= 0.4
 
-        # Bounce off edges with some margin for block width
-        half_w = self._current_width / 2
-        if self._swing_x - half_w <= 5:
-            self._swing_x = 5 + half_w
-            self._swing_dir = 1
-        elif self._swing_x + half_w >= 123:
-            self._swing_x = 123 - half_w
-            self._swing_dir = -1
+            self._swing_x += self._swing_dir * actual_speed * dt
+
+            # Bounce off edges with some margin for block width
+            half_w = self._current_width / 2
+            if self._swing_x - half_w <= 5:
+                self._swing_x = 5 + half_w
+                self._swing_dir = 1
+            elif self._swing_x + half_w >= 123:
+                self._swing_x = 123 - half_w
+                self._swing_dir = -1
 
         # Update falling pieces
         self._update_falling_pieces(dt)
@@ -624,16 +654,46 @@ class TowerStackMode(BaseMode):
             self._camera_frame = frame
             self._camera = True
 
+    def _update_drop(self, dt: float) -> None:
+        """Animate the dropping block with a crisp, Tetris-like fall."""
+        target_y = self._next_block_y + self._camera_y
+        self._drop_target_y = target_y
+
+        self._drop_vy = min(self._drop_vy + self.DROP_GRAVITY * dt, self.DROP_MAX_SPEED)
+        self._drop_y += self._drop_vy * dt
+
+        if self.DROP_SNAP > 1:
+            self._drop_y = round(self._drop_y / self.DROP_SNAP) * self.DROP_SNAP
+
+        if self._drop_y >= target_y:
+            self._drop_y = target_y
+            self._dropping = False
+            self._resolve_drop()
+
     def _drop_block(self) -> None:
-        """Drop the swinging block."""
+        """Start the drop animation for the swinging block."""
+        if not self._tower or self._dropping:
+            return
+
+        self._dropping = True
+        self._drop_x = self._swing_x
+        self._drop_width = self._current_width
+        self._drop_y = self.SWING_Y
+        self._drop_vy = 0.0
+        self._drop_target_y = self._next_block_y + self._camera_y
+
+    def _resolve_drop(self) -> None:
+        """Finalize block placement after the drop animation."""
         if not self._tower:
             return
 
         top_block = self._tower[-1]
+        drop_x = self._drop_x
+        drop_width = self._drop_width
 
         # Calculate overlap
-        swing_left = self._swing_x - self._current_width / 2
-        swing_right = self._swing_x + self._current_width / 2
+        swing_left = drop_x - drop_width / 2
+        swing_right = drop_x + drop_width / 2
         top_left = top_block.x - top_block.width / 2
         top_right = top_block.x + top_block.width / 2
 
@@ -646,31 +706,41 @@ class TowerStackMode(BaseMode):
             self._handle_miss()
             return
 
-        # Create falling pieces for overhangs
-        if swing_left < top_left:
-            overhang = top_left - swing_left
-            self._create_falling_piece(
-                x=swing_left + overhang / 2,
-                width=overhang,
-                vx=-40 - random.uniform(0, 20),
-                rot_speed=random.uniform(-5, -2)
-            )
-
-        if swing_right > top_right:
-            overhang = swing_right - top_right
-            self._create_falling_piece(
-                x=top_right + overhang / 2,
-                width=overhang,
-                vx=40 + random.uniform(0, 20),
-                rot_speed=random.uniform(2, 5)
-            )
-
         # Evaluate placement quality
         overlap_center = (overlap_left + overlap_right) / 2
         center_diff = abs(overlap_center - top_block.x)
         width_ratio = overlap_width / top_block.width
 
         quality = self._evaluate_placement(width_ratio, center_diff)
+
+        # Perfect snap: align to the block below for that classic stacker feel
+        if quality == PlacementQuality.PERFECT:
+            overlap_left = top_left
+            overlap_right = top_right
+            overlap_width = top_block.width
+            overlap_center = top_block.x
+        else:
+            # Create falling pieces for overhangs
+            if swing_left < top_left:
+                overhang = top_left - swing_left
+                self._create_falling_piece(
+                    x=swing_left + overhang / 2,
+                    width=overhang,
+                    vx=-40 - random.uniform(0, 20),
+                    rot_speed=random.uniform(-5, -2),
+                    start_world_y=self._next_block_y
+                )
+
+            if swing_right > top_right:
+                overhang = swing_right - top_right
+                self._create_falling_piece(
+                    x=top_right + overhang / 2,
+                    width=overhang,
+                    vx=40 + random.uniform(0, 20),
+                    rot_speed=random.uniform(2, 5),
+                    start_world_y=self._next_block_y
+                )
+
         self._apply_placement_rewards(quality, overlap_width)
 
         # Create the stacked block
@@ -689,6 +759,8 @@ class TowerStackMode(BaseMode):
             color=block_color
         )
         self._tower.append(new_block)
+        self._lock_flash_block = new_block
+        self._lock_flash_timer = 160
 
         # Update stats
         self._best_height = max(self._best_height, len(self._tower) - 1)
@@ -907,7 +979,14 @@ class TowerStackMode(BaseMode):
             if self._tower:
                 self._current_width = self._tower[-1].width
 
-    def _create_falling_piece(self, x: float, width: float, vx: float, rot_speed: float) -> None:
+    def _create_falling_piece(
+        self,
+        x: float,
+        width: float,
+        vx: float,
+        rot_speed: float,
+        start_world_y: Optional[float] = None
+    ) -> None:
         """Create a falling piece animation."""
         height_idx = len(self._tower) % 10
         colors = [
@@ -916,10 +995,12 @@ class TowerStackMode(BaseMode):
             (220, 80, 255), (255, 80, 180)
         ]
 
-        # Start at the swinging block's screen position, converted to world coords
-        # SWING_Y is screen y=15, convert to world: screen_y - camera_y = world_y
-        # But we want: world_y + camera_y = screen_y, so world_y = screen_y - camera_y
-        start_y = self.SWING_Y - self._camera_y
+        # Start at either the swing height or the placed block height (world coords)
+        if start_world_y is None:
+            # SWING_Y is screen y=15, convert to world: world_y = screen_y - camera_y
+            start_y = self.SWING_Y - self._camera_y
+        else:
+            start_y = start_world_y
 
         piece = FallingPiece(
             x=x,
@@ -989,6 +1070,23 @@ class TowerStackMode(BaseMode):
 
         if hasattr(self.context, "audio") and self.context.audio:
             self.context.audio.play_reward()
+
+    def _draw_block(self, buffer: NDArray[np.uint8], x: int, y: int, w: int,
+                    h: int, color: tuple, outline: bool = True) -> None:
+        """Draw a block with Tetris-style highlights."""
+        draw_rect(buffer, x, y, w, h, color, filled=True)
+
+        highlight = tuple(min(255, c + 60) for c in color)
+        shadow = tuple(max(0, c - 50) for c in color)
+        # Top and left highlights
+        draw_rect(buffer, x, y, w, 1, highlight, filled=True)
+        draw_rect(buffer, x, y, 1, h, highlight, filled=True)
+        # Bottom and right shadows
+        draw_rect(buffer, x, y + h - 1, w, 1, shadow, filled=True)
+        draw_rect(buffer, x + w - 1, y, 1, h, shadow, filled=True)
+
+        if outline:
+            draw_rect(buffer, x, y, w, h, (0, 0, 0), filled=False)
 
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
         t = self._time_ms
@@ -1069,19 +1167,18 @@ class TowerStackMode(BaseMode):
             h = block.height
 
             if -h < screen_y < 128:
-                # Block body with gradient
-                draw_rect(buffer, screen_x, screen_y, w, h, block.color, filled=True)
+                self._draw_block(buffer, screen_x, screen_y, w, h, block.color, outline=True)
 
-                # Highlight (top)
-                highlight = tuple(min(255, c + 50) for c in block.color)
-                draw_rect(buffer, screen_x, screen_y, w, 2, highlight, filled=True)
-
-                # Shadow (bottom)
-                shadow = tuple(max(0, c - 50) for c in block.color)
-                draw_rect(buffer, screen_x, screen_y + h - 2, w, 2, shadow, filled=True)
-
-                # Outline
-                draw_rect(buffer, screen_x, screen_y, w, h, (0, 0, 0), filled=False)
+                if self._lock_flash_timer > 0 and block is self._lock_flash_block:
+                    intensity = self._lock_flash_timer / 160
+                    flash = int(120 * intensity)
+                    flash_color = (
+                        min(255, block.color[0] + flash),
+                        min(255, block.color[1] + flash),
+                        min(255, block.color[2] + flash),
+                    )
+                    draw_rect(buffer, screen_x - 1, screen_y - 1, w + 2, h + 2,
+                              flash_color, filled=False, thickness=1)
 
         # Draw falling pieces
         for piece in self._falling_pieces:
@@ -1090,8 +1187,7 @@ class TowerStackMode(BaseMode):
             w = int(piece.width)
 
             if -piece.height < screen_y < 140:
-                draw_rect(buffer, screen_x, screen_y, w, piece.height, piece.color, filled=True)
-                draw_rect(buffer, screen_x, screen_y, w, piece.height, (0, 0, 0), filled=False)
+                self._draw_block(buffer, screen_x, screen_y, w, piece.height, piece.color, outline=True)
 
         # Draw particles
         for p in self._particles:
@@ -1222,40 +1318,58 @@ class TowerStackMode(BaseMode):
                     sy = cy + int(6 * math.sin(pu.pulse * 3))
                     draw_rect(buffer, sx, sy, 2, 2, (255, 255, 255), filled=True)
 
-        # Draw swinging block
+        # Draw swinging or dropping block
         if not self._game_over:
-            swing_y = self.SWING_Y + shake_y
-            swing_x = int(self._swing_x - self._current_width / 2) + shake_x
-            w = int(self._current_width)
-
-            # Pulsing glow
             pulse = 0.7 + 0.3 * math.sin(t / 80)
             glow_color = (int(255 * pulse), int(230 * pulse), int(100 * pulse))
 
-            # Glow effect
-            glow_size = 2
-            draw_rect(buffer, swing_x - glow_size, swing_y - glow_size,
-                     w + glow_size * 2, self.BLOCK_HEIGHT + glow_size * 2,
-                     (80, 70, 50), filled=True)
+            # Ghost outline where the block will land (Tetris-style)
+            if self._tower and not self._dropping:
+                ghost_y = int(self._next_block_y + self._camera_y) + shake_y
+                ghost_x = int(self._swing_x - self._current_width / 2) + shake_x
+                ghost_w = int(self._current_width)
+                if -self.BLOCK_HEIGHT < ghost_y < 128:
+                    for x in range(ghost_x, ghost_x + ghost_w, 3):
+                        if 0 <= x < 128 and 0 <= ghost_y < 128:
+                            buffer[ghost_y, x] = (80, 80, 110)
+                        if 0 <= x < 128 and 0 <= ghost_y + self.BLOCK_HEIGHT - 1 < 128:
+                            buffer[ghost_y + self.BLOCK_HEIGHT - 1, x] = (80, 80, 110)
 
-            # Block
-            draw_rect(buffer, swing_x, swing_y, w, self.BLOCK_HEIGHT, glow_color, filled=True)
-            draw_rect(buffer, swing_x, swing_y, w, self.BLOCK_HEIGHT, (0, 0, 0), filled=False)
+            if self._dropping:
+                drop_y = int(self._drop_y) + shake_y
+                drop_x = int(self._drop_x - self._drop_width / 2) + shake_x
+                drop_w = int(self._drop_width)
 
-            # Guide lines to show target area
-            if self._tower:
-                top = self._tower[-1]
-                top_screen_y = int(top.y + self._camera_y) + shake_y
-                guide_left = int(top.x - top.width / 2) + shake_x
-                guide_right = int(top.x + top.width / 2) + shake_x
+                glow_size = 2
+                draw_rect(buffer, drop_x - glow_size, drop_y - glow_size,
+                          drop_w + glow_size * 2, self.BLOCK_HEIGHT + glow_size * 2,
+                          (80, 70, 50), filled=True)
+                self._draw_block(buffer, drop_x, drop_y, drop_w, self.BLOCK_HEIGHT, glow_color, outline=True)
+            else:
+                swing_y = self.SWING_Y + shake_y
+                swing_x = int(self._swing_x - self._current_width / 2) + shake_x
+                w = int(self._current_width)
 
-                # Dashed vertical lines
-                for y in range(swing_y + self.BLOCK_HEIGHT + 2, top_screen_y, 3):
-                    if 0 < y < 128:
-                        if 0 < guide_left < 128:
-                            buffer[y, guide_left] = [80, 80, 100]
-                        if 0 < guide_right < 128:
-                            buffer[y, guide_right] = [80, 80, 100]
+                glow_size = 2
+                draw_rect(buffer, swing_x - glow_size, swing_y - glow_size,
+                          w + glow_size * 2, self.BLOCK_HEIGHT + glow_size * 2,
+                          (80, 70, 50), filled=True)
+                self._draw_block(buffer, swing_x, swing_y, w, self.BLOCK_HEIGHT, glow_color, outline=True)
+
+                # Guide lines to show target area
+                if self._tower:
+                    top = self._tower[-1]
+                    top_screen_y = int(top.y + self._camera_y) + shake_y
+                    guide_left = int(top.x - top.width / 2) + shake_x
+                    guide_right = int(top.x + top.width / 2) + shake_x
+
+                    # Dashed vertical lines
+                    for y in range(swing_y + self.BLOCK_HEIGHT + 2, top_screen_y, 3):
+                        if 0 < y < 128:
+                            if 0 < guide_left < 128:
+                                buffer[y, guide_left] = [80, 80, 100]
+                            if 0 < guide_right < 128:
+                                buffer[y, guide_right] = [80, 80, 100]
 
         # HUD
         # Score (top left)

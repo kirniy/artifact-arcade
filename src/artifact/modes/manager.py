@@ -358,11 +358,6 @@ class ModeManager:
         self._selector_effect_timer = 0.0  # Cycle effect every 3 seconds
         self._bayer_matrix = self._create_bayer_matrix(4)  # 4x4 Bayer matrix
 
-        # Camera preview for modes that require camera
-        self._camera_preview_frame = None
-        self._camera_preview_update_timer = 0.0
-        self._camera_preview_update_interval = 200.0  # Update every 200ms (5fps)
-
         logger.info("ModeManager initialized")
 
     def _create_bayer_matrix(self, size: int) -> list:
@@ -407,23 +402,6 @@ class ModeManager:
                 self._selector_frame = frame
         except Exception:
             self._selector_frame = None
-
-    def _update_camera_preview(self) -> None:
-        """Update camera preview frame using shared camera service."""
-        try:
-            from artifact.utils.camera_service import camera_service
-            from artifact.simulator.mock_hardware.camera import floyd_steinberg_dither
-
-            # Get latest frame from shared camera service
-            frame = camera_service.get_frame(timeout=0.05)
-            if frame is not None:
-                # Apply dithering for stylized preview
-                self._camera_preview_frame = floyd_steinberg_dither(frame)
-            else:
-                self._camera_preview_frame = None
-        except Exception as e:
-            logger.debug(f"Failed to update camera preview: {e}")
-            self._camera_preview_frame = None
 
     def _setup_event_handlers(self) -> None:
         """Register event handlers."""
@@ -837,15 +815,6 @@ class ModeManager:
             if mode:
                 self._selector_effect = MODE_EFFECTS.get(mode.name, SelectorEffect.DITHER)
 
-                # Update camera preview if mode requires camera
-                self._camera_preview_update_timer += delta_ms
-                if self._camera_preview_update_timer >= self._camera_preview_update_interval:
-                    self._camera_preview_update_timer = 0.0
-                    if hasattr(mode.cls, 'requires_camera') and mode.cls.requires_camera:
-                        self._update_camera_preview()
-                    else:
-                        self._camera_preview_frame = None
-
             # Timeout back to idle
             if self._time_in_state - self._last_input_time > self._idle_timeout:
                 self._return_to_idle()
@@ -998,11 +967,6 @@ class ModeManager:
         pulse = 0.7 + 0.3 * math.sin(t * 4)
         glow_color = tuple(int(c * pulse) for c in mode_color)
 
-        # === STEP 1.5: CAMERA PREVIEW FOR CAMERA-REQUIRING MODES ===
-        # If the selected mode requires camera, show a subtle preview
-        if self._camera_preview_frame is not None:
-            self._render_camera_preview_corner(buffer, mode_color)
-
         # === STEP 2: SEMI-TRANSPARENT CENTER PANEL FOR TEXT ===
         # Darken center area slightly for text readability - VECTORIZED
         import numpy as np
@@ -1120,41 +1084,6 @@ class ModeManager:
             self._apply_thermal_effect(buffer, frame, t)
         elif self._selector_effect == SelectorEffect.MATRIX:
             self._apply_matrix_effect(buffer, frame, t)
-
-    def _render_camera_preview_corner(self, buffer, border_color=(80, 200, 240)) -> None:
-        """Render a small camera preview in the top-right corner."""
-        import numpy as np
-        from artifact.graphics.primitives import draw_rect
-
-        frame = self._camera_preview_frame
-        if frame is None or not isinstance(frame, np.ndarray):
-            return
-
-        preview_size = 32
-        margin = 4
-        h, w = buffer.shape[:2]
-        x0 = w - preview_size - margin
-        y0 = margin
-
-        if x0 < 0 or y0 < 0:
-            return
-
-        src_h, src_w = frame.shape[:2]
-        if src_h <= 0 or src_w <= 0:
-            return
-
-        y_idx = (np.arange(preview_size) * src_h // preview_size).clip(0, src_h - 1)
-        x_idx = (np.arange(preview_size) * src_w // preview_size).clip(0, src_w - 1)
-        preview = frame[y_idx[:, np.newaxis], x_idx]
-
-        buffer[y0:y0 + preview_size, x0:x0 + preview_size] = preview
-        draw_rect(buffer, x0 - 1, y0 - 1, preview_size + 2, preview_size + 2,
-                  border_color, filled=False, thickness=1)
-
-        rec_x = x0 + preview_size - 4
-        rec_y = y0 + 3
-        if 0 <= rec_x < w and 0 <= rec_y < h:
-            buffer[rec_y:rec_y + 2, rec_x:rec_x + 2] = (255, 60, 60)
 
     def _apply_dither_effect(self, buffer, frame, t: float) -> None:
         """Apply Bayer ordered dithering to camera frame - VECTORIZED."""
