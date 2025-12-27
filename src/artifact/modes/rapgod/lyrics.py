@@ -108,14 +108,14 @@ class LyricsGenerator:
     async def generate_lyrics(
         self,
         selection: WordSelection,
-        club_name: str = "VNVNC",
+        club_name: str = "Виновница",
         photo_data: Optional[bytes] = None,
     ) -> Optional[GeneratedLyrics]:
         """Generate rap lyrics from word selection and optional photo.
 
         Args:
             selection: Selected words and settings
-            club_name: Club name to mention (ENC/VNVNC)
+            club_name: Club name to mention (Виновница / V-N-V-N-C)
             photo_data: Optional JPEG photo of the person for personalization
 
         Returns:
@@ -168,7 +168,7 @@ class LyricsGenerator:
             f"BPM: {genre_info['bpm_range'][0]}-{genre_info['bpm_range'][1]}",
             f"Настроение: {genre_info['mood']}",
             f"",
-            f"Клуб: {club_name} (можешь упомянуть)",
+            f"Клуб: {club_name} (можешь упомянуть как Виновница или V-N-V-N-C по буквам)",
         ]
 
         if has_photo:
@@ -258,7 +258,7 @@ class LyricsGenerator:
         # Simple template-based fallback
         hooks = [
             f"{words[0]} на бите, {words[1]} в душе\n{words[2] if len(words) > 2 else 'движение'} это мы, ты слышишь?\nARTIFACT качает, это наш вайб\nНочь только началась, давай!",
-            f"Эй, {words[0]}! Это {words[1]}!\n{words[2] if len(words) > 2 else 'Клуб'} горит, мы в ударе\nVNVNC до утра, это факт\nКачаем этот трек, это акт!",
+            f"Эй, {words[0]}! Это {words[1]}!\n{words[2] if len(words) > 2 else 'Клуб'} горит, мы в ударе\nВиновница до утра, это факт\nКачаем этот трек, это акт!",
         ]
 
         verses = [

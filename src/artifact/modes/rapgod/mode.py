@@ -39,6 +39,7 @@ from artifact.modes.rapgod.audio import (
     upload_to_selectel,
     format_duration,
 )
+from artifact.modes.rapgod.runner import RunnerGame
 from artifact.utils.s3_upload import generate_qr_image as generate_qr_numpy
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
@@ -151,6 +152,9 @@ class RapGodMode(BaseMode):
         self._progress_tracker = SmartProgressTracker(mode_theme="rapgod")
         self._progress_tracker.set_custom_messages(RAPGOD_MESSAGES)
 
+        # Runner mini-game (during processing)
+        self._runner = RunnerGame()
+
         # Particles
         self._particles = ParticleSystem()
 
@@ -222,9 +226,13 @@ class RapGodMode(BaseMode):
             if self._time_in_phase > 3500:
                 self._start_generation()
 
-        # Update progress tracker during processing
+        # Update progress tracker and runner game during processing
         if self._sub_phase == RapGodPhase.PROCESSING:
             self._progress_tracker.update(delta_ms)
+
+            # Update runner game
+            self._update_runner_camera()
+            self._runner.update(delta_ms)
 
             # Check if generation is complete
             if self._generation_task and self._generation_task.done():
@@ -275,7 +283,15 @@ class RapGodMode(BaseMode):
         return False
 
     def _handle_confirm(self) -> bool:
-        """Handle confirm/enter action - select current option."""
+        """Handle confirm/enter action - select current option or jump in game."""
+        # During processing, confirm = jump in runner game
+        if self._sub_phase == RapGodPhase.PROCESSING:
+            if self._runner.is_game_over:
+                self._runner.reset()
+            else:
+                self._runner.jump()
+            return True
+
         if self._sub_phase == RapGodPhase.INTRO:
             self._sub_phase = RapGodPhase.GENRE_SELECT
             return True
@@ -438,6 +454,15 @@ class RapGodMode(BaseMode):
         except Exception:
             pass
 
+    def _update_runner_camera(self) -> None:
+        """Update runner game with camera frame for player sprite."""
+        try:
+            frame = camera_service.get_frame(timeout=0)
+            if frame is not None:
+                self._runner.update_camera(frame)
+        except Exception:
+            pass
+
     def _do_capture(self) -> None:
         """Capture photo for AI analysis."""
         self._photo_data = camera_service.capture_jpeg(quality=90)
@@ -459,6 +484,10 @@ class RapGodMode(BaseMode):
 
         # Start async generation
         self._progress_tracker.start()
+
+        # Reset runner game for mini-game during processing
+        self._runner.reset()
+
         self._generation_task = asyncio.create_task(
             self._run_generation(selection)
         )
@@ -875,52 +904,29 @@ class RapGodMode(BaseMode):
                 )
 
     def _render_processing(self, buffer: np.ndarray, color: tuple) -> None:
-        """Render processing/generation screen."""
-        # Get current progress
+        """Render processing/generation screen with runner mini-game."""
+        # Render the runner game
+        self._runner.render(buffer, color)
+
+        # Overlay progress info at top
         progress = self._progress_tracker.get_progress()
         message = self._progress_tracker.get_message()
 
-        # Animated title
-        draw_animated_text(
-            buffer, "СОЗДАЁМ ТРЕК",
-            y=20,
-            base_color=color,
-            time_ms=self._time_in_phase,
-            effect=TextEffect.WAVE,
-            scale=1,
-        )
+        # Semi-transparent header bar
+        buffer[:12, :] = (buffer[:12, :].astype(np.float32) * 0.3).astype(np.uint8)
 
         # Progress message
         draw_centered_text(
-            buffer, message,
-            y=50,
+            buffer, message[:20],
+            y=2,
             color=(150, 150, 200),
             scale=1,
         )
 
-        # Progress bar
-        bar_x, bar_y = 20, 75
-        bar_w, bar_h = 88, 8
-
-        # Background
-        draw_rect(buffer, bar_x, bar_y, bar_w, bar_h, color=(40, 40, 50), filled=True)
-
-        # Fill
-        fill_w = int(bar_w * progress)
-        if fill_w > 0:
-            # Pulsing fill color
-            pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 150)
-            fill_color = tuple(int(c * pulse) for c in color)
-            draw_rect(buffer, bar_x, bar_y, fill_w, bar_h, color=fill_color, filled=True)
-
-        # Percentage
-        pct_text = f"{int(progress * 100)}%"
-        draw_centered_text(
-            buffer, pct_text,
-            y=95,
-            color=(100, 100, 100),
-            scale=1,
-        )
+        # Small progress bar at very top
+        bar_w = int(128 * progress)
+        if bar_w > 0:
+            buffer[0, :bar_w] = color
 
     def _render_preview(self, buffer: np.ndarray, color: tuple) -> None:
         """Render audio preview with QR code."""
@@ -1022,82 +1028,74 @@ class RapGodMode(BaseMode):
         )
 
     def _render_result(self, buffer: np.ndarray, color: tuple) -> None:
-        """Render final result."""
+        """Render final result with full-screen QR or lyrics."""
         if self._result_view == "qr" and self._qr_image is not None:
-            # Show QR code (already numpy array from generate_qr_numpy)
+            # Full-screen QR code on white background
+            fill(buffer, (255, 255, 255))
+
+            # Scale QR to fill screen (max 110x110 to leave small border)
             qr_h, qr_w = self._qr_image.shape[:2]
+            target_size = 110
+
+            # Simple nearest-neighbor scale up
+            if qr_w < target_size:
+                scale_factor = target_size // qr_w
+                scaled_qr = np.repeat(np.repeat(self._qr_image, scale_factor, axis=0), scale_factor, axis=1)
+                qr_h, qr_w = scaled_qr.shape[:2]
+            else:
+                scaled_qr = self._qr_image
+
+            # Center on screen
             x_offset = (128 - qr_w) // 2
-            y_offset = 20
+            y_offset = (128 - qr_h) // 2
 
-            # Draw black background behind QR for contrast
-            draw_rect(buffer, x_offset - 2, y_offset - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
-            buffer[y_offset:y_offset+qr_h, x_offset:x_offset+qr_w] = self._qr_image
+            # Draw QR
+            buffer[y_offset:y_offset+qr_h, x_offset:x_offset+qr_w] = scaled_qr
 
+            # Small hint at bottom (dark text on white)
             draw_centered_text(
-                buffer, "СКАЧАЙ ТРЕК",
-                y=5,
-                color=color,
+                buffer, "◄ ► ТЕКСТ",
+                y=118,
+                color=(100, 100, 100),
                 scale=1,
-            )
-
-            if self._lyrics:
-                # Show title below QR
-                title_y = y_offset + qr_h + 5
-                draw_centered_text(
-                    buffer, self._lyrics.title[:18],
-                    y=title_y,
-                    color=(150, 150, 150),
-                    scale=1,
-                )
-
-            # Navigation hint - show option to view lyrics
-            draw_button_labels(
-                buffer,
-                left_text="ТЕКСТ",
-                right_text="ТЕКСТ",
-                time_ms=self._time_in_phase,
-                y=115,
             )
 
         elif self._result_view == "qr" and self._qr_image is None:
             # No QR available - show URL as text
             draw_centered_text(
                 buffer, "ТРЕК ГОТОВ!",
-                y=30,
+                y=40,
                 color=color,
-                scale=1,
+                scale=2,
             )
 
             if self._download_url:
-                # Truncate URL for display
-                url_short = self._download_url.split("/")[-1][:16]
                 draw_centered_text(
-                    buffer, url_short,
-                    y=55,
+                    buffer, "СМОТРИ ЧЕК!",
+                    y=70,
                     color=(150, 150, 200),
                     scale=1,
                 )
             elif self._audio_url:
                 draw_centered_text(
-                    buffer, "СМОТРИ ЧЕК!",
-                    y=55,
+                    buffer, "ССЫЛКА НА ЧЕКЕ",
+                    y=70,
                     color=(150, 150, 200),
                     scale=1,
                 )
 
             # Navigation hint
-            draw_button_labels(
-                buffer,
-                left_text="ТЕКСТ",
-                right_text="ТЕКСТ",
-                time_ms=self._time_in_phase,
+            draw_centered_text(
+                buffer, "◄ ► ТЕКСТ",
                 y=115,
+                color=(100, 100, 100),
+                scale=1,
             )
 
         else:
-            # Show lyrics
+            # Show lyrics full screen
             draw_centered_text(
-                buffer, "ТЕКСТ ТРЕКА",
+                buffer, "ТЕКСТ",
                 y=5,
                 color=color,
                 scale=1,
@@ -1105,7 +1103,7 @@ class RapGodMode(BaseMode):
 
             if self._lyrics and self._lyrics.hook:
                 # Show first few lines of hook
-                lines = self._lyrics.hook.split("\n")[:5]
+                lines = self._lyrics.hook.split("\n")[:6]
                 for i, line in enumerate(lines):
                     draw_centered_text(
                         buffer, line[:22],
@@ -1114,13 +1112,12 @@ class RapGodMode(BaseMode):
                         scale=1,
                     )
 
-            # Navigation hint - show option to view QR
-            draw_button_labels(
-                buffer,
-                left_text="QR",
-                right_text="QR",
-                time_ms=self._time_in_phase,
+            # Navigation hint
+            draw_centered_text(
+                buffer, "◄ ► QR",
                 y=115,
+                color=(100, 100, 100),
+                scale=1,
             )
 
     def render_ticker(self, buffer: np.ndarray) -> None:
