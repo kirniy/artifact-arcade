@@ -566,35 +566,29 @@ class AIProphetMode(BaseMode):
         """Handle input."""
         if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
-                # In image view or no caricature - print immediately
-                if self._result_view == "image" or not self._caricature:
-                    self._finish()
-                    return True
-                # In text view - switch to image first (or finish if no image)
+                if self._result_view == "text" and self._caricature:
+                    self._result_view = "image"
+                    self._text_scroll_complete = True
                 else:
-                    if self._caricature:
-                        self._result_view = "image"
-                        self._text_scroll_complete = True
-                    else:
-                        self._finish()
-                    return True
+                    self._finish()
+                return True
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(False)  # No
                 return True
-            # Toggle to text view in result phase
+            # Toggle view in result phase
             if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
-                self._result_view = "text"
+                self._cycle_result_view(-1)
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(True)  # Yes
                 return True
-            # Toggle to image view in result phase
-            if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT and self._caricature:
-                self._result_view = "image"
+            # Toggle view in result phase
+            if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
+                self._cycle_result_view(1)
                 return True
 
         return False
@@ -1090,6 +1084,37 @@ class AIProphetMode(BaseMode):
         pct = int(self._progress_tracker.get_progress() * 100)
         draw_centered_text(buffer, f"{pct}%", 58, self._accent, scale=1)
 
+    def _get_result_views(self) -> List[str]:
+        views = ["text"]
+        if self._caricature:
+            views.append("image")
+            if self._qr_image is not None or self._uploader.is_uploading:
+                views.append("qr")
+        return views
+
+    def _cycle_result_view(self, direction: int) -> None:
+        views = self._get_result_views()
+        if not views:
+            return
+        try:
+            idx = views.index(self._result_view)
+        except ValueError:
+            idx = 0
+        self._result_view = views[(idx + direction) % len(views)]
+
+    def _result_nav_hint(self) -> Optional[str]:
+        views = self._get_result_views()
+        if len(views) < 2:
+            return None
+        try:
+            idx = views.index(self._result_view)
+        except ValueError:
+            idx = 0
+        labels = {"text": "ТЕКСТ", "image": "ФОТО", "qr": "QR"}
+        left_view = views[(idx - 1) % len(views)]
+        right_view = views[(idx + 1) % len(views)]
+        return f"◄ {labels[left_view]}  ► {labels[right_view]}"
+
     def _render_result(self, buffer, font) -> None:
         """Render prediction result with text first, then image.
 
@@ -1110,7 +1135,9 @@ class AIProphetMode(BaseMode):
             return
 
         # Use view state instead of time-based cycling
-        if self._result_view == "image" and self._caricature and self._sub_phase == ProphetPhase.RESULT:
+        if self._result_view == "qr" and self._sub_phase == ProphetPhase.RESULT:
+            self._render_qr_view(buffer, font)
+        elif self._result_view == "image" and self._caricature and self._sub_phase == ProphetPhase.RESULT:
             # Render caricature
             self._render_caricature(buffer, font)
         else:
@@ -1150,6 +1177,8 @@ class AIProphetMode(BaseMode):
                         pixel = img.getpixel((x, y))
                         buffer[by, bx] = pixel
 
+            nav_hint = self._result_nav_hint()
+
             # Show QR code in bottom-right corner if available
             if self._qr_image is not None:
                 qr_h, qr_w = self._qr_image.shape[:2]
@@ -1158,20 +1187,51 @@ class AIProphetMode(BaseMode):
                 # Background for QR
                 draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
                 buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
-                draw_centered_text(buffer, "СКАН QR", 112, (200, 200, 200), scale=1)
-            elif self._uploader.is_uploading:
-                draw_centered_text(buffer, "ЗАГРУЗКА...", 112, (150, 150, 150), scale=1)
-            else:
-                # Show hint at bottom - blinking "НАЖМИ" to print
-                if int(self._time_in_phase / 500) % 2 == 0:
-                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
+                if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                    draw_centered_text(buffer, nav_hint, 112, (100, 100, 120), scale=1)
                 else:
-                    draw_centered_text(buffer, "◄ ТЕКСТ", 112, (100, 100, 120), scale=1)
+                    draw_centered_text(buffer, "СКАН QR", 112, (200, 200, 200), scale=1)
+            elif self._uploader.is_uploading:
+                if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                    draw_centered_text(buffer, nav_hint, 112, (100, 100, 120), scale=1)
+                else:
+                    draw_centered_text(buffer, "ЗАГРУЗКА...", 112, (150, 150, 150), scale=1)
+            else:
+                # Show hint at bottom - blink between print and navigation
+                if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                    draw_centered_text(buffer, nav_hint, 112, (100, 100, 120), scale=1)
+                else:
+                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
 
         except Exception as e:
             logger.warning(f"Failed to render caricature: {e}")
             # Fallback to prediction text
             self._render_prediction_text(buffer, font)
+
+    def _render_qr_view(self, buffer, font) -> None:
+        """Render full-screen QR view."""
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
+
+        fill(buffer, (255, 255, 255))
+
+        if self._qr_image is not None:
+            qr_h, qr_w = self._qr_image.shape[:2]
+            x_offset = (128 - qr_w) // 2
+            y_offset = (128 - qr_h) // 2
+            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._qr_image
+        elif self._uploader.is_uploading:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
+            draw_centered_text(buffer, "QR...", 65, (200, 200, 100), scale=1)
+        else:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
+            draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
+
+        hint = self._result_nav_hint()
+        if hint:
+            draw_centered_text(buffer, hint, 114, (120, 120, 150), scale=1)
 
     def _render_prediction_text(self, buffer, font) -> None:
         """Render the prediction text with effects - auto-scales to fit."""
@@ -1215,16 +1275,11 @@ class AIProphetMode(BaseMode):
         # Show navigation hint at bottom in result phase - safe Y position
         if self._sub_phase == ProphetPhase.RESULT:
             hint_y = 114
-            if self._caricature:
-                # Show hint to view image
-                if int(self._time_in_phase / 600) % 2 == 0:
-                    draw_centered_text(buffer, "ФОТО ►", hint_y, (100, 150, 200), scale=1)
-                else:
-                    draw_centered_text(buffer, "НАЖМИ", hint_y, (100, 100, 120), scale=1)
-            else:
-                # No caricature - just show print hint
-                if int(self._time_in_phase / 600) % 2 == 0:
-                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", hint_y, (100, 200, 100), scale=1)
+            hint = self._result_nav_hint()
+            if hint:
+                draw_centered_text(buffer, hint, hint_y, (100, 150, 200), scale=1)
+            elif int(self._time_in_phase / 600) % 2 == 0:
+                draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", hint_y, (100, 200, 100), scale=1)
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with smooth seamless scrolling."""

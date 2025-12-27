@@ -486,17 +486,12 @@ class ZodiacMode(BaseMode):
                     self._process_date()
                     return True
             elif self.phase == ModePhase.RESULT:
-                # On image view = print, on text view = switch to image or print
-                if self._result_view == "image" or not self._constellation_portrait:
-                    self._finish()
-                    return True
+                if self._result_view == "text" and self._constellation_portrait:
+                    self._result_view = "image"
+                    self._text_scroll_complete = True
                 else:
-                    if self._constellation_portrait:
-                        self._result_view = "image"
-                        self._text_scroll_complete = True
-                    else:
-                        self._finish()
-                    return True
+                    self._finish()
+                return True
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
@@ -507,8 +502,8 @@ class ZodiacMode(BaseMode):
                     self._input_valid = False
                 return True
             elif self.phase == ModePhase.RESULT:
-                # Toggle to text view
-                self._result_view = "text"
+                # Toggle view
+                self._cycle_result_view(-1)
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
@@ -517,9 +512,9 @@ class ZodiacMode(BaseMode):
                 if self._validate_date():
                     self._process_date()
                 return True
-            elif self.phase == ModePhase.RESULT and self._constellation_portrait:
-                # Toggle to image view
-                self._result_view = "image"
+            elif self.phase == ModePhase.RESULT:
+                # Toggle view
+                self._cycle_result_view(1)
                 return True
 
         elif event.type == EventType.KEYPAD_INPUT:
@@ -625,6 +620,62 @@ class ZodiacMode(BaseMode):
                 self._camera = True
         except Exception as e:
             logger.warning(f"Camera preview update error: {e}")
+
+    def _get_result_views(self) -> List[str]:
+        views = ["text"]
+        if self._constellation_portrait:
+            views.append("image")
+            if self._qr_image is not None or self._uploader.is_uploading:
+                views.append("qr")
+        return views
+
+    def _cycle_result_view(self, direction: int) -> None:
+        views = self._get_result_views()
+        if not views:
+            return
+        try:
+            idx = views.index(self._result_view)
+        except ValueError:
+            idx = 0
+        self._result_view = views[(idx + direction) % len(views)]
+
+    def _result_nav_hint(self) -> Optional[str]:
+        views = self._get_result_views()
+        if len(views) < 2:
+            return None
+        try:
+            idx = views.index(self._result_view)
+        except ValueError:
+            idx = 0
+        labels = {"text": "ТЕКСТ", "image": "ФОТО", "qr": "QR"}
+        left_view = views[(idx - 1) % len(views)]
+        right_view = views[(idx + 1) % len(views)]
+        return f"◄ {labels[left_view]}  ► {labels[right_view]}"
+
+    def _render_qr_view(self, buffer) -> None:
+        """Render full-screen QR view."""
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
+
+        fill(buffer, (255, 255, 255))
+
+        if self._qr_image is not None:
+            qr_h, qr_w = self._qr_image.shape[:2]
+            x_offset = (128 - qr_w) // 2
+            y_offset = (128 - qr_h) // 2
+            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._qr_image
+        elif self._uploader.is_uploading:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
+            draw_centered_text(buffer, "QR...", 65, (200, 200, 100), scale=1)
+        else:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
+            draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
+
+        hint = self._result_nav_hint()
+        if hint:
+            draw_centered_text(buffer, hint, 118, (120, 120, 150), scale=1)
 
     def _start_camera_capture(self) -> None:
         """Start the camera capture sequence."""
@@ -1056,16 +1107,18 @@ class ZodiacMode(BaseMode):
             draw_centered_text(buffer, status_message, 108, (140, 140, 180), scale=1)
 
         elif self.phase == ModePhase.RESULT:
-            # Display portrait or horoscope based on result_view
-            if self._result_view == "image" and self._constellation_portrait:
+            # Display portrait, QR, or horoscope based on result_view
+            if self._result_view == "qr":
+                self._render_qr_view(buffer)
+            elif self._result_view == "image" and self._constellation_portrait:
                 # Portrait view
                 self._render_portrait(buffer)
 
-                # Hint to toggle/print
-                if int(self._time_in_phase / 500) % 2 == 0:
-                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 118, (100, 200, 100), scale=1)
+                nav_hint = self._result_nav_hint()
+                if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                    draw_centered_text(buffer, nav_hint, 118, (100, 100, 120), scale=1)
                 else:
-                    draw_centered_text(buffer, "◄ ТЕКСТ", 118, (100, 100, 120), scale=1)
+                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 118, (100, 200, 100), scale=1)
             else:
                 # Text view - Display zodiac sign and horoscope with pulsing effects
 
@@ -1083,15 +1136,11 @@ class ZodiacMode(BaseMode):
                     scale=1, max_lines=4, line_spacing=4
                 )
 
-                # Footer hint
-                if self._constellation_portrait:
-                    if int(self._time_in_phase / 600) % 2 == 0:
-                        draw_centered_text(buffer, "ФОТО ►", 118, (100, 150, 200), scale=1)
-                    else:
-                        draw_centered_text(buffer, "НАЖМИ", 118, (100, 100, 120), scale=1)
-                else:
-                    if int(self._time_in_phase / 500) % 2 == 0:
-                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 118, (100, 200, 100), scale=1)
+                nav_hint = self._result_nav_hint()
+                if nav_hint:
+                    draw_centered_text(buffer, nav_hint, 118, (100, 150, 200), scale=1)
+                elif int(self._time_in_phase / 500) % 2 == 0:
+                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 118, (100, 200, 100), scale=1)
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with smooth seamless scrolling."""

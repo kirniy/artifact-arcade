@@ -216,27 +216,21 @@ class RoastMeMode(BaseMode):
     def on_input(self, event: Event) -> bool:
         if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
-                # In image view or no image - print immediately
-                if self._display_mode == 0 or not self._doodle_image:
-                    self._finish()
-                    return True
-                # In text view - switch to image first
+                if self._display_mode == 1 and self._doodle_image:
+                    self._display_mode = 0
+                    self._text_scroll_complete = True
                 else:
-                    if self._doodle_image:
-                        self._display_mode = 0
-                        self._text_scroll_complete = True
-                    else:
-                        self._finish()
-                    return True
+                    self._finish()
+                return True
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
-                self._display_mode = 1  # text view
+                self._cycle_display_mode(-1)
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
-            if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT and self._doodle_image:
-                self._display_mode = 0  # image view
+            if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
+                self._cycle_display_mode(1)
                 return True
 
         return False
@@ -262,6 +256,62 @@ class RoastMeMode(BaseMode):
                 self._camera = True
         except Exception:
             pass
+
+    def _get_display_modes(self):
+        modes = [1]  # text
+        if self._doodle_image:
+            modes.append(0)  # image
+            if self._qr_image is not None or self._uploader.is_uploading:
+                modes.append(2)  # qr
+        return modes
+
+    def _cycle_display_mode(self, direction: int) -> None:
+        modes = self._get_display_modes()
+        if not modes:
+            return
+        try:
+            idx = modes.index(self._display_mode)
+        except ValueError:
+            idx = 0
+        self._display_mode = modes[(idx + direction) % len(modes)]
+
+    def _display_nav_hint(self) -> Optional[str]:
+        modes = self._get_display_modes()
+        if len(modes) < 2:
+            return None
+        try:
+            idx = modes.index(self._display_mode)
+        except ValueError:
+            idx = 0
+        labels = {1: "ТЕКСТ", 0: "ФОТО", 2: "QR"}
+        left_view = modes[(idx - 1) % len(modes)]
+        right_view = modes[(idx + 1) % len(modes)]
+        return f"◄ {labels[left_view]}  ► {labels[right_view]}"
+
+    def _render_qr_view(self, buffer) -> None:
+        """Render full-screen QR view."""
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
+
+        fill(buffer, (255, 255, 255))
+
+        if self._qr_image is not None:
+            qr_h, qr_w = self._qr_image.shape[:2]
+            x_offset = (128 - qr_w) // 2
+            y_offset = (128 - qr_h) // 2
+            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._qr_image
+        elif self._uploader.is_uploading:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
+            draw_centered_text(buffer, "QR...", 65, (200, 200, 100), scale=1)
+        else:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
+            draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
+
+        hint = self._display_nav_hint()
+        if hint:
+            draw_centered_text(buffer, hint, 114, (120, 120, 150), scale=1)
 
     def _start_processing(self) -> None:
         self._sub_phase = RoastPhase.PROCESSING
@@ -485,74 +535,81 @@ class RoastMeMode(BaseMode):
              draw_centered_text(buffer, "ПОЛУЧАЙ!", 64, self._red, scale=2)
 
         elif self._sub_phase == RoastPhase.RESULT:
-            # Display mode: 0 = full screen image, 1 = full screen text
-            if self._display_mode == 0 and self._doodle_image and self._doodle_image.image_data:
-                # MODE 0: Full screen caricature/doodle
-                try:
-                    from PIL import Image
-                    from io import BytesIO
-                    import numpy as np
+            # Display mode: 0 = image, 1 = text, 2 = qr
+            if self._display_mode == 2:
+                self._render_qr_view(buffer)
+            else:
+                if self._display_mode == 0 and self._doodle_image and self._doodle_image.image_data:
+                    # MODE 0: Full screen caricature/doodle
+                    try:
+                        from PIL import Image
+                        from io import BytesIO
+                        import numpy as np
 
-                    img = Image.open(BytesIO(self._doodle_image.image_data))
-                    img = img.convert("RGB")
-                    # Fill the display (128x128) with slight margin
-                    img = img.resize((120, 120), Image.Resampling.LANCZOS)
-                    img_array = np.array(img)
+                        img = Image.open(BytesIO(self._doodle_image.image_data))
+                        img = img.convert("RGB")
+                        # Fill the display (128x128) with slight margin
+                        img = img.resize((120, 120), Image.Resampling.LANCZOS)
+                        img_array = np.array(img)
 
-                    # Center the image
-                    buffer[4:124, 4:124] = img_array
+                        # Center the image
+                        buffer[4:124, 4:124] = img_array
 
-                    # Show QR code in bottom-right corner if available
-                    if self._qr_image is not None:
-                        qr_h, qr_w = self._qr_image.shape[:2]
-                        qr_x = 128 - qr_w - 4
-                        qr_y = 128 - qr_h - 18
-                        draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
-                        buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
-                        draw_centered_text(buffer, "СКАН QR", 114, (200, 200, 200), scale=1)
-                    elif self._uploader.is_uploading:
-                        draw_centered_text(buffer, "ЗАГРУЗКА...", 114, (150, 150, 150), scale=1)
-                    else:
-                        # Show hint at bottom (using safe zone Y=114 for scale=1)
-                        if int(self._time_in_phase / 500) % 2 == 0:
-                            draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
+                        nav_hint = self._display_nav_hint()
+
+                        # Show QR code in bottom-right corner if available
+                        if self._qr_image is not None:
+                            qr_h, qr_w = self._qr_image.shape[:2]
+                            qr_x = 128 - qr_w - 4
+                            qr_y = 128 - qr_h - 18
+                            draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
+                            buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
+                            if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                                draw_centered_text(buffer, nav_hint, 114, (100, 100, 120), scale=1)
+                            else:
+                                draw_centered_text(buffer, "СКАН QR", 114, (200, 200, 200), scale=1)
+                        elif self._uploader.is_uploading:
+                            if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                                draw_centered_text(buffer, nav_hint, 114, (100, 100, 120), scale=1)
+                            else:
+                                draw_centered_text(buffer, "ЗАГРУЗКА...", 114, (150, 150, 150), scale=1)
                         else:
-                            draw_centered_text(buffer, "◄ ТЕКСТ", 114, (100, 100, 120), scale=1)
+                            # Show hint at bottom (using safe zone Y=114 for scale=1)
+                            if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                                draw_centered_text(buffer, nav_hint, 114, (100, 100, 120), scale=1)
+                            else:
+                                draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
 
-                except Exception as e:
-                    logger.error(f"Failed to render caricature: {e}")
-                    # Fallback to text mode
-                    self._display_mode = 1
+                    except Exception as e:
+                        logger.error(f"Failed to render caricature: {e}")
+                        # Fallback to text mode
+                        self._display_mode = 1
 
-            if self._display_mode == 1 or not (self._doodle_image and self._doodle_image.image_data):
-                # MODE 1: Full screen text (or fallback if no image)
-                # Vibe score at top
-                draw_centered_text(buffer, self._vibe_score, 15+shake_y, self._yellow, scale=2)
+                if self._display_mode == 1 or not (self._doodle_image and self._doodle_image.image_data):
+                    # MODE 1: Full screen text (or fallback if no image)
+                    # Vibe score at top
+                    draw_centered_text(buffer, self._vibe_score, 15+shake_y, self._yellow, scale=2)
 
-                # Roast text with scrolling
-                lines = smart_wrap_text(self._roast_text, MAIN_DISPLAY_WIDTH - 8, font=None, scale=1)
-                visible_lines = 7
-                line_height = 12
-                total_lines = len(lines)
-                scroll_offset = 0
-                if total_lines > visible_lines:
-                    cycle = max(1, total_lines - visible_lines + 1)
-                    step = int((self._time_in_phase / 2000) % cycle)
-                    scroll_offset = step
+                    # Roast text with scrolling
+                    lines = smart_wrap_text(self._roast_text, MAIN_DISPLAY_WIDTH - 8, font=None, scale=1)
+                    visible_lines = 7
+                    line_height = 12
+                    total_lines = len(lines)
+                    scroll_offset = 0
+                    if total_lines > visible_lines:
+                        cycle = max(1, total_lines - visible_lines + 1)
+                        step = int((self._time_in_phase / 2000) % cycle)
+                        scroll_offset = step
 
-                y = 38
-                for line in lines[scroll_offset:scroll_offset + visible_lines]:
-                    draw_centered_text(buffer, line, y+shake_y, (255, 255, 255))
-                    y += line_height
+                    y = 38
+                    for line in lines[scroll_offset:scroll_offset + visible_lines]:
+                        draw_centered_text(buffer, line, y+shake_y, (255, 255, 255))
+                        y += line_height
 
-                # Show hint at bottom (using safe zone Y=114 for scale=1)
-                if self._doodle_image and self._doodle_image.image_data:
-                    if int(self._time_in_phase / 600) % 2 == 0:
-                        draw_centered_text(buffer, "ФОТО ►", 114, (100, 150, 200), scale=1)
-                    else:
-                        draw_centered_text(buffer, "НАЖМИ", 114, (100, 100, 120), scale=1)
-                else:
-                    if int(self._time_in_phase / 600) % 2 == 0:
+                    nav_hint = self._display_nav_hint()
+                    if nav_hint:
+                        draw_centered_text(buffer, nav_hint, 114, (100, 150, 200), scale=1)
+                    elif int(self._time_in_phase / 600) % 2 == 0:
                         draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
 
         self._particles.render(buffer)

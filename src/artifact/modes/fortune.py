@@ -298,11 +298,12 @@ class FortuneMode(BaseMode):
         self._glow_phase: float = 0.0
         self._ball_glow: float = 0.0
 
-        # Result view state
-        self._result_view: str = "text"  # "text" or "image"
-        self._text_scroll_complete: bool = False
-        self._text_view_time: float = 0.0
-        self._scroll_duration: float = 0.0
+        # Result view state - PAGE-BASED navigation (no scrolling!)
+        # Flow: Page 0 = image, Pages 1-N = text pages, Last = QR
+        self._current_page: int = 0
+        self._text_pages: List[List[str]] = []  # Lines per text page
+        self._total_pages: int = 0
+        self._lines_per_page: int = 5  # Lines at scale 2 that fit on screen
 
         # Particles
         self._particles = ParticleSystem()
@@ -345,10 +346,11 @@ class FortuneMode(BaseMode):
         self._qr_url = None
         self._qr_image = None
         self._reveal_progress = 0.0
-        self._result_view = "text"
-        self._text_scroll_complete = False
-        self._text_view_time = 0.0
-        self._scroll_duration = 0.0
+
+        # Reset pagination state
+        self._current_page = 0
+        self._text_pages = []
+        self._total_pages = 0
 
         # Use shared camera service (always running)
         self._camera = camera_service.is_running
@@ -433,29 +435,14 @@ class FortuneMode(BaseMode):
 
                 if self._reveal_progress >= 1.0:
                     self._sub_phase = FortunePhase.RESULT
-                    # Calculate scroll duration when entering result phase
-                    if self._prediction and self._scroll_duration == 0:
-                        from artifact.graphics.text_utils import calculate_scroll_duration, smart_wrap_text, MAIN_DISPLAY_WIDTH
-                        from artifact.graphics.fonts import load_font
-                        font = load_font("cyrillic")
-                        margin = 4
-                        rect = (margin, 20, MAIN_DISPLAY_WIDTH - margin * 2, 90)
-                        self._scroll_duration = calculate_scroll_duration(
-                            self._prediction, rect, font, scale=1, line_spacing=2, scroll_interval_ms=1500
-                        )
-                        self._scroll_duration = max(3000, self._scroll_duration + 2000)
+                    # Paginate prediction text when entering result phase
+                    if self._prediction and not self._text_pages:
+                        self._paginate_prediction()
+                    self._current_page = 0  # Start at image page
 
             elif self._sub_phase == FortunePhase.RESULT:
-                # Track time in text view
-                if self._result_view == "text":
-                    self._text_view_time += delta_ms
-                    if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
-                        self._text_scroll_complete = True
-                        if self._caricature:
-                            self._result_view = "image"
-
-                # Auto-complete after 45 seconds
-                if self._time_in_phase > 45000:
+                # Auto-complete after 60 seconds
+                if self._time_in_phase > 60000:
                     self._finish()
 
     def on_input(self, event: Event) -> bool:
@@ -483,31 +470,26 @@ class FortuneMode(BaseMode):
                     self._confirm_birthdate()
                     return True
             elif self.phase == ModePhase.RESULT and self._sub_phase == FortunePhase.RESULT:
-                if self._result_view == "image" or not self._caricature:
-                    self._finish()
-                    return True
-                else:
-                    if self._caricature:
-                        self._result_view = "image"
-                        self._text_scroll_complete = True
-                    else:
-                        self._finish()
-                    return True
+                # Main button = print and finish
+                self._finish()
+                return True
 
         elif event.type == EventType.ARCADE_LEFT:
             if self._sub_phase == FortunePhase.BIRTHDATE_INPUT:
                 self._remove_digit()
                 return True
             if self.phase == ModePhase.RESULT and self._sub_phase == FortunePhase.RESULT:
-                self._result_view = "text"
+                # Previous page
+                self._current_page = max(0, self._current_page - 1)
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self._sub_phase == FortunePhase.BIRTHDATE_INPUT and self._input_complete:
                 self._confirm_birthdate()
                 return True
-            if self.phase == ModePhase.RESULT and self._sub_phase == FortunePhase.RESULT and self._caricature:
-                self._result_view = "image"
+            if self.phase == ModePhase.RESULT and self._sub_phase == FortunePhase.RESULT:
+                # Next page
+                self._current_page = min(self._total_pages - 1, self._current_page + 1)
                 return True
 
         return False
@@ -844,9 +826,46 @@ class FortuneMode(BaseMode):
         if result.success:
             self._qr_url = result.url
             self._qr_image = result.qr_image
+            # Recalculate total pages to include QR
+            self._total_pages = 1 + len(self._text_pages) + 1  # image + text pages + QR
             logger.info(f"Fortune caricature uploaded successfully: {self._qr_url}")
         else:
             logger.error(f"Fortune caricature upload failed: {result.error}")
+
+    def _paginate_prediction(self) -> None:
+        """Split prediction text into static pages for display.
+
+        Page structure:
+        - Page 0: Image (caricature)
+        - Pages 1 to N-1: Text pages
+        - Page N (last): QR code (if available)
+        """
+        from artifact.graphics.text_utils import smart_wrap_text, MAIN_DISPLAY_WIDTH
+        from artifact.graphics.fonts import load_font
+
+        if not self._prediction:
+            self._text_pages = []
+            self._total_pages = 1  # Just image
+            return
+
+        font = load_font("cyrillic")
+        margin = 6
+        available_width = MAIN_DISPLAY_WIDTH - margin * 2
+
+        # Wrap text at scale 2 (larger, more readable)
+        all_lines = smart_wrap_text(self._prediction, available_width, font, scale=2)
+
+        # Split into pages of N lines each
+        self._text_pages = []
+        for i in range(0, len(all_lines), self._lines_per_page):
+            page_lines = all_lines[i:i + self._lines_per_page]
+            self._text_pages.append(page_lines)
+
+        # Total pages: image + text pages + QR (if available)
+        has_qr = self._qr_image is not None or self._uploader.is_uploading
+        self._total_pages = 1 + len(self._text_pages) + (1 if has_qr else 0)
+
+        logger.info(f"Paginated prediction: {len(all_lines)} lines -> {len(self._text_pages)} text pages, total {self._total_pages} pages")
 
     def on_exit(self) -> None:
         """Cleanup."""
@@ -1052,28 +1071,44 @@ class FortuneMode(BaseMode):
             draw_centered_text(buffer, "ФОТО!", 60, (50, 50, 50), scale=2)
 
     def _render_processing(self, buffer, font) -> None:
-        """Render AI processing animation with smart progress tracking."""
-        from artifact.graphics.primitives import draw_rect, draw_line, draw_circle
+        """Render AI processing animation with camera background."""
+        from artifact.graphics.primitives import draw_rect, fill
         from artifact.graphics.text_utils import draw_animated_text, draw_centered_text, TextEffect
 
-        # Render mystical-style loading animation from progress tracker
-        self._progress_tracker.render_loading_animation(buffer, style="mystical", time_ms=self._time_in_phase)
+        # Show camera preview as background (dimmed)
+        frame = camera_service.get_frame(timeout=0)
+        if frame is not None and frame.shape[:2] == (128, 128):
+            # Dim the camera feed to 30% brightness for background
+            dimmed = (frame.astype(np.float32) * 0.3).astype(np.uint8)
+            np.copyto(buffer, dimmed)
+        else:
+            # Fallback to dark background if no camera
+            fill(buffer, (20, 15, 35))
 
-        # Processing text
+        # Semi-transparent overlay at top for text readability (vectorized)
+        gradient_height = 50
+        alpha_values = 0.7 * (1.0 - np.arange(gradient_height) / gradient_height)
+        alpha_matrix = alpha_values[:, np.newaxis, np.newaxis]  # Shape: (50, 1, 1)
+        buffer[:gradient_height] = (buffer[:gradient_height].astype(np.float32) * (1 - alpha_matrix)).astype(np.uint8)
+
+        # Processing text with glow effect
         draw_animated_text(
-            buffer, "ГАДАЮ", 25,
+            buffer, "ГАДАЮ", 15,
             self._accent, self._time_in_phase,
             TextEffect.GLOW, scale=2
         )
 
-        # Show zodiac info (no emoji - font doesn't support them)
-        draw_centered_text(buffer, self._zodiac_sign.upper(), 55, (150, 150, 170), scale=1)
-        draw_centered_text(buffer, self._chinese_zodiac.upper(), 68, (150, 150, 170), scale=1)
+        # Show zodiac info
+        draw_centered_text(buffer, self._zodiac_sign.upper(), 45, (200, 200, 220), scale=1)
+        draw_centered_text(buffer, self._chinese_zodiac.upper(), 58, (180, 180, 200), scale=1)
 
-        # Progress bar using smart tracker
-        bar_w, bar_h = 100, 8
+        # Progress bar background (semi-transparent)
+        bar_w, bar_h = 100, 10
         bar_x = (128 - bar_w) // 2
-        bar_y = 86
+        bar_y = 80
+
+        # Dark background for progress bar
+        draw_rect(buffer, bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4, (20, 20, 40, 180))
 
         # Use the SmartProgressTracker's render method for the progress bar
         self._progress_tracker.render_progress_bar(
@@ -1085,32 +1120,72 @@ class FortuneMode(BaseMode):
 
         # Show phase-specific status message from tracker
         status_message = self._progress_tracker.get_message()
-        draw_centered_text(buffer, status_message, 105, (120, 120, 150), scale=1)
+        # Dark background strip for text readability
+        draw_rect(buffer, 0, 100, 128, 28, (20, 15, 35))
+        draw_centered_text(buffer, status_message, 108, (150, 150, 170), scale=1)
+
+    def _get_page_type(self, page_num: int) -> str:
+        """Determine what type of content is on a given page number.
+
+        Page structure:
+        - Page 0: Image (caricature)
+        - Pages 1 to len(text_pages): Text pages
+        - Last page (if QR available): QR code
+        """
+        if page_num == 0:
+            return "image"
+
+        text_page_idx = page_num - 1
+        if text_page_idx < len(self._text_pages):
+            return "text"
+
+        # Last page is QR if available
+        has_qr = self._qr_image is not None or self._uploader.is_uploading
+        if has_qr:
+            return "qr"
+
+        return "text"  # Fallback
+
+    def _get_nav_hint(self) -> str:
+        """Get navigation hint showing current page and arrows."""
+        if self._total_pages <= 1:
+            return "КНОПКА = ПЕЧАТЬ"
+
+        # Show compact page indicator with arrows
+        page_num = self._current_page + 1
+        total = self._total_pages
+
+        left_arrow = "◄" if self._current_page > 0 else " "
+        right_arrow = "►" if self._current_page < self._total_pages - 1 else " "
+
+        return f"{left_arrow} {page_num}/{total} {right_arrow} ПЕЧАТЬ"
 
     def _render_result(self, buffer, font) -> None:
-        """Render prediction result with text first, then image.
+        """Render prediction result with PAGE-BASED navigation.
 
-        Flow:
-        1. Text scrolls completely first
-        2. Auto-switches to image after scroll completes
-        3. Arrow keys toggle between text/image views
-        4. Main button on image = print
+        Page structure:
+        - Page 0: Image (caricature)
+        - Pages 1-N: Static text pages (no scrolling!)
+        - Last page: Full-screen QR code
         """
-        from artifact.graphics.primitives import draw_rect, fill
-        from artifact.graphics.text_utils import (
-            draw_centered_text, smart_wrap_text, TextEffect, MAIN_DISPLAY_WIDTH
-        )
-        from io import BytesIO
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
 
         if self._sub_phase == FortunePhase.REVEAL:
-            # During reveal, show prediction text with fade-in
-            self._render_prediction_text(buffer, font)
-        elif self._result_view == "image" and self._caricature:
-            # Caricature view
-            self._render_caricature(buffer, font)
-        else:
-            # Text view - show zodiac info + prediction
-            self._render_prediction_text(buffer, font)
+            # During reveal, show image with fade-in
+            self._render_page_image(buffer, font)
+            return
+
+        # Determine what to render based on current page
+        page_type = self._get_page_type(self._current_page)
+
+        if page_type == "image":
+            self._render_page_image(buffer, font)
+        elif page_type == "text":
+            text_page_idx = self._current_page - 1
+            self._render_page_text(buffer, font, text_page_idx)
+        elif page_type == "qr":
+            self._render_page_qr(buffer, font)
 
     def _render_zodiac_view(self, buffer, font) -> None:
         """Render zodiac information view."""
@@ -1130,99 +1205,59 @@ class FortuneMode(BaseMode):
         if int(self._time_in_phase / 600) % 2 == 0:
             draw_centered_text(buffer, "НАЖМИ", 114, (100, 100, 120), scale=1)
 
-    def _render_prediction_text(self, buffer, font) -> None:
-        """Render the prediction text with Star Wars crawl effect."""
-        from artifact.graphics.text_utils import (
-            draw_centered_text, smart_wrap_text, render_star_wars_crawl,
-            render_scrolling_text_area, MAIN_DISPLAY_WIDTH, CHAR_HEIGHT
-        )
+    def _render_page_text(self, buffer, font, text_page_idx: int) -> None:
+        """Render a static text page (no scrolling!).
 
-        if not self._prediction:
+        Displays pre-paginated lines at scale 2, centered on screen.
+        """
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
+
+        # Dark mystical background
+        fill(buffer, (20, 15, 35))
+
+        if text_page_idx < 0 or text_page_idx >= len(self._text_pages):
+            draw_centered_text(buffer, "НЕТ ТЕКСТА", 55, (100, 100, 100), scale=2)
             return
 
-        # Check if text is long enough for Star Wars crawl
-        margin = 4
-        available_width = MAIN_DISPLAY_WIDTH - margin * 2
-        lines_s2 = smart_wrap_text(self._prediction, available_width, font, scale=2)
+        lines = self._text_pages[text_page_idx]
+        scale = 2
+        line_height = 20  # Spacing for scale 2
 
-        # Use Star Wars crawl for long predictions (more than 6 lines at scale 2)
-        if len(lines_s2) > 6:
-            # Star Wars crawl for long predictions
-            render_star_wars_crawl(
-                buffer,
-                self._prediction,
-                self._time_in_phase,
-                color=self._secondary,  # Gold color like Star Wars
-                speed=0.012,  # Slow, readable scroll
-                font=font,
-                scale=1,
-                loop=True,
-            )
-        else:
-            # Short predictions: show static with effects
-            if len(lines_s2) <= 6:
-                scale = 2
-                lines = lines_s2
-                line_height = 18
-                max_lines = 6
-                start_y = 8
-            else:
-                scale = 1
-                lines = smart_wrap_text(self._prediction, available_width, font, scale=1)
-                line_height = 10
-                max_lines = 11
-                start_y = 5
+        # Calculate starting Y to vertically center text block
+        total_height = len(lines) * line_height
+        start_y = max(8, (100 - total_height) // 2)  # Leave room for nav hint
 
-            # Scroll text if more lines than fit to avoid truncation
-            if len(lines) > max_lines:
-                render_scrolling_text_area(
-                    buffer,
-                    self._prediction,
-                    (margin, start_y, available_width, max_lines * line_height),
-                    (255, 255, 255),
-                    self._time_in_phase,
-                    font=font,
-                    scale=scale,
-                    line_spacing=line_height - CHAR_HEIGHT * scale,
-                    scroll_interval_ms=1500,
-                )
-            else:
-                y = start_y
-                for i, line in enumerate(lines[:max_lines]):
-                    if self._sub_phase == FortunePhase.REVEAL:
-                        # Fade-in animation
-                        line_alpha = min(1.0, self._reveal_progress * (max_lines / 2) - i * 0.5)
-                        if line_alpha <= 0:
-                            continue
-                        color = tuple(int(255 * line_alpha) for _ in range(3))
-                    else:
-                        # Wave effect
-                        wave_y = y + int(1.5 * math.sin(self._time_in_phase / 200 + i * 0.4))
-                        pulse = 0.85 + 0.15 * math.sin(self._time_in_phase / 300 + i * 0.3)
-                        color = tuple(int(255 * pulse) for _ in range(3))
-                        y = wave_y
+        # Render each line with subtle wave animation
+        for i, line in enumerate(lines):
+            # Subtle wave effect
+            wave_offset = int(1.5 * math.sin(self._time_in_phase / 300 + i * 0.5))
+            y = start_y + i * line_height + wave_offset
 
-                    draw_centered_text(buffer, line, y, color, scale=scale)
-                    y += line_height
+            # Subtle pulse
+            pulse = 0.9 + 0.1 * math.sin(self._time_in_phase / 400 + i * 0.3)
+            color = tuple(int(255 * pulse) for _ in range(3))
 
-        # Hint at bottom (using safe zone Y=114 for scale=1)
-        if self._sub_phase == FortunePhase.RESULT:
-            if self._caricature:
-                if int(self._time_in_phase / 600) % 2 == 0:
-                    draw_centered_text(buffer, "ФОТО ►", 114, (100, 150, 200), scale=1)
-                else:
-                    draw_centered_text(buffer, "НАЖМИ", 114, (100, 100, 120), scale=1)
-            else:
-                if int(self._time_in_phase / 600) % 2 == 0:
-                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
+            draw_centered_text(buffer, line, y, color, scale=scale)
 
-    def _render_caricature(self, buffer, font) -> None:
-        """Render the AI-generated caricature."""
-        from artifact.graphics.primitives import draw_rect
+        # Navigation hint at bottom
+        hint = self._get_nav_hint()
+        draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
+
+    def _render_page_image(self, buffer, font) -> None:
+        """Render the caricature/image page (Page 0)."""
+        from artifact.graphics.primitives import fill
         from artifact.graphics.text_utils import draw_centered_text
         from io import BytesIO
 
+        # Dark background
+        fill(buffer, (20, 15, 35))
+
         if not self._caricature:
+            # No image - show placeholder
+            draw_centered_text(buffer, "НЕТ ФОТО", 55, (100, 100, 100), scale=2)
+            hint = self._get_nav_hint()
+            draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
             return
 
         try:
@@ -1231,38 +1266,82 @@ class FortuneMode(BaseMode):
             img = Image.open(BytesIO(self._caricature.image_data))
             img = img.convert("RGB")
 
-            display_size = 100
-            img = img.resize((display_size, display_size), Image.Resampling.NEAREST)
+            # Fill most of screen (leave room for nav hint)
+            display_size = 108
+            img = img.resize((display_size, display_size), Image.Resampling.LANCZOS)
 
             x_offset = (128 - display_size) // 2
-            y_offset = 5
+            y_offset = 2
 
-            # Copy image to buffer - VECTORIZED
+            # Fade-in during reveal phase
+            if self._sub_phase == FortunePhase.REVEAL:
+                alpha = min(1.0, self._reveal_progress)
+            else:
+                alpha = 1.0
+
+            # Copy image to buffer
             img_array = np.array(img, dtype=np.uint8)
+            if alpha < 1.0:
+                img_array = (img_array.astype(np.float32) * alpha).astype(np.uint8)
+
             y_end = min(y_offset + display_size, 128)
             x_end = min(x_offset + display_size, 128)
             img_h = y_end - y_offset
             img_w = x_end - x_offset
             buffer[y_offset:y_end, x_offset:x_end] = img_array[:img_h, :img_w]
 
-            # Display QR code if available (bottom-right corner)
-            if self._qr_image is not None:
-                qr_h, qr_w = self._qr_image.shape[:2]
-                qr_x = 128 - qr_w - 4
-                qr_y = 128 - qr_h - 18  # Leave room for hint text
-                # Black background for QR visibility
-                draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
-                buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
-
-            # Show hint at bottom - blinking "НАЖМИ" to print
-            if int(self._time_in_phase / 500) % 2 == 0:
-                draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
-            else:
-                draw_centered_text(buffer, "◄ ТЕКСТ", 112, (100, 100, 120), scale=1)
+            # Navigation hint at bottom
+            if self._sub_phase == FortunePhase.RESULT:
+                hint = self._get_nav_hint()
+                draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
 
         except Exception as e:
             logger.warning(f"Failed to render caricature: {e}")
-            self._render_prediction_text(buffer, font)
+            draw_centered_text(buffer, "ОШИБКА", 55, (255, 100, 100), scale=2)
+
+    def _render_page_qr(self, buffer, font) -> None:
+        """Render full-screen QR code page (last page)."""
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
+
+        if self._qr_image is not None:
+            # White background for QR visibility
+            fill(buffer, (255, 255, 255))
+
+            # Center QR code on screen (leaving room for hint)
+            qr_h, qr_w = self._qr_image.shape[:2]
+
+            # Scale QR to be large and centered
+            target_size = 100
+            if qr_h != target_size or qr_w != target_size:
+                from PIL import Image
+                qr_pil = Image.fromarray(self._qr_image)
+                qr_pil = qr_pil.resize((target_size, target_size), Image.Resampling.NEAREST)
+                qr_scaled = np.array(qr_pil)
+            else:
+                qr_scaled = self._qr_image
+
+            qr_h, qr_w = qr_scaled.shape[:2]
+            x_offset = (128 - qr_w) // 2
+            y_offset = 5
+
+            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
+
+            # Hint on dark strip at bottom
+            draw_centered_text(buffer, "СКАЧАТЬ ФОТО", 112, (50, 50, 50), scale=1)
+
+        elif self._uploader.is_uploading:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "ЗАГРУЗКА", 45, (200, 200, 100), scale=2)
+            draw_centered_text(buffer, "QR КОДА...", 70, (150, 150, 150), scale=1)
+        else:
+            fill(buffer, (20, 20, 30))
+            draw_centered_text(buffer, "QR", 45, (100, 100, 100), scale=2)
+            draw_centered_text(buffer, "НЕ ГОТОВ", 70, (100, 100, 100), scale=1)
+
+        # Navigation hint at bottom
+        hint = self._get_nav_hint()
+        draw_centered_text(buffer, hint, 114, (100, 100, 150), scale=1)
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with smooth seamless scrolling."""
@@ -1307,11 +1386,20 @@ class FortuneMode(BaseMode):
                 TickerEffect.WAVE_SCROLL, speed=0.025
             )
 
-        elif self._sub_phase == FortunePhase.RESULT and self._prediction:
+        elif self._sub_phase == FortunePhase.RESULT:
+            # Show page type on ticker
+            page_type = self._get_page_type(self._current_page)
+            if page_type == "image":
+                ticker_text = "ТВОЙ ПОРТРЕТ"
+            elif page_type == "qr":
+                ticker_text = "СКАЧАЙ ФОТО"
+            else:
+                page_num = self._current_page
+                ticker_text = f"СТРАНИЦА {page_num}/{self._total_pages - 1}"
             render_ticker_animated(
-                buffer, self._prediction,
+                buffer, ticker_text,
                 self._time_in_phase, self._accent,
-                TickerEffect.WAVE_SCROLL, speed=0.022
+                TickerEffect.WAVE_SCROLL, speed=0.025
             )
 
         else:
@@ -1338,5 +1426,12 @@ class FortuneMode(BaseMode):
             dot = dots[int(self._time_in_phase / 200) % 4]
             return f" {dot} ГАДАЮ {dot} ".center(16)[:16]
         elif self._sub_phase == FortunePhase.RESULT:
-            return " * СУДЬБА * ".center(16)[:16]
+            page_type = self._get_page_type(self._current_page)
+            if page_type == "image":
+                return " * ПОРТРЕТ * ".center(16)[:16]
+            elif page_type == "qr":
+                return " * СКАЧАТЬ * ".center(16)[:16]
+            else:
+                page_num = self._current_page
+                return f" {page_num}/{self._total_pages} ".center(16)[:16]
         return " * ГАДАЛКА * ".center(16)
