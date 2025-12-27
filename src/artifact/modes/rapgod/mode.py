@@ -144,6 +144,8 @@ class RapGodMode(BaseMode):
         self._download_url: Optional[str] = None
         self._qr_image: Optional[np.ndarray] = None
         self._generation_task: Optional[asyncio.Task] = None
+        self._generation_error: Optional[str] = None  # Error message if failed
+        self._track_still_processing: bool = False  # True if Suno timed out but still running
 
         # Progress tracking
         self._progress_tracker = SmartProgressTracker(mode_theme="rapgod")
@@ -519,8 +521,16 @@ class RapGodMode(BaseMode):
                         self._audio_bytes = await self._suno.download_audio(
                             self._audio_url
                         )
+                    elif track.status == TrackStatus.PROCESSING:
+                        # Timed out but still generating
+                        self._track_still_processing = True
+                        logger.warning(f"Track still processing: {self._task_id}")
+                    elif track.status == TrackStatus.FAILED:
+                        self._generation_error = track.error or "Ошибка генерации"
+                        logger.error(f"Track generation failed: {track.error}")
             else:
                 logger.warning("Suno API not available, skipping music generation")
+                self._generation_error = "Suno API недоступен"
 
             # Phase 3: Upload to Selectel S3 for QR sharing
             self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
@@ -578,13 +588,23 @@ class RapGodMode(BaseMode):
         elif self._audio_url:
             print_data["download_url"] = self._audio_url
 
+        # Add status info for receipt
+        if self._track_still_processing:
+            print_data["status"] = "processing"
+            print_data["status_message"] = "Трек ещё готовится - попробуй ссылку позже!"
+        elif self._generation_error:
+            print_data["status"] = "failed"
+            print_data["status_message"] = f"Ошибка: {self._generation_error}"
+        else:
+            print_data["status"] = "complete"
+
         # Create result
         display_text = self._lyrics.hook if self._lyrics else "Трек готовится..."
         ticker_text = f"RAP GOD: {self._lyrics.title}" if self._lyrics else "ARTIFACT BEATS"
 
         result = ModeResult(
             mode_name=self.name,
-            success=True,
+            success=bool(self._lyrics),  # Success if we at least have lyrics
             display_text=display_text,
             ticker_text=ticker_text,
             lcd_text=" RAP GOD ".center(16)[:16],
@@ -904,12 +924,26 @@ class RapGodMode(BaseMode):
 
     def _render_preview(self, buffer: np.ndarray, color: tuple) -> None:
         """Render audio preview with QR code."""
+        # Title depends on status
+        if self._audio_bytes:
+            title = "ГОТОВО!"
+            title_effect = TextEffect.RAINBOW
+        elif self._track_still_processing:
+            title = "ТЕКСТ ГОТОВ"
+            title_effect = TextEffect.GLOW
+        elif self._generation_error:
+            title = "ОШИБКА"
+            title_effect = TextEffect.NONE
+        else:
+            title = "ПОЧТИ..."
+            title_effect = TextEffect.WAVE
+
         draw_animated_text(
-            buffer, "ГОТОВО!",
+            buffer, title,
             y=10,
             base_color=color,
             time_ms=self._time_in_phase,
-            effect=TextEffect.RAINBOW,
+            effect=title_effect,
             scale=2,
         )
 
@@ -921,17 +955,42 @@ class RapGodMode(BaseMode):
                 scale=1,
             )
 
-        # Show "playing" indicator
+        # Show status based on generation result
         if self._audio_bytes:
-            bars = "▶ ▮▮▮▮"  # Playing indicator
             draw_centered_text(
                 buffer, "ИГРАЕТ...",
                 y=55,
                 color=(100, 200, 100),
                 scale=1,
             )
+        elif self._track_still_processing:
+            draw_centered_text(
+                buffer, "Трек ещё готовится",
+                y=50,
+                color=(255, 200, 100),
+                scale=1,
+            )
+            draw_centered_text(
+                buffer, "Скоро будет на чеке!",
+                y=64,
+                color=(200, 150, 80),
+                scale=1,
+            )
+        elif self._generation_error:
+            draw_centered_text(
+                buffer, "Не удалось создать",
+                y=50,
+                color=(255, 100, 100),
+                scale=1,
+            )
+            draw_centered_text(
+                buffer, "Текст на чеке!",
+                y=64,
+                color=(200, 100, 100),
+                scale=1,
+            )
 
-        # QR code prompt
+        # QR code prompt (only if we have audio)
         if self._download_url:
             draw_centered_text(
                 buffer, "СКАНИРУЙ QR",
@@ -943,6 +1002,14 @@ class RapGodMode(BaseMode):
                 buffer, "ДЛЯ СКАЧИВАНИЯ",
                 y=92,
                 color=(100, 100, 150),
+                scale=1,
+            )
+        elif self._lyrics:
+            # No audio but have lyrics - mention receipt
+            draw_centered_text(
+                buffer, "ТЕКСТ НА ЧЕКЕ",
+                y=85,
+                color=(150, 150, 150),
                 scale=1,
             )
 
