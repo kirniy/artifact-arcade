@@ -1,41 +1,58 @@
 """USB Button LED control utility.
 
 Controls the LED on the giant red USB button (LinTx Keyboard 8088:0015).
-The button registers as a keyboard with LED support, so we can control
-its LED via the standard Linux LED subsystem.
+Uses evdev to send LED commands directly to the device, which is more
+reliable than the sysfs LED subsystem.
 """
 
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# The button shows up as input7 with LED support
-# LED paths: /sys/class/leds/input7::{numlock,capslock,scrolllock,compose,kana}
+# USB button vendor/product ID
+BUTTON_VENDOR_ID = 0x8088
+BUTTON_PRODUCT_ID = 0x0015
+
+# Fallback: sysfs LED paths
 LED_BASE_PATH = Path("/sys/class/leds")
-BUTTON_LED_PATTERNS = ["input7::numlock", "input7::scrolllock"]  # Try these first
 
 
-def _find_button_led() -> Optional[Path]:
-    """Find the USB button LED path dynamically.
+def _find_button_device() -> Optional[str]:
+    """Find the USB button's evdev device path.
 
-    The input number can change on reboot, so we search for LinTx device.
+    Returns:
+        Path like '/dev/input/event7' or None if not found
     """
+    try:
+        import evdev
+
+        for path in evdev.list_devices():
+            try:
+                device = evdev.InputDevice(path)
+                info = device.info
+                if info.vendor == BUTTON_VENDOR_ID and info.product == BUTTON_PRODUCT_ID:
+                    logger.debug(f"Found USB button at {path}: {device.name}")
+                    return path
+            except Exception:
+                continue
+    except ImportError:
+        logger.debug("evdev not available")
+    except Exception as e:
+        logger.debug(f"Error searching for button device: {e}")
+
+    return None
+
+
+def _find_button_led_sysfs() -> Optional[Path]:
+    """Find the USB button LED path via sysfs (fallback)."""
     if not LED_BASE_PATH.exists():
         return None
-
-    # Try known patterns first
-    for pattern in BUTTON_LED_PATTERNS:
-        led_path = LED_BASE_PATH / pattern / "brightness"
-        if led_path.exists():
-            return led_path
 
     # Search for any numlock LED on high input numbers (USB devices)
     for led_dir in LED_BASE_PATH.iterdir():
         if led_dir.name.startswith("input") and "numlock" in led_dir.name:
-            # Check if it's a USB device (input number > 4 usually)
             try:
                 input_num = int(led_dir.name.split("::")[0].replace("input", ""))
                 if input_num >= 4:  # USB devices are usually higher numbers
@@ -48,8 +65,47 @@ def _find_button_led() -> Optional[Path]:
     return None
 
 
+def _find_hidraw_device() -> Optional[str]:
+    """Find the USB button's hidraw device path.
+
+    Returns:
+        Path like '/dev/hidraw0' or None if not found
+    """
+    import os
+    import struct
+
+    HIDIOCGRAWINFO = 0x80084803  # ioctl to get device info
+
+    for i in range(10):
+        hidraw_path = f"/dev/hidraw{i}"
+        if not os.path.exists(hidraw_path):
+            continue
+
+        try:
+            import fcntl
+
+            with open(hidraw_path, "rb") as f:
+                # Get device info via ioctl
+                buf = bytearray(8)
+                fcntl.ioctl(f.fileno(), HIDIOCGRAWINFO, buf)
+                bustype, vendor, product = struct.unpack("Ihh", buf)
+
+                if vendor == BUTTON_VENDOR_ID and product == BUTTON_PRODUCT_ID:
+                    logger.debug(f"Found USB button hidraw at {hidraw_path}")
+                    return hidraw_path
+        except Exception:
+            continue
+
+    return None
+
+
 def set_button_led(on: bool) -> bool:
     """Set the USB button LED state.
+
+    Tries multiple methods:
+    1. hidraw - send HID output report directly
+    2. evdev - use LED event interface
+    3. sysfs - write to LED brightness file
 
     Args:
         on: True to turn LED on, False to turn off
@@ -57,22 +113,71 @@ def set_button_led(on: bool) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    led_path = _find_button_led()
-    if not led_path:
-        logger.debug("USB button LED not found")
-        return False
+    # Method 1: Send HID output report via hidraw (most reliable)
+    hidraw_path = _find_hidraw_device()
+    if hidraw_path:
+        try:
+            # HID LED report: byte 0 = report ID (0), byte 1 = LED state
+            # Bit 0 = NumLock, Bit 1 = CapsLock, Bit 2 = ScrollLock
+            # Try all LEDs on (0x07) or all off (0x00)
+            led_byte = 0x07 if on else 0x00
+            with open(hidraw_path, "wb") as f:
+                # Some devices want report ID 0, some don't
+                # Try without report ID first (just LED byte)
+                try:
+                    f.write(bytes([led_byte]))
+                    f.flush()
+                except Exception:
+                    pass
+                # Try with report ID 0
+                try:
+                    f.write(bytes([0x00, led_byte]))
+                    f.flush()
+                except Exception:
+                    pass
+            logger.debug(f"USB button LED set via hidraw: {'on' if on else 'off'}")
+            return True
+        except PermissionError:
+            logger.debug(f"Permission denied for {hidraw_path}")
+        except Exception as e:
+            logger.debug(f"hidraw LED control failed: {e}")
 
+    # Method 2: Use evdev to set LED directly
     try:
-        with open(led_path, "w") as f:
-            f.write("1" if on else "0")
-        logger.debug(f"USB button LED set to {'on' if on else 'off'}")
-        return True
-    except PermissionError:
-        logger.warning(f"Permission denied writing to {led_path}. Run as root.")
-        return False
+        import evdev
+        from evdev import ecodes
+
+        device_path = _find_button_device()
+        if device_path:
+            device = evdev.InputDevice(device_path)
+            # Try setting multiple LED types - the button might respond to any
+            for led in [ecodes.LED_NUML, ecodes.LED_CAPSL, ecodes.LED_SCROLLL]:
+                try:
+                    device.set_led(led, 1 if on else 0)
+                except Exception:
+                    pass
+            logger.debug(f"USB button LED set via evdev: {'on' if on else 'off'}")
+            return True
+    except ImportError:
+        pass
     except Exception as e:
-        logger.warning(f"Failed to set USB button LED: {e}")
-        return False
+        logger.debug(f"evdev LED control failed: {e}")
+
+    # Method 3: Try sysfs (fallback)
+    led_path = _find_button_led_sysfs()
+    if led_path:
+        try:
+            with open(led_path, "w") as f:
+                f.write("1" if on else "0")
+            logger.debug(f"USB button LED set via sysfs: {'on' if on else 'off'}")
+            return True
+        except PermissionError:
+            logger.warning(f"Permission denied writing to {led_path}")
+        except Exception as e:
+            logger.warning(f"sysfs LED control failed: {e}")
+
+    logger.debug("USB button LED control not available")
+    return False
 
 
 def get_button_led_state() -> Optional[bool]:
