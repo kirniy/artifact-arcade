@@ -127,7 +127,7 @@ class RapGodMode(BaseMode):
         self._slot_words: List[List[str]] = []  # ~20 words per slot for scrolling
         self._slot_offsets: List[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # Scroll offset (5 slots: 4 words + joker)
         self._slot_stopped: List[bool] = [False, False, False, False, False]  # Whether stopped
-        self._slot_speed: float = 25.0  # Pixels per second for scrolling (slow and readable)
+        self._slot_speed: float = 12.0  # Pixels per second for scrolling (very slow and readable)
         self._selected_words: List[str] = []  # Final selected words (4)
         self._joker_words: List[str] = []  # Joker rules for slot 5
         self._joker_text: Optional[str] = None  # Selected joker rule
@@ -255,13 +255,13 @@ class RapGodMode(BaseMode):
 
     def _update_slot_animation(self, delta_ms: int) -> None:
         """Update slot machine scrolling animation."""
-        # Only animate the current slot (and any not yet stopped)
+        # Only animate the current slot (not stopped ones)
         for i in range(5):
             if not self._slot_stopped[i]:
-                # Scroll the slot - slow speed for readability
-                speed = self._slot_speed  # 25 px/s for words
+                # Scroll the slot - very slow speed for readability
+                speed = self._slot_speed  # 12 px/s for words
                 if i == 4:  # Joker slot scrolls even slower
-                    speed = 15.0
+                    speed = 8.0
                 self._slot_offsets[i] += speed * delta_ms / 1000.0
 
                 # Wrap around based on number of items
