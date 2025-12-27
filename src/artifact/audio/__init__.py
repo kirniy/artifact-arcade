@@ -1,11 +1,9 @@
 """
-ARTIFACT Audio System - Synthwave Arcade Sounds.
+ARTIFACT Audio System - Fast Chiptune Sounds.
 
-Procedural audio generation for that retro 80s arcade feel.
-Think Stranger Things, synthwave, and classic arcade cabinets.
+Balatro-style chiptune music and arcade sound effects.
 """
 
-from .engine import AudioEngine
-from .synth import SynthVoice, WaveType
+from .engine import AudioEngine, get_audio_engine
 
-__all__ = ["AudioEngine", "SynthVoice", "WaveType"]
+__all__ = ["AudioEngine", "get_audio_engine"]
