@@ -478,6 +478,10 @@ class HardwareRunner:
                 source="keypad"
             ))
         elif key == pygame.K_ASTERISK or key == pygame.K_KP_MULTIPLY:
+            # Toggle mute with asterisk key
+            if self._audio_engine:
+                muted = self._audio_engine.toggle_mute()
+                logger.info(f"Audio {'muted' if muted else 'unmuted'}")
             self.event_bus.emit(Event(
                 EventType.KEYPAD_INPUT,
                 data={"key": "*"},

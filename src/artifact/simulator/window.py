@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from ..core.state import StateMachine, State
 from ..core.events import EventBus, EventType, Event
+from ..audio.engine import get_audio_engine
 from .mock_hardware.display import SimulatedHUB75, SimulatedWS2812B, SimulatedLCD
 from .mock_hardware.input import SimulatedButton, SimulatedKeypad, SimulatedArcade
 from .printer_preview import ThermalPrinterPreview, PrintJob
@@ -51,7 +52,7 @@ class SimulatorWindow:
         LEFT ARROW: Left arcade button
         RIGHT ARROW: Right arcade button
         0-9: Keypad numbers
-        *: Keypad asterisk
+        *: Mute/Unmute audio toggle
         #: Keypad hash
         F1: Toggle debug overlay
         F2: Capture screenshot
@@ -298,6 +299,11 @@ class SimulatorWindow:
             char = str(key - pygame.K_KP1 + 1)
             self.keypad._press(char)
         elif key == pygame.K_ASTERISK or key == pygame.K_KP_MULTIPLY:
+            # Toggle mute with asterisk key
+            audio = get_audio_engine()
+            if audio:
+                muted = audio.toggle_mute()
+                logger.info(f"Audio {'muted' if muted else 'unmuted'}")
             self.keypad._press("*")
         elif key == pygame.K_HASH:
             self.keypad._press("#")
