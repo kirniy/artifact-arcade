@@ -14,6 +14,7 @@ from typing import Optional
 from ..core.state import StateMachine
 from ..core.events import EventBus, EventType, Event
 from ..audio.engine import get_audio_engine
+from ..utils.usb_button import turn_on_button_led
 
 logger = logging.getLogger(__name__)
 
@@ -379,7 +380,7 @@ class HardwareRunner:
         # Center button (SPACE or RETURN)
         elif key in (pygame.K_SPACE, pygame.K_RETURN):
             self.play_sound('confirm')
-            self.event_bus.emit(Event(EventType.BUTTON_PRESS, source="center"))
+            self.event_bus.emit(Event(EventType.BUTTON_PRESS, data={"button": "enter"}, source="center"))
 
         # Arcade buttons (regular arrows)
         elif key == pygame.K_LEFT:
@@ -398,7 +399,7 @@ class HardwareRunner:
         # Numpad Enter - works as confirm button
         elif key == pygame.K_KP_ENTER:
             self.play_sound('confirm')
-            self.event_bus.emit(Event(EventType.BUTTON_PRESS, source="center"))
+            self.event_bus.emit(Event(EventType.BUTTON_PRESS, data={"button": "enter"}, source="center"))
 
         # Numpad 4/6 - work as BOTH navigation AND digits
         # (mode decides which event to handle)
@@ -533,6 +534,10 @@ class HardwareRunner:
 
         self._running = True
         logger.info("Hardware runner started")
+
+        # Turn on USB button LED (keep it lit always)
+        if turn_on_button_led():
+            logger.info("USB button LED turned on")
 
         # Play startup sound and start idle music
         if self._audio_engine:

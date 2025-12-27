@@ -40,6 +40,8 @@ from artifact.modes.rapgod.audio import (
     format_duration,
 )
 from artifact.utils.s3_upload import generate_qr_image as generate_qr_numpy
+from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,8 @@ class RapGodPhase:
     GENRE_SELECT = "genre"       # Pick trap/drill/cloud/boombap/phonk
     WORD_SELECT = "words"        # Select 4 words (slot-machine style)
     CONFIRM = "confirm"          # Review words, add joker?
+    CAMERA_PREP = "camera_prep"  # Show camera preview
+    CAMERA_CAPTURE = "capture"   # Countdown and capture
     PROCESSING = "processing"    # Generating lyrics + music
     PREVIEW = "preview"          # Playing audio, showing QR
     RESULT = "result"            # Final display
@@ -127,6 +131,12 @@ class RapGodMode(BaseMode):
         self._include_joker = False
         self._joker_text: Optional[str] = None
 
+        # Camera state
+        self._camera_frame: Optional[np.ndarray] = None
+        self._photo_data: Optional[bytes] = None
+        self._camera_countdown: float = 0.0
+        self._flash_alpha: float = 0.0
+
         # Generation state
         self._lyrics: Optional[GeneratedLyrics] = None
         self._task_id: Optional[str] = None
@@ -151,9 +161,15 @@ class RapGodMode(BaseMode):
 
     def on_enter(self) -> None:
         """Initialize mode."""
-        logger.info("RapTrack mode entered")
+        logger.info("RapGod mode entered")
         self._sub_phase = RapGodPhase.INTRO
         self._reset_selection()
+
+        # Reset camera state
+        self._camera_frame = None
+        self._photo_data = None
+        self._camera_countdown = 0.0
+        self._flash_alpha = 0.0
 
     def _reset_selection(self) -> None:
         """Reset word selection state."""
@@ -185,6 +201,22 @@ class RapGodMode(BaseMode):
         # Update particles
         self._particles.update(delta_ms)
 
+        # Update camera preview in camera phases
+        if self._sub_phase in (RapGodPhase.CAMERA_PREP, RapGodPhase.CAMERA_CAPTURE):
+            self._update_camera_preview()
+            # Decay flash
+            if self._flash_alpha > 0:
+                self._flash_alpha = max(0, self._flash_alpha - delta_ms / 300)
+
+        # Handle camera capture countdown
+        if self._sub_phase == RapGodPhase.CAMERA_CAPTURE:
+            self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
+            if self._camera_countdown <= 0 and self._photo_data is None:
+                self._do_capture()
+            # After flash, start processing
+            if self._time_in_phase > 3500:
+                self._start_generation()
+
         # Update progress tracker during processing
         if self._sub_phase == RapGodPhase.PROCESSING:
             self._progress_tracker.update(delta_ms)
@@ -202,6 +234,13 @@ class RapGodMode(BaseMode):
         if self._sub_phase == RapGodPhase.INTRO:
             if self._time_in_phase > 2000:
                 self._sub_phase = RapGodPhase.GENRE_SELECT
+
+        # Auto-advance from camera prep after 2 seconds
+        if self._sub_phase == RapGodPhase.CAMERA_PREP:
+            if self._time_in_phase > 2000:
+                self._sub_phase = RapGodPhase.CAMERA_CAPTURE
+                self._time_in_phase = 0
+                self._camera_countdown = 3.0
 
     def on_input(self, event: Event) -> bool:
         """Handle user input."""
@@ -254,8 +293,16 @@ class RapGodMode(BaseMode):
             return True
 
         if self._sub_phase == RapGodPhase.CONFIRM:
-            # Start generation
-            self._start_generation()
+            # Move to camera capture
+            self._sub_phase = RapGodPhase.CAMERA_PREP
+            self._time_in_phase = 0
+            return True
+
+        if self._sub_phase == RapGodPhase.CAMERA_PREP:
+            # Skip to capture immediately on confirm
+            self._sub_phase = RapGodPhase.CAMERA_CAPTURE
+            self._time_in_phase = 0
+            self._camera_countdown = 3.0
             return True
 
         if self._sub_phase == RapGodPhase.PREVIEW:
@@ -365,6 +412,23 @@ class RapGodMode(BaseMode):
             return True
         return False
 
+    def _update_camera_preview(self) -> None:
+        """Update camera preview from shared camera service."""
+        try:
+            frame = camera_service.get_frame(timeout=0)
+            if frame is not None:
+                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
+                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+        except Exception:
+            pass
+
+    def _do_capture(self) -> None:
+        """Capture photo for AI analysis."""
+        self._photo_data = camera_service.capture_jpeg(quality=90)
+        if self._photo_data:
+            self._flash_alpha = 1.0
+            logger.info(f"Photo captured: {len(self._photo_data)} bytes")
+
     def _start_generation(self) -> None:
         """Start the lyrics + music generation pipeline."""
         self._sub_phase = RapGodPhase.PROCESSING
@@ -390,8 +454,11 @@ class RapGodMode(BaseMode):
             # Phase 1: Generate lyrics with Gemini 3.0 Flash
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
 
-            logger.info(f"Generating lyrics for words: {selection.words}")
-            self._lyrics = await self._lyrics_gen.generate_lyrics(selection)
+            logger.info(f"Generating lyrics for words: {selection.words}, has_photo: {self._photo_data is not None}")
+            self._lyrics = await self._lyrics_gen.generate_lyrics(
+                selection,
+                photo_data=self._photo_data,
+            )
 
             if not self._lyrics:
                 logger.error("Lyrics generation failed")
@@ -537,6 +604,9 @@ class RapGodMode(BaseMode):
 
         elif self._sub_phase == RapGodPhase.CONFIRM:
             self._render_confirm(buffer, genre_color)
+
+        elif self._sub_phase in (RapGodPhase.CAMERA_PREP, RapGodPhase.CAMERA_CAPTURE):
+            self._render_camera(buffer, genre_color)
 
         elif self._sub_phase == RapGodPhase.PROCESSING:
             self._render_processing(buffer, genre_color)
@@ -765,6 +835,63 @@ class RapGodMode(BaseMode):
             time_ms=self._time_in_phase,
             y=115,
         )
+
+    def _render_camera(self, buffer: np.ndarray, color: tuple) -> None:
+        """Render camera preview and capture screen."""
+        # Show camera preview
+        if self._camera_frame is not None:
+            buffer[:] = self._camera_frame
+        else:
+            # No camera - show placeholder
+            fill(buffer, (20, 15, 30))
+            draw_centered_text(
+                buffer, "КАМЕРА...",
+                y=60,
+                color=(100, 100, 100),
+                scale=1,
+            )
+
+        # Flash effect
+        if self._flash_alpha > 0:
+            flash_color = (
+                int(255 * self._flash_alpha),
+                int(255 * self._flash_alpha),
+                int(255 * self._flash_alpha),
+            )
+            # Blend flash with buffer
+            alpha = self._flash_alpha
+            buffer[:] = (buffer * (1 - alpha) + np.array(flash_color) * alpha).astype(np.uint8)
+
+        if self._sub_phase == RapGodPhase.CAMERA_PREP:
+            # Show instruction overlay
+            draw_rect(buffer, 0, 0, 128, 25, color=(0, 0, 0, 180), filled=True)
+            draw_centered_text(
+                buffer, "ВСТАНЬ В КАДР!",
+                y=8,
+                color=color,
+                scale=1,
+            )
+
+        elif self._sub_phase == RapGodPhase.CAMERA_CAPTURE:
+            # Show countdown
+            if self._camera_countdown > 0:
+                countdown_num = int(self._camera_countdown) + 1
+                # Pulse effect for countdown
+                pulse = 1.0 + 0.3 * math.sin(self._time_in_phase / 100)
+                draw_centered_text(
+                    buffer, str(countdown_num),
+                    y=50,
+                    color=tuple(int(c * pulse) for c in color),
+                    scale=3,
+                )
+            else:
+                # Just took photo
+                draw_centered_text(
+                    buffer, "ГОТОВО!",
+                    y=55,
+                    color=(100, 255, 100),
+                    scale=2,
+                )
 
     def _render_processing(self, buffer: np.ndarray, color: tuple) -> None:
         """Render processing/generation screen."""

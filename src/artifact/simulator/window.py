@@ -276,7 +276,7 @@ class SimulatorWindow:
         # Center button (SPACE or RETURN)
         elif key in (pygame.K_SPACE, pygame.K_RETURN):
             self.center_button._press()
-            self.event_bus.emit(Event(EventType.BUTTON_PRESS, source="center"))
+            self.event_bus.emit(Event(EventType.BUTTON_PRESS, data={"button": "enter"}, source="center"))
 
         # Arcade buttons
         elif key == pygame.K_LEFT:

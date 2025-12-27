@@ -1,7 +1,10 @@
 """Lyrics generator for RapGod mode.
 
 Uses Gemini 3.0 Flash to generate Russian rap lyrics
-based on selected words and genre.
+based on selected words, genre, AND the person's photo.
+
+The AI analyzes the photo and incorporates fun observations
+about the person's appearance into the lyrics.
 """
 
 import logging
@@ -48,6 +51,13 @@ RAP_LYRICIST_SYSTEM_PROMPT = """Ты легендарный гострайтер
 - Внутренние рифмы, панчи, флоу
 - НЕ имитируй конкретных артистов, создавай свой стиль
 
+=== ПЕРСОНАЛИЗАЦИЯ ПО ФОТО ===
+Если есть фото человека:
+- Посмотри на внешность: одежду, стиль, прическу, выражение лица, вайб
+- Вплети 2-3 ЗАБАВНЫХ наблюдения о внешности в текст
+- Это должно быть КОМПЛИМЕНТАРНО и СМЕШНО, не обидно
+- НЕ описывай внешность напрямую - обыграй её креативно через рифмы и панчи!
+
 === СТРУКТУРА ===
 Всегда возвращай ТОЛЬКО валидный JSON без markdown:
 {
@@ -67,6 +77,7 @@ RAP_LYRICIST_SYSTEM_PROMPT = """Ты легендарный гострайтер
 
 === ВАЖНО ===
 - ВСЕ выбранные слова ДОЛЖНЫ появиться в тексте
+- Если есть фото — ОБЯЗАТЕЛЬНО упомяни что-то про внешность (весело!)
 - Если есть специальное правило (джокер) — выполни его
 - Текст должен звучать НАТУРАЛЬНО, не как список слов
 - Припев должен быть ЗАПОМИНАЮЩИМСЯ
@@ -88,12 +99,14 @@ class LyricsGenerator:
         self,
         selection: WordSelection,
         club_name: str = "VNVNC",
+        photo_data: Optional[bytes] = None,
     ) -> Optional[GeneratedLyrics]:
-        """Generate rap lyrics from word selection.
+        """Generate rap lyrics from word selection and optional photo.
 
         Args:
             selection: Selected words and settings
             club_name: Club name to mention (ENC/VNVNC)
+            photo_data: Optional JPEG photo of the person for personalization
 
         Returns:
             GeneratedLyrics object or None on error
@@ -107,15 +120,27 @@ class LyricsGenerator:
             genre_info = GENRES.get(selection.genre, GENRES["trap"])
 
             # Build the prompt
-            prompt = self._build_prompt(selection, genre_info, club_name)
+            prompt = self._build_prompt(selection, genre_info, club_name, has_photo=photo_data is not None)
 
-            response = await self._client.generate_text(
-                prompt=prompt,
-                model=GeminiModel.FLASH_3,  # Gemini 3 Flash - latest Dec 2025
-                system_instruction=RAP_LYRICIST_SYSTEM_PROMPT,
-                temperature=0.95,  # High creativity
-                max_tokens=2048,
-            )
+            # Use vision model if we have a photo
+            if photo_data:
+                logger.info("Generating lyrics with photo personalization")
+                response = await self._client.generate_with_image(
+                    prompt=prompt,
+                    image_data=photo_data,
+                    model=GeminiModel.FLASH_VISION,
+                    system_instruction=RAP_LYRICIST_SYSTEM_PROMPT,
+                    temperature=0.95,
+                )
+            else:
+                logger.info("Generating lyrics without photo")
+                response = await self._client.generate_text(
+                    prompt=prompt,
+                    model=GeminiModel.FLASH_3,
+                    system_instruction=RAP_LYRICIST_SYSTEM_PROMPT,
+                    temperature=0.95,
+                    max_tokens=2048,
+                )
 
             if response:
                 return self._parse_response(response, selection.genre)
@@ -130,6 +155,7 @@ class LyricsGenerator:
         selection: WordSelection,
         genre_info: Dict[str, Any],
         club_name: str,
+        has_photo: bool = False,
     ) -> str:
         """Build the lyrics generation prompt."""
         words_str = ", ".join(selection.words)
@@ -143,6 +169,13 @@ class LyricsGenerator:
             f"",
             f"Клуб: {club_name} (можешь упомянуть)",
         ]
+
+        if has_photo:
+            parts.append("")
+            parts.append("ВАЖНО: Я прикрепил фото человека! Посмотри на него и добавь в текст:")
+            parts.append("- 2-3 весёлых упоминания его внешности (одежда, стиль, вайб)")
+            parts.append("- Это должно быть комплиментарно и смешно!")
+            parts.append("- Обыграй его образ креативно в рифмах")
 
         if selection.joker:
             parts.append(f"")
