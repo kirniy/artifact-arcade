@@ -830,11 +830,26 @@ class ModeManager:
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
         elif self._state == ManagerState.RESULT:
-            # Left = Previous view (with wrap-around)
-            self._result_view_index = (self._result_view_index - 1) % self._result_num_views
+            # Left navigation with text page support
             self._result_auto_advance = False  # User took control, disable auto
             self._result_last_advance = self._time_in_state
-            self._audio.play_ui_move()
+
+            if self._result_view_index == 0 and len(self._result_text_pages) > 1:
+                # On text view with multiple pages - navigate pages first
+                if self._result_text_page_index > 0:
+                    self._result_text_page_index -= 1
+                    self._audio.play_ui_move()
+                else:
+                    # At first text page - wrap to last view (caricature if available)
+                    self._result_view_index = (self._result_view_index - 1) % self._result_num_views
+                    self._audio.play_ui_move()
+            else:
+                # On other views - switch views
+                self._result_view_index = (self._result_view_index - 1) % self._result_num_views
+                # Reset to last text page when entering text view from right
+                if self._result_view_index == 0 and len(self._result_text_pages) > 1:
+                    self._result_text_page_index = len(self._result_text_pages) - 1
+                self._audio.play_ui_move()
 
     def _on_arcade_right(self, event: Event) -> None:
         """Handle right arcade button."""
@@ -856,11 +871,26 @@ class ModeManager:
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
         elif self._state == ManagerState.RESULT:
-            # Right = Next view (with wrap-around)
-            self._result_view_index = (self._result_view_index + 1) % self._result_num_views
+            # Right navigation with text page support
             self._result_auto_advance = False  # User took control, disable auto
             self._result_last_advance = self._time_in_state
-            self._audio.play_ui_move()
+
+            if self._result_view_index == 0 and len(self._result_text_pages) > 1:
+                # On text view with multiple pages - navigate pages first
+                if self._result_text_page_index < len(self._result_text_pages) - 1:
+                    self._result_text_page_index += 1
+                    self._audio.play_ui_move()
+                else:
+                    # At last text page - go to next view (caricature if available)
+                    self._result_view_index = (self._result_view_index + 1) % self._result_num_views
+                    self._audio.play_ui_move()
+            else:
+                # On other views - switch views
+                self._result_view_index = (self._result_view_index + 1) % self._result_num_views
+                # Reset to first text page when entering text view from left
+                if self._result_view_index == 0:
+                    self._result_text_page_index = 0
+                self._audio.play_ui_move()
 
     def _on_keypad_input(self, event: Event) -> None:
         """Handle keypad input."""
@@ -1637,11 +1667,11 @@ class ModeManager:
         and can be disabled by user interaction.
 
         Views (AUTO-PRINT enabled - no confirmation needed):
-        - 0: Prediction text with auto-scroll
+        - 0: Prediction text with pagination
         - 1: Caricature image (if available)
         """
         from artifact.graphics.text_utils import (
-            draw_centered_text, smart_wrap_text,
+            draw_centered_text,
             MAIN_SAFE_BOTTOM_S1, MAIN_SAFE_BOTTOM_S2, MAIN_HINT_ZONE_Y
         )
         from artifact.graphics.fonts import load_font
@@ -1664,44 +1694,38 @@ class ModeManager:
             self._render_view_dots(buffer, view, self._result_num_views)
 
         if view == 0:
-            # Prediction text view with auto-scroll for long text
-            text = self._last_result.display_text or "..."
-            font = load_font("cyrillic")
-
+            # Prediction text view with PAGINATION (no scrolling!)
             # Title
             draw_centered_text(buffer, "ПРОРОЧЕСТВО", 3, (255, 200, 100), scale=1)
 
-            # Wrap text to fit screen width
-            lines = smart_wrap_text(text, 120, font, scale=1)
-            max_visible = 7  # Lines that fit on screen (with title and hints)
+            # Render current text page
+            if self._result_text_pages:
+                page_idx = min(self._result_text_page_index, len(self._result_text_pages) - 1)
+                page_lines = self._result_text_pages[page_idx]
 
-            # Calculate scroll offset for long text - smooth scroll based on time in this view
-            if len(lines) > max_visible:
-                # Use time since entering this view for scroll
-                scroll_cycle = 6000  # 6 seconds per scroll cycle
-                time_in_view = self._time_in_state - self._result_last_advance
-                scroll_progress = (time_in_view % scroll_cycle) / scroll_cycle
-                max_scroll = len(lines) - max_visible
-                scroll_offset = int(scroll_progress * max_scroll)
+                # Render lines with subtle animation
+                y = 16
+                line_height = 12
+                for i, line in enumerate(page_lines):
+                    # Subtle pulse for readability
+                    pulse = 0.9 + 0.1 * math.sin(self._time_in_state / 400 + i * 0.3)
+                    color = tuple(int(255 * pulse) for _ in range(3))
+                    draw_centered_text(buffer, line, y, color, scale=1)
+                    y += line_height
+
+                # Page indicator (e.g., "1/3")
+                total_pages = len(self._result_text_pages)
+                if total_pages > 1:
+                    page_indicator = f"{page_idx + 1}/{total_pages}"
+                    left_arrow = "◄" if page_idx > 0 else " "
+                    right_arrow = "►" if page_idx < total_pages - 1 else " "
+                    nav_text = f"{left_arrow} {page_indicator} {right_arrow}"
+                    draw_centered_text(buffer, nav_text, 95, (100, 150, 200), scale=1)
             else:
-                scroll_offset = 0
-
-            # Render visible lines
-            y = 16
-            line_height = 11
-            for i in range(max_visible):
-                line_idx = scroll_offset + i
-                if line_idx < len(lines):
-                    draw_centered_text(buffer, lines[line_idx], y, (255, 255, 255), scale=1)
-                y += line_height
-
-            # Scroll indicator if text is long
-            if len(lines) > max_visible:
-                indicator = "▼" if scroll_offset < len(lines) - max_visible else "●"
-                draw_centered_text(buffer, indicator, 95, (100, 100, 120), scale=1)
+                draw_centered_text(buffer, "...", 50, (100, 100, 100), scale=1)
 
             # Navigation hints
-            if has_caricature:
+            if has_caricature or (self._result_text_pages and len(self._result_text_pages) > 1):
                 draw_centered_text(buffer, "◄ ► ЛИСТАТЬ", 105, (100, 120, 140), scale=1)
 
             # Printing status hint
@@ -1709,7 +1733,7 @@ class ModeManager:
                 draw_centered_text(buffer, "ПЕЧАТАЮ...", MAIN_HINT_ZONE_Y, (100, 200, 100), scale=1)
 
         elif view == 1 and has_caricature:
-            # Caricature view
+            # Caricature view - FULLSCREEN (no text overlay)
             try:
                 from PIL import Image
                 import numpy as np
@@ -1717,16 +1741,11 @@ class ModeManager:
                 caricature_data = self._last_result.print_data.get("caricature")
                 img = Image.open(BytesIO(caricature_data))
                 img = img.convert("RGB")
-                img = img.resize((96, 96), Image.Resampling.NEAREST)
+                # FULLSCREEN - fill entire 128x128 display
+                img = img.resize((128, 128), Image.Resampling.LANCZOS)
 
-                # Center on screen with space for hints
                 img_array = np.array(img)
-                x_offset = (128 - 96) // 2
-                y_offset = 8
-                buffer[y_offset:y_offset+96, x_offset:x_offset+96] = img_array
-
-                # Title at safe bottom position
-                draw_centered_text(buffer, "ТВОЙ ШАРЖ", 105, (255, 200, 100), scale=1)
+                buffer[:128, :128] = img_array
             except Exception:
                 # Fallback to placeholder
                 draw_centered_text(buffer, "ШАРЖ", 50, (200, 200, 200), scale=2)
