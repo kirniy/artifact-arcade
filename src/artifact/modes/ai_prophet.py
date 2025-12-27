@@ -28,6 +28,7 @@ from artifact.ai.predictor import PredictionService, Prediction, PredictionCateg
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
 
 logger = logging.getLogger(__name__)
 
@@ -394,6 +395,11 @@ class AIProphetMode(BaseMode):
         self._secondary = (139, 92, 246)   # Purple
         self._accent = (16, 185, 129)      # Teal
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+
     @property
     def is_ai_available(self) -> bool:
         """Check if AI services are available."""
@@ -419,6 +425,10 @@ class AIProphetMode(BaseMode):
         self._text_scroll_complete = False
         self._text_view_time = 0.0
         self._scroll_duration = 0.0
+
+        # Reset QR upload state
+        self._qr_url = None
+        self._qr_image = None
 
         # Use shared camera service (always running)
         self._camera = camera_service.is_running
@@ -746,6 +756,17 @@ class AIProphetMode(BaseMode):
                 self._caricature = await asyncio.wait_for(caricature_task, timeout=120.0)
                 # Image done, advance to finalizing
                 self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
+
+                # Upload caricature for QR sharing
+                if self._caricature and self._caricature.image_data:
+                    logger.info("Starting caricature upload for QR sharing")
+                    self._uploader.upload_bytes(
+                        self._caricature.image_data,
+                        prefix="caricature",
+                        extension="png",
+                        content_type="image/png",
+                        callback=self._on_upload_complete
+                    )
             except asyncio.TimeoutError:
                 logger.warning("Caricature generation timed out")
                 self._caricature = None
@@ -757,6 +778,15 @@ class AIProphetMode(BaseMode):
             logger.error(f"AI generation failed: {e}")
             # Use fallback prediction
             self._prediction = self._prediction_service._fallback_prediction()
+
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.url
+            self._qr_image = result.qr_image
+            logger.info(f"Caricature uploaded successfully: {self._qr_url}")
+        else:
+            logger.error(f"Caricature upload failed: {result.error}")
 
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
@@ -803,6 +833,7 @@ class AIProphetMode(BaseMode):
             print_data={
                 "prediction": prediction_text,
                 "caricature": self._caricature.image_data if self._caricature else None,
+                "qr_url": self._qr_url,
                 "answers": self._answers,
                 "timestamp": datetime.now().isoformat(),
                 "type": "ai_prophet"
@@ -1119,11 +1150,23 @@ class AIProphetMode(BaseMode):
                         pixel = img.getpixel((x, y))
                         buffer[by, bx] = pixel
 
-            # Show hint at bottom - blinking "НАЖМИ" to print
-            if int(self._time_in_phase / 500) % 2 == 0:
-                draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
+            # Show QR code in bottom-right corner if available
+            if self._qr_image is not None:
+                qr_h, qr_w = self._qr_image.shape[:2]
+                qr_x = 128 - qr_w - 4
+                qr_y = 128 - qr_h - 18
+                # Background for QR
+                draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
+                buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
+                draw_centered_text(buffer, "СКАН QR", 112, (200, 200, 200), scale=1)
+            elif self._uploader.is_uploading:
+                draw_centered_text(buffer, "ЗАГРУЗКА...", 112, (150, 150, 150), scale=1)
             else:
-                draw_centered_text(buffer, "◄ ТЕКСТ", 112, (100, 100, 120), scale=1)
+                # Show hint at bottom - blinking "НАЖМИ" to print
+                if int(self._time_in_phase / 500) % 2 == 0:
+                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
+                else:
+                    draw_centered_text(buffer, "◄ ТЕКСТ", 112, (100, 100, 120), scale=1)
 
         except Exception as e:
             logger.warning(f"Failed to render caricature: {e}")

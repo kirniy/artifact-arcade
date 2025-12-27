@@ -1,6 +1,6 @@
 """Audio utilities for RapTrack mode.
 
-Handles audio playback and file.io upload for QR sharing.
+Handles audio playback and Selectel S3 upload for QR sharing.
 """
 
 import os
@@ -10,10 +10,16 @@ import tempfile
 import subprocess
 from typing import Optional
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import aiohttp
 
+from artifact.utils.s3_upload import upload_bytes_to_s3, generate_qr_image as generate_qr_numpy
+
 logger = logging.getLogger(__name__)
+
+# Thread pool for running sync S3 uploads asynchronously
+_executor = ThreadPoolExecutor(max_workers=2)
 
 
 class AudioPlayer:
@@ -126,58 +132,40 @@ class AudioPlayer:
             pass
 
 
-async def upload_to_fileio(
+async def upload_to_selectel(
     audio_bytes: bytes,
     filename: str = "track.mp3",
-    expires: str = "1d",
 ) -> Optional[str]:
-    """Upload audio to file.io for easy sharing.
+    """Upload audio to Selectel S3 for QR sharing.
 
     Args:
         audio_bytes: MP3 audio data
-        filename: Filename for the upload
-        expires: Expiration time (1d, 7d, 14d, etc.)
+        filename: Filename for the upload (unused, auto-generated)
 
     Returns:
         Shareable URL or None on error
     """
     try:
-        async with aiohttp.ClientSession() as session:
-            # file.io accepts multipart form data
-            form = aiohttp.FormData()
-            form.add_field(
-                "file",
-                audio_bytes,
-                filename=filename,
-                content_type="audio/mpeg",
-            )
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            _executor,
+            lambda: upload_bytes_to_s3(audio_bytes, "track", "mp3", "audio/mpeg")
+        )
 
-            async with session.post(
-                f"https://file.io/?expires={expires}",
-                data=form,
-                timeout=aiohttp.ClientTimeout(total=30),
-            ) as response:
-                if not response.ok:
-                    error = await response.text()
-                    logger.error(f"file.io upload failed: {error}")
-                    return None
+        if result.success:
+            logger.info(f"Uploaded to Selectel S3: {result.url}")
+            return result.url
+        else:
+            logger.error(f"Selectel S3 upload failed: {result.error}")
+            return None
 
-                data = await response.json()
-
-                if data.get("success"):
-                    url = data.get("link")
-                    logger.info(f"Uploaded to file.io: {url}")
-                    return url
-                else:
-                    logger.error(f"file.io error: {data}")
-                    return None
-
-    except asyncio.TimeoutError:
-        logger.error("file.io upload timed out")
-        return None
     except Exception as e:
-        logger.error(f"file.io upload error: {e}")
+        logger.error(f"Selectel S3 upload error: {e}")
         return None
+
+
+# Keep old function name as alias for backwards compatibility
+upload_to_fileio = upload_to_selectel
 
 
 async def generate_qr_image(url: str, size: int = 60) -> Optional[bytes]:

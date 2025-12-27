@@ -20,6 +20,9 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +111,11 @@ class RoastMeMode(BaseMode):
         self._red = (255, 50, 50)
         self._yellow = (255, 200, 0)
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+
     @property
     def is_ai_available(self) -> bool:
         return self._gemini_client.is_available
@@ -125,6 +133,10 @@ class RoastMeMode(BaseMode):
         self._text_view_time = 0.0
         self._scroll_duration = 0.0
         self._progress_tracker.reset()
+
+        # Reset QR upload state
+        self._qr_url = None
+        self._qr_image = None
 
         # Use shared camera service (always running)
         self._camera = camera_service.is_running
@@ -305,6 +317,17 @@ class RoastMeMode(BaseMode):
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
             self._doodle_image = await get_image()
 
+            # Upload doodle for QR sharing
+            if self._doodle_image and self._doodle_image.image_data:
+                logger.info("Starting doodle upload for QR sharing")
+                self._uploader.upload_bytes(
+                    self._doodle_image.image_data,
+                    prefix="roast",
+                    extension="png",
+                    content_type="image/png",
+                    callback=self._on_upload_complete
+                )
+
             # Advance to finalizing
             self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
             logger.info(f"Roast complete - text: '{self._roast_text[:50]}...', vibe: {self._vibe_score}, has_image: {self._doodle_image is not None}")
@@ -344,6 +367,15 @@ class RoastMeMode(BaseMode):
         logger.info(f"Parsed roast: {roast[:100]}... vibe: {vibe}")
         return roast, vibe
 
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.url
+            self._qr_image = result.qr_image
+            logger.info(f"Roast doodle uploaded successfully: {self._qr_url}")
+        else:
+            logger.error(f"Roast doodle upload failed: {result.error}")
+
     def _on_ai_complete(self) -> None:
         self._progress_tracker.complete()
         self._sub_phase = RoastPhase.REVEAL
@@ -370,6 +402,7 @@ class RoastMeMode(BaseMode):
                 "roast": self._roast_text,
                 "vibe": self._vibe_score,
                 "doodle": self._doodle_image.image_data if self._doodle_image else None,
+                "qr_url": self._qr_url,
                 "photo": self._photo_data,
                 "timestamp": datetime.now().isoformat()
             }
@@ -469,11 +502,22 @@ class RoastMeMode(BaseMode):
                     # Center the image
                     buffer[4:124, 4:124] = img_array
 
-                    # Show hint at bottom (using safe zone Y=114 for scale=1)
-                    if int(self._time_in_phase / 500) % 2 == 0:
-                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
+                    # Show QR code in bottom-right corner if available
+                    if self._qr_image is not None:
+                        qr_h, qr_w = self._qr_image.shape[:2]
+                        qr_x = 128 - qr_w - 4
+                        qr_y = 128 - qr_h - 18
+                        draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
+                        buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
+                        draw_centered_text(buffer, "СКАН QR", 114, (200, 200, 200), scale=1)
+                    elif self._uploader.is_uploading:
+                        draw_centered_text(buffer, "ЗАГРУЗКА...", 114, (150, 150, 150), scale=1)
                     else:
-                        draw_centered_text(buffer, "◄ ТЕКСТ", 114, (100, 100, 120), scale=1)
+                        # Show hint at bottom (using safe zone Y=114 for scale=1)
+                        if int(self._time_in_phase / 500) % 2 == 0:
+                            draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
+                        else:
+                            draw_centered_text(buffer, "◄ ТЕКСТ", 114, (100, 100, 120), scale=1)
 
                 except Exception as e:
                     logger.error(f"Failed to render caricature: {e}")

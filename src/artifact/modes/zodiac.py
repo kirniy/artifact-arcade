@@ -18,6 +18,7 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +306,11 @@ class ZodiacMode(BaseMode):
         self._accent = (255, 215, 0)       # Gold
         self._star_color = (255, 250, 205) # Lemon chiffon (stars)
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+
     def on_enter(self) -> None:
         """Initialize zodiac mode."""
         self._sub_phase = ZodiacPhase.INTRO
@@ -335,6 +341,8 @@ class ZodiacMode(BaseMode):
         self._constellation_portrait = None
         self._ai_task = None
         self._progress_tracker.reset()
+        self._qr_url = None
+        self._qr_image = None
 
         # Use shared camera service (always running)
         self._camera = camera_service.is_running
@@ -667,6 +675,17 @@ class ZodiacMode(BaseMode):
                 )
                 if self._constellation_portrait:
                     logger.info("Zodiac constellation portrait generated successfully")
+
+                    # Upload portrait for QR sharing
+                    if self._constellation_portrait.image_data:
+                        logger.info("Starting zodiac portrait upload for QR sharing")
+                        self._uploader.upload_bytes(
+                            self._constellation_portrait.image_data,
+                            prefix="zodiac",
+                            extension="png",
+                            content_type="image/png",
+                            callback=self._on_upload_complete
+                        )
                 else:
                     logger.warning("Zodiac constellation portrait generation returned None")
             else:
@@ -698,6 +717,15 @@ class ZodiacMode(BaseMode):
             stars.burst(100)
 
         logger.info("Zodiac AI complete, entering result phase")
+
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.url
+            self._qr_image = result.qr_image
+            logger.info(f"Zodiac portrait uploaded successfully: {self._qr_url}")
+        else:
+            logger.error(f"Zodiac portrait upload failed: {result.error}")
 
     def _render_camera_preview(self, buffer) -> None:
         """Render the camera preview to buffer."""
@@ -740,6 +768,15 @@ class ZodiacMode(BaseMode):
             # Border with zodiac color
             draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, self._secondary, filled=False)
 
+            # Display QR code if available (bottom-right corner)
+            if self._qr_image is not None:
+                qr_h, qr_w = self._qr_image.shape[:2]
+                qr_x = 128 - qr_w - 4
+                qr_y = 128 - qr_h - 18  # Leave room for hint text
+                # Black background for QR visibility
+                draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
+                buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
+
             # Label
             draw_centered_text(buffer, f"{self._zodiac_symbol} {self._zodiac_ru}", 112, self._accent, scale=1)
 
@@ -762,7 +799,8 @@ class ZodiacMode(BaseMode):
                 "horoscope": self._horoscope,
                 "birthday": f"{self._input_buffer[:2]}.{self._input_buffer[2:]}",
                 "portrait": self._constellation_portrait.image_data if self._constellation_portrait else None,
-                "type": "zodiac_horoscope"
+                "type": "zodiac_horoscope",
+                "qr_url": self._qr_url,
             }
         )
         self.complete(result)

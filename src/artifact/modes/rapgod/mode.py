@@ -36,10 +36,10 @@ from artifact.modes.rapgod.lyrics import LyricsGenerator, GeneratedLyrics
 from artifact.modes.rapgod.suno import get_suno_client, SunoClient, TrackStatus
 from artifact.modes.rapgod.audio import (
     AudioPlayer,
-    upload_to_fileio,
-    generate_qr_image,
+    upload_to_selectel,
     format_duration,
 )
+from artifact.utils.s3_upload import generate_qr_image as generate_qr_numpy
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ class RapGodMode(BaseMode):
         self._audio_url: Optional[str] = None
         self._audio_bytes: Optional[bytes] = None
         self._download_url: Optional[str] = None
-        self._qr_image: Optional[bytes] = None
+        self._qr_image: Optional[np.ndarray] = None
         self._generation_task: Optional[asyncio.Task] = None
 
         # Progress tracking
@@ -442,18 +442,14 @@ class RapGodMode(BaseMode):
             else:
                 logger.warning("Suno API not available, skipping music generation")
 
-            # Phase 3: Upload to file.io for QR sharing
+            # Phase 3: Upload to Selectel S3 for QR sharing
             self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
             if self._audio_bytes:
-                filename = f"{self._lyrics.title.replace(' ', '_')}.mp3"
-                self._download_url = await upload_to_fileio(
-                    self._audio_bytes,
-                    filename=filename,
-                )
+                self._download_url = await upload_to_selectel(self._audio_bytes)
 
                 if self._download_url:
-                    self._qr_image = await generate_qr_image(self._download_url)
+                    self._qr_image = generate_qr_numpy(self._download_url)
 
             self._progress_tracker.complete()
             logger.info("Generation complete!")
@@ -872,24 +868,15 @@ class RapGodMode(BaseMode):
 
     def _render_result(self, buffer: np.ndarray, color: tuple) -> None:
         """Render final result."""
-        if self._result_view == "qr" and self._qr_image:
-            # Show QR code
-            try:
-                from PIL import Image
-                import io
+        if self._result_view == "qr" and self._qr_image is not None:
+            # Show QR code (already numpy array from generate_qr_numpy)
+            qr_h, qr_w = self._qr_image.shape[:2]
+            x_offset = (128 - qr_w) // 2
+            y_offset = 25
 
-                qr_img = Image.open(io.BytesIO(self._qr_image)).convert("RGB")
-                qr_arr = np.array(qr_img)
-
-                # Center the QR (60x60) on display
-                qr_size = min(qr_arr.shape[0], 60)
-                x_offset = (128 - qr_size) // 2
-                y_offset = 25
-
-                buffer[y_offset:y_offset+qr_size, x_offset:x_offset+qr_size] = qr_arr[:qr_size, :qr_size]
-
-            except Exception as e:
-                logger.warning(f"QR render failed: {e}")
+            # Draw black background behind QR for contrast
+            draw_rect(buffer, x_offset - 2, y_offset - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
+            buffer[y_offset:y_offset+qr_h, x_offset:x_offset+qr_w] = self._qr_image
 
             draw_centered_text(
                 buffer, "СКАЧАТЬ ТРЕК",

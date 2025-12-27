@@ -12,12 +12,7 @@ QR sharing: Inspired by https://github.com/momentobooth/momentobooth
 import logging
 import time
 import tempfile
-import subprocess
-import random
 import io
-import json
-import uuid
-from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
 
@@ -29,23 +24,9 @@ from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect
 from artifact.graphics.text_utils import draw_centered_text
 from artifact.utils.camera_service import camera_service
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
 
 logger = logging.getLogger(__name__)
-
-# Selectel S3 configuration for reliable photo uploads
-SELECTEL_ENDPOINT = "https://s3.ru-7.storage.selcloud.ru"
-SELECTEL_BUCKET = "vnvnc"
-SELECTEL_PREFIX = "artifact"
-SELECTEL_PUBLIC_URL = "https://e6aaa51f-863a-439e-9b6e-69991ff0ad6e.selstorage.ru"
-
-# Try importing QR code library
-try:
-    import qrcode
-    HAS_QRCODE = True
-    logger.info("qrcode library loaded successfully")
-except ImportError as e:
-    HAS_QRCODE = False
-    logger.warning(f"qrcode library not available: {e}")
 
 
 @dataclass
@@ -92,6 +73,7 @@ class PhotoboothMode(BaseMode):
         super().__init__(context)
         self._state = PhotoboothState()
         self._working = False
+        self._uploader = AsyncUploader()
 
     def on_enter(self) -> None:
         """Initialize mode - adapted from raspi-photo-booth setup()."""
@@ -189,105 +171,31 @@ class PhotoboothMode(BaseMode):
             return None
 
     def _upload_photo_async(self) -> None:
-        """Upload photo for QR sharing - inspired by momentobooth ffsend."""
-        if not self._state.photo_path:
-            logger.warning("No photo path set, skipping upload")
+        """Upload photo for QR sharing using shared AsyncUploader."""
+        if not self._state.photo_bytes:
+            logger.warning("No photo bytes available, skipping upload")
             return
 
-        logger.info(f"Starting async upload of {self._state.photo_path}")
+        logger.info("Starting async photo upload via AsyncUploader")
         self._state.is_uploading = True
 
-        # Use file.io for simple upload (alternative to ffsend)
-        try:
-            import threading
-            thread = threading.Thread(target=self._do_upload, daemon=True)
-            thread.start()
-            logger.debug("Upload thread started")
-        except Exception as e:
-            logger.error(f"Failed to start upload thread: {e}")
-            self._state.is_uploading = False
+        self._uploader.upload_bytes(
+            self._state.photo_bytes,
+            prefix="photo",
+            extension="jpg",
+            content_type="image/jpeg",
+            callback=self._on_upload_complete
+        )
 
-    def _do_upload(self) -> None:
-        """Background upload to Selectel S3 - creates QR code on success."""
-        try:
-            # Generate unique filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            unique_id = uuid.uuid4().hex[:8]
-            filename = f"photo_{timestamp}_{unique_id}.jpg"
-            s3_key = f"{SELECTEL_PREFIX}/{filename}"
-
-            logger.info(f"Uploading photo to Selectel S3: {s3_key}")
-
-            # Upload using AWS CLI with selectel profile
-            result = subprocess.run(
-                ['aws', '--endpoint-url', SELECTEL_ENDPOINT,
-                 '--profile', 'selectel',
-                 's3', 'cp', self._state.photo_path,
-                 f's3://{SELECTEL_BUCKET}/{s3_key}',
-                 '--acl', 'public-read'],
-                capture_output=True,
-                timeout=30
-            )
-
-            stdout = result.stdout.decode() if result.stdout else ""
-            stderr = result.stderr.decode() if result.stderr else ""
-            logger.debug(f"aws s3 returncode: {result.returncode}")
-            if stdout:
-                logger.debug(f"aws s3 stdout: {stdout[:200]}")
-            if stderr:
-                logger.debug(f"aws s3 stderr: {stderr[:200]}")
-
-            if result.returncode == 0:
-                # Construct public URL
-                url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
-                self._state.qr_url = url
-                logger.info(f"Selectel S3 upload successful! URL: {url}")
-                self._generate_qr_image(url)
-            else:
-                logger.error(f"Selectel S3 upload failed: {stderr}")
-
-        except subprocess.TimeoutExpired:
-            logger.error("Upload timed out after 30 seconds")
-        except Exception as e:
-            logger.error(f"Upload failed with exception: {e}", exc_info=True)
-        finally:
-            self._state.is_uploading = False
-            logger.debug("Upload finished, is_uploading=False")
-
-    def _generate_qr_image(self, url: str) -> None:
-        """Generate QR code image for display."""
-        if not HAS_QRCODE:
-            logger.warning("Cannot generate QR: qrcode library not available")
-            return
-        if not url:
-            logger.warning("Cannot generate QR: no URL provided")
-            return
-
-        logger.info(f"Generating QR code for: {url}")
-        try:
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=2,
-                border=1,
-            )
-            qr.add_data(url)
-            qr.make(fit=True)
-
-            # Create image
-            from PIL import Image
-            img = qr.make_image(fill_color="white", back_color="black")
-            img = img.convert('RGB')
-
-            # Resize to fit display (60x60 pixels)
-            img = img.resize((60, 60), Image.NEAREST)
-
-            # Convert to numpy array
-            self._state.qr_image = np.array(img, dtype=np.uint8)
-            logger.info(f"QR code generated successfully, shape: {self._state.qr_image.shape}")
-
-        except Exception as e:
-            logger.error(f"Failed to generate QR code: {e}", exc_info=True)
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle upload completion callback."""
+        self._state.is_uploading = False
+        if result.success:
+            self._state.qr_url = result.url
+            self._state.qr_image = result.qr_image
+            logger.info(f"Photo uploaded successfully: {self._state.qr_url}")
+        else:
+            logger.error(f"Photo upload failed: {result.error}")
 
     def _update_result(self, delta_ms: float) -> None:
         """Update result display timer."""

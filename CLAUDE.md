@@ -492,7 +492,8 @@ src/artifact/
 ├── simulator/      # Pygame desktop simulator
 ├── hardware/       # Hardware abstraction (for Pi)
 ├── ai/             # Gemini integration
-└── printing/       # Thermal printer
+├── printing/       # Thermal printer
+└── utils/          # Shared utilities (S3 upload, camera service)
 ```
 
 ## Key Files
@@ -502,6 +503,53 @@ src/artifact/
 - `src/artifact/animation/idle.py` - Idle screen animations
 - `src/artifact/graphics/fonts.py` - Cyrillic bitmap fonts
 - `src/artifact/ai/caricature.py` - Gemini image generation
+- `src/artifact/utils/s3_upload.py` - Selectel S3 upload + QR code generation
+
+## QR Code Sharing
+
+All modes that generate images or audio use Selectel S3 Object Storage for sharing via QR codes.
+
+### Storage Configuration
+| Setting | Value |
+|---------|-------|
+| Endpoint | `https://s3.ru-7.storage.selcloud.ru` |
+| Bucket | `vnvnc` |
+| Prefix | `artifact/{type}/` |
+| Public URL | `https://e6aaa51f-863a-439e-9b6e-69991ff0ad6e.selstorage.ru` |
+| AWS Profile | `selectel` (configured in ~/.aws/credentials) |
+
+### Modes with QR Sharing
+- **photobooth**: Photo uploads → QR on display
+- **ai_prophet**: Caricature uploads → QR on display + receipt
+- **roast**: Roast caricature → QR on display + receipt
+- **fortune**: Fortune caricature → QR on display + receipt
+- **zodiac**: Constellation portrait → QR on display + receipt
+- **rapgod**: Audio track → QR on display + receipt
+
+### Usage Pattern
+```python
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
+
+# In mode __init__:
+self._uploader = AsyncUploader()
+self._qr_url: Optional[str] = None
+self._qr_image: Optional[np.ndarray] = None
+
+# After generating content:
+self._uploader.upload_bytes(
+    image_data,
+    prefix="fortune",  # or "photo", "roast", "zodiac", "track"
+    extension="png",
+    content_type="image/png",
+    callback=self._on_upload_complete
+)
+
+# Callback handles result:
+def _on_upload_complete(self, result: UploadResult) -> None:
+    if result.success:
+        self._qr_url = result.url
+        self._qr_image = result.qr_image  # 60x60 RGB numpy array
+```
 
 ## Display Specifications
 
