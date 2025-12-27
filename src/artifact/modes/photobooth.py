@@ -43,6 +43,7 @@ class PhotoboothState:
     is_uploading: bool = False
     flash_timer: float = 0.0
     show_result: bool = False
+    result_view: str = "photo"  # "photo" or "qr"
 
 
 class PhotoboothMode(BaseMode):
@@ -67,7 +68,7 @@ class PhotoboothMode(BaseMode):
     BEEP_TIME = 0.2
     COUNTDOWN_SECONDS = 3
     FLASH_DURATION = 0.5
-    RESULT_DURATION = 15.0
+    RESULT_DURATION = 60.0  # 60 seconds to scan QR
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
@@ -87,6 +88,18 @@ class PhotoboothMode(BaseMode):
 
     def on_input(self, event: Event) -> bool:
         """Handle button press - adapted from buttonPress()."""
+        # Handle LEFT/RIGHT for photo/QR toggle during result
+        if self._state.show_result:
+            if event.type == EventType.ARCADE_LEFT or event.type == EventType.ARCADE_RIGHT:
+                # Toggle between photo and qr view
+                if self._state.result_view == "photo":
+                    self._state.result_view = "qr"
+                else:
+                    self._state.result_view = "photo"
+                # Reset timer on toggle to give more time
+                self._state.countdown_timer = self.RESULT_DURATION
+                return True
+
         if event.type not in (EventType.BUTTON_PRESS, EventType.KEYPAD_INPUT):
             return False
 
@@ -101,7 +114,7 @@ class PhotoboothMode(BaseMode):
             return True
 
         elif self._state.show_result:
-            # Reset for another photo
+            # Button press = take another photo
             self._state = PhotoboothState()
             self._working = False
             return True
@@ -276,42 +289,42 @@ class PhotoboothMode(BaseMode):
         draw_centered_text(buffer, "КНОПКУ", 120, (200, 200, 200), scale=1)
 
     def _render_result(self, buffer: NDArray[np.uint8]) -> None:
-        """Render result screen with QR code."""
-        if self._state.photo_frame is not None:
-            np.copyto(buffer, self._state.photo_frame)
-        else:
-            frame = camera_service.get_frame(timeout=0)
-            if frame is not None and frame.shape[:2] == (128, 128):
-                np.copyto(buffer, frame)
+        """Render result screen - full screen photo or QR."""
+        if self._state.result_view == "photo":
+            # Full screen photo
+            if self._state.photo_frame is not None:
+                np.copyto(buffer, self._state.photo_frame)
             else:
                 fill(buffer, (10, 10, 20))
+                draw_centered_text(buffer, "ФОТО", 55, (100, 100, 100), scale=2)
 
-        overlay = buffer.copy()
-        buffer[:18, :, :] = (overlay[:18, :, :].astype(np.float32) * 0.4).astype(np.uint8)
-        buffer[-14:, :, :] = (overlay[-14:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
+            # Small hint at bottom
+            draw_centered_text(buffer, "◄ ► QR", 118, (150, 150, 150), scale=1)
 
-        if self._state.qr_image is not None:
-            status_text = "СКАН QR"
-        elif self._state.is_uploading:
-            status_text = "ЗАГРУЗКА..."
-        else:
-            status_text = "QR НЕ ГОТОВ"
+        elif self._state.result_view == "qr":
+            # Full screen QR code
+            fill(buffer, (255, 255, 255))  # White background for QR
 
-        draw_centered_text(buffer, status_text, 4, (220, 220, 220), scale=1)
+            if self._state.qr_image is not None:
+                qr_h, qr_w = self._state.qr_image.shape[:2]
+                # Center the QR code
+                x_offset = (128 - qr_w) // 2
+                y_offset = (128 - qr_h) // 2
+                buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._state.qr_image
+            elif self._state.is_uploading:
+                fill(buffer, (20, 20, 30))
+                draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
+                draw_centered_text(buffer, "QR...", 65, (200, 200, 100), scale=1)
+            else:
+                fill(buffer, (20, 20, 30))
+                draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
+                draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
 
-        if self._state.qr_image is not None:
-            qr_h, qr_w = self._state.qr_image.shape[:2]
-            x_offset = max(4, 128 - qr_w - 4)
-            y_offset = max(20, 128 - qr_h - 18)
-            draw_rect(buffer, x_offset - 2, y_offset - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
-            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._state.qr_image
-
-        # Progress bar for auto-exit
-        remaining = max(0, self._state.countdown_timer / self.RESULT_DURATION)
-        bar_width = int(100 * remaining)
-        draw_rect(buffer, 14, 118, bar_width, 4, (80, 80, 80), filled=True)
-
-        draw_centered_text(buffer, "ЕЩЕ РАЗ?", 108, (180, 180, 180), scale=1)
+            # Small hint at bottom (dark text on white)
+            if self._state.qr_image is not None:
+                draw_centered_text(buffer, "◄ ► ФОТО", 118, (100, 100, 100), scale=1)
+            else:
+                draw_centered_text(buffer, "◄ ► ФОТО", 118, (150, 150, 150), scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render ticker display."""
