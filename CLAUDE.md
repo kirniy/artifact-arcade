@@ -74,6 +74,27 @@ cd ~/modular-arcade
 sudo ARTIFACT_ENV=hardware PYTHONPATH=src .venv/bin/python -m artifact.main
 ```
 
+### Selectel S3 Setup (for photo uploads + QR codes)
+
+Photos and media are uploaded to Selectel Object Storage for QR code sharing.
+
+```bash
+# SSH into Pi and run setup script
+ssh kirniy@artifact.local
+cd ~/modular-arcade
+./scripts/setup-aws-s3.sh
+# Enter your Selectel access key and secret key when prompted
+
+# Test the connection
+aws --endpoint-url https://s3.ru-7.storage.selcloud.ru --profile selectel s3 ls s3://vnvnc
+
+# Restart service after configuration
+sudo systemctl restart artifact
+```
+
+If you see "The config profile (selectel) could not be found", the AWS CLI config is missing.
+Get credentials from: https://my.selectel.ru/storage/containers
+
 ### LED Demo (32 Visual Effects with Chiptune Music)
 
 A standalone demo showcasing the 128×128 LED panel with 32 visual effects, videos, images, and Balatro-style chiptune music.

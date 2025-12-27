@@ -295,9 +295,26 @@ class SimulatorWindow:
             ))
         elif key == pygame.K_KP0:
             self.keypad._press("0")
+        elif key == pygame.K_KP8:
+            # Numpad 8 → up navigation + digit
+            self.keypad._press("8")
+            self.event_bus.emit(Event(EventType.ARCADE_UP, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT, data={"key": "8"}, source="keypad"
+            ))
+        elif key == pygame.K_KP2:
+            # Numpad 2 → down navigation + digit
+            self.keypad._press("2")
+            self.event_bus.emit(Event(EventType.ARCADE_DOWN, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT, data={"key": "2"}, source="keypad"
+            ))
         elif key in range(pygame.K_KP1, pygame.K_KP9 + 1):
             char = str(key - pygame.K_KP1 + 1)
             self.keypad._press(char)
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT, data={"key": char}, source="keypad"
+            ))
         elif key == pygame.K_ASTERISK or key == pygame.K_KP_MULTIPLY:
             # Toggle mute with asterisk key
             audio = get_audio_engine()
@@ -308,13 +325,17 @@ class SimulatorWindow:
         elif key == pygame.K_HASH:
             self.keypad._press("#")
 
-        # UP/DOWN for scrolling print preview
+        # UP/DOWN - arcade navigation OR print preview scroll
         elif key == pygame.K_UP:
             if self._show_printer and self._printer_preview:
                 self._printer_preview.scroll(-1)  # Scroll up
+            else:
+                self.event_bus.emit(Event(EventType.ARCADE_UP, source="arcade"))
         elif key == pygame.K_DOWN:
             if self._show_printer and self._printer_preview:
                 self._printer_preview.scroll(1)  # Scroll down
+            else:
+                self.event_bus.emit(Event(EventType.ARCADE_DOWN, source="arcade"))
 
     def _handle_keyup(self, event: pygame.event.Event) -> None:
         """Handle key release."""

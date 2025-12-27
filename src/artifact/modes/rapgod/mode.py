@@ -530,12 +530,11 @@ class RapGodMode(BaseMode):
         self._sub_phase = RapGodPhase.PREVIEW
 
         # Burst particles for celebration
-        for _ in range(50):
-            self._particles.spawn(
-                64, 64,
-                preset=ParticlePresets.SPARKLE,
-                color=GENRE_COLORS.get(self._genre, (255, 100, 200)),
-            )
+        sparkle_config = ParticlePresets.sparkle(64, 64)
+        sparkle_config.color = GENRE_COLORS.get(self._genre, (255, 100, 200))
+        sparkle_config.burst = 50
+        emitter = self._particles.add_emitter("celebration", sparkle_config)
+        emitter.burst(50)
 
         # Start audio preview
         if self._audio_bytes:
@@ -863,8 +862,8 @@ class RapGodMode(BaseMode):
             buffer[:] = (buffer * (1 - alpha) + np.array(flash_color) * alpha).astype(np.uint8)
 
         if self._sub_phase == RapGodPhase.CAMERA_PREP:
-            # Show instruction overlay
-            draw_rect(buffer, 0, 0, 128, 25, color=(0, 0, 0, 180), filled=True)
+            # Show instruction overlay (semi-transparent black)
+            draw_rect(buffer, 0, 0, 128, 25, color=(0, 0, 0), filled=True)
             draw_centered_text(
                 buffer, "ВСТАНЬ В КАДР!",
                 y=8,
@@ -876,12 +875,13 @@ class RapGodMode(BaseMode):
             # Show countdown
             if self._camera_countdown > 0:
                 countdown_num = int(self._camera_countdown) + 1
-                # Pulse effect for countdown
+                # Pulse effect for countdown (clamped to 255)
                 pulse = 1.0 + 0.3 * math.sin(self._time_in_phase / 100)
+                pulse_color = tuple(min(255, int(c * pulse)) for c in color)
                 draw_centered_text(
                     buffer, str(countdown_num),
                     y=50,
-                    color=tuple(int(c * pulse) for c in color),
+                    color=pulse_color,
                     scale=3,
                 )
             else:
