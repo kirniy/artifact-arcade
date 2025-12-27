@@ -122,14 +122,12 @@ class RapGodMode(BaseMode):
         self._genre_index = 0
         self._genres = list(GENRES.keys())
 
-        # Word selection state - slot machine style
+        # Word selection state - simple 3-option picker
         self._current_slot = 0  # 0-3 for 4 word slots, then 4 = joker slot
-        self._slot_words: List[List[str]] = []  # ~20 words per slot for scrolling
-        self._slot_offsets: List[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # Scroll offset (5 slots: 4 words + joker)
-        self._slot_stopped: List[bool] = [False, False, False, False, False]  # Whether stopped
-        self._slot_speed: float = 6.0  # Pixels per second for scrolling (very slow and readable)
+        self._slot_options: List[List[str]] = []  # 3 options per slot
+        self._option_index = 0  # Current highlighted option (0-2)
         self._selected_words: List[str] = []  # Final selected words (4)
-        self._joker_words: List[str] = []  # Joker rules for slot 5
+        self._joker_options: List[str] = []  # 3 joker options
         self._joker_text: Optional[str] = None  # Selected joker rule
 
         # Camera state
@@ -173,24 +171,22 @@ class RapGodMode(BaseMode):
         self._flash_alpha = 0.0
 
     def _reset_selection(self) -> None:
-        """Reset word selection state for slot machine."""
+        """Reset word selection state for 3-option picker."""
         self._current_slot = 0
-        self._slot_words = []
-        self._slot_offsets = [0.0, 0.0, 0.0, 0.0, 0.0]
-        self._slot_stopped = [False, False, False, False, False]
+        self._option_index = 0
+        self._slot_options = []
         self._selected_words = []
         self._joker_text = None
 
-        # Pre-generate 20 words per slot for scrolling effect
+        # Generate 3 options per slot from different categories
         for i in range(4):
-            words = self._wordbank.get_words_by_category_index(i, count=20)
-            self._slot_words.append(words)
+            options = self._wordbank.get_slot_options(i)
+            self._slot_options.append(options)
 
-        # Add joker rules as the 5th slot
-        self._joker_words = self._wordbank.get_all_jokers()
-        random.shuffle(self._joker_words)
-        # Add "БЕЗ ДЖОКЕРА" as first option
-        self._joker_words.insert(0, "БЕЗ ДЖОКЕРА")
+        # Generate 3 joker options (including "skip" option)
+        all_jokers = self._wordbank.get_all_jokers()
+        random.shuffle(all_jokers)
+        self._joker_options = ["БЕЗ ДЖОКЕРА"] + all_jokers[:2]
 
     def on_exit(self) -> None:
         """Cleanup on mode exit."""
@@ -207,10 +203,6 @@ class RapGodMode(BaseMode):
         """Update mode state each frame."""
         # Update particles
         self._particles.update(delta_ms)
-
-        # Update slot machine animation in word select phase
-        if self._sub_phase == RapGodPhase.WORD_SELECT:
-            self._update_slot_animation(delta_ms)
 
         # Update camera preview in camera phases
         if self._sub_phase in (RapGodPhase.CAMERA_PREP, RapGodPhase.CAMERA_CAPTURE):
@@ -253,28 +245,6 @@ class RapGodMode(BaseMode):
                 self._time_in_phase = 0
                 self._camera_countdown = 3.0
 
-    def _update_slot_animation(self, delta_ms: int) -> None:
-        """Update slot machine scrolling animation."""
-        # Only animate the current slot (not stopped ones)
-        for i in range(5):
-            if not self._slot_stopped[i]:
-                # Scroll the slot - very slow speed for readability
-                speed = self._slot_speed  # 12 px/s for words
-                if i == 4:  # Joker slot scrolls even slower
-                    speed = 8.0
-                self._slot_offsets[i] += speed * delta_ms / 1000.0
-
-                # Wrap around based on number of items
-                if i < 4:
-                    num_items = len(self._slot_words[i]) if i < len(self._slot_words) else 20
-                else:
-                    num_items = len(self._joker_words) if self._joker_words else 12
-
-                item_height = 16  # Pixels per item
-                max_offset = num_items * item_height
-                if self._slot_offsets[i] >= max_offset:
-                    self._slot_offsets[i] -= max_offset
-
     def on_input(self, event: Event) -> bool:
         """Handle user input."""
         if event.type == EventType.BUTTON_PRESS:
@@ -303,7 +273,7 @@ class RapGodMode(BaseMode):
         return False
 
     def _handle_confirm(self) -> bool:
-        """Handle confirm/enter action - STOPS the current slot."""
+        """Handle confirm/enter action - select current option."""
         if self._sub_phase == RapGodPhase.INTRO:
             self._sub_phase = RapGodPhase.GENRE_SELECT
             return True
@@ -311,28 +281,30 @@ class RapGodMode(BaseMode):
         if self._sub_phase == RapGodPhase.GENRE_SELECT:
             self._genre = self._genres[self._genre_index]
             self._sub_phase = RapGodPhase.WORD_SELECT
+            self._option_index = 0
             return True
 
         if self._sub_phase == RapGodPhase.WORD_SELECT:
-            # STOP the current slot and lock in the word
             if self._current_slot < 4:
-                # Word slot (0-3)
-                if not self._slot_stopped[self._current_slot]:
-                    self._slot_stopped[self._current_slot] = True
-                    # Get the word at current offset
-                    word = self._get_current_slot_word(self._current_slot)
+                # Select word from current slot
+                options = self._slot_options[self._current_slot]
+                if self._option_index < len(options):
+                    word = options[self._option_index]
                     self._selected_words.append(word)
                     self._current_slot += 1
+                    self._option_index = 0  # Reset for next slot
+
+                    # Move to joker slot after 4 words
+                    if self._current_slot >= 4:
+                        self._current_slot = 4  # Joker slot
             else:
-                # Joker slot (4)
-                if not self._slot_stopped[4]:
-                    self._slot_stopped[4] = True
-                    joker = self._get_current_joker()
-                    if joker != "БЕЗ ДЖОКЕРА":
-                        self._joker_text = joker
-                    # All slots done - move to camera
-                    self._sub_phase = RapGodPhase.CAMERA_PREP
-                    self._time_in_phase = 0
+                # Joker slot (4) - select and proceed
+                joker = self._joker_options[self._option_index] if self._option_index < len(self._joker_options) else "БЕЗ ДЖОКЕРА"
+                if joker != "БЕЗ ДЖОКЕРА":
+                    self._joker_text = joker
+                # All done - move to camera
+                self._sub_phase = RapGodPhase.CAMERA_PREP
+                self._time_in_phase = 0
             return True
 
         if self._sub_phase == RapGodPhase.CAMERA_PREP:
@@ -355,43 +327,27 @@ class RapGodMode(BaseMode):
 
         return False
 
-    def _get_current_slot_word(self, slot_idx: int) -> str:
-        """Get the word at the current scroll position for a slot."""
-        if slot_idx >= len(self._slot_words):
-            return "слово"
-
-        words = self._slot_words[slot_idx]
-        offset = self._slot_offsets[slot_idx]
-        item_height = 16
-        # Get index of word at center of display
-        center_idx = int((offset + 40) / item_height) % len(words)
-        return words[center_idx]
-
-    def _get_current_joker(self) -> str:
-        """Get the joker rule at the current scroll position."""
-        if not self._joker_words:
-            return "БЕЗ ДЖОКЕРА"
-
-        offset = self._slot_offsets[4]
-        item_height = 16
-        center_idx = int((offset + 40) / item_height) % len(self._joker_words)
-        return self._joker_words[center_idx]
-
     def _handle_back(self) -> bool:
-        """Handle back action - re-spin the previous slot."""
+        """Handle back action - go to previous slot."""
         if self._sub_phase == RapGodPhase.GENRE_SELECT:
             self._sub_phase = RapGodPhase.INTRO
             return True
 
         if self._sub_phase == RapGodPhase.WORD_SELECT:
-            if self._current_slot > 0:
-                # Go back to previous slot and re-spin it
-                self._current_slot -= 1
-                self._slot_stopped[self._current_slot] = False
+            if self._current_slot == 4:
+                # At joker slot - go back to word slot 3
+                self._current_slot = 3
                 if self._selected_words:
                     self._selected_words.pop()
-            elif self._current_slot == 0 and not self._slot_stopped[0]:
-                # At first slot, not stopped - go back to genre
+                self._option_index = 0
+            elif self._current_slot > 0:
+                # Go back to previous word slot
+                self._current_slot -= 1
+                if self._selected_words:
+                    self._selected_words.pop()
+                self._option_index = 0
+            else:
+                # At first slot - go back to genre
                 self._sub_phase = RapGodPhase.GENRE_SELECT
             return True
 
@@ -399,86 +355,74 @@ class RapGodMode(BaseMode):
             # Go back to joker slot
             self._sub_phase = RapGodPhase.WORD_SELECT
             self._current_slot = 4
-            self._slot_stopped[4] = False
             self._joker_text = None
+            self._option_index = 0
             return True
 
         return False
 
     def _handle_left(self) -> bool:
-        """Handle left arrow - reshuffle current slot words."""
+        """Handle left arrow - get new options for current slot."""
         if self._sub_phase == RapGodPhase.GENRE_SELECT:
             self._genre_index = (self._genre_index - 1) % len(self._genres)
             return True
 
         if self._sub_phase == RapGodPhase.WORD_SELECT:
-            # Reshuffle current slot with new words
+            # Get new options for current slot
             if self._current_slot < 4:
-                self._slot_words[self._current_slot] = self._wordbank.get_words_by_category_index(
-                    self._current_slot + random.randint(0, 100), count=20
+                self._slot_options[self._current_slot] = self._wordbank.get_slot_options(
+                    self._current_slot + random.randint(0, 100)
                 )
-                self._slot_offsets[self._current_slot] = 0.0
+                self._option_index = 0
             else:
-                # Reshuffle joker rules
-                random.shuffle(self._joker_words)
-                self._slot_offsets[4] = 0.0
+                # Shuffle joker options
+                all_jokers = self._wordbank.get_all_jokers()
+                random.shuffle(all_jokers)
+                self._joker_options = ["БЕЗ ДЖОКЕРА"] + all_jokers[:2]
+                self._option_index = 0
             return True
 
         if self._sub_phase == RapGodPhase.RESULT:
-            # Toggle view
             self._result_view = "lyrics" if self._result_view == "qr" else "qr"
             return True
 
         return False
 
     def _handle_right(self) -> bool:
-        """Handle right arrow - shuffle/new words in word select."""
+        """Handle right arrow - get new options (same as left)."""
         if self._sub_phase == RapGodPhase.GENRE_SELECT:
             self._genre_index = (self._genre_index + 1) % len(self._genres)
             return True
 
         if self._sub_phase == RapGodPhase.WORD_SELECT:
-            # Shuffle current slot with new words (same as LEFT)
-            if self._current_slot < 4:
-                self._slot_words[self._current_slot] = self._wordbank.get_words_by_category_index(
-                    self._current_slot + random.randint(0, 100), count=20
-                )
-                self._slot_offsets[self._current_slot] = 0.0
-            else:
-                # Reshuffle joker rules
-                random.shuffle(self._joker_words)
-                self._slot_offsets[4] = 0.0
-            return True
+            # Get new options (same as left)
+            return self._handle_left()
 
         if self._sub_phase == RapGodPhase.RESULT:
-            # Toggle view
             self._result_view = "lyrics" if self._result_view == "qr" else "qr"
             return True
 
         return False
 
     def _handle_up(self) -> bool:
-        """Handle up arrow - speed up current slot temporarily."""
+        """Handle up arrow - move selection up."""
         if self._sub_phase == RapGodPhase.WORD_SELECT:
-            # Nudge the slot offset backward (scroll up)
-            if not self._slot_stopped[self._current_slot]:
-                self._slot_offsets[self._current_slot] -= 8.0
-                if self._slot_offsets[self._current_slot] < 0:
-                    # Wrap around
-                    if self._current_slot < 4:
-                        num_items = len(self._slot_words[self._current_slot])
-                    else:
-                        num_items = len(self._joker_words)
-                    self._slot_offsets[self._current_slot] += num_items * 16
+            if self._current_slot < 4:
+                max_options = len(self._slot_options[self._current_slot])
+            else:
+                max_options = len(self._joker_options)
+            self._option_index = (self._option_index - 1) % max_options
             return True
         return False
 
     def _handle_down(self) -> bool:
-        """Handle down arrow - nudge slot forward."""
+        """Handle down arrow - move selection down."""
         if self._sub_phase == RapGodPhase.WORD_SELECT:
-            # Nudge the slot offset forward (scroll down)
-            if not self._slot_stopped[self._current_slot]:
-                self._slot_offsets[self._current_slot] += 8.0
+            if self._current_slot < 4:
+                max_options = len(self._slot_options[self._current_slot])
+            else:
+                max_options = len(self._joker_options)
+            self._option_index = (self._option_index + 1) % max_options
             return True
         return False
 
@@ -772,14 +716,14 @@ class RapGodMode(BaseMode):
         )
 
     def _render_word_select(self, buffer: np.ndarray, color: tuple) -> None:
-        """Render slot machine style word selection."""
+        """Render 3-option word selection."""
         # Title based on current slot
         if self._current_slot < 4:
             title = f"СЛОВО {self._current_slot + 1}/4"
-            is_joker_slot = False
+            options = self._slot_options[self._current_slot] if self._current_slot < len(self._slot_options) else []
         else:
             title = "ДЖОКЕР"
-            is_joker_slot = True
+            options = self._joker_options
 
         draw_centered_text(
             buffer, title,
@@ -790,116 +734,67 @@ class RapGodMode(BaseMode):
 
         # Show already selected words at top
         if self._selected_words:
-            words_display = " | ".join(self._selected_words[:4])
+            words_display = " ".join(self._selected_words[:4])
+            # Truncate if too long
+            if len(words_display) > 22:
+                words_display = words_display[:20] + ".."
             draw_centered_text(
-                buffer, words_display[:24],
-                y=20,
-                color=(100, 80, 120),
+                buffer, words_display,
+                y=22,
+                color=(100, 200, 100),
                 scale=1,
             )
 
-        # Draw slot machine window (centered area where words scroll)
-        slot_y = 35
-        slot_height = 70
-        slot_width = 118
+        # Draw 3 options
+        start_y = 42
+        option_height = 22
 
-        # Background for slot window
-        draw_rect(buffer, 5, slot_y, slot_width, slot_height, color=(25, 20, 35), filled=True)
+        for i, option in enumerate(options[:3]):
+            y_pos = start_y + i * option_height
+            is_selected = (i == self._option_index)
 
-        # Draw scrolling words/jokers
-        if is_joker_slot:
-            self._render_slot_items(buffer, self._joker_words, 4, slot_y, slot_height, color)
-        else:
-            if self._current_slot < len(self._slot_words):
-                self._render_slot_items(
-                    buffer, self._slot_words[self._current_slot],
-                    self._current_slot, slot_y, slot_height, color
+            # Truncate option text
+            display_text = option[:16] if len(option) > 16 else option
+
+            if is_selected:
+                # Highlight box
+                draw_rect(buffer, 8, y_pos - 2, 112, 18, color=(60, 40, 80), filled=True)
+                draw_rect(buffer, 8, y_pos - 2, 112, 18, color=color, filled=False)
+
+                # Animated selected text
+                draw_animated_text(
+                    buffer, f"> {display_text}",
+                    y=y_pos,
+                    base_color=color,
+                    time_ms=self._time_in_phase,
+                    effect=TextEffect.GLOW,
+                    scale=1,
+                )
+            else:
+                # Dim unselected option
+                draw_centered_text(
+                    buffer, display_text,
+                    y=y_pos,
+                    color=(100, 100, 120),
+                    scale=1,
                 )
 
-        # Center highlight bar (the "selected" position)
-        center_y = slot_y + slot_height // 2 - 8
-        draw_rect(buffer, 5, center_y, slot_width, 16, color=(60, 40, 80), filled=True)
-
-        # Re-render the center word on top of highlight
-        if is_joker_slot:
-            center_word = self._get_current_joker()
-        else:
-            center_word = self._get_current_slot_word(self._current_slot)
-
-        # Truncate long joker rules
-        display_word = center_word[:18] if len(center_word) > 18 else center_word
-
-        draw_animated_text(
-            buffer, display_word,
-            y=center_y + 2,
-            base_color=color,
-            time_ms=self._time_in_phase,
-            effect=TextEffect.GLOW if not self._slot_stopped[self._current_slot] else TextEffect.NONE,
+        # Instructions
+        draw_centered_text(
+            buffer, "↑↓ ВЫБРАТЬ",
+            y=110,
+            color=(120, 120, 140),
             scale=1,
         )
-
-        # Border around slot
-        draw_rect(buffer, 5, slot_y, slot_width, slot_height, color=(80, 60, 100), filled=False)
-
-        # Status indicator
-        if self._slot_stopped[self._current_slot]:
-            status = "ВЫБРАНО!"
-            status_color = (100, 255, 100)
-        else:
-            status = "ЖМЕШЬ = СТОП"
-            status_color = (150, 150, 150)
-
-        draw_centered_text(buffer, status, y=108, color=status_color, scale=1)
 
         # Button hints
         draw_button_labels(
             buffer,
-            left_text="НАЗАД",
-            right_text="ЕЩЁ",
+            left_text="ЕЩЁ",
+            right_text="OK",
             time_ms=self._time_in_phase,
-            y=120,
+            y=122,
         )
-
-    def _render_slot_items(
-        self, buffer: np.ndarray, items: List[str],
-        slot_idx: int, slot_y: int, slot_height: int, color: tuple
-    ) -> None:
-        """Render scrolling items in a slot machine window."""
-        if not items:
-            return
-
-        offset = self._slot_offsets[slot_idx]
-        item_height = 16
-        num_items = len(items)
-        total_height = num_items * item_height
-
-        # Calculate visible range
-        center_y = slot_y + slot_height // 2
-
-        # Normalize offset to prevent large numbers
-        norm_offset = offset % total_height
-
-        for i in range(num_items):
-            # Calculate base y position
-            base_y = i * item_height - norm_offset
-
-            # Wrap around smoothly (render item at both positions if near edge)
-            for wrap_offset in [0, total_height, -total_height]:
-                item_y = base_y + wrap_offset
-                y_pos = int(center_y + item_y - 6)
-
-                # Only render if visible in window
-                if slot_y - 4 < y_pos < slot_y + slot_height:
-                    # Fade based on distance from center
-                    dist = abs(y_pos - center_y)
-                    alpha = max(0.3, 1.0 - dist / 40)
-
-                    # Skip center item (we render it separately with glow)
-                    if dist > 8:
-                        # Brighter base color for readability
-                        item_color = tuple(min(255, int(c * alpha * 0.85)) for c in color)
-                        item_text = items[i][:16]  # Truncate
-                        draw_centered_text(buffer, item_text, y=y_pos, color=item_color, scale=1)
 
     def _render_camera(self, buffer: np.ndarray, color: tuple) -> None:
         """Render camera preview and capture screen."""
