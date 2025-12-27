@@ -530,6 +530,9 @@ class ZodiacMode(BaseMode):
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
+                # Ignore navigation from numpad during date input (numpad 4/6 send both nav + digit)
+                if event.source == "numpad":
+                    return False
                 # Right arrow - confirm when valid
                 if self._validate_date():
                     self._audio.play_ui_confirm()

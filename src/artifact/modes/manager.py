@@ -280,6 +280,23 @@ MODE_EFFECTS = {
     "tower_stack": SelectorEffect.DITHER,
 }
 
+# Menu-specific display name overrides (keep Russian on the selector/ticker/LCD)
+MODE_LABELS_RU = {
+    "pong": "ПОНГ",
+    "rap_god": "РЭП БОГ",
+    "snake_classic": "ЗМЕЙКА",
+    "snake_tiny": "МИНИ-ЗМЕЙКА",
+    "flappy": "ФЛАППИ",
+    "lunar_lander": "ЛЕНДЕР",
+    "ninja_fruit": "НИНДЗЯ",
+    "skii": "ЛЫЖИ",
+    "rocketpy": "РАКЕТА",
+    "hand_snake": "РУЧНАЯ ЗМЕЙКА",
+    "glitch_mirror": "ГЛИТЧ",
+    "dither_art": "ДИТЕР",
+    "ascii_art": "АСКИ",
+}
+
 
 @dataclass
 class ModeInfo:
@@ -349,7 +366,7 @@ class ModeManager:
         self._last_input_time: float = 0.0
 
         # Result view control - user navigates with LEFT/RIGHT
-        self._result_view_index: int = 0      # Current view (0=prompt, 1=prediction, 2=caricature)
+        self._result_view_index: int = 0      # Current view (0=text, 1=caricature)
         self._result_num_views: int = 2       # Number of views available
         self._result_auto_advance: bool = True  # Auto-advance enabled
         self._result_first_default: float = 8000  # Baseline timing
@@ -357,6 +374,10 @@ class ModeManager:
         self._result_first_advance_time: float = self._result_first_default
         self._result_next_advance_time: float = self._result_next_default
         self._result_last_advance: float = 0.0  # Time of last advance
+
+        # Text pagination within result view (no scrolling!)
+        self._result_text_pages: List[List[str]] = []  # Pre-paginated text
+        self._result_text_page_index: int = 0          # Current text page
 
         # Callbacks
         self._on_mode_complete: Optional[Callable[[ModeResult], None]] = None
@@ -598,13 +619,14 @@ class ModeManager:
             mode_cls: The mode class to register
             enabled: Whether mode is available for selection
         """
+        display_name = MODE_LABELS_RU.get(mode_cls.name, mode_cls.display_name)
         info = ModeInfo(
             cls=mode_cls,
             name=mode_cls.name,
-            display_name=mode_cls.display_name,
+            display_name=display_name,
             icon=mode_cls.icon,
             style=mode_cls.style,
-            description=getattr(mode_cls, "description", getattr(mode_cls, "__doc__", "") or mode_cls.display_name),
+            description=getattr(mode_cls, "description", getattr(mode_cls, "__doc__", "") or display_name),
             enabled=enabled
         )
         self._registered_modes[mode_cls.name] = info
@@ -654,6 +676,8 @@ class ModeManager:
             # AUTO-PRINT enabled: No confirmation needed, start at view 0 (text)
             # Views: 0=text, 1=caricature (if available)
             self._result_view_index = 0
+            self._result_text_page_index = 0
+            self._result_text_pages = []
             self._result_auto_advance = True
             self._result_last_advance = 0.0
             self._result_first_advance_time = self._result_first_default
@@ -670,6 +694,18 @@ class ModeManager:
 
                         font = load_font("cyrillic")
                         lines = smart_wrap_text(self._last_result.display_text, 120, font, scale=1)
+
+                        # Pre-paginate text into pages (5 lines per page for readability)
+                        lines_per_page = 5
+                        self._result_text_pages = []
+                        for i in range(0, len(lines), lines_per_page):
+                            page_lines = lines[i:i + lines_per_page]
+                            self._result_text_pages.append(page_lines)
+
+                        # Ensure at least one page
+                        if not self._result_text_pages:
+                            self._result_text_pages = [["..."]]
+
                         line_count = max(1, len(lines))
                         # Add generous reading time for longer fortunes
                         base_ms = 9000
@@ -686,8 +722,10 @@ class ModeManager:
                         # Fall back to defaults if anything goes wrong
                         self._result_first_advance_time = self._result_first_default
                         self._result_next_advance_time = self._result_next_default
+                        self._result_text_pages = [["..."]]
             else:
                 self._result_num_views = 2
+                self._result_text_pages = [["..."]]
 
         # Handle music transitions and cross-display effects
         if new_state == ManagerState.IDLE:

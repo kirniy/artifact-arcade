@@ -1262,7 +1262,7 @@ class FortuneMode(BaseMode):
         draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
 
     def _render_page_image(self, buffer, font) -> None:
-        """Render the caricature/image page (Page 0)."""
+        """Render the caricature/image page (Page 0) - FULLSCREEN."""
         from artifact.graphics.primitives import fill
         from artifact.graphics.text_utils import draw_centered_text
         from io import BytesIO
@@ -1273,8 +1273,6 @@ class FortuneMode(BaseMode):
         if not self._caricature:
             # No image - show placeholder
             draw_centered_text(buffer, "НЕТ ФОТО", 55, (100, 100, 100), scale=2)
-            hint = self._get_nav_hint()
-            draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
             return
 
         try:
@@ -1283,12 +1281,12 @@ class FortuneMode(BaseMode):
             img = Image.open(BytesIO(self._caricature.image_data))
             img = img.convert("RGB")
 
-            # Fill most of screen (leave room for nav hint)
-            display_size = 108
+            # FULLSCREEN - fill entire 128x128 display
+            display_size = 128
             img = img.resize((display_size, display_size), Image.Resampling.LANCZOS)
 
-            x_offset = (128 - display_size) // 2
-            y_offset = 2
+            x_offset = 0
+            y_offset = 0
 
             # Fade-in during reveal phase
             if self._sub_phase == FortunePhase.REVEAL:
@@ -1301,16 +1299,7 @@ class FortuneMode(BaseMode):
             if alpha < 1.0:
                 img_array = (img_array.astype(np.float32) * alpha).astype(np.uint8)
 
-            y_end = min(y_offset + display_size, 128)
-            x_end = min(x_offset + display_size, 128)
-            img_h = y_end - y_offset
-            img_w = x_end - x_offset
-            buffer[y_offset:y_end, x_offset:x_end] = img_array[:img_h, :img_w]
-
-            # Navigation hint at bottom
-            if self._sub_phase == FortunePhase.RESULT:
-                hint = self._get_nav_hint()
-                draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
+            buffer[:display_size, :display_size] = img_array
 
         except Exception as e:
             logger.warning(f"Failed to render caricature: {e}")
