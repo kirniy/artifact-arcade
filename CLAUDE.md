@@ -586,3 +586,47 @@ def _on_upload_complete(self, result: UploadResult) -> None:
 - Always calculate centering: `x = (128 - text_width * scale) // 2`
 - Word wrap long text to ~12 chars per line at scale=2
 - Test Cyrillic characters - they may be wider than Latin
+
+---
+
+## Future Ideas & Roadmap
+
+### Photo Album & Web Integration
+- **S3 Photo Gallery Website**: Auto-generated web gallery from `vnvnc` bucket
+  - Browse all photos/caricatures by date/mode
+  - Share individual images via social links
+  - Download originals in full resolution
+  - Filter by mode: photobooth, ai_prophet, fortune, etc.
+
+### Admin & Monitoring
+- **Telegram Admin Bot**: Real-time stats and control
+  - Session counts, popular modes, peak hours
+  - Error alerts and health monitoring
+  - Remote restart/reboot commands
+  - Photo preview notifications
+  - Daily/weekly usage reports
+
+- **Admin Web Dashboard**: Comprehensive control panel
+  - Live view of all displays (main, ticker, LCD)
+  - Session analytics and graphs
+  - Mode configuration and enabling/disabling
+  - Printer status and paper level
+  - Camera preview and settings
+  - Log viewer and error tracking
+
+### Phone QR Interaction
+When user scans QR code, redirect to interactive web app:
+- **Virtual Keyboard**: Enter text/names for personalized experiences
+- **Virtual Joysticks**: Play games on the arcade using phone as controller
+- **Photo Upload**: Upload photo from phone instead of arcade camera
+- **Voice Input**: Use phone microphone for voice-based modes
+- **Multiplayer Support**: Multiple phones = multiple players
+
+### Additional Mode Ideas
+- **RapTrack Mode**: Generate Russian rap tracks from user-selected words
+  - Slot-machine word selection (4 words + optional joker)
+  - Gemini generates lyrics, Suno API generates music
+  - Audio preview + QR to download full track
+- **Meme Generator**: AI-generated memes from photo
+- **Time Capsule**: Record video message, QR code to view in future
+- **Compatibility Match**: Two people photos → relationship prediction

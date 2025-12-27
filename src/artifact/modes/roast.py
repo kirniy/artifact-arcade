@@ -21,6 +21,7 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.audio.engine import get_audio_engine
 
 import numpy as np
 
@@ -111,6 +112,10 @@ class RoastMeMode(BaseMode):
         self._red = (255, 50, 50)
         self._yellow = (255, 200, 0)
 
+        # Audio engine
+        self._audio = get_audio_engine()
+        self._last_countdown_tick: int = 0
+
         # S3 upload for QR sharing
         self._uploader = AsyncUploader()
         self._qr_url: Optional[str] = None
@@ -169,9 +174,17 @@ class RoastMeMode(BaseMode):
             
             elif self._sub_phase == RoastPhase.CAMERA_CAPTURE:
                 self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
+
+                # Countdown tick sounds
+                current_tick = int(self._camera_countdown) + 1
+                if current_tick != self._last_countdown_tick and current_tick >= 1 and current_tick <= 3:
+                    self._audio.play_countdown_tick()
+                    self._last_countdown_tick = current_tick
+
                 if self._camera_countdown <= 0 and self._photo_data is None:
                     self._do_capture()
-                
+                    self._audio.play_camera_shutter()
+
                 if self._time_in_phase > 3500:
                     self._start_processing()
 
@@ -217,6 +230,7 @@ class RoastMeMode(BaseMode):
         if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
                 if self._display_mode == 1 and self._doodle_image:
+                    self._audio.play_ui_move()
                     self._display_mode = 0
                     self._text_scroll_complete = True
                 else:
@@ -225,11 +239,13 @@ class RoastMeMode(BaseMode):
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
+                self._audio.play_ui_move()
                 self._cycle_display_mode(-1)
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
+                self._audio.play_ui_move()
                 self._cycle_display_mode(1)
                 return True
 
@@ -297,9 +313,19 @@ class RoastMeMode(BaseMode):
 
         if self._qr_image is not None:
             qr_h, qr_w = self._qr_image.shape[:2]
+            target_size = 120
+            if qr_h != target_size or qr_w != target_size:
+                from PIL import Image
+                qr_img = Image.fromarray(self._qr_image)
+                qr_img = qr_img.resize((target_size, target_size), Image.Resampling.NEAREST)
+                qr_scaled = np.array(qr_img, dtype=np.uint8)
+            else:
+                qr_scaled = self._qr_image
+
+            qr_h, qr_w = qr_scaled.shape[:2]
             x_offset = (128 - qr_w) // 2
             y_offset = (128 - qr_h) // 2
-            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._qr_image
+            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
         elif self._uploader.is_uploading:
             fill(buffer, (20, 20, 30))
             draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
@@ -309,9 +335,7 @@ class RoastMeMode(BaseMode):
             draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
             draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
 
-        hint = self._display_nav_hint()
-        if hint:
-            draw_centered_text(buffer, hint, 114, (120, 120, 150), scale=1)
+        # Hint stays on ticker/LCD for full-screen QR
 
     def _start_processing(self) -> None:
         self._sub_phase = RoastPhase.PROCESSING
@@ -428,6 +452,7 @@ class RoastMeMode(BaseMode):
 
     def _on_ai_complete(self) -> None:
         self._progress_tracker.complete()
+        self._audio.play_success()
         self._sub_phase = RoastPhase.REVEAL
         self.change_phase(ModePhase.RESULT)
 

@@ -26,6 +26,7 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
+from artifact.audio.engine import get_audio_engine
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
@@ -265,6 +266,7 @@ class FortuneMode(BaseMode):
         # Services
         self._gemini_client = get_gemini_client()
         self._caricature_service = CaricatureService()
+        self._audio = get_audio_engine()
 
         # Sub-phase tracking
         self._sub_phase = FortunePhase.INTRO
@@ -287,10 +289,11 @@ class FortuneMode(BaseMode):
         self._progress_tracker = SmartProgressTracker(mode_theme="fortune")
 
         # Camera state
-        self._camera: Optional[Camera] = None
-        self._camera_frame: Optional[bytes] = None
+        self._camera: bool = False  # Whether camera is available
+        self._camera_frame: Optional[np.ndarray] = None  # Dithered preview frame
         self._photo_data: Optional[bytes] = None
         self._camera_countdown: float = 0.0
+        self._last_countdown_tick: int = 0  # Track countdown ticks for sound
         self._flash_alpha: float = 0.0
 
         # Animation state
@@ -357,7 +360,7 @@ class FortuneMode(BaseMode):
         if self._camera:
             logger.info("Camera service ready for Fortune mode")
         else:
-            logger.warning("Could not open camera, using placeholder")
+            logger.warning("Camera service not running, using placeholder")
 
         # Setup particles (mystical style)
         star_config = ParticlePresets.stars(x=64, y=64)
@@ -405,9 +408,16 @@ class FortuneMode(BaseMode):
                 # Countdown animation
                 self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
 
+                # Play countdown tick sounds (3, 2, 1)
+                current_tick = int(self._camera_countdown) + 1
+                if current_tick != self._last_countdown_tick and current_tick >= 1 and current_tick <= 3:
+                    self._audio.play_countdown_tick()
+                    self._last_countdown_tick = current_tick
+
                 # Capture when countdown reaches 0
                 if self._camera_countdown <= 0 and self._photo_data is None:
                     self._do_camera_capture()
+                    self._audio.play_camera_shutter()  # Shutter sound
                     self._flash_alpha = 1.0
 
                 # Flash effect after capture
@@ -453,15 +463,19 @@ class FortuneMode(BaseMode):
                 key = event.data.get("key", "")
                 if key.isdigit():
                     self._add_digit(key)
+                    self._audio.play_ui_click()
                     return True
                 elif key == "*":
                     # Backspace
                     self._remove_digit()
+                    self._audio.play_ui_back()
                     return True
                 elif key == "#":
                     # Confirm (if complete)
                     if self._input_complete:
                         self._confirm_birthdate()
+                    else:
+                        self._audio.play_ui_error()
                     return True
 
         elif event.type == EventType.BUTTON_PRESS:
@@ -476,20 +490,32 @@ class FortuneMode(BaseMode):
 
         elif event.type == EventType.ARCADE_LEFT:
             if self._sub_phase == FortunePhase.BIRTHDATE_INPUT:
+                # Ignore navigation from numpad during date input (numpad 4/6 send both nav + digit)
+                if event.source == "numpad":
+                    return False
                 self._remove_digit()
+                self._audio.play_ui_back()
                 return True
             if self.phase == ModePhase.RESULT and self._sub_phase == FortunePhase.RESULT:
                 # Previous page
-                self._current_page = max(0, self._current_page - 1)
+                if self._current_page > 0:
+                    self._current_page -= 1
+                    self._audio.play_ui_move()
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
-            if self._sub_phase == FortunePhase.BIRTHDATE_INPUT and self._input_complete:
-                self._confirm_birthdate()
+            if self._sub_phase == FortunePhase.BIRTHDATE_INPUT:
+                # Ignore navigation from numpad during date input (numpad 4/6 send both nav + digit)
+                if event.source == "numpad":
+                    return False
+                if self._input_complete:
+                    self._confirm_birthdate()
                 return True
             if self.phase == ModePhase.RESULT and self._sub_phase == FortunePhase.RESULT:
                 # Next page
-                self._current_page = min(self._total_pages - 1, self._current_page + 1)
+                if self._current_page < self._total_pages - 1:
+                    self._current_page += 1
+                    self._audio.play_ui_move()
                 return True
 
         return False
@@ -560,6 +586,9 @@ class FortuneMode(BaseMode):
         self._sub_phase = FortunePhase.CAMERA_PREP
         self._time_in_phase = 0
 
+        # Sound effect for confirmation
+        self._audio.play_ui_confirm()
+
         # Burst particles for transition
         magic = self._particles.get_emitter("magic")
         if magic:
@@ -602,6 +631,9 @@ class FortuneMode(BaseMode):
         # Start smart progress tracker
         self._progress_tracker.start()
         self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
+        # Play mystical ambient sound
+        self._audio.play("fortune_mystical", volume=0.5)
 
         # Start async AI task
         self._ai_task = asyncio.create_task(self._run_ai_generation())
@@ -814,6 +846,9 @@ class FortuneMode(BaseMode):
         self.change_phase(ModePhase.RESULT)
         self._reveal_progress = 0.0
 
+        # Play success/reveal sound
+        self._audio.play_success()
+
         # Burst particles for reveal
         stars = self._particles.get_emitter("stars")
         if stars:
@@ -873,8 +908,8 @@ class FortuneMode(BaseMode):
         if self._ai_task and not self._ai_task.done():
             self._ai_task.cancel()
 
-        # Clear camera reference (shared service, don't close)
-        self._camera = None
+        # Clear camera state (shared service, don't close)
+        self._camera = False
         self._camera_frame = None
 
         self._particles.clear_all()
@@ -1107,8 +1142,8 @@ class FortuneMode(BaseMode):
         bar_x = (128 - bar_w) // 2
         bar_y = 80
 
-        # Dark background for progress bar
-        draw_rect(buffer, bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4, (20, 20, 40, 180))
+        # Dark background for progress bar (RGB, not RGBA)
+        draw_rect(buffer, bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4, (20, 20, 40))
 
         # Use the SmartProgressTracker's render method for the progress bar
         self._progress_tracker.render_progress_bar(
@@ -1186,24 +1221,6 @@ class FortuneMode(BaseMode):
             self._render_page_text(buffer, font, text_page_idx)
         elif page_type == "qr":
             self._render_page_qr(buffer, font)
-
-    def _render_zodiac_view(self, buffer, font) -> None:
-        """Render zodiac information view."""
-        from artifact.graphics.primitives import draw_circle
-        from artifact.graphics.text_utils import draw_centered_text
-
-        # Zodiac sign name (large, no emoji symbols)
-        draw_centered_text(buffer, self._zodiac_sign.upper(), 15, self._secondary, scale=2)
-
-        # Chinese zodiac
-        draw_centered_text(buffer, self._chinese_zodiac.upper(), 55, (200, 200, 220), scale=2)
-
-        # Life path number
-        draw_centered_text(buffer, f"Число судьбы: {self._life_path}", 98, self._accent, scale=1)
-
-        # Hint - safe Y position
-        if int(self._time_in_phase / 600) % 2 == 0:
-            draw_centered_text(buffer, "НАЖМИ", 114, (100, 100, 120), scale=1)
 
     def _render_page_text(self, buffer, font, text_page_idx: int) -> None:
         """Render a static text page (no scrolling!).
@@ -1308,11 +1325,10 @@ class FortuneMode(BaseMode):
             # White background for QR visibility
             fill(buffer, (255, 255, 255))
 
-            # Center QR code on screen (leaving room for hint)
             qr_h, qr_w = self._qr_image.shape[:2]
 
-            # Scale QR to be large and centered
-            target_size = 100
+            # Scale QR to fill most of the screen
+            target_size = 120
             if qr_h != target_size or qr_w != target_size:
                 from PIL import Image
                 qr_pil = Image.fromarray(self._qr_image)
@@ -1323,12 +1339,9 @@ class FortuneMode(BaseMode):
 
             qr_h, qr_w = qr_scaled.shape[:2]
             x_offset = (128 - qr_w) // 2
-            y_offset = 5
+            y_offset = (128 - qr_h) // 2
 
             buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
-
-            # Hint on dark strip at bottom
-            draw_centered_text(buffer, "СКАЧАТЬ ФОТО", 112, (50, 50, 50), scale=1)
 
         elif self._uploader.is_uploading:
             fill(buffer, (20, 20, 30))
@@ -1339,9 +1352,7 @@ class FortuneMode(BaseMode):
             draw_centered_text(buffer, "QR", 45, (100, 100, 100), scale=2)
             draw_centered_text(buffer, "НЕ ГОТОВ", 70, (100, 100, 100), scale=1)
 
-        # Navigation hint at bottom
-        hint = self._get_nav_hint()
-        draw_centered_text(buffer, hint, 114, (100, 100, 150), scale=1)
+        # Hint stays on ticker/LCD for full-screen QR
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with smooth seamless scrolling."""

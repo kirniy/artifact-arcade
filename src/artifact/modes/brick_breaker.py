@@ -223,6 +223,9 @@ class BrickBreakerMode(BaseMode):
             new_motion, confidence = camera_service.get_motion_position()
             self._control_source = "motion"
 
+        # Mirror the input so moving hand right = paddle moves right
+        new_motion = 1.0 - new_motion
+
         if self._manual_control_timer > 0:
             self._control_source = "manual"
             if hand is not None:
@@ -583,13 +586,15 @@ class BrickBreakerMode(BaseMode):
         self._render_hud(buffer)
 
     def _render_camera_background(self, buffer: NDArray[np.uint8]) -> None:
-        """Render camera feed as background."""
+        """Render camera feed as mirrored background."""
         from artifact.utils.camera_service import camera_service
 
         frame = camera_service.get_frame(timeout=0)
         if frame is not None and frame.shape[:2] == (128, 128):
+            # Mirror horizontally so user sees themselves naturally
+            mirrored = np.flip(frame, axis=1)
             # Slight dim to keep game elements visible
-            dimmed = (frame.astype(np.float32) * 0.85).astype(np.uint8)
+            dimmed = (mirrored.astype(np.float32) * 0.85).astype(np.uint8)
             np.copyto(buffer, dimmed)
         else:
             self._render_arcade_background(buffer)

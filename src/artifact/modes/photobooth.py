@@ -307,10 +307,19 @@ class PhotoboothMode(BaseMode):
 
             if self._state.qr_image is not None:
                 qr_h, qr_w = self._state.qr_image.shape[:2]
-                # Center the QR code
+                target_size = 120
+                if qr_h != target_size or qr_w != target_size:
+                    from PIL import Image
+                    qr_img = Image.fromarray(self._state.qr_image)
+                    qr_img = qr_img.resize((target_size, target_size), Image.Resampling.NEAREST)
+                    qr_scaled = np.array(qr_img, dtype=np.uint8)
+                else:
+                    qr_scaled = self._state.qr_image
+
+                qr_h, qr_w = qr_scaled.shape[:2]
                 x_offset = (128 - qr_w) // 2
                 y_offset = (128 - qr_h) // 2
-                buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._state.qr_image
+                buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
             elif self._state.is_uploading:
                 fill(buffer, (20, 20, 30))
                 draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
@@ -320,11 +329,7 @@ class PhotoboothMode(BaseMode):
                 draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
                 draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
 
-            # Small hint at bottom (dark text on white)
-            if self._state.qr_image is not None:
-                draw_centered_text(buffer, "◄ ► ФОТО", 118, (100, 100, 100), scale=1)
-            else:
-                draw_centered_text(buffer, "◄ ► ФОТО", 118, (150, 150, 150), scale=1)
+            # Hint stays on ticker/LCD for full-screen QR
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render ticker display."""
@@ -335,7 +340,10 @@ class PhotoboothMode(BaseMode):
             text = f"   {self._state.countdown}   "
             draw_centered_text(buffer, text, 1, (255, 255, 0), scale=1)
         elif self._state.show_result:
-            draw_centered_text(buffer, "ФОТО", 1, (100, 255, 100), scale=1)
+            if self._state.result_view == "qr":
+                draw_centered_text(buffer, "QR", 1, (100, 255, 100), scale=1)
+            else:
+                draw_centered_text(buffer, "ФОТО", 1, (100, 255, 100), scale=1)
         else:
             draw_centered_text(buffer, "ФОТО", 1, (255, 150, 50), scale=1)
 

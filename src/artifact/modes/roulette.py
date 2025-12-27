@@ -20,6 +20,7 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
 
@@ -251,6 +252,10 @@ class RouletteMode(BaseMode):
         self._background = (15, 15, 35)    # Darker for contrast
         self._glow_color = (255, 200, 100) # Warm glow
 
+        # Audio engine
+        self._audio = get_audio_engine()
+        self._last_countdown_tick: int = 0
+
     def on_enter(self) -> None:
         """Initialize roulette mode."""
         self._sub_phase = RoulettePhase.INTRO
@@ -345,9 +350,16 @@ class RouletteMode(BaseMode):
                 # Countdown animation
                 self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
 
+                # Countdown tick sounds
+                current_tick = int(self._camera_countdown) + 1
+                if current_tick != self._last_countdown_tick and current_tick >= 1 and current_tick <= 3:
+                    self._audio.play_countdown_tick()
+                    self._last_countdown_tick = current_tick
+
                 # Capture when countdown reaches 0
                 if self._camera_countdown <= 0 and self._photo_data is None:
                     self._do_camera_capture()
+                    self._audio.play_camera_shutter()
                     self._camera_flash = 1.0
 
                 # Flash effect after capture
@@ -440,6 +452,7 @@ class RouletteMode(BaseMode):
         # Trigger effects based on rarity
         self._flash_alpha = 1.0
         self._celebration_time = 0.0
+        self._audio.play_success()
 
         sparkles = self._particles.get_emitter("sparkles")
         fire = self._particles.get_emitter("fire")
@@ -482,6 +495,7 @@ class RouletteMode(BaseMode):
             elif self.phase == ModePhase.RESULT and self._sub_phase == RoulettePhase.RESULT:
                 # Toggle display mode or finish
                 if self._winner_portrait:
+                    self._audio.play_ui_move()
                     self._display_mode = (self._display_mode + 1) % 2
                     if self._display_mode == 0:
                         # After full cycle, finish
@@ -492,11 +506,13 @@ class RouletteMode(BaseMode):
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoulettePhase.RESULT and self._winner_portrait:
+                self._audio.play_ui_move()
                 self._display_mode = 0  # Portrait view
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoulettePhase.RESULT and self._winner_portrait:
+                self._audio.play_ui_move()
                 self._display_mode = 1  # Text view
                 return True
 
@@ -508,6 +524,9 @@ class RouletteMode(BaseMode):
         self._wheel_velocity = random.uniform(800, 1200)
         self._spinning = True
         self._sub_phase = RoulettePhase.SPINNING
+
+        # Play spin sound
+        self._audio.play_ui_confirm()
 
         # Burst particles
         sparkles = self._particles.get_emitter("sparkles")

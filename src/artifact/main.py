@@ -195,11 +195,22 @@ async def run_hardware() -> None:
         mode_manager.update(delta_ms)
         animation_engine.update(delta_ms)
 
-        # Render to hardware display
+        # Render to main display (128x128 HDMI)
         if runner.main_display:
             main_buffer = runner.main_display.get_buffer()
             mode_manager.render_main(main_buffer)
             runner.main_display.set_buffer(main_buffer)
+
+        # Render to ticker display (48x8 WS2812B)
+        if runner.ticker_display:
+            ticker_buffer = runner.ticker_display.get_buffer()
+            mode_manager.render_ticker(ticker_buffer)
+            runner.ticker_display.set_buffer(ticker_buffer)
+
+        # Update LCD text
+        if runner.lcd_display:
+            lcd_text = mode_manager.get_lcd_text()
+            runner.lcd_display.set_text(lcd_text)
 
     event_bus.subscribe(EventType.TICK, on_tick)
 

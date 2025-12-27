@@ -373,16 +373,31 @@ class SmartProgressTracker:
         style: str = "tech",
         time_ms: float = 0.0,
     ) -> None:
-        """Render entertaining loading animation.
+        """Render entertaining loading animation with LED demo-style effects.
 
         Args:
             buffer: Target buffer
-            style: Animation style ("tech", "mystical", "flames")
+            style: Animation style - supports new LED styles:
+                   "plasma_vortex", "matrix_rain", "neon_grid", "quantum_field",
+                   "aurora", "electric_storm", "kaleidoscope"
+                   Also supports legacy: "tech", "mystical", "flames"
             time_ms: Current time
         """
         from artifact.graphics.text_utils import hsv_to_rgb
         from artifact.graphics.primitives import draw_circle
 
+        # Check for new LED demo-style effects
+        led_styles = ['plasma_vortex', 'matrix_rain', 'neon_grid', 'quantum_field',
+                      'aurora', 'electric_storm', 'kaleidoscope']
+
+        if style in led_styles:
+            # Use new LED demo-style effect
+            effect = get_loading_effect(style, 128)
+            effect.update(16)  # ~60fps
+            effect.render(buffer)
+            return
+
+        # Legacy styles for backward compatibility
         if style == "tech":
             # Scanning line effect
             scan_y = int(self._scan_position) % 128
@@ -428,17 +443,418 @@ class SmartProgressTracker:
 
 
 # =============================================================================
+# LED DEMO-STYLE LOADING EFFECTS
+# =============================================================================
+
+class LoadingEffect:
+    """Base class for LED demo-style loading effects."""
+
+    def __init__(self, size: int = 128):
+        self.size = size
+        self.time = 0.0
+
+    def update(self, delta_ms: float) -> None:
+        """Update effect state."""
+        self.time += delta_ms / 1000.0
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        """Render effect to buffer. Override in subclasses."""
+        pass
+
+
+class PlasmaVortexEffect(LoadingEffect):
+    """Hypnotic swirling plasma vortex - great for mystical modes."""
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        from artifact.graphics.text_utils import hsv_to_rgb
+
+        cx, cy = self.size // 2, self.size // 2
+
+        # Vectorized rendering for performance
+        y_coords, x_coords = np.mgrid[0:self.size, 0:self.size]
+        dx = x_coords - cx
+        dy = y_coords - cy
+        dist = np.sqrt(dx * dx + dy * dy)
+        angle = np.arctan2(dy, dx)
+
+        # Vortex twist
+        twist = angle + dist / 15 + self.time * 2
+        v = np.sin(twist * 5) * 0.5 + 0.5
+
+        # Radial pulse
+        pulse = np.sin(dist / 10 - self.time * 3) * 0.3 + 0.7
+
+        # Calculate brightness with edge fade
+        brightness = v * pulse * np.clip((self.size / 2 - dist + 20) / 20, 0, 1)
+
+        # Hue varies by angle, distance, and time
+        hue = (angle * (180 / np.pi) * 0.5 + dist * 2 + self.time * 50) % 360
+
+        # Convert to RGB for each pixel
+        for y in range(self.size):
+            for x in range(self.size):
+                if brightness[y, x] > 0.05:
+                    color = hsv_to_rgb(hue[y, x], 0.9, brightness[y, x])
+                    buffer[y, x] = color
+
+
+class MatrixRainEffect(LoadingEffect):
+    """Classic matrix rain effect - great for tech/AI modes."""
+
+    def __init__(self, size: int = 128):
+        super().__init__(size)
+        # Initialize rain columns
+        self.columns = []
+        for x in range(0, size, 4):
+            self.columns.append({
+                'x': x,
+                'y': random.uniform(-size, 0),
+                'speed': random.uniform(40, 80),
+                'length': random.randint(5, 15),
+                'chars': [random.randint(0, 255) for _ in range(20)]
+            })
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        # Dark green background
+        buffer[:, :] = (0, 10, 0)
+
+        for col in self.columns:
+            col['y'] += col['speed'] * 0.016
+
+            # Reset column when it goes off screen
+            if col['y'] - col['length'] * 6 > self.size:
+                col['y'] = random.uniform(-30, 0)
+                col['speed'] = random.uniform(40, 80)
+                col['length'] = random.randint(5, 15)
+
+            # Draw characters in column
+            for i in range(col['length']):
+                cy = int(col['y'] - i * 6)
+                if 0 <= cy < self.size:
+                    x = col['x']
+                    # Brightness fades toward tail
+                    if i == 0:
+                        # Head is bright white-green
+                        color = (180, 255, 180)
+                    else:
+                        fade = 1.0 - (i / col['length'])
+                        green = int(100 + 155 * fade)
+                        color = (0, green, 0)
+
+                    # Draw a small character block
+                    for dx in range(3):
+                        for dy in range(4):
+                            px, py = x + dx, cy + dy
+                            if 0 <= px < self.size and 0 <= py < self.size:
+                                buffer[py, px] = color
+
+
+class NeonGridEffect(LoadingEffect):
+    """Synthwave neon grid - great for retro/quiz modes."""
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        from artifact.graphics.text_utils import hsv_to_rgb
+
+        # Dark purple background gradient
+        for y in range(self.size):
+            darkness = 10 + y // 10
+            buffer[y, :] = (darkness // 3, 0, darkness)
+
+        horizon = self.size // 2 + 10
+
+        # Neon sun
+        sun_y = horizon - 25
+        cx = self.size // 2
+        for r in range(20, 0, -1):
+            brightness = (20 - r) * 12
+            for angle in range(0, 360, 5):
+                rad = angle * 3.14159 / 180
+                x = int(cx + r * math.cos(rad))
+                y = int(sun_y + r * math.sin(rad) * 0.5)  # Squashed circle
+                if 0 <= x < self.size and 0 <= y < self.size:
+                    buffer[y, x] = (brightness, brightness // 3, brightness // 2)
+
+        # Horizontal grid lines with perspective
+        for i in range(1, 12):
+            progress = i / 12
+            y = horizon + int(progress * progress * (self.size - horizon))
+            if 0 <= y < self.size:
+                intensity = int(180 * (1 - progress * 0.5))
+                hue = (self.time * 30 + i * 20) % 360
+                color = hsv_to_rgb(hue, 0.8, intensity / 255)
+                buffer[y, :] = color
+
+        # Vertical lines with perspective
+        for i in range(-8, 9, 2):
+            x1 = self.size // 2 + i * 3
+            x2 = self.size // 2 + i * 16
+            hue = (self.time * 30 + abs(i) * 15) % 360
+            color = hsv_to_rgb(hue, 0.7, 0.6)
+
+            # Draw line from horizon to bottom
+            for y in range(horizon, self.size):
+                t = (y - horizon) / (self.size - horizon) if self.size > horizon else 0
+                x = int(x1 + (x2 - x1) * t)
+                if 0 <= x < self.size:
+                    buffer[y, x] = color
+
+
+class QuantumFieldEffect(LoadingEffect):
+    """Quantum particle field - great for AI/sci-fi modes."""
+
+    def __init__(self, size: int = 128):
+        super().__init__(size)
+        self.particles = [
+            {'x': random.random(), 'y': random.random(), 'vx': 0, 'vy': 0}
+            for _ in range(60)
+        ]
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        from artifact.graphics.text_utils import hsv_to_rgb
+        from artifact.graphics.primitives import draw_circle
+
+        # Deep blue background
+        buffer[:, :] = (0, 5, 15)
+
+        # Update and draw particles with wave function behavior
+        for p in self.particles:
+            # Quantum tunneling / wave behavior
+            p['vx'] += (random.random() - 0.5) * 0.02 + math.sin(self.time + p['y'] * 10) * 0.01
+            p['vy'] += (random.random() - 0.5) * 0.02 + math.cos(self.time + p['x'] * 10) * 0.01
+            p['x'] = (p['x'] + p['vx']) % 1.0
+            p['y'] = (p['y'] + p['vy']) % 1.0
+
+            px = int(p['x'] * self.size)
+            py = int(p['y'] * self.size)
+
+            if 0 <= px < self.size and 0 <= py < self.size:
+                # Color based on position
+                hue = (p['x'] * 180 + p['y'] * 180 + self.time * 30) % 360
+                color = hsv_to_rgb(hue, 0.8, 0.9)
+                draw_circle(buffer, px, py, 2, color)
+
+                # Draw connections to nearby particles
+                for other in self.particles[:20]:
+                    ox = int(other['x'] * self.size)
+                    oy = int(other['y'] * self.size)
+                    dist = math.sqrt((px - ox)**2 + (py - oy)**2)
+                    if 10 < dist < 30:
+                        # Draw faint connection line
+                        brightness = 0.3 * (1 - dist / 30)
+                        conn_color = tuple(int(c * brightness) for c in color)
+                        # Simple line drawing
+                        steps = int(dist / 2)
+                        for s in range(steps):
+                            t = s / max(1, steps)
+                            lx = int(px + (ox - px) * t)
+                            ly = int(py + (oy - py) * t)
+                            if 0 <= lx < self.size and 0 <= ly < self.size:
+                                buffer[ly, lx] = np.clip(
+                                    buffer[ly, lx].astype(np.int16) + np.array(conn_color),
+                                    0, 255
+                                ).astype(np.uint8)
+
+
+class AuroraEffect(LoadingEffect):
+    """Northern lights aurora - great for calming/mystical modes."""
+
+    def __init__(self, size: int = 128):
+        super().__init__(size)
+        self.curtains = [{'x': random.randint(0, size), 'phase': random.uniform(0, 6.28)}
+                        for _ in range(6)]
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        from artifact.graphics.text_utils import hsv_to_rgb
+
+        # Dark night sky gradient
+        for y in range(self.size):
+            darkness = 5 + int(y / self.size * 15)
+            buffer[y, :] = (0, max(0, darkness // 4), max(0, darkness))
+
+        # Twinkling stars
+        for i in range(25):
+            sx = (i * 73 + int(self.time * 3)) % self.size
+            sy = (i * 41) % (self.size // 2)
+            twinkle = max(0, min(255, 120 + int(50 * math.sin(self.time * 3 + i))))
+            if 0 <= sx < self.size and 0 <= sy < self.size:
+                buffer[sy, sx] = (twinkle, twinkle, twinkle)
+
+        # Aurora curtains
+        for curtain in self.curtains:
+            for y in range(20, 75):
+                # Wave motion
+                wave = math.sin(y / 15 + self.time * 2 + curtain['phase']) * 15
+                wave += math.sin(y / 8 + self.time * 3) * 5
+                x = int(curtain['x'] + wave)
+
+                # Vertical fade
+                intensity = max(0, 1.0 - abs(y - 47) / 35)
+                intensity *= 0.5 + 0.5 * math.sin(self.time + curtain['phase'])
+
+                if intensity > 0 and 0 <= x < self.size:
+                    # Green to blue gradient
+                    hue = 120 + (y - 20) * 1.5 + math.sin(self.time) * 30
+                    color = hsv_to_rgb(hue, 0.8, max(0, min(1, intensity * 0.7)))
+
+                    # Glow spread
+                    for gx in range(-2, 3):
+                        px = x + gx
+                        if 0 <= px < self.size and 0 <= y < self.size:
+                            glow = max(0, 1 - abs(gx) / 3)
+                            old = buffer[y, px]
+                            new = tuple(max(0, min(255, int(old[i] + color[i] * glow))) for i in range(3))
+                            buffer[y, px] = new
+
+            curtain['x'] += math.sin(self.time * 0.5 + curtain['phase']) * 0.3
+
+
+class ElectricStormEffect(LoadingEffect):
+    """Electric storm with lightning - great for dramatic modes."""
+
+    def __init__(self, size: int = 128):
+        super().__init__(size)
+        self.lightning = []
+        self.flash_time = 0
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        # Dark stormy background
+        for y in range(self.size):
+            darkness = max(0, min(255, 10 + y // 10))
+            buffer[y, :] = (max(0, darkness // 3), max(0, darkness // 3), darkness)
+
+        # Generate new lightning occasionally
+        if random.random() < 0.03 and len(self.lightning) == 0:
+            x = random.randint(20, self.size - 20)
+            self.lightning = [(x, 0)]
+            ly = 0
+            while ly < self.size:
+                ly += random.randint(5, 15)
+                x += random.randint(-10, 10)
+                x = max(5, min(self.size - 5, x))
+                self.lightning.append((x, ly))
+            self.flash_time = 8  # Flash duration in frames
+
+        # Draw lightning
+        if self.lightning and self.flash_time > 0:
+            # Screen flash
+            flash_intensity = min(50, self.flash_time * 8)
+            buffer[:, :] = np.clip(
+                buffer.astype(np.int16) + flash_intensity,
+                0, 255
+            ).astype(np.uint8)
+
+            # Lightning bolt
+            for i in range(len(self.lightning) - 1):
+                x1, y1 = self.lightning[i]
+                x2, y2 = self.lightning[i + 1]
+
+                # Draw thick white line
+                steps = max(1, max(abs(x2 - x1), abs(y2 - y1)) + 1)
+                for s in range(steps):
+                    t = s / max(1, steps)
+                    lx = int(x1 + (x2 - x1) * t)
+                    ly = int(y1 + (y2 - y1) * t)
+                    for dx in range(-1, 2):
+                        for dy in range(-1, 2):
+                            px, py = lx + dx, ly + dy
+                            if 0 <= px < self.size and 0 <= py < self.size:
+                                buffer[py, px] = (255, 255, 255)
+
+            # Branches
+            for i, point in enumerate(self.lightning[::3]):
+                if random.random() < 0.5:
+                    ex = point[0] + random.randint(-15, 15)
+                    ey = point[1] + random.randint(5, 20)
+                    # Draw branch
+                    steps = 10
+                    for s in range(steps):
+                        t = s / steps
+                        bx = int(point[0] + (ex - point[0]) * t)
+                        by = int(point[1] + (ey - point[1]) * t)
+                        if 0 <= bx < self.size and 0 <= by < self.size:
+                            buffer[by, bx] = (150, 150, 255)
+
+            self.flash_time -= 1
+            if self.flash_time <= 0:
+                self.lightning = []
+
+        # Rain
+        for _ in range(20):
+            rx = random.randint(0, self.size - 1)
+            ry = random.randint(0, self.size - 1)
+            for i in range(6):
+                py = ry + i
+                if 0 <= py < self.size:
+                    buffer[py, rx] = (70, 70, 100)
+
+
+class KaleidoscopeEffect(LoadingEffect):
+    """Mesmerizing kaleidoscope patterns - great for any mode."""
+
+    def render(self, buffer: NDArray[np.uint8]) -> None:
+        from artifact.graphics.text_utils import hsv_to_rgb
+
+        cx, cy = self.size // 2, self.size // 2
+
+        for y in range(self.size):
+            for x in range(self.size):
+                dx, dy = x - cx, y - cy
+                dist = math.sqrt(dx * dx + dy * dy)
+                angle = math.atan2(dy, dx)
+
+                # Mirror into 6 segments (6-fold symmetry)
+                segments = 6
+                angle = abs((angle + math.pi) % (2 * math.pi / segments) - math.pi / segments)
+
+                # Rotating pattern
+                rot_angle = angle + self.time * 0.5
+                pattern = math.sin(dist / 10 + rot_angle * 3 + self.time)
+                pattern += math.sin(dist / 5 - self.time * 2)
+                pattern /= 2
+
+                # Color based on position and time
+                hue = (dist * 3 + self.time * 50 + angle * 60) % 360
+                brightness = 0.3 + 0.7 * (pattern + 1) / 2
+
+                buffer[y, x] = hsv_to_rgb(hue, 0.9, max(0, brightness))
+
+
+# Effect instances cache
+_effect_cache: Dict[str, LoadingEffect] = {}
+
+def get_loading_effect(style: str, size: int = 128) -> LoadingEffect:
+    """Get or create a loading effect instance."""
+    if style not in _effect_cache:
+        effect_classes = {
+            'plasma_vortex': PlasmaVortexEffect,
+            'matrix_rain': MatrixRainEffect,
+            'neon_grid': NeonGridEffect,
+            'quantum_field': QuantumFieldEffect,
+            'aurora': AuroraEffect,
+            'electric_storm': ElectricStormEffect,
+            'kaleidoscope': KaleidoscopeEffect,
+        }
+        effect_class = effect_classes.get(style, PlasmaVortexEffect)
+        _effect_cache[style] = effect_class(size)
+    return _effect_cache[style]
+
+
+# =============================================================================
 # THEMED PROGRESS STYLES
 # =============================================================================
 
-# Mode-specific progress bar colors
+# Mode-specific progress bar colors and new LED demo-style effects
 MODE_PROGRESS_COLORS = {
-    "fortune": ((200, 100, 255), "mystical"),   # Purple, mystical particles
-    "ai_prophet": ((100, 200, 255), "tech"),    # Blue, tech scan lines
-    "roast": ((255, 150, 50), "flames"),        # Orange, fire particles
-    "zodiac": ((255, 215, 0), "mystical"),      # Gold, mystical
-    "quiz": ((0, 200, 100), "tech"),            # Green, tech
-    "default": ((150, 150, 200), "tech"),       # Gray-blue, tech
+    "fortune": ((200, 100, 255), "plasma_vortex"),  # Purple plasma vortex
+    "ai_prophet": ((100, 200, 255), "quantum_field"),  # Blue quantum particles
+    "roast": ((255, 150, 50), "electric_storm"),  # Orange with lightning
+    "zodiac": ((255, 215, 0), "aurora"),  # Gold with aurora
+    "quiz": ((0, 200, 100), "neon_grid"),  # Green synthwave grid
+    "roulette": ((255, 50, 50), "kaleidoscope"),  # Red kaleidoscope
+    "guess_me": ((150, 100, 255), "plasma_vortex"),  # Purple plasma
+    "autopsy": ((0, 255, 200), "matrix_rain"),  # Cyan matrix rain
+    "rapgod": ((255, 50, 150), "neon_grid"),  # Pink synthwave
+    "default": ((150, 150, 200), "matrix_rain"),  # Gray-blue matrix rain
 }
 
 

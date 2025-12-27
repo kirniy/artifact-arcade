@@ -1,8 +1,8 @@
 """
-ARTIFACT Audio Engine - Fast Chiptune Sound System.
+ARTIFACT Audio Engine - Iconic Chiptune Sound System.
 
-Balatro-style chiptune music and sound effects.
-Generates all sounds in <1 second using simple waveforms.
+Nostalgic melodies: Nightcall, Черный бумер, Satisfaction, Бригада vibes.
+Each mode gets its own distinct musical character.
 """
 
 import pygame
@@ -10,7 +10,7 @@ import array
 import math
 import random
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +33,40 @@ def sine(t: float, freq: float) -> float:
     return math.sin(2 * math.pi * freq * t)
 
 
+def saw(t: float, freq: float) -> float:
+    """Sawtooth wave - fat synth bass."""
+    return 2 * ((t * freq) % 1) - 1
+
+
+def pulse(t: float, freq: float, width: float = 0.25) -> float:
+    """Pulse wave with variable width."""
+    return 1 if (t * freq) % 1 < width else -1
+
+
 def noise() -> float:
     """White noise generator."""
     return random.random() * 2 - 1
 
 
+def lowpass(samples: List[float], cutoff: float = 0.1) -> List[float]:
+    """Simple lowpass filter."""
+    out = []
+    prev = 0
+    for s in samples:
+        prev = prev + cutoff * (s - prev)
+        out.append(prev)
+    return out
+
+
 class AudioEngine:
     """
-    Fast chiptune audio engine for ARTIFACT.
+    Iconic chiptune audio engine for ARTIFACT.
 
-    Generates all sounds procedurally using simple waveforms.
-    Generation takes <1 second (vs 80+ with old engine).
+    Features nostalgic melodies inspired by:
+    - Nightcall (Kavinsky) - synthwave arpeggios
+    - Черный бумер - pumping Russian bass
+    - Satisfaction (Benny Benassi) - electro riff
+    - Бригада - melancholic drama
     """
 
     def __init__(self):
@@ -52,7 +75,7 @@ class AudioEngine:
         self._music_playing = False
         self._volume_master = 1.0
         self._volume_sfx = 1.0
-        self._volume_music = 1.0
+        self._volume_music = 0.6
         self._muted = False
         self._current_music: Optional[str] = None
         self._music_channel: Optional[pygame.mixer.Channel] = None
@@ -90,7 +113,7 @@ class AudioEngine:
         if self._generated:
             return
 
-        logger.info("Generating chiptune sounds...")
+        logger.info("Generating iconic chiptune sounds...")
 
         # === UI SOUNDS ===
         self._gen_click()
@@ -124,8 +147,8 @@ class AudioEngine:
         self._gen_startup()
         self._gen_whoosh()
 
-        # === CHIPTUNE MUSIC ===
-        self._gen_chiptune_music()
+        # === ICONIC MUSIC TRACKS ===
+        self._gen_all_music()
 
         self._generated = True
         logger.info(f"Generated {len(self._sounds)} sounds")
@@ -429,82 +452,456 @@ class AudioEngine:
             samples.append(int(val * 32767))
         self._sounds["transition_whoosh"] = self._create_sound(samples)
 
-    # ===== CHIPTUNE MUSIC =====
+    # =========================================================================
+    # ICONIC MUSIC GENERATION - Each track has its own unique character!
+    # =========================================================================
 
-    def _gen_chiptune_music(self) -> None:
-        """Generate Balatro-style chiptune loops for all modes."""
+    def _gen_all_music(self) -> None:
+        """Generate all iconic music tracks."""
 
-        # Music configurations: {name: (bpm, melody_notes, bass_notes, duration_beats)}
-        configs = {
-            # Main states
-            'idle': (128, [523, 659, 784, 1047, 988, 784, 659, 523], [130, 146, 164, 146], 16),
-            'menu': (120, [440, 523, 659, 523, 440, 659, 784, 659], [55, 73, 82, 73], 8),
+        # NIGHTCALL style - synthwave for fortune/mystical modes
+        self._gen_nightcall_style()
 
-            # Fortune modes
-            'fortune': (90, [294, 349, 440, 523, 440, 349, 294, 262], [73, 87, 110, 87], 16),
+        # ЧЕРНЫЙ БУМЕР style - pumping bass for party modes
+        self._gen_bumer_style()
 
-            # Action modes
-            'quiz': (130, [440, 523, 587, 659, 587, 523, 440, 392], [110, 130, 146, 130], 8),
-            'roulette': (125, [523, 659, 784, 880, 784, 659, 523, 440], [130, 164, 196, 164], 8),
-            'roast': (135, [392, 466, 523, 622, 523, 466, 392, 349], [98, 116, 130, 116], 8),
+        # SATISFACTION style - electro house riff
+        self._gen_satisfaction_style()
 
-            # Creative modes
-            'flow_field': (105, [261, 311, 392, 466, 392, 311, 261, 233], [65, 78, 98, 78], 16),
-            'glitch_mirror': (115, [392, 466, 523, 659, 523, 466, 392, 349], [98, 116, 130, 116], 8),
-            'particle_sculptor': (118, [196, 233, 311, 392, 311, 233, 196, 174], [49, 58, 78, 58], 12),
-            'ascii': (140, [523, 659, 784, 880, 784, 659, 523, 440], [130, 164, 196, 164], 8),
+        # БРИГАДА style - melancholic drama
+        self._gen_brigada_style()
 
-            # Arcade games
-            'tower_stack': (150, [659, 587, 523, 587, 659, 784, 659, 587], [164, 146, 130, 146], 8),
-            'bar_runner': (160, [784, 880, 988, 880, 784, 659, 587, 659], [196, 220, 246, 220], 8),
-            'brick_breaker': (124, [523, 659, 587, 523, 659, 784, 698, 659], [130, 164, 146, 164], 8),
-            'squid_game': (138, [392, 440, 392, 349, 330, 349, 392, 262], [98, 110, 98, 87], 8),
-        }
+        # ARCADE style - classic 8-bit games
+        self._gen_arcade_style()
 
-        for name, (bpm, melody, bass, duration_beats) in configs.items():
-            samples = self._gen_chiptune_loop(bpm, melody, bass, duration_beats)
-            self._sounds[f"music_{name}"] = self._create_sound(samples)
+        # TRANCE style - energetic for action games
+        self._gen_trance_style()
 
-    def _gen_chiptune_loop(
-        self,
-        bpm: int,
-        melody: list,
-        bass: list,
-        duration_beats: int
-    ) -> array.array:
-        """Generate a single chiptune loop."""
+        # CHILL style - ambient for creative modes
+        self._gen_chill_style()
+
+        # QUIZ style - tension/thinking music
+        self._gen_quiz_style()
+
+    def _gen_nightcall_style(self) -> None:
+        """Kavinsky Nightcall-inspired synthwave. Dark, arpeggiated, 80s vibes."""
         samples = array.array('h')
-        beat_len = 60.0 / bpm
-        duration = beat_len * duration_beats
+        bpm = 98
+        beat = 60.0 / bpm
+        duration = beat * 16  # 4 bars
+
+        # Am - F - C - G progression (Nightcall-esque)
+        chords = [
+            (220, 262, 330),  # Am
+            (175, 220, 262),  # F
+            (262, 330, 392),  # C
+            (196, 247, 294),  # G
+        ]
+
+        # Arpeggiated pattern (iconic synthwave)
+        arp_pattern = [0, 1, 2, 1, 0, 2, 1, 2]
 
         for i in range(int(SAMPLE_RATE * duration)):
             t = i / SAMPLE_RATE
-            beat = int(t / (beat_len / 2)) % len(melody)
-            bass_beat = int(t / beat_len) % len(bass)
+            bar = int(t / (beat * 4)) % 4
+            beat_in_bar = (t / beat) % 4
 
-            # Melody (square wave with envelope)
-            note_t = t % (beat_len / 2)
-            env = max(0, 1 - note_t * 4) * 0.8 + 0.2
-            val = square(t, melody[beat]) * env * 0.2
+            chord = chords[bar]
+            val = 0
 
-            # Bass (triangle wave)
-            val += triangle(t, bass[bass_beat]) * 0.15
+            # Deep pumping bass (sidechain style)
+            pump = 1 - 0.6 * max(0, 1 - (beat_in_bar % 1) * 4)
+            bass_note = chord[0] / 2
+            val += saw(t, bass_note) * 0.25 * pump
+            val += sine(t, bass_note / 2) * 0.15 * pump
 
-            # Drums (noise on beats)
-            drum_t = t % beat_len
-            if drum_t < 0.05:
-                val += noise() * 0.12 * (1 - drum_t * 20)
-            elif 0.25 < drum_t < 0.3:
-                val += noise() * 0.06 * (1 - (drum_t - 0.25) * 20)
+            # Arpeggiated synth lead
+            arp_idx = int((t / (beat / 2)) % 8)
+            arp_note = chord[arp_pattern[arp_idx] % 3] * 2
+            arp_env = max(0, 1 - ((t * 4) % 1) * 3)
+            val += pulse(t, arp_note, 0.3) * 0.12 * arp_env
 
-            # Arpeggio overlay
-            arp_idx = int(t * 8) % 4
-            arp_mult = [1, 1.25, 1.5, 1.25][arp_idx]
-            val += square(t, melody[beat] * arp_mult) * 0.08
+            # Pad (warm synth pad)
+            for note in chord:
+                val += sine(t, note) * 0.04
+                val += triangle(t, note * 2) * 0.02
+
+            # Snare on 2 and 4
+            snare_t = beat_in_bar % 2
+            if 0.95 < snare_t < 1.05:
+                snare_phase = (snare_t - 0.95) * 10
+                val += noise() * 0.15 * max(0, 1 - snare_phase * 5)
+
+            # Kick on every beat
+            kick_t = beat_in_bar % 1
+            if kick_t < 0.1:
+                kick_freq = 80 * (1 - kick_t * 8)
+                val += sine(t, max(30, kick_freq)) * 0.3 * (1 - kick_t * 10)
 
             samples.append(int(max(-1, min(1, val)) * 32767 * 0.7))
 
-        return samples
+        self._sounds["music_nightcall"] = self._create_sound(samples)
+        self._sounds["music_fortune"] = self._sounds["music_nightcall"]
+        self._sounds["music_ai_prophet"] = self._sounds["music_nightcall"]
+        self._sounds["music_zodiac"] = self._sounds["music_nightcall"]
+
+    def _gen_bumer_style(self) -> None:
+        """Черный бумер-inspired pumping bass. Russian club classic."""
+        samples = array.array('h')
+        bpm = 130
+        beat = 60.0 / bpm
+        duration = beat * 16
+
+        # Em - Am progression (Russian club vibes)
+        bass_notes = [82, 82, 110, 110]  # E, E, A, A
+
+        # Iconic "бумер" bass pattern
+        bass_pattern = [1, 0, 0.5, 1, 0, 1, 0.5, 0]
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            bar = int(t / (beat * 4)) % 4
+            beat_in_bar = (t / beat) % 4
+            eighth = int((t / (beat / 2)) % 8)
+
+            bass = bass_notes[bar]
+            val = 0
+
+            # PUMPING BASS - the iconic sound
+            bass_vol = bass_pattern[eighth] * 0.4
+            if bass_vol > 0:
+                bass_env = max(0, 1 - ((t * 4) % 1) * 2)
+                val += saw(t, bass) * bass_vol * bass_env
+                val += sine(t, bass / 2) * bass_vol * 0.5 * bass_env
+
+            # Synth stab on off-beats
+            if eighth in [2, 6]:
+                stab_env = max(0, 1 - ((t * 4) % 1) * 8)
+                val += square(t, bass * 2) * 0.1 * stab_env
+                val += square(t, bass * 3) * 0.05 * stab_env
+
+            # Kick drum (4 on the floor)
+            kick_t = beat_in_bar % 1
+            if kick_t < 0.08:
+                kick_freq = 100 * (1 - kick_t * 10)
+                val += sine(t, max(30, kick_freq)) * 0.35 * (1 - kick_t * 12)
+
+            # Open hi-hat on off-beats
+            if 0.45 < (beat_in_bar % 1) < 0.55:
+                val += noise() * 0.08 * max(0, 1 - ((beat_in_bar % 1) - 0.45) * 20)
+
+            # Clap on 2 and 4
+            if 0.98 < (beat_in_bar % 2) < 1.02 or 1.98 < beat_in_bar < 2.02:
+                clap_t = (beat_in_bar % 2) - 0.98 if beat_in_bar < 2 else beat_in_bar - 1.98
+                val += noise() * 0.18 * max(0, 1 - clap_t * 30)
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.7))
+
+        self._sounds["music_bumer"] = self._create_sound(samples)
+        self._sounds["music_roast"] = self._sounds["music_bumer"]
+        self._sounds["music_roulette"] = self._sounds["music_bumer"]
+
+    def _gen_satisfaction_style(self) -> None:
+        """Benny Benassi Satisfaction-inspired electro riff."""
+        samples = array.array('h')
+        bpm = 130
+        beat = 60.0 / bpm
+        duration = beat * 16
+
+        # The iconic riff pattern (simplified)
+        # D - D - D - D - F - D - D - rest
+        riff = [147, 147, 147, 147, 175, 147, 147, 0,
+                147, 147, 147, 147, 175, 196, 175, 147]
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            beat_in_bar = (t / beat) % 4
+            sixteenth = int((t / (beat / 4)) % 16)
+
+            val = 0
+
+            # The riff - distorted saw bass
+            note = riff[sixteenth]
+            if note > 0:
+                riff_env = max(0, 1 - ((t * 8) % 1) * 4)
+                # Distorted saw
+                raw = saw(t, note) + saw(t, note * 1.01) * 0.5
+                distorted = max(-0.8, min(0.8, raw * 2))  # Soft clip
+                val += distorted * 0.3 * riff_env
+
+            # Kick (4 on floor)
+            kick_t = beat_in_bar % 1
+            if kick_t < 0.07:
+                val += sine(t, 60 * (1 - kick_t * 10)) * 0.35 * (1 - kick_t * 14)
+
+            # Hi-hat pattern
+            if sixteenth % 2 == 0:
+                hat_env = max(0, 1 - ((t * 8) % 1) * 15)
+                val += noise() * 0.06 * hat_env
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.7))
+
+        self._sounds["music_satisfaction"] = self._create_sound(samples)
+        self._sounds["music_autopsy"] = self._sounds["music_satisfaction"]
+
+    def _gen_brigada_style(self) -> None:
+        """Бригада TV series-inspired melancholic theme."""
+        samples = array.array('h')
+        bpm = 85
+        beat = 60.0 / bpm
+        duration = beat * 16
+
+        # Am - Dm - E - Am (Russian melancholic progression)
+        chords = [
+            (220, 262, 330),  # Am
+            (147, 175, 220),  # Dm
+            (165, 208, 247),  # E
+            (220, 262, 330),  # Am
+        ]
+
+        # Melancholic melody
+        melody = [659, 587, 523, 587, 659, 784, 659, 587,
+                  523, 494, 440, 392, 440, 523, 587, 523]
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            bar = int(t / (beat * 4)) % 4
+            beat_in_bar = (t / beat) % 4
+            melody_idx = int(t / beat) % 16
+
+            chord = chords[bar]
+            val = 0
+
+            # Slow bass
+            bass_env = min(1, (t % (beat * 2)) * 2)
+            val += triangle(t, chord[0] / 2) * 0.15 * bass_env
+
+            # Pad chords (strings-like)
+            for note in chord:
+                val += sine(t, note) * 0.05
+                val += sine(t, note + sine(t, 5) * 3) * 0.03  # Vibrato
+
+            # Melody (piano-like)
+            mel_note = melody[melody_idx]
+            mel_env = max(0, 1 - ((t / beat) % 1) * 2)
+            val += triangle(t, mel_note) * 0.12 * mel_env
+            val += sine(t, mel_note) * 0.08 * mel_env
+
+            # Soft snare
+            if 0.95 < (beat_in_bar % 2) < 1.05 and bar < 3:
+                val += noise() * 0.08 * max(0, 1 - ((beat_in_bar % 2) - 0.95) * 20)
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.7))
+
+        self._sounds["music_brigada"] = self._create_sound(samples)
+        self._sounds["music_guess_me"] = self._sounds["music_brigada"]
+
+    def _gen_arcade_style(self) -> None:
+        """Classic 8-bit arcade game music. Upbeat and catchy."""
+        samples = array.array('h')
+        bpm = 155
+        beat = 60.0 / bpm
+        duration = beat * 16
+
+        # Major key, happy arcade vibes
+        melody = [523, 587, 659, 784, 880, 784, 659, 587,
+                  523, 659, 784, 880, 988, 880, 784, 659]
+        bass = [131, 165, 196, 165]  # C G Am G
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            beat_in_bar = (t / beat) % 4
+            bar = int(t / (beat * 4)) % 4
+            melody_idx = int(t / (beat / 2)) % 16
+
+            val = 0
+
+            # Square wave melody (classic NES sound)
+            mel_note = melody[melody_idx]
+            mel_env = max(0.3, 1 - ((t * 4) % 1) * 2)
+            val += square(t, mel_note) * 0.15 * mel_env
+
+            # Square bass
+            bass_note = bass[bar]
+            val += square(t, bass_note) * 0.12
+
+            # Arpeggio decoration
+            arp = [1, 1.25, 1.5, 2][int(t * 12) % 4]
+            val += pulse(t, melody[melody_idx] * arp / 2, 0.25) * 0.06
+
+            # Noise drums
+            if beat_in_bar % 1 < 0.05:
+                val += noise() * 0.12 * (1 - (beat_in_bar % 1) * 20)
+            if 0.5 < (beat_in_bar % 1) < 0.55:
+                val += noise() * 0.08 * (1 - ((beat_in_bar % 1) - 0.5) * 20)
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.65))
+
+        self._sounds["music_arcade"] = self._create_sound(samples)
+        self._sounds["music_tower_stack"] = self._sounds["music_arcade"]
+        self._sounds["music_brick_breaker"] = self._sounds["music_arcade"]
+        self._sounds["music_snake_classic"] = self._sounds["music_arcade"]
+        self._sounds["music_pong"] = self._sounds["music_arcade"]
+
+    def _gen_trance_style(self) -> None:
+        """Energetic trance for action games. Building energy."""
+        samples = array.array('h')
+        bpm = 140
+        beat = 60.0 / bpm
+        duration = beat * 16
+
+        # Trance chord progression
+        chords = [
+            (330, 415, 494),  # Em
+            (294, 370, 440),  # D
+            (262, 330, 392),  # C
+            (294, 370, 440),  # D
+        ]
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            beat_in_bar = (t / beat) % 4
+            bar = int(t / (beat * 4)) % 4
+
+            chord = chords[bar]
+            val = 0
+
+            # Pumping supersaw pad
+            pump = 1 - 0.7 * max(0, 1 - (beat_in_bar % 1) * 5)
+            for note in chord:
+                for detune in [-0.02, 0, 0.02]:
+                    val += saw(t, note * (1 + detune)) * 0.04 * pump
+
+            # Bass
+            bass = chord[0] / 2
+            val += saw(t, bass) * 0.2 * pump
+            val += sine(t, bass / 2) * 0.15 * pump
+
+            # Lead melody (filter sweep feel)
+            lead_freq = chord[2] * 2 + sine(t * 0.5, 1) * 200
+            val += saw(t, lead_freq) * 0.08 * pump
+
+            # Kick
+            if (beat_in_bar % 1) < 0.06:
+                val += sine(t, 70 * (1 - (beat_in_bar % 1) * 15)) * 0.35
+
+            # Off-beat hi-hat
+            if 0.45 < (beat_in_bar % 1) < 0.55:
+                val += noise() * 0.1 * max(0, 1 - abs((beat_in_bar % 1) - 0.5) * 20)
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.65))
+
+        self._sounds["music_trance"] = self._create_sound(samples)
+        self._sounds["music_bar_runner"] = self._sounds["music_trance"]
+        self._sounds["music_squid_game"] = self._sounds["music_trance"]
+        self._sounds["music_flappy"] = self._sounds["music_trance"]
+
+    def _gen_chill_style(self) -> None:
+        """Ambient chill for creative modes. Relaxed and spacey."""
+        samples = array.array('h')
+        bpm = 80
+        beat = 60.0 / bpm
+        duration = beat * 16
+
+        # Dreamy chords
+        chords = [
+            (262, 330, 392, 494),  # Cmaj7
+            (220, 277, 330, 415),  # Am7
+            (196, 247, 294, 370),  # Gmaj7
+            (175, 220, 262, 330),  # Fmaj7
+        ]
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            bar = int(t / (beat * 4)) % 4
+
+            chord = chords[bar]
+            val = 0
+
+            # Soft pad with slow attack
+            pad_env = min(1, (t % (beat * 4)) / 2)
+            for note in chord:
+                val += sine(t, note) * 0.04 * pad_env
+                val += sine(t, note + sine(t, 0.5) * 5) * 0.02 * pad_env  # Chorus
+
+            # Sparse bass
+            if (t % (beat * 2)) < beat:
+                bass_env = max(0, 1 - (t % (beat * 2)) / beat)
+                val += triangle(t, chord[0] / 2) * 0.1 * bass_env
+
+            # Ambient sparkles
+            if random.random() < 0.002:
+                sparkle_freq = random.choice([880, 1047, 1319, 1568])
+            else:
+                sparkle_freq = 0
+            if sparkle_freq > 0:
+                val += sine(t, sparkle_freq) * 0.03
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.7))
+
+        self._sounds["music_chill"] = self._create_sound(samples)
+        self._sounds["music_flow_field"] = self._sounds["music_chill"]
+        self._sounds["music_particle_sculptor"] = self._sounds["music_chill"]
+        self._sounds["music_dither_art"] = self._sounds["music_chill"]
+        self._sounds["music_glitch_mirror"] = self._sounds["music_chill"]
+        self._sounds["music_ascii"] = self._sounds["music_chill"]
+        self._sounds["music_lunar_lander"] = self._sounds["music_chill"]
+
+    def _gen_quiz_style(self) -> None:
+        """Quiz show tension music. Building suspense."""
+        samples = array.array('h')
+        bpm = 110
+        beat = 60.0 / bpm
+        duration = beat * 16
+
+        # Tense diminished/sus chords
+        chords = [
+            (196, 247, 294),  # Gsus
+            (185, 233, 277),  # F#dim
+            (196, 247, 294),  # Gsus
+            (208, 262, 311),  # G#sus
+        ]
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            bar = int(t / (beat * 4)) % 4
+            beat_in_bar = (t / beat) % 4
+
+            chord = chords[bar]
+            val = 0
+
+            # Tense pad
+            tension = 1 + 0.3 * sine(t * 0.5, 1)  # Slow LFO
+            for note in chord:
+                val += sine(t, note * tension) * 0.05
+
+            # Ticking clock bass
+            tick_phase = (t * 2) % 1
+            if tick_phase < 0.1:
+                val += sine(t, 100) * 0.15 * (1 - tick_phase * 10)
+
+            # High tension string
+            val += sine(t, 988 + sine(t, 8) * 30) * 0.04
+
+            # Heartbeat kick on weak beats
+            if 0.45 < (beat_in_bar % 2) < 0.55:
+                hb_t = (beat_in_bar % 2) - 0.45
+                val += sine(t, 50) * 0.2 * max(0, 1 - hb_t * 20)
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.6))
+
+        self._sounds["music_quiz"] = self._create_sound(samples)
+        self._sounds["music_game_2048"] = self._sounds["music_quiz"]
+
+    # ===== IDLE/MENU MUSIC =====
+
+    def _gen_idle_music(self) -> None:
+        """Generate idle screen music."""
+        # Use nightcall style for idle - it's chill but interesting
+        if "music_idle" not in self._sounds:
+            self._sounds["music_idle"] = self._sounds.get("music_nightcall")
+        if "music_menu" not in self._sounds:
+            self._sounds["music_menu"] = self._sounds.get("music_nightcall")
 
     # ===== PLAYBACK API =====
 
@@ -603,38 +1000,55 @@ class AudioEngine:
     # ===== MUSIC PLAYBACK API =====
 
     MUSIC_TRACKS = {
-        "idle": "music_idle",
-        "menu": "music_menu",
-        "fortune": "music_fortune",
-        "zodiac": "music_fortune",
+        # Main states
+        "idle": "music_nightcall",
+        "menu": "music_nightcall",
+
+        # Fortune/mystical modes - Nightcall synthwave
+        "fortune": "music_nightcall",
+        "zodiac": "music_nightcall",
+        "ai_prophet": "music_nightcall",
+
+        # Party/roast modes - Черный бумер bass
+        "roast": "music_bumer",
+        "roulette": "music_bumer",
+
+        # Action modes - Satisfaction electro
+        "autopsy": "music_satisfaction",
+        "guess_me": "music_brigada",
+
+        # Quiz - tension music
         "quiz": "music_quiz",
-        "roulette": "music_roulette",
-        "roast": "music_roast",
-        "autopsy": "music_roast",
-        "guess_me": "music_quiz",
-        "squid_game": "music_squid_game",
-        "ai_prophet": "music_fortune",
-        "flow_field": "music_flow_field",
-        "dither_art": "music_flow_field",
-        "glitch_mirror": "music_glitch_mirror",
-        "particle_sculptor": "music_particle_sculptor",
-        "ascii_art": "music_ascii",
-        "tower_stack": "music_tower_stack",
-        "bar_runner": "music_bar_runner",
-        "brick_breaker": "music_brick_breaker",
-        "snake_classic": "music_ascii",
-        "snake_tiny": "music_ascii",
-        "pong": "music_bar_runner",
-        "flappy": "music_bar_runner",
-        "game_2048": "music_tower_stack",
-        "lunar_lander": "music_flow_field",
-        "hand_snake": "music_ascii",
-        "rocketpy": "music_bar_runner",
-        "skii": "music_flow_field",
-        "ninja_fruit": "music_brick_breaker",
-        "photobooth": "music_idle",
-        "rap_god": "music_roast",
-        "gesture_game": "music_quiz",
+        "game_2048": "music_quiz",
+
+        # Arcade games - classic 8-bit
+        "tower_stack": "music_arcade",
+        "brick_breaker": "music_arcade",
+        "snake_classic": "music_arcade",
+        "snake_tiny": "music_arcade",
+        "pong": "music_arcade",
+        "hand_snake": "music_arcade",
+
+        # Action games - trance
+        "bar_runner": "music_trance",
+        "squid_game": "music_trance",
+        "flappy": "music_trance",
+        "rocketpy": "music_trance",
+        "skii": "music_trance",
+        "ninja_fruit": "music_trance",
+        "gesture_game": "music_trance",
+
+        # Creative modes - chill ambient
+        "flow_field": "music_chill",
+        "dither_art": "music_chill",
+        "glitch_mirror": "music_chill",
+        "particle_sculptor": "music_chill",
+        "ascii_art": "music_chill",
+        "lunar_lander": "music_chill",
+
+        # Photo modes
+        "photobooth": "music_nightcall",
+        "rap_god": "music_bumer",
     }
 
     def play_music(self, track_name: str, fade_in_ms: int = 500) -> Optional[pygame.mixer.Channel]:
@@ -654,11 +1068,12 @@ class AudioEngine:
 
         sound = self._sounds.get(sound_name)
         if not sound:
-            sound = self._sounds.get("music_idle")
+            # Fallback to nightcall
+            sound = self._sounds.get("music_nightcall")
             if not sound:
                 logger.warning(f"Music track not found: {sound_name}")
                 return None
-            sound_name = "music_idle"
+            sound_name = "music_nightcall"
 
         volume = self._volume_music * self._volume_master
         sound.set_volume(volume)

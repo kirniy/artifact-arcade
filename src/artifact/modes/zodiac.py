@@ -19,6 +19,7 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
 
@@ -311,6 +312,10 @@ class ZodiacMode(BaseMode):
         self._qr_url: Optional[str] = None
         self._qr_image: Optional[np.ndarray] = None
 
+        # Audio engine
+        self._audio = get_audio_engine()
+        self._last_countdown_tick: int = 0
+
     def on_enter(self) -> None:
         """Initialize zodiac mode."""
         self._sub_phase = ZodiacPhase.INTRO
@@ -410,9 +415,16 @@ class ZodiacMode(BaseMode):
                 # Countdown animation
                 self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
 
+                # Countdown tick sounds
+                current_tick = int(self._camera_countdown) + 1
+                if current_tick != self._last_countdown_tick and current_tick >= 1 and current_tick <= 3:
+                    self._audio.play_countdown_tick()
+                    self._last_countdown_tick = current_tick
+
                 # Capture when countdown reaches 0
                 if self._camera_countdown <= 0 and self._photo_data is None:
                     self._do_camera_capture()
+                    self._audio.play_camera_shutter()
                     self._flash_alpha = 1.0
 
                 # Flash effect after capture
@@ -444,6 +456,7 @@ class ZodiacMode(BaseMode):
                 if self._reveal_progress >= 1.0:
                     self._sub_phase = ZodiacPhase.RESULT
                     self.change_phase(ModePhase.RESULT)
+                    self._audio.play_success()
                     # Final burst
                     stars = self._particles.get_emitter("stars")
                     if stars:
@@ -483,10 +496,14 @@ class ZodiacMode(BaseMode):
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
                 # Confirm date entry with center button
                 if self._validate_date():
+                    self._audio.play_ui_confirm()
                     self._process_date()
                     return True
+                else:
+                    self._audio.play_ui_error()
             elif self.phase == ModePhase.RESULT:
                 if self._result_view == "text" and self._constellation_portrait:
+                    self._audio.play_ui_move()
                     self._result_view = "image"
                     self._text_scroll_complete = True
                 else:
@@ -495,14 +512,19 @@ class ZodiacMode(BaseMode):
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
+                # Ignore navigation from numpad during date input (numpad 4/6 send both nav + digit)
+                if event.source == "numpad":
+                    return False
                 # Backspace - delete last digit
                 if self._input_buffer:
+                    self._audio.play_ui_back()
                     self._input_buffer = self._input_buffer[:-1]
                     self._input_position = len(self._input_buffer)
                     self._input_valid = False
                 return True
             elif self.phase == ModePhase.RESULT:
                 # Toggle view
+                self._audio.play_ui_move()
                 self._cycle_result_view(-1)
                 return True
 
@@ -510,10 +532,12 @@ class ZodiacMode(BaseMode):
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ZodiacPhase.DATE_INPUT:
                 # Right arrow - confirm when valid
                 if self._validate_date():
+                    self._audio.play_ui_confirm()
                     self._process_date()
                 return True
             elif self.phase == ModePhase.RESULT:
                 # Toggle view
+                self._audio.play_ui_move()
                 self._cycle_result_view(1)
                 return True
 
@@ -533,6 +557,7 @@ class ZodiacMode(BaseMode):
         if key == "*":
             # Backspace
             if self._input_buffer:
+                self._audio.play_ui_back()
                 self._input_buffer = self._input_buffer[:-1]
                 self._input_position = len(self._input_buffer)
             return True
@@ -540,11 +565,15 @@ class ZodiacMode(BaseMode):
         elif key == "#":
             # Confirm input
             if self._validate_date():
+                self._audio.play_ui_confirm()
                 self._process_date()
+            else:
+                self._audio.play_ui_error()
             return True
 
         elif key.isdigit() and len(self._input_buffer) < 4:
             # Add digit
+            self._audio.play_ui_click()
             self._input_buffer += key
             self._input_position = len(self._input_buffer)
 
@@ -661,9 +690,19 @@ class ZodiacMode(BaseMode):
 
         if self._qr_image is not None:
             qr_h, qr_w = self._qr_image.shape[:2]
+            target_size = 120
+            if qr_h != target_size or qr_w != target_size:
+                from PIL import Image
+                qr_img = Image.fromarray(self._qr_image)
+                qr_img = qr_img.resize((target_size, target_size), Image.Resampling.NEAREST)
+                qr_scaled = np.array(qr_img, dtype=np.uint8)
+            else:
+                qr_scaled = self._qr_image
+
+            qr_h, qr_w = qr_scaled.shape[:2]
             x_offset = (128 - qr_w) // 2
             y_offset = (128 - qr_h) // 2
-            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._qr_image
+            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
         elif self._uploader.is_uploading:
             fill(buffer, (20, 20, 30))
             draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
@@ -673,9 +712,7 @@ class ZodiacMode(BaseMode):
             draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
             draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
 
-        hint = self._result_nav_hint()
-        if hint:
-            draw_centered_text(buffer, hint, 118, (120, 120, 150), scale=1)
+        # Hint stays on ticker/LCD for full-screen QR
 
     def _start_camera_capture(self) -> None:
         """Start the camera capture sequence."""

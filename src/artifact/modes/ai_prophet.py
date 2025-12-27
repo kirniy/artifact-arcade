@@ -26,6 +26,7 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.predictor import PredictionService, Prediction, PredictionCategory
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
+from artifact.audio.engine import get_audio_engine
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
@@ -351,6 +352,7 @@ class AIProphetMode(BaseMode):
         # Services
         self._prediction_service = PredictionService()
         self._caricature_service = CaricatureService()
+        self._audio = get_audio_engine()
 
         # Sub-phase tracking
         self._sub_phase = ProphetPhase.INTRO
@@ -360,6 +362,7 @@ class AIProphetMode(BaseMode):
         self._camera_frame: Optional[bytes] = None  # Current live frame (dithered)
         self._photo_data: Optional[bytes] = None    # Captured JPEG for AI
         self._camera_countdown: float = 0.0
+        self._last_countdown_tick: int = 0  # Track countdown ticks for sound
         self._flash_alpha: float = 0.0
 
         # Questions state - randomized from database
@@ -381,11 +384,12 @@ class AIProphetMode(BaseMode):
         self._glow_phase: float = 0.0
         self._scan_line: float = 0.0
 
-        # Result view state
-        self._result_view: str = "text"  # "text" or "image"
-        self._text_scroll_complete: bool = False
-        self._text_view_time: float = 0.0  # Time spent viewing text
-        self._scroll_duration: float = 0.0  # Calculated scroll duration
+        # Result view state - PAGE-BASED navigation (no scrolling!)
+        # Flow: Page 0 = first text page, Pages 1-N = more text, then image, then QR
+        self._current_page: int = 0
+        self._text_pages: List[List[str]] = []  # Lines per text page
+        self._total_pages: int = 0
+        self._lines_per_page: int = 5  # Lines at scale 2 that fit on screen
 
         # Particles
         self._particles = ParticleSystem()
@@ -421,10 +425,11 @@ class AIProphetMode(BaseMode):
         self._processing_progress = 0.0
         self._progress_tracker.reset()
         self._reveal_progress = 0.0
-        self._result_view = "text"
-        self._text_scroll_complete = False
-        self._text_view_time = 0.0
-        self._scroll_duration = 0.0
+
+        # Reset pagination state
+        self._current_page = 0
+        self._text_pages = []
+        self._total_pages = 0
 
         # Reset QR upload state
         self._qr_url = None
@@ -486,9 +491,16 @@ class AIProphetMode(BaseMode):
                 # Countdown animation
                 self._camera_countdown = max(0, 3.0 - self._time_in_phase / 1000)
 
+                # Play countdown tick sounds (3, 2, 1)
+                current_tick = int(self._camera_countdown) + 1
+                if current_tick != self._last_countdown_tick and current_tick >= 1 and current_tick <= 3:
+                    self._audio.play_countdown_tick()
+                    self._last_countdown_tick = current_tick
+
                 # Capture the photo when countdown reaches 0
                 if self._camera_countdown <= 0 and self._photo_data is None:
                     self._do_camera_capture()
+                    self._audio.play_camera_shutter()  # Shutter sound
                     self._flash_alpha = 1.0  # Flash!
 
                 # Flash effect after capture
@@ -525,70 +537,46 @@ class AIProphetMode(BaseMode):
 
                 if self._reveal_progress >= 1.0:
                     self._sub_phase = ProphetPhase.RESULT
-                    # Calculate scroll duration when entering result phase
-                    if self._prediction and self._scroll_duration == 0:
-                        from artifact.graphics.text_utils import calculate_scroll_duration, smart_wrap_text, MAIN_DISPLAY_WIDTH
-                        from artifact.graphics.fonts import load_font, CHAR_HEIGHT
-                        font = load_font("cyrillic")
-                        margin = 4
-                        available_width = MAIN_DISPLAY_WIDTH - margin * 2
-                        lines = smart_wrap_text(self._prediction.text, available_width, font, scale=2)
-                        # Determine scale and rect based on line count
-                        if len(lines) <= 6:
-                            rect = (margin, 8, available_width, 100)
-                            scale = 2
-                            interval = 1600
-                        else:
-                            rect = (margin, 5, available_width, 110)
-                            scale = 1
-                            interval = 1400
-                        self._scroll_duration = calculate_scroll_duration(
-                            self._prediction.text, rect, font, scale, line_spacing=4 if scale == 2 else 3, scroll_interval_ms=interval
-                        )
-                        # Add reading time: at least 3 seconds, or scroll duration + 2 seconds for last view
-                        self._scroll_duration = max(3000, self._scroll_duration + 2000)
+                    # Paginate prediction text when entering result phase
+                    if self._prediction and not self._text_pages:
+                        self._paginate_prediction()
+                    self._current_page = 0  # Start at first text page
 
             elif self._sub_phase == ProphetPhase.RESULT:
-                # Track time in text view
-                if self._result_view == "text":
-                    self._text_view_time += delta_ms
-                    # Auto-switch to image after text scroll completes
-                    if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
-                        self._text_scroll_complete = True
-                        if self._caricature:
-                            self._result_view = "image"
-
-                # Auto-complete after 45 seconds total
-                if self._time_in_phase > 45000:
-                    self._finish()
+                # NO TIMEOUT - user controls when to exit via button press or BACK
+                # User navigates pages with LEFT/RIGHT buttons
+                pass
 
     def on_input(self, event: Event) -> bool:
         """Handle input."""
         if event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
-                if self._result_view == "text" and self._caricature:
-                    self._result_view = "image"
-                    self._text_scroll_complete = True
-                else:
-                    self._finish()
+                # Main button = print and finish
+                self._finish()
                 return True
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(False)  # No
+                self._audio.play_ui_click()
                 return True
-            # Toggle view in result phase
+            # Previous page in result phase
             if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
-                self._cycle_result_view(-1)
+                if self._current_page > 0:
+                    self._current_page -= 1
+                    self._audio.play_ui_move()
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(True)  # Yes
+                self._audio.play_ui_click()
                 return True
-            # Toggle view in result phase
+            # Next page in result phase
             if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
-                self._cycle_result_view(1)
+                if self._current_page < self._total_pages - 1:
+                    self._current_page += 1
+                    self._audio.play_ui_move()
                 return True
 
         return False
@@ -672,6 +660,9 @@ class AIProphetMode(BaseMode):
         # Start smart progress tracker
         self._progress_tracker.start()
         self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
+        # Play AI scanning sound
+        self._audio.play("prophet_scan", volume=0.5)
 
         # Start async AI task
         self._ai_task = asyncio.create_task(self._run_ai_generation())
@@ -790,12 +781,101 @@ class AIProphetMode(BaseMode):
         self.change_phase(ModePhase.RESULT)
         self._reveal_progress = 0.0
 
+        # Play success/reveal sound
+        self._audio.play_success()
+
         # Burst particles for reveal
         sparks = self._particles.get_emitter("sparks")
         if sparks:
             sparks.burst(100)
 
         logger.info("Starting reveal phase")
+
+    def _paginate_prediction(self) -> None:
+        """Split prediction text into static pages for display.
+
+        Page structure:
+        - Pages 0 to N-1: Text pages
+        - Page N: Image (caricature) if available
+        - Page N+1: QR code (if available)
+        """
+        from artifact.graphics.text_utils import smart_wrap_text, MAIN_DISPLAY_WIDTH
+        from artifact.graphics.fonts import load_font
+
+        if not self._prediction:
+            self._text_pages = []
+            self._total_pages = 1  # Just image
+            return
+
+        font = load_font("cyrillic")
+        margin = 6
+        available_width = MAIN_DISPLAY_WIDTH - margin * 2
+
+        # Wrap text at scale 2 (larger, more readable)
+        all_lines = smart_wrap_text(self._prediction.text, available_width, font, scale=2)
+
+        # Split into pages of N lines each
+        self._text_pages = []
+        for i in range(0, len(all_lines), self._lines_per_page):
+            page_lines = all_lines[i:i + self._lines_per_page]
+            self._text_pages.append(page_lines)
+
+        # Total pages: text pages + image (if available) + QR (if available)
+        has_image = self._caricature is not None
+        has_qr = self._qr_image is not None or self._uploader.is_uploading
+        self._total_pages = len(self._text_pages) + (1 if has_image else 0) + (1 if has_qr else 0)
+
+        # Ensure at least 1 page
+        if self._total_pages == 0:
+            self._total_pages = 1
+
+        logger.info(f"Paginated prediction: {len(all_lines)} lines -> {len(self._text_pages)} text pages, total {self._total_pages} pages")
+
+    def _get_page_type(self, page_num: int) -> str:
+        """Determine what type of content is on a given page number.
+
+        Page structure:
+        - Pages 0 to len(text_pages)-1: Text pages
+        - Next page: Image (if available)
+        - Last page: QR (if available)
+        """
+        # Text pages first
+        if page_num < len(self._text_pages):
+            return "text"
+
+        # Then image page
+        if self._caricature:
+            image_page = len(self._text_pages)
+            if page_num == image_page:
+                return "image"
+
+            # Then QR page
+            if self._qr_image is not None or self._uploader.is_uploading:
+                qr_page = image_page + 1
+                if page_num == qr_page:
+                    return "qr"
+        else:
+            # No image, check for QR directly after text
+            if self._qr_image is not None or self._uploader.is_uploading:
+                qr_page = len(self._text_pages)
+                if page_num == qr_page:
+                    return "qr"
+
+        return "text"  # Fallback
+
+    def _get_nav_hint(self) -> str:
+        """Get navigation hint showing current page and arrows."""
+        if self._total_pages <= 1:
+            return "КНОПКА = ПЕЧАТЬ"
+
+        # Show compact page indicator with arrows
+        page_num = self._current_page + 1
+        total = self._total_pages
+
+        left_arrow = "◄" if self._current_page > 0 else " "
+        right_arrow = "►" if self._current_page < self._total_pages - 1 else " "
+
+        return f"{left_arrow} {page_num}/{total} {right_arrow} ПЕЧАТЬ"
 
     def on_exit(self) -> None:
         """Cleanup."""
@@ -1084,202 +1164,156 @@ class AIProphetMode(BaseMode):
         pct = int(self._progress_tracker.get_progress() * 100)
         draw_centered_text(buffer, f"{pct}%", 58, self._accent, scale=1)
 
-    def _get_result_views(self) -> List[str]:
-        views = ["text"]
-        if self._caricature:
-            views.append("image")
-            if self._qr_image is not None or self._uploader.is_uploading:
-                views.append("qr")
-        return views
-
-    def _cycle_result_view(self, direction: int) -> None:
-        views = self._get_result_views()
-        if not views:
-            return
-        try:
-            idx = views.index(self._result_view)
-        except ValueError:
-            idx = 0
-        self._result_view = views[(idx + direction) % len(views)]
-
-    def _result_nav_hint(self) -> Optional[str]:
-        views = self._get_result_views()
-        if len(views) < 2:
-            return None
-        try:
-            idx = views.index(self._result_view)
-        except ValueError:
-            idx = 0
-        labels = {"text": "ТЕКСТ", "image": "ФОТО", "qr": "QR"}
-        left_view = views[(idx - 1) % len(views)]
-        right_view = views[(idx + 1) % len(views)]
-        return f"◄ {labels[left_view]}  ► {labels[right_view]}"
-
     def _render_result(self, buffer, font) -> None:
-        """Render prediction result with text first, then image.
+        """Render prediction result with PAGE-BASED navigation.
 
-        Flow:
-        1. Text scrolls completely first
-        2. Auto-switches to image after scroll completes
-        3. Arrow keys toggle between text/image views
-        4. Main button on image = print
+        Page structure:
+        - Pages 0-N: Static text pages (no scrolling!)
+        - Next page: Image (caricature) if available
+        - Last page: Full-screen QR code if available
         """
-        from artifact.graphics.primitives import draw_rect, fill
-        from artifact.graphics.text_utils import (
-            draw_animated_text, draw_centered_text, smart_wrap_text,
-            TextEffect, MAIN_DISPLAY_WIDTH
-        )
-        from io import BytesIO
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
 
-        if not self._prediction:
+        if self._sub_phase == ProphetPhase.REVEAL:
+            # During reveal, show first text page with fade-in effect
+            self._render_page_text(buffer, font, 0)
             return
 
-        # Use view state instead of time-based cycling
-        if self._result_view == "qr" and self._sub_phase == ProphetPhase.RESULT:
-            self._render_qr_view(buffer, font)
-        elif self._result_view == "image" and self._caricature and self._sub_phase == ProphetPhase.RESULT:
-            # Render caricature
-            self._render_caricature(buffer, font)
-        else:
-            # Render prediction text
-            self._render_prediction_text(buffer, font)
+        # Determine what to render based on current page
+        page_type = self._get_page_type(self._current_page)
 
-    def _render_caricature(self, buffer, font) -> None:
-        """Render the AI-generated caricature."""
-        from artifact.graphics.primitives import fill, draw_rect
+        if page_type == "text":
+            text_page_idx = self._current_page
+            self._render_page_text(buffer, font, text_page_idx)
+        elif page_type == "image":
+            self._render_page_image(buffer, font)
+        elif page_type == "qr":
+            self._render_page_qr(buffer, font)
+
+    def _render_page_text(self, buffer, font, text_page_idx: int) -> None:
+        """Render a static text page (no scrolling!).
+
+        Displays pre-paginated lines at scale 2, centered on screen.
+        """
+        from artifact.graphics.primitives import fill
+        from artifact.graphics.text_utils import draw_centered_text
+
+        # Dark tech background
+        fill(buffer, (5, 10, 20))
+
+        if text_page_idx < 0 or text_page_idx >= len(self._text_pages):
+            draw_centered_text(buffer, "НЕТ ТЕКСТА", 55, (100, 100, 100), scale=2)
+            return
+
+        lines = self._text_pages[text_page_idx]
+        scale = 2
+        line_height = 20  # Spacing for scale 2
+
+        # Calculate starting Y to vertically center text block
+        total_height = len(lines) * line_height
+        start_y = max(8, (100 - total_height) // 2)  # Leave room for nav hint
+
+        # Render each line with subtle wave animation
+        for i, line in enumerate(lines):
+            # Subtle wave effect
+            wave_offset = int(1.5 * math.sin(self._time_in_phase / 300 + i * 0.5))
+            y = start_y + i * line_height + wave_offset
+
+            # Subtle pulse
+            pulse = 0.9 + 0.1 * math.sin(self._time_in_phase / 400 + i * 0.3)
+            color = tuple(int(255 * pulse) for _ in range(3))
+
+            draw_centered_text(buffer, line, y, color, scale=scale)
+
+        # Navigation hint at bottom
+        hint = self._get_nav_hint()
+        draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
+
+    def _render_page_image(self, buffer, font) -> None:
+        """Render the caricature/image page."""
+        from artifact.graphics.primitives import fill
         from artifact.graphics.text_utils import draw_centered_text
         from io import BytesIO
+        import numpy as np
+
+        # Dark background
+        fill(buffer, (5, 10, 20))
 
         if not self._caricature:
+            # No image - show placeholder
+            draw_centered_text(buffer, "НЕТ ФОТО", 55, (100, 100, 100), scale=2)
+            hint = self._get_nav_hint()
+            draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
             return
 
         try:
             from PIL import Image
 
-            # Load caricature image
             img = Image.open(BytesIO(self._caricature.image_data))
             img = img.convert("RGB")
 
-            # Resize to fit display (with border)
-            display_size = 100
-            img = img.resize((display_size, display_size), Image.Resampling.NEAREST)
+            # Fill most of screen (leave room for nav hint)
+            display_size = 108
+            img = img.resize((display_size, display_size), Image.Resampling.LANCZOS)
 
-            # Center position
             x_offset = (128 - display_size) // 2
-            y_offset = 5
+            y_offset = 2
 
-            # Copy pixels to buffer
-            for y in range(display_size):
-                for x in range(display_size):
-                    bx = x_offset + x
-                    by = y_offset + y
-                    if 0 <= bx < 128 and 0 <= by < 128:
-                        pixel = img.getpixel((x, y))
-                        buffer[by, bx] = pixel
+            # Copy image to buffer
+            img_array = np.array(img, dtype=np.uint8)
+            y_end = min(y_offset + display_size, 128)
+            x_end = min(x_offset + display_size, 128)
+            img_h = y_end - y_offset
+            img_w = x_end - x_offset
+            buffer[y_offset:y_end, x_offset:x_end] = img_array[:img_h, :img_w]
 
-            nav_hint = self._result_nav_hint()
-
-            # Show QR code in bottom-right corner if available
-            if self._qr_image is not None:
-                qr_h, qr_w = self._qr_image.shape[:2]
-                qr_x = 128 - qr_w - 4
-                qr_y = 128 - qr_h - 18
-                # Background for QR
-                draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
-                buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
-                if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
-                    draw_centered_text(buffer, nav_hint, 112, (100, 100, 120), scale=1)
-                else:
-                    draw_centered_text(buffer, "СКАН QR", 112, (200, 200, 200), scale=1)
-            elif self._uploader.is_uploading:
-                if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
-                    draw_centered_text(buffer, nav_hint, 112, (100, 100, 120), scale=1)
-                else:
-                    draw_centered_text(buffer, "ЗАГРУЗКА...", 112, (150, 150, 150), scale=1)
-            else:
-                # Show hint at bottom - blink between print and navigation
-                if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
-                    draw_centered_text(buffer, nav_hint, 112, (100, 100, 120), scale=1)
-                else:
-                    draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
+            # Navigation hint at bottom
+            hint = self._get_nav_hint()
+            draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
 
         except Exception as e:
             logger.warning(f"Failed to render caricature: {e}")
-            # Fallback to prediction text
-            self._render_prediction_text(buffer, font)
+            draw_centered_text(buffer, "ОШИБКА", 55, (255, 100, 100), scale=2)
 
-    def _render_qr_view(self, buffer, font) -> None:
-        """Render full-screen QR view."""
+    def _render_page_qr(self, buffer, font) -> None:
+        """Render full-screen QR code page (last page)."""
         from artifact.graphics.primitives import fill
         from artifact.graphics.text_utils import draw_centered_text
-
-        fill(buffer, (255, 255, 255))
+        import numpy as np
 
         if self._qr_image is not None:
+            # White background for QR visibility
+            fill(buffer, (255, 255, 255))
+
             qr_h, qr_w = self._qr_image.shape[:2]
+
+            # Scale QR to fill most of the screen
+            target_size = 120
+            if qr_h != target_size or qr_w != target_size:
+                from PIL import Image
+                qr_pil = Image.fromarray(self._qr_image)
+                qr_pil = qr_pil.resize((target_size, target_size), Image.Resampling.NEAREST)
+                qr_scaled = np.array(qr_pil)
+            else:
+                qr_scaled = self._qr_image
+
+            qr_h, qr_w = qr_scaled.shape[:2]
             x_offset = (128 - qr_w) // 2
             y_offset = (128 - qr_h) // 2
-            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = self._qr_image
+
+            buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
+
         elif self._uploader.is_uploading:
             fill(buffer, (20, 20, 30))
-            draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
-            draw_centered_text(buffer, "QR...", 65, (200, 200, 100), scale=1)
+            draw_centered_text(buffer, "ЗАГРУЗКА", 45, (200, 200, 100), scale=2)
+            draw_centered_text(buffer, "QR КОДА...", 70, (150, 150, 150), scale=1)
         else:
             fill(buffer, (20, 20, 30))
-            draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
-            draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
+            draw_centered_text(buffer, "QR", 45, (100, 100, 100), scale=2)
+            draw_centered_text(buffer, "НЕ ГОТОВ", 70, (100, 100, 100), scale=1)
 
-        hint = self._result_nav_hint()
-        if hint:
-            draw_centered_text(buffer, hint, 114, (120, 120, 150), scale=1)
-
-    def _render_prediction_text(self, buffer, font) -> None:
-        """Render the prediction text with effects - auto-scales to fit."""
-        from artifact.graphics.text_utils import (
-            draw_animated_text, draw_centered_text, smart_wrap_text,
-            TextEffect, MAIN_DISPLAY_WIDTH, render_scrolling_text_area
-        )
-
-        if not self._prediction:
-            return
-
-        margin = 4
-        available_width = MAIN_DISPLAY_WIDTH - margin * 2
-        lines_scale2 = smart_wrap_text(self._prediction.text, available_width, font, scale=2)
-
-        if len(lines_scale2) <= 6:
-            render_scrolling_text_area(
-                buffer,
-                self._prediction.text,
-                (margin, 8, available_width, 100),
-                (255, 255, 255),
-                self._time_in_phase,
-                font=font,
-                scale=2,
-                line_spacing=4,
-                scroll_interval_ms=1600,
-            )
-        else:
-            render_scrolling_text_area(
-                buffer,
-                self._prediction.text,
-                (margin, 5, available_width, 110),
-                (255, 255, 255),
-                self._time_in_phase,
-                font=font,
-                scale=1,
-                line_spacing=3,
-                scroll_interval_ms=1400,
-            )
-
-        # Show navigation hint at bottom in result phase - safe Y position
-        if self._sub_phase == ProphetPhase.RESULT:
-            hint_y = 114
-            hint = self._result_nav_hint()
-            if hint:
-                draw_centered_text(buffer, hint, hint_y, (100, 150, 200), scale=1)
-            elif int(self._time_in_phase / 600) % 2 == 0:
-                draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", hint_y, (100, 200, 100), scale=1)
+        # Hint stays on ticker/LCD for full-screen QR
 
     def render_ticker(self, buffer) -> None:
         """Render ticker with smooth seamless scrolling."""

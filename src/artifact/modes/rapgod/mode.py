@@ -657,8 +657,8 @@ class RapGodMode(BaseMode):
                 self._download_url = await upload_to_selectel(self._audio_bytes)
 
                 if self._download_url:
-                    # Generate larger QR code for better scannability (70px)
-                    self._qr_image = generate_qr_numpy(self._download_url, size=70)
+                    # Generate base QR size that scales cleanly to full screen
+                    self._qr_image = generate_qr_numpy(self._download_url, size=60)
 
             self._progress_tracker.complete()
             logger.info("Generation complete!")
@@ -1262,32 +1262,34 @@ class RapGodMode(BaseMode):
             # Full-screen QR code on white background
             fill(buffer, (255, 255, 255))
 
-            # Scale QR to fill screen (max 110x110 to leave small border)
+            # Scale QR to fill most of the screen
             qr_h, qr_w = self._qr_image.shape[:2]
-            target_size = 110
+            target_size = 120
 
-            # Simple nearest-neighbor scale up
-            if qr_w < target_size:
+            if qr_h != target_size or qr_w != target_size:
                 scale_factor = target_size // qr_w
-                scaled_qr = np.repeat(np.repeat(self._qr_image, scale_factor, axis=0), scale_factor, axis=1)
-                qr_h, qr_w = scaled_qr.shape[:2]
+                if scale_factor > 1 and target_size % qr_w == 0:
+                    scaled_qr = np.repeat(
+                        np.repeat(self._qr_image, scale_factor, axis=0),
+                        scale_factor,
+                        axis=1
+                    )
+                else:
+                    from PIL import Image
+                    qr_img = Image.fromarray(self._qr_image)
+                    qr_img = qr_img.resize((target_size, target_size), Image.Resampling.NEAREST)
+                    scaled_qr = np.array(qr_img, dtype=np.uint8)
             else:
                 scaled_qr = self._qr_image
 
             # Center on screen
+            qr_h, qr_w = scaled_qr.shape[:2]
             x_offset = (128 - qr_w) // 2
             y_offset = (128 - qr_h) // 2
 
             # Draw QR
             buffer[y_offset:y_offset+qr_h, x_offset:x_offset+qr_w] = scaled_qr
-
-            # Small hint at bottom (dark text on white)
-            draw_centered_text(
-                buffer, "◄ ► ТЕКСТ",
-                y=118,
-                color=(100, 100, 100),
-                scale=1,
-            )
+            # Hint stays on ticker/LCD for full-screen QR
 
         elif self._result_view == "qr" and self._qr_image is None:
             # No QR available - show URL as text

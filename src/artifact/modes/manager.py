@@ -651,16 +651,18 @@ class ModeManager:
 
         # Initialize result view state when entering RESULT
         if new_state == ManagerState.RESULT:
+            # AUTO-PRINT enabled: No confirmation needed, start at view 0 (text)
+            # Views: 0=text, 1=caricature (if available)
             self._result_view_index = 0
             self._result_auto_advance = True
             self._result_last_advance = 0.0
             self._result_first_advance_time = self._result_first_default
             self._result_next_advance_time = self._result_next_default
-            # Determine number of views based on result data
+            # Determine number of views: 0=text, 1=caricature (optional)
             if self._last_result:
                 has_caricature = (self._last_result.print_data and
                                   self._last_result.print_data.get("caricature"))
-                self._result_num_views = 3 if has_caricature else 2
+                self._result_num_views = 2 if has_caricature else 1
                 if self._last_result.display_text:
                     try:
                         from artifact.graphics.fonts import load_font
@@ -763,11 +765,8 @@ class ModeManager:
                 self._current_mode.handle_input(event)
 
         elif self._state == ManagerState.RESULT:
-            # Print or exit
-            if self._last_result and self._last_result.should_print:
-                self._start_printing()
-            else:
-                self._return_to_idle()
+            # AUTO-PRINT already triggered, just return to idle
+            self._return_to_idle()
 
         elif self._state == ManagerState.PRINTING:
             # Skip/cancel printing
@@ -972,15 +971,17 @@ class ModeManager:
         self._last_result = result
         self._change_state(ManagerState.RESULT)
 
+        # AUTO-PRINT: Always print immediately without confirmation
+        if result.should_print:
+            self._start_printing()
+
         if self._on_mode_complete:
             self._on_mode_complete(result)
 
     # Printing
     def _start_printing(self) -> None:
         """Start printing process."""
-        self._change_state(ManagerState.PRINTING)
-
-        # Emit print event with result data for printer preview
+        # AUTO-PRINT: emit print event without switching to a printing screen
         if self._last_result:
             print_data = {
                 "type": self._last_result.mode_name,
@@ -1136,8 +1137,8 @@ class ModeManager:
             return self._current_mode.get_lcd_text()
 
         elif self._state == ManagerState.RESULT:
-            # Use arrow symbols instead of L/R
-            return "← НЕТ ★ → ДА".center(16)[:16]
+            # Show navigation hint (auto-print already started)
+            return "◄► ЛИСТАТЬ".center(16)[:16]
 
         elif self._state == ManagerState.PRINTING:
             # Fun animated printing
@@ -1200,8 +1201,8 @@ class ModeManager:
         # === STEP 2: SEMI-TRANSPARENT CENTER PANEL FOR TEXT ===
         # Darken center area slightly for text readability - VECTORIZED
         import numpy as np
-        panel_y1, panel_y2 = 40, 90
-        panel_x1, panel_x2 = 20, 108
+        panel_y1, panel_y2 = 36, 96
+        panel_x1, panel_x2 = 12, 116
 
         # Create distance masks for rounded corners
         y_coords = np.arange(panel_y1, panel_y2)[:, np.newaxis]
@@ -1215,17 +1216,40 @@ class ModeManager:
         darkened = (panel_slice * 0.4).astype(np.uint8)
         panel_slice[:] = np.where(inside_mask[:, :, np.newaxis], darkened, panel_slice)
 
-        # === STEP 3: MODE NAME - BIG AND CENTERED ===
-        name = mode.display_name.upper()
-        font = load_font("cyrillic")
+        # === STEP 3: MODE NAME - FIT, WRAP, CENTER ===
+        from artifact.graphics.text_utils import smart_wrap_text, CHAR_HEIGHT
 
-        # Thick black outline for perfect readability
-        name_y = 58
-        for ox in [-2, -1, 0, 1, 2]:
-            for oy in [-2, -1, 0, 1, 2]:
-                if ox != 0 or oy != 0:
-                    draw_centered_text(buffer, name, name_y + oy, (0, 0, 0), scale=2)
-        draw_centered_text(buffer, name, name_y, glow_color, scale=2)
+        label = (mode.display_name or mode.name).strip().upper()
+        font = load_font("cyrillic")
+        max_width = panel_x2 - panel_x1 - 8
+        max_height = panel_y2 - panel_y1 - 6
+
+        def layout_lines(scale: int, max_lines: int):
+            lines = smart_wrap_text(label, max_width, font, scale)
+            if len(lines) > max_lines:
+                lines = lines[:max_lines]
+                last = lines[-1].rstrip()
+                while last and font.measure_text(last + "...")[0] * scale > max_width:
+                    last = last[:-1]
+                lines[-1] = (last + "...") if last else "..."
+            line_height = CHAR_HEIGHT * scale + 2
+            total_height = len(lines) * line_height
+            return lines, line_height, total_height
+
+        scale = 2
+        lines, line_height, total_height = layout_lines(scale, 2)
+        if total_height > max_height:
+            scale = 1
+            lines, line_height, total_height = layout_lines(scale, 3)
+
+        text_y = panel_y1 + (panel_y2 - panel_y1 - total_height) // 2
+        for line in lines:
+            text_w, _ = font.measure_text(line)
+            text_x = 64 - (text_w * scale) // 2
+            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                draw_text_bitmap(buffer, line, text_x + ox, text_y + oy, (0, 0, 0), font, scale)
+            draw_text_bitmap(buffer, line, text_x, text_y, glow_color, font, scale)
+            text_y += line_height
 
         # === STEP 4: NAVIGATION ARROWS ===
         if len(self._mode_order) > 1:
@@ -1574,10 +1598,9 @@ class ModeManager:
         Views are navigated with LEFT/RIGHT buttons. Auto-advance is slower
         and can be disabled by user interaction.
 
-        Views:
-        - 0: Print prompt (do you want to print?)
-        - 1: Prediction text with auto-scroll
-        - 2: Caricature image (if available)
+        Views (AUTO-PRINT enabled - no confirmation needed):
+        - 0: Prediction text with auto-scroll
+        - 1: Caricature image (if available)
         """
         from artifact.graphics.text_utils import (
             draw_centered_text, smart_wrap_text,
@@ -1598,25 +1621,11 @@ class ModeManager:
         has_caricature = (self._last_result.print_data and
                          self._last_result.print_data.get("caricature"))
 
-        # View indicator dots at top
-        self._render_view_dots(buffer, view, self._result_num_views)
+        # View indicator dots at top (only if multiple views)
+        if self._result_num_views > 1:
+            self._render_view_dots(buffer, view, self._result_num_views)
 
         if view == 0:
-            # Print prompt view
-            draw_centered_text(buffer, "СОХРАНИТЬ", 25, (150, 180, 200), scale=2)
-            draw_centered_text(buffer, "НА ПАМЯТЬ?", 48, (150, 180, 200), scale=2)
-            draw_centered_text(buffer, "ПЕЧАТЬ", 75, (255, 255, 100), scale=2)
-
-            # Navigation hint and print options at safe bottom position
-            nav_hint = "< НАЗАД  ДАЛЕЕ >"
-            draw_centered_text(buffer, nav_hint, 100, (100, 120, 140), scale=1)
-
-            if self._last_result.should_print:
-                draw_centered_text(buffer, "НАЖМИ СТАРТ", MAIN_HINT_ZONE_Y, (150, 200, 150), scale=1)
-            else:
-                draw_centered_text(buffer, "▼НАЖМИ КНОПКУ▼", MAIN_HINT_ZONE_Y, (150, 150, 150), scale=1)
-
-        elif view == 1:
             # Prediction text view with auto-scroll for long text
             text = self._last_result.display_text or "..."
             font = load_font("cyrillic")
@@ -1653,12 +1662,15 @@ class ModeManager:
                 indicator = "▼" if scroll_offset < len(lines) - max_visible else "●"
                 draw_centered_text(buffer, indicator, 95, (100, 100, 120), scale=1)
 
-            # Navigation and action hints at safe bottom positions
-            draw_centered_text(buffer, "< НАЗАД  ДАЛЕЕ >", 105, (100, 120, 140), scale=1)
-            if self._last_result.should_print:
-                draw_centered_text(buffer, "СТАРТ: ПЕЧАТЬ", MAIN_HINT_ZONE_Y, (100, 150, 100), scale=1)
+            # Navigation hints
+            if has_caricature:
+                draw_centered_text(buffer, "◄ ► ЛИСТАТЬ", 105, (100, 120, 140), scale=1)
 
-        elif view == 2 and has_caricature:
+            # Printing status hint
+            if self._state == ManagerState.PRINTING:
+                draw_centered_text(buffer, "ПЕЧАТАЮ...", MAIN_HINT_ZONE_Y, (100, 200, 100), scale=1)
+
+        elif view == 1 and has_caricature:
             # Caricature view
             try:
                 from PIL import Image
@@ -1681,9 +1693,9 @@ class ModeManager:
                 # Fallback to placeholder
                 draw_centered_text(buffer, "ШАРЖ", 50, (200, 200, 200), scale=2)
 
-            # Print hint at safe position
-            if self._last_result.should_print:
-                draw_centered_text(buffer, "СТАРТ: ПЕЧАТЬ", MAIN_HINT_ZONE_Y, (100, 150, 100), scale=1)
+            # Printing status hint
+            if self._state == ManagerState.PRINTING:
+                draw_centered_text(buffer, "ПЕЧАТАЮ...", MAIN_HINT_ZONE_Y, (100, 200, 100), scale=1)
 
     def _render_view_dots(self, buffer, current_view: int, total_views: int) -> None:
         """Render view indicator dots at top of screen."""
