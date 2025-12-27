@@ -122,25 +122,16 @@ class LyricsGenerator:
             # Build the prompt
             prompt = self._build_prompt(selection, genre_info, club_name, has_photo=photo_data is not None)
 
-            # Use Gemini 3 Flash (multimodal) for both text and image
-            if photo_data:
-                logger.info("Generating lyrics with photo personalization (Gemini 3 Flash)")
-                response = await self._client.generate_with_image(
-                    prompt=prompt,
-                    image_data=photo_data,
-                    model=GeminiModel.FLASH_3,  # Gemini 3 Flash is multimodal
-                    system_instruction=RAP_LYRICIST_SYSTEM_PROMPT,
-                    temperature=0.95,
-                )
-            else:
-                logger.info("Generating lyrics without photo (Gemini 3 Flash)")
-                response = await self._client.generate_text(
-                    prompt=prompt,
-                    model=GeminiModel.FLASH_3,
-                    system_instruction=RAP_LYRICIST_SYSTEM_PROMPT,
-                    temperature=0.95,
-                    max_tokens=2048,
-                )
+            # Single unified call - Gemini 3 Flash is multimodal
+            logger.info(f"Generating lyrics (Gemini 3 Flash, has_photo={photo_data is not None})")
+            response = await self._client.generate_text(
+                prompt=prompt,
+                model=GeminiModel.FLASH_3,
+                system_instruction=RAP_LYRICIST_SYSTEM_PROMPT,
+                temperature=0.95,
+                max_tokens=2048,
+                image_data=photo_data,  # Optional - works with or without
+            )
 
             if response:
                 return self._parse_response(response, selection.genre)

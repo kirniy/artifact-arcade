@@ -129,15 +129,19 @@ class GeminiClient:
         system_instruction: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        image_data: Optional[bytes] = None,
+        image_mime_type: str = "image/jpeg",
     ) -> Optional[str]:
-        """Generate text using Gemini.
+        """Generate text using Gemini, optionally with an image.
 
         Args:
             prompt: The user prompt
-            model: Which Gemini model to use
+            model: Which Gemini model to use (FLASH_3 is multimodal)
             system_instruction: Optional system prompt
             temperature: Override default temperature
             max_tokens: Override max output tokens
+            image_data: Optional image bytes for multimodal generation
+            image_mime_type: MIME type of image (default: image/jpeg)
 
         Returns:
             Generated text or None on error
@@ -154,6 +158,15 @@ class GeminiClient:
                 system_instruction=system_instruction,
             )
 
+            # Build contents - text only or multimodal
+            if image_data:
+                contents = [
+                    types.Part.from_text(text=prompt),
+                    types.Part.from_bytes(data=image_data, mime_type=image_mime_type),
+                ]
+            else:
+                contents = prompt
+
             # Generate with retry logic
             for attempt in range(self.config.max_retries):
                 try:
@@ -161,7 +174,7 @@ class GeminiClient:
                         asyncio.to_thread(
                             self._client.models.generate_content,
                             model=model.value,
-                            contents=prompt,
+                            contents=contents,
                             config=config,
                         ),
                         timeout=self.config.timeout,
