@@ -293,8 +293,18 @@ class SunoClient:
                     error="Timeout - track may still be generating",
                 )
 
-            # Get current status
-            track = await self.get_status(task_id)
+            # Get current status with timeout protection
+            try:
+                track = await asyncio.wait_for(
+                    self.get_status(task_id),
+                    timeout=15.0  # 15s timeout per status check
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"Status check timed out, retrying... (elapsed: {elapsed:.1f}s)")
+                poll_index += 1
+                continue
+
+            logger.debug(f"Poll {poll_index}: status={track.status.value}, elapsed={elapsed:.1f}s")
 
             if track.status == TrackStatus.COMPLETED:
                 logger.info(f"Track completed: {track.audio_url}")
