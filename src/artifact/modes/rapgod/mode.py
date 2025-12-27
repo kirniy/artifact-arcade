@@ -127,7 +127,7 @@ class RapGodMode(BaseMode):
         self._slot_words: List[List[str]] = []  # ~20 words per slot for scrolling
         self._slot_offsets: List[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # Scroll offset (5 slots: 4 words + joker)
         self._slot_stopped: List[bool] = [False, False, False, False, False]  # Whether stopped
-        self._slot_speed: float = 80.0  # Pixels per second for scrolling
+        self._slot_speed: float = 25.0  # Pixels per second for scrolling (slow and readable)
         self._selected_words: List[str] = []  # Final selected words (4)
         self._joker_words: List[str] = []  # Joker rules for slot 5
         self._joker_text: Optional[str] = None  # Selected joker rule
@@ -258,10 +258,10 @@ class RapGodMode(BaseMode):
         # Only animate the current slot (and any not yet stopped)
         for i in range(5):
             if not self._slot_stopped[i]:
-                # Scroll the slot
-                speed = self._slot_speed
-                if i == 4:  # Joker slot scrolls slower
-                    speed = 40.0
+                # Scroll the slot - slow speed for readability
+                speed = self._slot_speed  # 25 px/s for words
+                if i == 4:  # Joker slot scrolls even slower
+                    speed = 15.0
                 self._slot_offsets[i] += speed * delta_ms / 1000.0
 
                 # Wrap around based on number of items
@@ -887,11 +887,12 @@ class RapGodMode(BaseMode):
             if slot_y < y_pos < slot_y + slot_height - 8:
                 # Fade based on distance from center
                 dist = abs(y_pos - center_y)
-                alpha = max(0.2, 1.0 - dist / 40)
+                alpha = max(0.4, 1.0 - dist / 50)
 
                 # Skip center item (we render it separately with glow)
                 if dist > 8:
-                    item_color = tuple(int(c * alpha * 0.5) for c in color)
+                    # Brighter base color for readability (0.7 instead of 0.5)
+                    item_color = tuple(min(255, int(c * alpha * 0.8)) for c in color)
                     item_text = items[i][:16]  # Truncate
                     draw_centered_text(buffer, item_text, y=y_pos, color=item_color, scale=1)
 

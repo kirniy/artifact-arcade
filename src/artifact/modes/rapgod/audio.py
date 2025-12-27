@@ -135,21 +135,28 @@ class AudioPlayer:
 async def upload_to_selectel(
     audio_bytes: bytes,
     filename: str = "track.mp3",
+    timeout: float = 45.0,
 ) -> Optional[str]:
     """Upload audio to Selectel S3 for QR sharing.
 
     Args:
         audio_bytes: MP3 audio data
         filename: Filename for the upload (unused, auto-generated)
+        timeout: Maximum time to wait for upload (seconds)
 
     Returns:
         Shareable URL or None on error
     """
     try:
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            _executor,
-            lambda: upload_bytes_to_s3(audio_bytes, "track", "mp3", "audio/mpeg")
+
+        # Wrap in timeout to prevent hanging
+        result = await asyncio.wait_for(
+            loop.run_in_executor(
+                _executor,
+                lambda: upload_bytes_to_s3(audio_bytes, "track", "mp3", "audio/mpeg")
+            ),
+            timeout=timeout
         )
 
         if result.success:
@@ -159,6 +166,9 @@ async def upload_to_selectel(
             logger.error(f"Selectel S3 upload failed: {result.error}")
             return None
 
+    except asyncio.TimeoutError:
+        logger.error(f"Selectel S3 upload timed out after {timeout}s")
+        return None
     except Exception as e:
         logger.error(f"Selectel S3 upload error: {e}")
         return None
