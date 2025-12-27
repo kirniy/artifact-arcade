@@ -17,12 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 class SunoModel(Enum):
-    """Available Suno models."""
+    """Available Suno models.
 
-    V4 = "chirp-v4"  # 4 min max
-    V4_5 = "chirp-v4-5"  # 8 min max, better prompt understanding
-    V4_5_PLUS = "chirp-v4-5-plus"  # Advanced tonal variation
-    V5 = "chirp-v5"  # Latest
+    API uses uppercase model names without 'chirp-' prefix.
+    See: https://docs.sunoapi.org/suno-api/generate-music
+    """
+
+    V4 = "V4"  # 4 min max, best audio quality
+    V4_5 = "V4_5"  # 8 min max, smarter prompts
+    V4_5_ALL = "V4_5ALL"  # 8 min max, better song structure
+    V4_5_PLUS = "V4_5PLUS"  # 8 min max, richer sound
+    V5 = "V5"  # Superior musical expression, faster
 
 
 class TrackStatus(Enum):
@@ -123,7 +128,8 @@ class SunoClient:
                 "customMode": True,  # Use custom lyrics mode
                 "instrumental": is_instrumental,
                 "model": model.value,
-                "wait": False,  # Async mode - return task_id immediately
+                # callBackUrl is required but we use polling instead
+                "callBackUrl": "https://vnvnc.ai/webhook/suno",
             }
 
             logger.info(f"Generating track: {title} (model={model.value})")
@@ -189,7 +195,7 @@ class SunoClient:
 
             async with session.get(
                 f"{self.BASE_URL}/api/v1/generate/record-info",
-                params={"taskId": task_id},
+                params={"id": task_id},
             ) as response:
                 if not response.ok:
                     error_text = await response.text()

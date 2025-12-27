@@ -237,6 +237,34 @@ class WordBank:
         """Get a random joker rule."""
         return random.choice(JOKER_RULES)
 
+    def get_all_jokers(self) -> List[str]:
+        """Get all joker rules for slot machine."""
+        return JOKER_RULES.copy()
+
+    def get_words_by_category_index(self, index: int, count: int = 20) -> List[str]:
+        """Get random words from a category by index.
+
+        Used for slot machine word pools.
+        """
+        categories = list(WORDS.keys())
+        category = categories[index % len(categories)]
+
+        # Get more words than needed, shuffled
+        pool = WORDS[category].copy()
+        random.shuffle(pool)
+
+        # If we need more, add from other categories
+        if len(pool) < count:
+            for other_cat in categories:
+                if other_cat != category:
+                    extra = WORDS[other_cat].copy()
+                    random.shuffle(extra)
+                    pool.extend(extra[:count - len(pool)])
+                    if len(pool) >= count:
+                        break
+
+        return pool[:count]
+
     def record_selection(self, words: List[str]) -> None:
         """Record selected words to avoid repeats."""
         self.recent_words.extend(words)
