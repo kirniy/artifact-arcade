@@ -108,7 +108,7 @@ JOKER_RULES: List[str] = [
 ]
 
 # =============================================================================
-# GENRE/STYLE PRESETS
+# GENRE/STYLE PRESETS - Expanded with sub-genres, moods, vibes
 # =============================================================================
 
 GENRES = {
@@ -117,32 +117,130 @@ GENRES = {
         "bpm_range": (140, 160),
         "mood": "агрессивно",
         "tags": ["808", "hi-hats", "dark"],
+        "color": (255, 50, 100),  # Hot pink
     },
     "drill": {
         "name_ru": "ДРИЛЛ",
         "bpm_range": (140, 145),
         "mood": "жёстко",
         "tags": ["UK drill", "sliding 808", "dark"],
+        "color": (100, 100, 255),  # Blue
     },
     "cloud": {
         "name_ru": "КЛАУД",
         "bpm_range": (130, 145),
         "mood": "меланхолично",
         "tags": ["ethereal", "reverb", "sad"],
+        "color": (200, 150, 255),  # Lavender
     },
     "boombap": {
         "name_ru": "БУМ-БЭП",
         "bpm_range": (85, 95),
         "mood": "олдскул",
         "tags": ["classic", "sample", "boom bap"],
+        "color": (255, 180, 50),  # Gold
     },
     "phonk": {
         "name_ru": "ФОНК",
         "bpm_range": (130, 145),
         "mood": "дерзко",
         "tags": ["Memphis", "cowbell", "drift"],
+        "color": (150, 50, 200),  # Purple
+    },
+    "hyperpop": {
+        "name_ru": "ГИПЕРПОП",
+        "bpm_range": (150, 180),
+        "mood": "хаотично",
+        "tags": ["glitchy", "pitched vocals", "maximalist"],
+        "color": (255, 100, 255),  # Magenta
+    },
+    "rage": {
+        "name_ru": "РЭЙДЖ",
+        "bpm_range": (150, 165),
+        "mood": "бешено",
+        "tags": ["distorted", "synths", "aggressive"],
+        "color": (255, 0, 50),  # Red
+    },
+    "plugg": {
+        "name_ru": "ПЛАГ",
+        "bpm_range": (140, 155),
+        "mood": "расслабленно",
+        "tags": ["flutes", "bells", "spacey"],
+        "color": (100, 200, 150),  # Teal
     },
 }
+
+# Sub-genres for each main genre
+SUB_GENRES = {
+    "trap": [
+        {"id": "hard_trap", "name_ru": "ХАРД ТРЭП", "desc": "Жёсткие 808, тяжёлые биты"},
+        {"id": "melodic_trap", "name_ru": "МЕЛОДИК", "desc": "Мелодичный, эмоциональный"},
+        {"id": "dark_trap", "name_ru": "ДАРК ТРЭП", "desc": "Мрачный, атмосферный"},
+        {"id": "club_trap", "name_ru": "КЛУБНЫЙ", "desc": "Для танцпола"},
+    ],
+    "drill": [
+        {"id": "uk_drill", "name_ru": "UK ДРИЛЛ", "desc": "Британский стиль"},
+        {"id": "ny_drill", "name_ru": "NY ДРИЛЛ", "desc": "Нью-Йорк стиль"},
+        {"id": "chicago_drill", "name_ru": "ЧИКАГО", "desc": "Оригинальный дрилл"},
+    ],
+    "cloud": [
+        {"id": "cloud_rap", "name_ru": "КЛАУД РЭП", "desc": "Воздушный, мечтательный"},
+        {"id": "emo_cloud", "name_ru": "ЭМО КЛАУД", "desc": "Грустный, эмоциональный"},
+        {"id": "witch_house", "name_ru": "ВИЧ ХАУС", "desc": "Тёмный, оккультный"},
+    ],
+    "boombap": [
+        {"id": "classic_boom", "name_ru": "КЛАССИКА", "desc": "90s стиль"},
+        {"id": "jazzy_boom", "name_ru": "ДЖАЗИ", "desc": "Джазовые сэмплы"},
+        {"id": "hardcore_boom", "name_ru": "ХАРДКОР", "desc": "Жёсткий бумбэп"},
+    ],
+    "phonk": [
+        {"id": "drift_phonk", "name_ru": "ДРИФТ", "desc": "Для тачек и дрифта"},
+        {"id": "memphis_phonk", "name_ru": "МЕМФИС", "desc": "Оригинальный стиль"},
+        {"id": "house_phonk", "name_ru": "ХАУС ФОНК", "desc": "Танцевальный фонк"},
+    ],
+    "hyperpop": [
+        {"id": "glitch_pop", "name_ru": "ГЛИТЧ", "desc": "Глитчевый, сломанный"},
+        {"id": "pc_music", "name_ru": "PC МЬЮЗИК", "desc": "Экспериментальный поп"},
+    ],
+    "rage": [
+        {"id": "rage_beat", "name_ru": "РЭЙДЖ БИТ", "desc": "Классический рэйдж"},
+        {"id": "rage_plugg", "name_ru": "РЭЙДЖ ПЛАГ", "desc": "Гибрид стилей"},
+    ],
+    "plugg": [
+        {"id": "plugg_classic", "name_ru": "КЛАССИК ПЛАГ", "desc": "Оригинальный стиль"},
+        {"id": "evil_plugg", "name_ru": "ЭВИЛ ПЛАГ", "desc": "Тёмный плаг"},
+    ],
+}
+
+# Available moods
+MOODS = [
+    {"id": "aggressive", "name_ru": "АГРЕССИВНО", "emoji": "🔥", "desc": "Жёстко и дерзко"},
+    {"id": "melancholic", "name_ru": "МЕЛАНХОЛИЧНО", "emoji": "🌧", "desc": "Грустно и задумчиво"},
+    {"id": "romantic", "name_ru": "РОМАНТИЧНО", "emoji": "💕", "desc": "Про любовь и чувства"},
+    {"id": "party", "name_ru": "ТУСОВОЧНО", "emoji": "🎉", "desc": "Для вечеринки"},
+    {"id": "chill", "name_ru": "РАССЛАБЛЕННО", "emoji": "😌", "desc": "Спокойно и легко"},
+    {"id": "dark", "name_ru": "МРАЧНО", "emoji": "🖤", "desc": "Тёмный вайб"},
+    {"id": "flex", "name_ru": "ФЛЕКС", "emoji": "💎", "desc": "Про деньги и успех"},
+    {"id": "street", "name_ru": "УЛИЦЫ", "emoji": "🏙", "desc": "Уличная история"},
+    {"id": "crazy", "name_ru": "БЕЗУМНО", "emoji": "🤪", "desc": "Хаос и угар"},
+    {"id": "dreamy", "name_ru": "МЕЧТАТЕЛЬНО", "emoji": "✨", "desc": "Воздушно и лёгко"},
+]
+
+# Available vibes (overall atmosphere)
+VIBES = [
+    {"id": "club", "name_ru": "КЛУБНЫЙ", "desc": "Для танцпола VIP"},
+    {"id": "street", "name_ru": "УЛИЧНЫЙ", "desc": "Район, двор, блок"},
+    {"id": "night", "name_ru": "НОЧНОЙ", "desc": "После полуночи"},
+    {"id": "summer", "name_ru": "ЛЕТНИЙ", "desc": "Жара, пляж, кабрио"},
+    {"id": "winter", "name_ru": "ЗИМНИЙ", "desc": "Холод, снег, Питер"},
+    {"id": "lounge", "name_ru": "ЛАУНЖ", "desc": "Бар, коктейли, чилл"},
+    {"id": "drift", "name_ru": "ДРИФТ", "desc": "Тачки, скорость, гонки"},
+    {"id": "game", "name_ru": "ИГРОВОЙ", "desc": "Геймерский вайб"},
+    {"id": "workout", "name_ru": "КАЧАЛКА", "desc": "Для тренировки"},
+    {"id": "party", "name_ru": "АФТЕПАТИ", "desc": "После клуба, 5 утра"},
+    {"id": "romantic", "name_ru": "СВИДАНИЕ", "desc": "Для двоих"},
+    {"id": "hustle", "name_ru": "ХАСЛ", "desc": "Работа, деньги, движ"},
+]
 
 
 @dataclass
@@ -151,6 +249,9 @@ class WordSelection:
     words: List[str]
     joker: Optional[str]
     genre: str
+    sub_genre: Optional[str] = None
+    mood: Optional[str] = None
+    vibe: Optional[str] = None
 
     def to_prompt(self) -> str:
         """Convert to a prompt string for lyrics generation."""
@@ -159,6 +260,42 @@ class WordSelection:
         if self.joker:
             prompt += f"\nСпециальное правило: {self.joker}"
         return prompt
+
+    def get_style_prompt(self) -> str:
+        """Get the full style description for Suno."""
+        parts = []
+
+        # Main genre
+        genre_info = GENRES.get(self.genre, GENRES["trap"])
+        parts.append(f"russian {self.genre}")
+
+        # Sub-genre if set
+        if self.sub_genre:
+            sub_genres = SUB_GENRES.get(self.genre, [])
+            for sg in sub_genres:
+                if sg["id"] == self.sub_genre:
+                    parts.append(sg["desc"].lower())
+                    break
+
+        # Mood
+        if self.mood:
+            for m in MOODS:
+                if m["id"] == self.mood:
+                    parts.append(m["desc"].lower())
+                    break
+
+        # Vibe
+        if self.vibe:
+            for v in VIBES:
+                if v["id"] == self.vibe:
+                    parts.append(v["desc"].lower())
+                    break
+
+        # BPM
+        bpm = (genre_info["bpm_range"][0] + genre_info["bpm_range"][1]) // 2
+        parts.append(f"{bpm} bpm")
+
+        return ", ".join(parts)
 
 
 class WordBank:

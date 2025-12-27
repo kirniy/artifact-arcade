@@ -31,7 +31,7 @@ from artifact.graphics.text_utils import (
 from artifact.graphics.fonts import load_font
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 
-from artifact.modes.rapgod.wordbank import WordBank, WordSelection, GENRES
+from artifact.modes.rapgod.wordbank import WordBank, WordSelection, GENRES, SUB_GENRES, MOODS, VIBES
 from artifact.modes.rapgod.lyrics import LyricsGenerator, GeneratedLyrics
 from artifact.modes.rapgod.suno import get_suno_client, SunoClient, TrackStatus
 from artifact.modes.rapgod.audio import (
@@ -52,6 +52,9 @@ class RapGodPhase:
 
     INTRO = "intro"              # Welcome animation
     GENRE_SELECT = "genre"       # Pick trap/drill/cloud/boombap/phonk
+    SUBGENRE_SELECT = "subgenre" # Pick sub-genre variation
+    MOOD_SELECT = "mood"         # Pick emotional mood
+    VIBE_SELECT = "vibe"         # Pick overall atmosphere
     WORD_SELECT = "words"        # Select 4 words + joker (slot-machine style)
     CAMERA_PREP = "camera_prep"  # Show camera preview
     CAMERA_CAPTURE = "capture"   # Countdown and capture
@@ -60,13 +63,16 @@ class RapGodPhase:
     RESULT = "result"            # Final display
 
 
-# Colors for different genres
+# Colors for different genres (matching GENRES in wordbank)
 GENRE_COLORS = {
     "trap": (255, 50, 100),     # Hot pink
     "drill": (100, 100, 255),   # Blue
     "cloud": (200, 150, 255),   # Lavender
     "boombap": (255, 180, 50),  # Gold
     "phonk": (150, 50, 200),    # Purple
+    "hyperpop": (255, 100, 255), # Magenta
+    "rage": (255, 0, 50),       # Red
+    "plugg": (100, 200, 150),   # Teal
 }
 
 # Custom progress messages for rap generation
@@ -122,6 +128,14 @@ class RapGodMode(BaseMode):
         self._genre = "trap"
         self._genre_index = 0
         self._genres = list(GENRES.keys())
+
+        # Vibe selector state
+        self._sub_genre: Optional[str] = None
+        self._sub_genre_index = 0
+        self._mood: Optional[str] = None
+        self._mood_index = 0
+        self._vibe: Optional[str] = None
+        self._vibe_index = 0
 
         # Word selection state - simple 3-option picker
         self._current_slot = 0  # 0-3 for 4 word slots, then 4 = joker slot
@@ -298,8 +312,34 @@ class RapGodMode(BaseMode):
 
         if self._sub_phase == RapGodPhase.GENRE_SELECT:
             self._genre = self._genres[self._genre_index]
-            self._sub_phase = RapGodPhase.WORD_SELECT
+            # Move to sub-genre selection
+            self._sub_genre_index = 0
+            self._sub_phase = RapGodPhase.SUBGENRE_SELECT
+            return True
+
+        if self._sub_phase == RapGodPhase.SUBGENRE_SELECT:
+            sub_genres = SUB_GENRES.get(self._genre, [])
+            if sub_genres and self._sub_genre_index < len(sub_genres):
+                self._sub_genre = sub_genres[self._sub_genre_index]["id"]
+            # Move to mood selection
+            self._mood_index = 0
+            self._sub_phase = RapGodPhase.MOOD_SELECT
+            return True
+
+        if self._sub_phase == RapGodPhase.MOOD_SELECT:
+            if self._mood_index < len(MOODS):
+                self._mood = MOODS[self._mood_index]["id"]
+            # Move to vibe selection
+            self._vibe_index = 0
+            self._sub_phase = RapGodPhase.VIBE_SELECT
+            return True
+
+        if self._sub_phase == RapGodPhase.VIBE_SELECT:
+            if self._vibe_index < len(VIBES):
+                self._vibe = VIBES[self._vibe_index]["id"]
+            # Move to word selection
             self._option_index = 0
+            self._sub_phase = RapGodPhase.WORD_SELECT
             return True
 
         if self._sub_phase == RapGodPhase.WORD_SELECT:
@@ -351,6 +391,18 @@ class RapGodMode(BaseMode):
             self._sub_phase = RapGodPhase.INTRO
             return True
 
+        if self._sub_phase == RapGodPhase.SUBGENRE_SELECT:
+            self._sub_phase = RapGodPhase.GENRE_SELECT
+            return True
+
+        if self._sub_phase == RapGodPhase.MOOD_SELECT:
+            self._sub_phase = RapGodPhase.SUBGENRE_SELECT
+            return True
+
+        if self._sub_phase == RapGodPhase.VIBE_SELECT:
+            self._sub_phase = RapGodPhase.MOOD_SELECT
+            return True
+
         if self._sub_phase == RapGodPhase.WORD_SELECT:
             if self._current_slot == 4:
                 # At joker slot - go back to word slot 3
@@ -365,8 +417,8 @@ class RapGodMode(BaseMode):
                     self._selected_words.pop()
                 self._option_index = 0
             else:
-                # At first slot - go back to genre
-                self._sub_phase = RapGodPhase.GENRE_SELECT
+                # At first slot - go back to vibe
+                self._sub_phase = RapGodPhase.VIBE_SELECT
             return True
 
         if self._sub_phase == RapGodPhase.CAMERA_PREP:
@@ -424,6 +476,24 @@ class RapGodMode(BaseMode):
 
     def _handle_up(self) -> bool:
         """Handle up arrow - move selection up."""
+        if self._sub_phase == RapGodPhase.GENRE_SELECT:
+            self._genre_index = (self._genre_index - 1) % len(self._genres)
+            return True
+
+        if self._sub_phase == RapGodPhase.SUBGENRE_SELECT:
+            sub_genres = SUB_GENRES.get(self._genre, [])
+            if sub_genres:
+                self._sub_genre_index = (self._sub_genre_index - 1) % len(sub_genres)
+            return True
+
+        if self._sub_phase == RapGodPhase.MOOD_SELECT:
+            self._mood_index = (self._mood_index - 1) % len(MOODS)
+            return True
+
+        if self._sub_phase == RapGodPhase.VIBE_SELECT:
+            self._vibe_index = (self._vibe_index - 1) % len(VIBES)
+            return True
+
         if self._sub_phase == RapGodPhase.WORD_SELECT:
             if self._current_slot < 4:
                 max_options = len(self._slot_options[self._current_slot])
@@ -435,6 +505,24 @@ class RapGodMode(BaseMode):
 
     def _handle_down(self) -> bool:
         """Handle down arrow - move selection down."""
+        if self._sub_phase == RapGodPhase.GENRE_SELECT:
+            self._genre_index = (self._genre_index + 1) % len(self._genres)
+            return True
+
+        if self._sub_phase == RapGodPhase.SUBGENRE_SELECT:
+            sub_genres = SUB_GENRES.get(self._genre, [])
+            if sub_genres:
+                self._sub_genre_index = (self._sub_genre_index + 1) % len(sub_genres)
+            return True
+
+        if self._sub_phase == RapGodPhase.MOOD_SELECT:
+            self._mood_index = (self._mood_index + 1) % len(MOODS)
+            return True
+
+        if self._sub_phase == RapGodPhase.VIBE_SELECT:
+            self._vibe_index = (self._vibe_index + 1) % len(VIBES)
+            return True
+
         if self._sub_phase == RapGodPhase.WORD_SELECT:
             if self._current_slot < 4:
                 max_options = len(self._slot_options[self._current_slot])
@@ -475,11 +563,14 @@ class RapGodMode(BaseMode):
         self._sub_phase = RapGodPhase.PROCESSING
         self.change_phase(ModePhase.PROCESSING)
 
-        # Create word selection (joker already set or None)
+        # Create word selection with all vibe settings
         selection = WordSelection(
             words=self._selected_words.copy(),
             joker=self._joker_text,
             genre=self._genre,
+            sub_genre=self._sub_genre,
+            mood=self._mood,
+            vibe=self._vibe,
         )
 
         # Start async generation
@@ -519,10 +610,8 @@ class RapGodMode(BaseMode):
                 if self._lyrics.verse2:
                     full_lyrics += f"\n\n{self._lyrics.verse2}"
 
-                # Build style prompt
-                genre_info = GENRES.get(selection.genre, GENRES["trap"])
-                bpm = random.randint(*genre_info["bpm_range"])
-                style = f"russian {selection.genre}, {genre_info['mood']}, {bpm} bpm, club banger"
+                # Build style prompt using the full vibe selection
+                style = selection.get_style_prompt()
 
                 logger.info(f"Generating track with Suno: {self._lyrics.title}")
                 self._task_id = await self._suno.generate_track(
@@ -661,6 +750,15 @@ class RapGodMode(BaseMode):
         elif self._sub_phase == RapGodPhase.GENRE_SELECT:
             self._render_genre_select(buffer, genre_color)
 
+        elif self._sub_phase == RapGodPhase.SUBGENRE_SELECT:
+            self._render_subgenre_select(buffer, genre_color)
+
+        elif self._sub_phase == RapGodPhase.MOOD_SELECT:
+            self._render_mood_select(buffer, genre_color)
+
+        elif self._sub_phase == RapGodPhase.VIBE_SELECT:
+            self._render_vibe_select(buffer, genre_color)
+
         elif self._sub_phase == RapGodPhase.WORD_SELECT:
             self._render_word_select(buffer, genre_color)
 
@@ -763,6 +861,137 @@ class RapGodMode(BaseMode):
             time_ms=self._time_in_phase,
             y=115,
         )
+
+    def _render_subgenre_select(self, buffer: np.ndarray, color: tuple) -> None:
+        """Render sub-genre selection."""
+        draw_centered_text(
+            buffer, "ПОДЖАНР",
+            y=8,
+            color=(200, 200, 200),
+            scale=1,
+        )
+
+        # Show current genre at top
+        genre_info = GENRES.get(self._genre, GENRES["trap"])
+        draw_centered_text(
+            buffer, genre_info["name_ru"],
+            y=22,
+            color=color,
+            scale=1,
+        )
+
+        # Get sub-genres for current genre
+        sub_genres = SUB_GENRES.get(self._genre, [])
+        if not sub_genres:
+            draw_centered_text(buffer, "НЕТ ВАРИАНТОВ", y=60, color=(100, 100, 100), scale=1)
+            return
+
+        # Show sub-genres with scrolling window (show 3 at a time)
+        visible_count = 3
+        start_idx = max(0, self._sub_genre_index - 1)
+        end_idx = min(len(sub_genres), start_idx + visible_count)
+
+        y_start = 42
+        for i, idx in enumerate(range(start_idx, end_idx)):
+            sg = sub_genres[idx]
+            is_selected = (idx == self._sub_genre_index)
+            y_pos = y_start + i * 26
+
+            if is_selected:
+                draw_rect(buffer, 8, y_pos - 2, 112, 22, color=(60, 40, 80), filled=True)
+                draw_rect(buffer, 8, y_pos - 2, 112, 22, color=color, filled=False)
+                draw_animated_text(
+                    buffer, f"> {sg['name_ru']}",
+                    y=y_pos,
+                    base_color=color,
+                    time_ms=self._time_in_phase,
+                    effect=TextEffect.GLOW,
+                    scale=1,
+                )
+                # Description
+                draw_centered_text(buffer, sg["desc"][:20], y=y_pos + 12, color=(120, 120, 140), scale=1)
+            else:
+                draw_centered_text(buffer, sg["name_ru"], y=y_pos, color=(100, 100, 120), scale=1)
+
+        # Navigation hints
+        draw_centered_text(buffer, "↑↓ ВЫБРАТЬ", y=108, color=(100, 100, 120), scale=1)
+        draw_button_labels(buffer, left_text="НАЗАД", right_text="OK", time_ms=self._time_in_phase, y=120)
+
+    def _render_mood_select(self, buffer: np.ndarray, color: tuple) -> None:
+        """Render mood selection."""
+        draw_centered_text(
+            buffer, "НАСТРОЕНИЕ",
+            y=8,
+            color=(200, 200, 200),
+            scale=1,
+        )
+
+        # Show moods with scrolling window (show 4 at a time)
+        visible_count = 4
+        start_idx = max(0, self._mood_index - 1)
+        end_idx = min(len(MOODS), start_idx + visible_count)
+
+        y_start = 28
+        for i, idx in enumerate(range(start_idx, end_idx)):
+            m = MOODS[idx]
+            is_selected = (idx == self._mood_index)
+            y_pos = y_start + i * 22
+
+            if is_selected:
+                draw_rect(buffer, 8, y_pos - 2, 112, 18, color=(60, 40, 80), filled=True)
+                draw_rect(buffer, 8, y_pos - 2, 112, 18, color=color, filled=False)
+                draw_animated_text(
+                    buffer, f"> {m['name_ru']}",
+                    y=y_pos,
+                    base_color=color,
+                    time_ms=self._time_in_phase,
+                    effect=TextEffect.GLOW,
+                    scale=1,
+                )
+            else:
+                draw_centered_text(buffer, m["name_ru"], y=y_pos, color=(100, 100, 120), scale=1)
+
+        # Navigation hints
+        draw_centered_text(buffer, "↑↓ ВЫБРАТЬ", y=108, color=(100, 100, 120), scale=1)
+        draw_button_labels(buffer, left_text="НАЗАД", right_text="OK", time_ms=self._time_in_phase, y=120)
+
+    def _render_vibe_select(self, buffer: np.ndarray, color: tuple) -> None:
+        """Render vibe (atmosphere) selection."""
+        draw_centered_text(
+            buffer, "ВАЙБ",
+            y=8,
+            color=(200, 200, 200),
+            scale=1,
+        )
+
+        # Show vibes with scrolling window (show 4 at a time)
+        visible_count = 4
+        start_idx = max(0, self._vibe_index - 1)
+        end_idx = min(len(VIBES), start_idx + visible_count)
+
+        y_start = 28
+        for i, idx in enumerate(range(start_idx, end_idx)):
+            v = VIBES[idx]
+            is_selected = (idx == self._vibe_index)
+            y_pos = y_start + i * 22
+
+            if is_selected:
+                draw_rect(buffer, 8, y_pos - 2, 112, 18, color=(60, 40, 80), filled=True)
+                draw_rect(buffer, 8, y_pos - 2, 112, 18, color=color, filled=False)
+                draw_animated_text(
+                    buffer, f"> {v['name_ru']}",
+                    y=y_pos,
+                    base_color=color,
+                    time_ms=self._time_in_phase,
+                    effect=TextEffect.GLOW,
+                    scale=1,
+                )
+            else:
+                draw_centered_text(buffer, v["name_ru"], y=y_pos, color=(100, 100, 120), scale=1)
+
+        # Navigation hints
+        draw_centered_text(buffer, "↑↓ ВЫБРАТЬ", y=108, color=(100, 100, 120), scale=1)
+        draw_button_labels(buffer, left_text="НАЗАД", right_text="OK", time_ms=self._time_in_phase, y=120)
 
     def _render_word_select(self, buffer: np.ndarray, color: tuple) -> None:
         """Render 3-option word selection."""
