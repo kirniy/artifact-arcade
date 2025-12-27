@@ -285,6 +285,104 @@ QUIZ_QUESTIONS: List[Tuple[str, List[str], int]] = [
     ("'Очень странные дела' сезон 5 выйдет?", ["2025", "2024", "2026", "Отменили"], 0),
 
     # ===========================================================================
+    # RUSSIAN INTERNET SLANG 2024-2025
+    # ===========================================================================
+    ("Что значит 'кринж'?", ["Стыдно смотреть", "Круто", "Смешно", "Грустно"], 0),
+    ("'Рофл' это?", ["Шутка", "Ошибка", "Победа", "Проблема"], 0),
+    ("Что такое 'хейтить'?", ["Ненавидеть", "Любить", "Игнорить", "Поддерживать"], 0),
+    ("'Вайб' означает?", ["Атмосфера", "Еда", "Одежда", "Музыка"], 0),
+    ("Что значит 'зашквар'?", ["Позор", "Успех", "Веселье", "Секрет"], 0),
+    ("'Чилить' это?", ["Отдыхать", "Работать", "Бегать", "Учиться"], 0),
+    ("Что такое 'флексить'?", ["Хвастаться", "Грустить", "Спать", "Есть"], 0),
+    ("'Краш' в сленге это?", ["Объект влюблённости", "Авария", "Еда", "Игра"], 0),
+    ("Что значит 'агриться'?", ["Злиться", "Радоваться", "Спать", "Танцевать"], 0),
+    ("'Изи' означает?", ["Легко", "Сложно", "Быстро", "Медленно"], 0),
+    ("Что такое 'рандом'?", ["Случайность", "Порядок", "План", "Правило"], 0),
+    ("'Токсик' это?", ["Неприятный человек", "Напиток", "Игра", "Еда"], 0),
+
+    # ===========================================================================
+    # RUSSIAN RAP NEW WAVE 2024-2025
+    # ===========================================================================
+    ("Кто такой SODA LUV?", ["Рэпер", "DJ", "Продюсер", "Блогер"], 0),
+    ("Трек 'MIAMI' от кого?", ["SODA LUV", "MAYOT", "OG Buda", "Платина"], 0),
+    ("Кто записал 'Привет'?", ["Баста", "Oxxxymiron", "Скриптонит", "Хаски"], 0),
+    ("Группа Cream Soda поёт?", ["Поп-рок", "Рэп", "Металл", "Джаз"], 0),
+    ("Кто такой KOSTROMIN?", ["Певец", "Рэпер", "DJ", "Актёр"], 0),
+    ("Хит KOSTROMIN?", ["Моя голова винтом", "Моя рука", "Моя нога", "Моё сердце"], 0),
+    ("Кто такие Буерак?", ["Рок группа", "Рэп дуэт", "DJ", "Продюсеры"], 0),
+    ("Трек 'Молодым' от?", ["Моргенштерн", "Тимати", "Баста", "Элджей"], 0),
+    ("Кто такой Toxi$?", ["Рэпер", "Певец", "DJ", "Блогер"], 0),
+    ("Рэпер 163ONMYNECK настоящее имя?", ["Тимофей", "Артём", "Денис", "Никита"], 0),
+
+    # ===========================================================================
+    # SOCIAL MEDIA TRENDS 2024-2025
+    # ===========================================================================
+    ("Что такое 'дуэт' в ТикТоке?", ["Реакция на видео", "Танец", "Песня", "Фильтр"], 0),
+    ("'Стич' в ТикТоке это?", ["Нарезка видео", "Музыка", "Эффект", "Текст"], 0),
+    ("FYP расшифровывается как?", ["For You Page", "Find Your Page", "Fun Young People", "Free Your Phone"], 0),
+    ("Что такое 'сторителлинг'?", ["Рассказывание историй", "Танец", "Песня", "Игра"], 0),
+    ("'Тренд' в соцсетях это?", ["Популярная тема", "Реклама", "Магазин", "Игра"], 0),
+    ("Что значит 'залететь в рекомендации'?", ["Стать популярным", "Упасть", "Проиграть", "Уйти"], 0),
+    ("'Контент' это?", ["Содержание", "Контейнер", "Концерт", "Конкурс"], 0),
+    ("Что такое 'инфлюенсер'?", ["Лидер мнений", "Программист", "Врач", "Учитель"], 0),
+
+    # ===========================================================================
+    # MOVIES & SERIES 2024-2025
+    # ===========================================================================
+    ("Фильм 'Дюна 2' режиссёр?", ["Дени Вильнёв", "Нолан", "Спилберг", "Скорсезе"], 0),
+    ("'Оппенгеймер' получил Оскар?", ["Да", "Нет", "Номинация", "Не участвовал"], 0),
+    ("Сериал 'Fallout' от?", ["Amazon", "Netflix", "HBO", "Disney+"], 0),
+    ("'Дэдпул 3' с кем?", ["Росомаха", "Тор", "Халк", "Капитан Америка"], 0),
+    ("Фильм 'Бедные-несчастные' про?", ["Женщину-эксперимент", "Бедных", "Животных", "Роботов"], 0),
+    ("'Shōgun' сериал про?", ["Японию", "Китай", "Корею", "Тайланд"], 0),
+    ("Аниме 'Атака титанов' закончилось в?", ["2023", "2024", "2022", "2021"], 0),
+    ("Фильм 'Гладиатор 2' выйдет?", ["2024", "2025", "2026", "Отменили"], 0),
+
+    # ===========================================================================
+    # GAMING 2024-2025
+    # ===========================================================================
+    ("Palworld прозвали?", ["Покемоны с пушками", "Майнкрафт 2", "GTA с покемонами", "Зельда"], 0),
+    ("Helldivers 2 жанр?", ["Кооп-шутер", "RPG", "Гонки", "Симулятор"], 0),
+    ("Final Fantasy VII Rebirth это?", ["Ремейк", "Оригинал", "DLC", "Мод"], 0),
+    ("Tekken 8 это?", ["Файтинг", "Шутер", "RPG", "Гонки"], 0),
+    ("Dragon's Dogma 2 создала?", ["Capcom", "FromSoftware", "Bethesda", "Rockstar"], 0),
+    ("Skull and Bones про?", ["Пиратов", "Космос", "Средневековье", "Современность"], 0),
+    ("Like a Dragon: Infinite Wealth про?", ["Якудза", "Дракона", "Космос", "Войну"], 0),
+    ("Balatro это?", ["Покер roguelike", "Шутер", "RPG", "Платформер"], 0),
+
+    # ===========================================================================
+    # ESPORTS & STREAMERS 2024-2025
+    # ===========================================================================
+    ("Кто такой s1mple?", ["CS игрок", "Рэпер", "Блогер", "Актёр"], 0),
+    ("Команда NAVI откуда?", ["Украина", "Россия", "США", "Швеция"], 0),
+    ("Игра Valorant от?", ["Riot Games", "Valve", "Blizzard", "EA"], 0),
+    ("Dota 2 The International это?", ["Турнир", "Патч", "Герой", "Режим"], 0),
+    ("Кто такой Faker?", ["LoL игрок", "CS игрок", "Dota игрок", "Valorant игрок"], 0),
+    ("Faker из какой страны?", ["Корея", "Китай", "США", "Япония"], 0),
+
+    # ===========================================================================
+    # RUSSIAN POP CULTURE 2024-2025
+    # ===========================================================================
+    ("Шоу 'Голос' на каком канале?", ["Первый", "Россия", "НТВ", "СТС"], 0),
+    ("'Танцы' шоу на?", ["ТНТ", "Первый", "СТС", "Пятница"], 0),
+    ("Камеди Клаб ведёт?", ["Павел Воля", "Нагиев", "Галустян", "Светлаков"], 0),
+    ("'Квартал 95' откуда?", ["Украина", "Россия", "Беларусь", "Казахстан"], 0),
+    ("Зеленский был в 'Квартал 95'?", ["Да", "Нет", "Иногда", "Продюсер"], 0),
+    ("Кто такая Ольга Бузова?", ["Певица-блогер", "Актриса", "Спортсменка", "Политик"], 0),
+    ("'Дом 2' закрылся?", ["Да", "Нет", "Переехал", "Реформат"], 0),
+
+    # ===========================================================================
+    # TECH CULTURE 2024-2025
+    # ===========================================================================
+    ("Sora от OpenAI это?", ["Генератор видео", "Чат-бот", "Поиск", "Игра"], 0),
+    ("Claude это?", ["AI от Anthropic", "AI от Google", "AI от Meta", "AI от Apple"], 0),
+    ("Gemini это AI от?", ["Google", "OpenAI", "Meta", "Microsoft"], 0),
+    ("Llama это AI от?", ["Meta", "Google", "OpenAI", "Amazon"], 0),
+    ("Apple Vision Pro это?", ["VR/AR очки", "Телефон", "Часы", "Наушники"], 0),
+    ("Rabbit R1 это?", ["AI гаджет", "Телефон", "Наушники", "Часы"], 0),
+    ("Humane AI Pin носят на?", ["Одежде", "Руке", "Голове", "Ноге"], 0),
+
+    # ===========================================================================
 ]
 
 
@@ -835,62 +933,138 @@ class QuizMode(BaseMode):
         draw_centered_text(buffer, "Секундочку...", 108, (100, 120, 150), scale=1)
 
     def _render_game(self, buffer) -> None:
-        """Render active game."""
+        """Render active game with live camera background."""
         from artifact.graphics.primitives import draw_rect
         from artifact.graphics.text_utils import draw_centered_text, wrap_text, fit_text_in_rect
+        import numpy as np
+
+        # LIVE CAMERA BACKGROUND - dimmed and tinted
+        frame = camera_service.get_frame(timeout=0)
+        if frame is not None and frame.shape[:2] == (128, 128):
+            # Dim the camera feed (30% opacity) and add blue tint
+            dimmed = (frame.astype(np.float32) * 0.25).astype(np.uint8)
+            # Add slight blue tint overlay
+            tint = np.array([5, 15, 40], dtype=np.uint8)
+            blended = np.clip(dimmed.astype(np.int16) + tint, 0, 255).astype(np.uint8)
+            np.copyto(buffer, blended)
+
+        # Add subtle grid lines for Millionaire feel (on top of camera)
+        from artifact.graphics.primitives import draw_line
+        for i in range(0, 128, 16):
+            draw_line(buffer, 0, i, 128, i, (15, 30, 60))
 
         question = self._questions[self._current_question]
         q_text, options, correct = question
 
-        # Question number, score and lives (O for lives, X for lost)
+        # Question number, score and lives with semi-transparent background
+        header_bg = np.zeros((12, 128, 3), dtype=np.uint8)
+        header_bg[:] = (10, 20, 50)
+        buffer[:12] = np.clip(buffer[:12].astype(np.int16) * 0.5 + header_bg.astype(np.int16) * 0.7, 0, 255).astype(np.uint8)
+
         lives_display = "O" * self._lives + "X" * (3 - self._lives)
         draw_centered_text(buffer, f"#{self._current_question + 1}/{self.QUESTIONS_PER_GAME}  {lives_display}  {self._score}", 2, self._gold, scale=1)
 
-        # Timer bar
+        # Timer bar with SMOOTH color transition (green -> yellow -> orange -> red)
         timer_pct = self._time_remaining / self.THINKING_TIME
         timer_w = int(120 * timer_pct)
-        timer_color = self._correct_green if timer_pct > 0.3 else self._wrong_red
-        draw_rect(buffer, 4, 12, 120, 3, (40, 40, 60))
+
+        # Smooth gradient: green (>60%) -> yellow (30-60%) -> orange (15-30%) -> red (<15%)
+        if timer_pct > 0.6:
+            timer_color = self._correct_green
+        elif timer_pct > 0.3:
+            # Blend green to yellow
+            t = (timer_pct - 0.3) / 0.3
+            timer_color = (
+                int(0 + (255 - 0) * (1 - t)),  # R: 0 -> 255
+                int(200 + (215 - 200) * (1 - t)),  # G: 200 -> 215
+                int(80 * t)  # B: 80 -> 0
+            )
+        elif timer_pct > 0.15:
+            # Blend yellow to orange
+            t = (timer_pct - 0.15) / 0.15
+            timer_color = (
+                255,  # R stays max
+                int(150 + (215 - 150) * t),  # G: 150 -> 215
+                0
+            )
+        else:
+            # Pulsing red when critical (<15%)
+            pulse = 0.7 + 0.3 * math.sin(self._pulse_time / 80)
+            timer_color = (int(220 * pulse), int(50 * pulse), int(50 * pulse))
+
+        # Timer background
+        draw_rect(buffer, 4, 12, 120, 4, (40, 40, 60))
         if timer_w > 0:
-            draw_rect(buffer, 4, 12, timer_w, 3, timer_color)
+            draw_rect(buffer, 4, 12, timer_w, 4, timer_color)
+            # Bright leading edge
+            if timer_w > 2:
+                draw_rect(buffer, 4 + timer_w - 2, 12, 2, 4, (255, 255, 255))
+
+        # Question text with semi-transparent background panel
+        question_panel_y = 18
+        question_panel_h = 26
+        panel_bg = buffer[question_panel_y:question_panel_y + question_panel_h, 2:126].astype(np.float32)
+        panel_overlay = np.full_like(panel_bg, (20, 30, 60), dtype=np.float32)
+        buffer[question_panel_y:question_panel_y + question_panel_h, 2:126] = np.clip(
+            panel_bg * 0.4 + panel_overlay * 0.6, 0, 255
+        ).astype(np.uint8)
 
         # Question text (wrapped)
         lines = wrap_text(q_text, 20)
-        text_y = 20
+        text_y = 22
         for line in lines[:2]:
             draw_centered_text(buffer, line, text_y, (255, 255, 255), scale=1)
             text_y += 11
 
-        # Answer options in 2x2 grid
+        # Answer options in 2x2 grid with improved visuals
         option_labels = ["1", "2", "3", "4"]
-        positions = [(2, 48), (66, 48), (2, 78), (66, 78)]  # x, y for each option
+        positions = [(2, 50), (66, 50), (2, 80), (66, 80)]  # x, y for each option
 
         for i, (opt, label) in enumerate(zip(options, option_labels)):
             opt_x, opt_y = positions[i]
             w, h = 60, 26
 
-            # Determine color based on state
+            # Determine color and effects based on state
+            glow = False
+            shake = 0
             if self._sub_phase == QuizPhase.REVEAL or self._sub_phase in (QuizPhase.CORRECT, QuizPhase.WRONG):
                 if i == correct:
                     color = self._correct_green
+                    glow = True
                 elif i == self._selected_answer and i != correct:
                     color = self._wrong_red
+                    # Shake effect for wrong answer
+                    shake = int(math.sin(self._wrong_display_timer / 30) * 2)
                 else:
-                    color = self._option_blue
+                    color = (20, 40, 80)  # Dim non-selected options
             elif i == self._selected_answer:
-                # Pulsing selection
+                # Pulsing selection with glow
                 pulse = 0.7 + 0.3 * math.sin(self._pulse_time / 100)
                 color = tuple(int(c * pulse) for c in self._option_selected)
+                glow = True
             else:
                 color = self._option_blue
 
-            # Draw option box
-            draw_rect(buffer, opt_x, opt_y, w, h, color)
+            # Draw option box with optional glow
+            box_x = opt_x + shake
+            if glow:
+                # Outer glow
+                glow_color = tuple(min(255, c + 40) for c in color)
+                draw_rect(buffer, box_x - 1, opt_y - 1, w + 2, h + 2, glow_color)
 
-            # Option text - fit within the option box (uppercase for font)
+            # Main box with gradient effect (darker at top)
+            draw_rect(buffer, box_x, opt_y, w, h, color)
+            # Highlight at top
+            highlight = tuple(min(255, c + 30) for c in color)
+            draw_rect(buffer, box_x, opt_y, w, 2, highlight)
+            # Shadow at bottom
+            shadow = tuple(max(0, c - 30) for c in color)
+            draw_rect(buffer, box_x, opt_y + h - 2, w, 2, shadow)
+
+            # Option text - fit within the option box
             display_text = f"{label}:{opt.upper()}"
-            # Use fit_text_in_rect to properly position text within the option box
-            fit_text_in_rect(buffer, display_text, (opt_x, opt_y, w, h), (255, 255, 255), max_scale=1)
+            text_color = (255, 255, 255) if color != (20, 40, 80) else (100, 100, 120)
+            fit_text_in_rect(buffer, display_text, (box_x, opt_y, w, h), text_color, max_scale=1)
 
         # Instructions at bottom
         if self._sub_phase == QuizPhase.QUESTION and not self._answer_locked:

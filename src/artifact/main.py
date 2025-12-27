@@ -111,34 +111,45 @@ async def run_hardware() -> None:
         theme="mystical"
     )
 
-    # Register ALL game modes
-    mode_manager.register_mode(FortuneMode)
-    mode_manager.register_mode(RouletteMode)
-    mode_manager.register_mode(QuizMode)
-    mode_manager.register_mode(SquidGameMode)
-    mode_manager.register_mode(GuessMeMode)
-    mode_manager.register_mode(AutopsyMode)
-    mode_manager.register_mode(RoastMeMode)
-    mode_manager.register_mode(FlowFieldMode)
-    mode_manager.register_mode(GlitchMirrorMode)
-    mode_manager.register_mode(DitherArtMode)
-    mode_manager.register_mode(AsciiArtMode)
-    mode_manager.register_mode(BarRunnerMode)
-    mode_manager.register_mode(BrickBreakerMode)
+    # Register ALL game modes - KEY MODES FIRST
+    # Priority 1: Main attractions
+    mode_manager.register_mode(FortuneMode)       # Fortune teller - classic
+    mode_manager.register_mode(PhotoboothMode)    # Photo booth - instant gratification
+    mode_manager.register_mode(BrickBreakerMode)  # Brick breaker - addictive arcade
+    mode_manager.register_mode(QuizMode)          # Quiz - engaging competition
+
+    # Priority 2: AI-powered experiences
+    mode_manager.register_mode(RapGodMode)        # Rap track generator
+    mode_manager.register_mode(RoastMeMode)       # AI roasts
+    mode_manager.register_mode(GuessMeMode)       # AI guessing game
+    mode_manager.register_mode(AutopsyMode)       # X-ray analysis
+
+    # Priority 3: Classic arcade games
     mode_manager.register_mode(SnakeClassicMode)
-    mode_manager.register_mode(SnakeTinyMode)
-    mode_manager.register_mode(LunarLanderMode)
     mode_manager.register_mode(PongMode)
     mode_manager.register_mode(FlappyMode)
     mode_manager.register_mode(Game2048Mode)
     mode_manager.register_mode(TowerStackMode)
-    mode_manager.register_mode(HandSnakeMode)
-    mode_manager.register_mode(RocketPyMode)
-    mode_manager.register_mode(SkiiMode)
+    mode_manager.register_mode(LunarLanderMode)
     mode_manager.register_mode(NinjaFruitMode)
-    mode_manager.register_mode(PhotoboothMode)
+    mode_manager.register_mode(SkiiMode)
+    mode_manager.register_mode(RocketPyMode)
+
+    # Priority 4: Camera/gesture modes
     mode_manager.register_mode(GestureGameMode)
-    mode_manager.register_mode(RapGodMode)
+    mode_manager.register_mode(SquidGameMode)
+    mode_manager.register_mode(HandSnakeMode)
+
+    # Priority 5: Art modes
+    mode_manager.register_mode(FlowFieldMode)
+    mode_manager.register_mode(GlitchMirrorMode)
+    mode_manager.register_mode(DitherArtMode)
+    mode_manager.register_mode(AsciiArtMode)
+
+    # Priority 6: Other modes
+    mode_manager.register_mode(RouletteMode)
+    mode_manager.register_mode(BarRunnerMode)
+    mode_manager.register_mode(SnakeTinyMode)
 
     # AI Prophet mode - needs API key
     if os.environ.get("GEMINI_API_KEY"):

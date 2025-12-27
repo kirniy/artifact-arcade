@@ -142,40 +142,44 @@ class ArtifactSimulator:
 
     def _register_modes(self) -> None:
         """Register all available game modes."""
-        # Register all game modes
-        self.mode_manager.register_mode(FortuneMode)
-        self.mode_manager.register_mode(RouletteMode)
-        self.mode_manager.register_mode(QuizMode)
+        # Priority 1: Main attractions
+        self.mode_manager.register_mode(FortuneMode)       # Fortune teller - classic
+        self.mode_manager.register_mode(PhotoboothMode)    # Photo booth - instant gratification
+        self.mode_manager.register_mode(BrickBreakerMode)  # Brick breaker - addictive arcade
+        self.mode_manager.register_mode(QuizMode)          # Quiz - engaging competition
 
-        # Squid Game mode - uses webcam for motion detection
-        self.mode_manager.register_mode(SquidGameMode)
-        
-        # New AI Modes
-        self.mode_manager.register_mode(GuessMeMode)
-        self.mode_manager.register_mode(AutopsyMode)
-        self.mode_manager.register_mode(RoastMeMode)
+        # Priority 2: AI-powered experiences
+        self.mode_manager.register_mode(RapGodMode)        # Rap track generator
+        self.mode_manager.register_mode(RoastMeMode)       # AI roasts
+        self.mode_manager.register_mode(GuessMeMode)       # AI guessing game
+        self.mode_manager.register_mode(AutopsyMode)       # X-ray analysis
 
-        # Algorithmic Art Modes - visual/interactive modes
-        self.mode_manager.register_mode(FlowFieldMode)
-        self.mode_manager.register_mode(GlitchMirrorMode)
-        self.mode_manager.register_mode(DitherArtMode)
-        self.mode_manager.register_mode(AsciiArtMode)
-        self.mode_manager.register_mode(BarRunnerMode)
-        self.mode_manager.register_mode(BrickBreakerMode)
+        # Priority 3: Classic arcade games
         self.mode_manager.register_mode(SnakeClassicMode)
-        self.mode_manager.register_mode(SnakeTinyMode)
-        self.mode_manager.register_mode(LunarLanderMode)
         self.mode_manager.register_mode(PongMode)
         self.mode_manager.register_mode(FlappyMode)
         self.mode_manager.register_mode(Game2048Mode)
         self.mode_manager.register_mode(TowerStackMode)
-        self.mode_manager.register_mode(HandSnakeMode)
-        self.mode_manager.register_mode(RocketPyMode)
-        self.mode_manager.register_mode(SkiiMode)
+        self.mode_manager.register_mode(LunarLanderMode)
         self.mode_manager.register_mode(NinjaFruitMode)
-        self.mode_manager.register_mode(PhotoboothMode)
+        self.mode_manager.register_mode(SkiiMode)
+        self.mode_manager.register_mode(RocketPyMode)
+
+        # Priority 4: Camera/gesture modes
         self.mode_manager.register_mode(GestureGameMode)
-        self.mode_manager.register_mode(RapGodMode)
+        self.mode_manager.register_mode(SquidGameMode)
+        self.mode_manager.register_mode(HandSnakeMode)
+
+        # Priority 5: Art modes
+        self.mode_manager.register_mode(FlowFieldMode)
+        self.mode_manager.register_mode(GlitchMirrorMode)
+        self.mode_manager.register_mode(DitherArtMode)
+        self.mode_manager.register_mode(AsciiArtMode)
+
+        # Priority 6: Other modes
+        self.mode_manager.register_mode(RouletteMode)
+        self.mode_manager.register_mode(BarRunnerMode)
+        self.mode_manager.register_mode(SnakeTinyMode)
 
         # AI Prophet mode - uses webcam and Gemini AI
         import os
