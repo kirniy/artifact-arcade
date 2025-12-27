@@ -127,7 +127,7 @@ class RapGodMode(BaseMode):
         self._slot_words: List[List[str]] = []  # ~20 words per slot for scrolling
         self._slot_offsets: List[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # Scroll offset (5 slots: 4 words + joker)
         self._slot_stopped: List[bool] = [False, False, False, False, False]  # Whether stopped
-        self._slot_speed: float = 12.0  # Pixels per second for scrolling (very slow and readable)
+        self._slot_speed: float = 6.0  # Pixels per second for scrolling (very slow and readable)
         self._selected_words: List[str] = []  # Final selected words (4)
         self._joker_words: List[str] = []  # Joker rules for slot 5
         self._joker_text: Optional[str] = None  # Selected joker rule
@@ -871,30 +871,35 @@ class RapGodMode(BaseMode):
         offset = self._slot_offsets[slot_idx]
         item_height = 16
         num_items = len(items)
+        total_height = num_items * item_height
 
         # Calculate visible range
         center_y = slot_y + slot_height // 2
 
+        # Normalize offset to prevent large numbers
+        norm_offset = offset % total_height
+
         for i in range(num_items):
-            # Calculate y position for this item
-            item_offset = (i * item_height - offset) % (num_items * item_height)
-            if item_offset > num_items * item_height // 2:
-                item_offset -= num_items * item_height
+            # Calculate base y position
+            base_y = i * item_height - norm_offset
 
-            y_pos = int(center_y + item_offset - 6)
+            # Wrap around smoothly (render item at both positions if near edge)
+            for wrap_offset in [0, total_height, -total_height]:
+                item_y = base_y + wrap_offset
+                y_pos = int(center_y + item_y - 6)
 
-            # Only render if visible in window
-            if slot_y < y_pos < slot_y + slot_height - 8:
-                # Fade based on distance from center
-                dist = abs(y_pos - center_y)
-                alpha = max(0.4, 1.0 - dist / 50)
+                # Only render if visible in window
+                if slot_y - 4 < y_pos < slot_y + slot_height:
+                    # Fade based on distance from center
+                    dist = abs(y_pos - center_y)
+                    alpha = max(0.3, 1.0 - dist / 40)
 
-                # Skip center item (we render it separately with glow)
-                if dist > 8:
-                    # Brighter base color for readability (0.7 instead of 0.5)
-                    item_color = tuple(min(255, int(c * alpha * 0.8)) for c in color)
-                    item_text = items[i][:16]  # Truncate
-                    draw_centered_text(buffer, item_text, y=y_pos, color=item_color, scale=1)
+                    # Skip center item (we render it separately with glow)
+                    if dist > 8:
+                        # Brighter base color for readability
+                        item_color = tuple(min(255, int(c * alpha * 0.85)) for c in color)
+                        item_text = items[i][:16]  # Truncate
+                        draw_centered_text(buffer, item_text, y=y_pos, color=item_color, scale=1)
 
     def _render_camera(self, buffer: np.ndarray, color: tuple) -> None:
         """Render camera preview and capture screen."""
