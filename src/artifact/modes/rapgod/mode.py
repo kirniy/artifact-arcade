@@ -563,7 +563,7 @@ class RapGodMode(BaseMode):
 
                     track = await self._suno.wait_for_completion(
                         self._task_id,
-                        timeout=90.0,
+                        timeout=180.0,  # 3 minutes - Suno can be slow
                         on_progress=on_progress,
                     )
 

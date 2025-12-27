@@ -195,7 +195,7 @@ class SunoClient:
 
             async with session.get(
                 f"{self.BASE_URL}/api/v1/generate/record-info",
-                params={"id": task_id},
+                params={"taskId": task_id},
             ) as response:
                 if not response.ok:
                     error_text = await response.text()
@@ -208,13 +208,9 @@ class SunoClient:
 
                 data = await response.json()
 
-                # Parse response
-                # The API may return data in different structures
+                # Parse response - sunoapi.org structure:
+                # { "code": 200, "data": { "status": "SUCCESS", "response": { "sunoData": [...] } } }
                 record = data.get("data") or data
-
-                # Handle list response (multiple tracks per task)
-                if isinstance(record, list) and len(record) > 0:
-                    record = record[0]
 
                 status_str = str(record.get("status", "")).lower()
 
@@ -228,20 +224,30 @@ class SunoClient:
                 else:
                     status = TrackStatus.PENDING
 
-                # Extract URLs
-                audio_url = record.get("audioUrl") or record.get("audio_url")
-                video_url = record.get("videoUrl") or record.get("video_url")
-                image_url = record.get("imageUrl") or record.get("image_url")
+                # Extract URLs from nested sunoData array
+                audio_url = None
+                video_url = None
+                image_url = None
+                title = None
+                duration = None
 
-                # Duration might be in seconds or formatted string
-                duration = record.get("duration")
-                if isinstance(duration, str):
-                    # Parse "MM:SS" format
-                    try:
-                        parts = duration.split(":")
-                        duration = int(parts[0]) * 60 + int(parts[1])
-                    except Exception:
-                        duration = None
+                # Try to get from response.sunoData[0] (sunoapi.org format)
+                response_data = record.get("response", {})
+                suno_data = response_data.get("sunoData", [])
+                if suno_data and len(suno_data) > 0:
+                    track_data = suno_data[0]
+                    audio_url = track_data.get("audioUrl") or track_data.get("sourceAudioUrl")
+                    image_url = track_data.get("imageUrl") or track_data.get("sourceImageUrl")
+                    title = track_data.get("title")
+                    duration = track_data.get("duration")
+
+                # Fallback to flat structure
+                if not audio_url:
+                    audio_url = record.get("audioUrl") or record.get("audio_url")
+                if not image_url:
+                    image_url = record.get("imageUrl") or record.get("image_url")
+                if not title:
+                    title = record.get("title")
 
                 return SunoTrack(
                     task_id=task_id,
@@ -249,7 +255,7 @@ class SunoClient:
                     audio_url=audio_url,
                     video_url=video_url,
                     image_url=image_url,
-                    title=record.get("title"),
+                    title=title,
                     duration=duration,
                     error=record.get("errorMessage"),
                     raw_response=data,
