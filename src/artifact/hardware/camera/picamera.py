@@ -178,12 +178,34 @@ class PiCamera:
             try:
                 # Get the main (full resolution) array
                 frame = self._camera.capture_array("main")
+                # Apply NoIR color correction (reduce purple tint from IR sensitivity)
+                frame = self._correct_noir_color(frame)
                 return frame
             except Exception as e:
                 logger.error(f"Failed to capture full frame: {e}")
 
         # Return placeholder
         return self._generate_placeholder(self._width, self._height)
+
+    def _correct_noir_color(self, frame: NDArray[np.uint8]) -> NDArray[np.uint8]:
+        """Apply color correction for NoIR camera (no IR filter).
+
+        The NoIR camera picks up infrared light which causes a purple/pink tint.
+        This corrects by reducing blue and boosting red slightly.
+        """
+        # Work in float to avoid overflow
+        corrected = frame.astype(np.float32)
+
+        # Reduce blue channel (main cause of purple tint)
+        corrected[:, :, 2] = corrected[:, :, 2] * 0.7
+
+        # Slightly boost red to compensate
+        corrected[:, :, 0] = np.minimum(corrected[:, :, 0] * 1.1, 255)
+
+        # Slight green boost for natural skin tones
+        corrected[:, :, 1] = np.minimum(corrected[:, :, 1] * 1.05, 255)
+
+        return corrected.astype(np.uint8)
 
     def capture_jpeg(self, quality: int = 85) -> Optional[bytes]:
         """Capture frame and encode as JPEG.
