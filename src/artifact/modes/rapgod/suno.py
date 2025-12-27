@@ -272,7 +272,7 @@ class SunoClient:
     async def wait_for_completion(
         self,
         task_id: str,
-        timeout: float = 90.0,
+        timeout: float = 180.0,
         on_progress: Optional[callable] = None,
     ) -> SunoTrack:
         """Wait for track generation to complete.
@@ -310,10 +310,13 @@ class SunoClient:
                 poll_index += 1
                 continue
 
-            logger.debug(f"Poll {poll_index}: status={track.status.value}, elapsed={elapsed:.1f}s")
+            logger.info(f"Poll {poll_index}: status={track.status.value}, audio_url={track.audio_url}, elapsed={elapsed:.1f}s")
 
             if track.status == TrackStatus.COMPLETED:
-                logger.info(f"Track completed: {track.audio_url}")
+                if track.audio_url:
+                    logger.info(f"Track completed with audio: {track.audio_url}")
+                else:
+                    logger.warning(f"Track status=COMPLETED but no audio_url!")
                 return track
 
             if track.status == TrackStatus.FAILED:
