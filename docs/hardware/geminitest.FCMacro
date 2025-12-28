@@ -1,0 +1,232 @@
+# -*- coding: utf-8 -*-
+# FreeCAD Macro: Arcade Cabinet Component Fitter
+# Optimized for: arcade_cabinet.step
+# Context: Fits P3 Matrix, Numpad, Big Button, Arcade Buttons, and Printer
+
+import FreeCAD
+import Part
+import FreeCADGui
+from FreeCAD import Base
+
+# ==============================================================================
+# 1. COMPONENT SPECIFICATIONS (Configurable)
+# ==============================================================================
+
+# LED Matrix (P3-2121-64x64-32S-v3) - 2x2 Grid
+# Total size: 384mm x 384mm. We add 1mm tolerance.
+LED_CUTOUT_W = 384.0 + 1.0
+LED_CUTOUT_H = 384.0 + 1.0
+LED_DEPTH = 50.0  # Depth of cut (through-hole)
+
+# Keypad (Dimensions: 137 x 85 x 10 mm)
+NUMPAD_W = 85.0
+NUMPAD_H = 137.0
+NUMPAD_DEPTH = 20.0 
+
+# USB Big Red Button (62mm dia head, mounting hole approx 24-30mm)
+# Note: Set this to 62.0 if you want to sink the bezel flush, 
+# or ~28.0 if you just want the shaft hole. 
+# Defaulting to shaft hole standard for safety.
+BIG_BUTTON_HOLE_DIA = 30.0 
+
+# Arcade Buttons (Left/Right)
+SMALL_BUTTON_HOLE_DIA = 30.0
+
+# Printer (EM5820) - Approx cutout for panel mount
+PRINTER_W = 78.0 # Estimated for EM5820 body
+PRINTER_H = 54.0 # Estimated for EM5820 body
+PRINTER_DEPTH = 50.0
+
+# Spacing Configuration (mm)
+BUTTON_SPACING = 90.0 # Distance of L/R buttons from Center Big Button
+NUMPAD_OFFSET_X = 180.0 # Distance of Numpad from Center
+
+# ==============================================================================
+# 2. HELPER FUNCTIONS
+# ==============================================================================
+
+def find_object_by_fuzzy_name(doc, name_part):
+    """Finds an object in the tree that contains the name_part."""
+    for obj in doc.Objects:
+        if name_part.lower() in obj.Label.lower():
+            return obj
+    return None
+
+def get_face_center_and_orientation(obj):
+    """
+    Analyzes the object to find the largest face (assumed to be the main panel surface)
+    and returns its center point and normal vector (orientation).
+    """
+    largest_face = None
+    max_area = 0.0
+    
+    if not hasattr(obj, 'Shape'):
+        return None, None
+
+    for face in obj.Shape.Faces:
+        if face.Area > max_area:
+            max_area = face.Area
+            largest_face = face
+            
+    if largest_face:
+        # Get center of bounding box of the face
+        center = largest_face.CenterOfMass
+        # Get normal at center
+        uv = largest_face.Surface.parameter(center)
+        normal = largest_face.normalAt(uv[0], uv[1])
+        return center, normal, largest_face
+    return None, None, None
+
+def create_cutting_tool(shape_type, dim1, dim2, depth, position, rotation, normal):
+    """Creates a positioned 3D shape to be used as a cutter."""
+    tool = None
+    if shape_type == "box":
+        # Create centered box
+        tool = Part.makeBox(dim1, dim2, depth)
+        # Center the box on X/Y relative to placement
+        placement = Base.Placement(Base.Vector(-dim1/2, -dim2/2, -depth/2), Base.Rotation())
+        tool.Placement = placement
+    elif shape_type == "cylinder":
+        radius = dim1 / 2.0
+        tool = Part.makeCylinder(radius, depth)
+        # Center cylinder Z
+        placement = Base.Placement(Base.Vector(0, 0, -depth/2), Base.Rotation())
+        tool.Placement = placement
+    
+    # Align tool to the panel's normal vector
+    # Default tool 'up' is Z (0,0,1). We rotate it to match 'normal'.
+    tool_rotation = Base.Rotation(Base.Vector(0,0,1), normal)
+    
+    # Apply Final Transformation
+    final_loc = Base.Placement(position, tool_rotation)
+    tool = tool.transformGeometry(final_loc.toMatrix())
+    
+    return tool
+
+# ==============================================================================
+# 3. MAIN EXECUTION
+# ==============================================================================
+
+doc = FreeCAD.ActiveDocument
+if not doc:
+    FreeCAD.Console.Error("No active document found. Please Import the STEP file first.\n")
+else:
+    doc.openTransaction("Fit Arcade Components")
+    
+    # --------------------------------------------------------------------------
+    # A. MODIFY SCREEN PANEL (P3 LED Matrix)
+    # --------------------------------------------------------------------------
+    screen_panel = find_object_by_fuzzy_name(doc, "Screen_panel")
+    
+    if screen_panel:
+        FreeCAD.Console.PrintMessage("Found Screen Panel. Creating LED Matrix cutout...\n")
+        
+        # 1. Get Orientation
+        center, normal, face = get_face_center_and_orientation(screen_panel)
+        
+        # 2. Create the Cutter (Box)
+        # Position: Center of the panel (CenterOfMass)
+        led_cutter = create_cutting_tool("box", LED_CUTOUT_W, LED_CUTOUT_H, LED_DEPTH, center, None, normal)
+        
+        # 3. Perform Boolean Cut
+        cut_obj = doc.addObject("Part::Cut", "Screen_With_LED_Cut")
+        cut_obj.Base = screen_panel
+        cut_obj.Tool = doc.addObject("Part::Feature", "LED_Cutter")
+        cut_obj.Tool.Shape = led_cutter
+        
+        # Hide original and tool
+        screen_panel.Visibility = False
+        cut_obj.Tool.Visibility = False
+        doc.recompute()
+    else:
+        FreeCAD.Console.Error("Could not find 'Screen panel'. Check object names.\n")
+
+    # --------------------------------------------------------------------------
+    # B. MODIFY BUTTON PANEL (Controls)
+    # --------------------------------------------------------------------------
+    btn_panel = find_object_by_fuzzy_name(doc, "Button_panel")
+    
+    if btn_panel:
+        FreeCAD.Console.PrintMessage("Found Button Panel. Adding controls...\n")
+        
+        center, normal, face = get_face_center_and_orientation(btn_panel)
+        
+        # We need a direction vector for "Right" and "Up" along the panel surface
+        # to calculate offsets. We can cross product the Normal with global Z or Y.
+        # Assuming the panel tilts back:
+        # Local X (Right) ~ Global X
+        # Local Y (Up/Down) ~ Projected along the slope
+        
+        # Approximate logical orientation vectors based on panel normal
+        # If normal is roughly Z or Y, we cross with X.
+        # This part assumes standard cabinet orientation.
+        vec_right = Base.Vector(1, 0, 0) # Global Right
+        vec_up = vec_right.cross(normal).normalize() # Vector pointing "Up" the panel slope
+        vec_right = normal.cross(vec_up).normalize() # Re-orthogonalize right vector
+        
+        # 1. Center Big Red Button
+        big_btn_pos = center # Exact center
+        big_btn_shape = create_cutting_tool("cylinder", BIG_BUTTON_HOLE_DIA, 0, 50.0, big_btn_pos, None, normal)
+        
+        # 2. Left Arrow Button
+        left_btn_pos = center + (vec_right * -BUTTON_SPACING)
+        left_btn_shape = create_cutting_tool("cylinder", SMALL_BUTTON_HOLE_DIA, 0, 50.0, left_btn_pos, None, normal)
+
+        # 3. Right Arrow Button
+        right_btn_pos = center + (vec_right * BUTTON_SPACING)
+        right_btn_shape = create_cutting_tool("cylinder", SMALL_BUTTON_HOLE_DIA, 0, 50.0, right_btn_pos, None, normal)
+
+        # 4. Numpad (Placed to the Far Right)
+        # Numpad is a rectangle. We rotate it to align with the panel.
+        numpad_pos = center + (vec_right * NUMPAD_OFFSET_X)
+        numpad_shape = create_cutting_tool("box", NUMPAD_W, NUMPAD_H, NUMPAD_DEPTH, numpad_pos, None, normal)
+
+        # Fuse all cutters into one tool
+        compound_tool = doc.addObject("Part::MultiFuse", "Control_Panel_Drill")
+        
+        # Create wrapper objects for shapes to add to Fuse
+        t1 = doc.addObject("Part::Feature", "Tool_BigBtn"); t1.Shape = big_btn_shape
+        t2 = doc.addObject("Part::Feature", "Tool_LBtn"); t2.Shape = left_btn_shape
+        t3 = doc.addObject("Part::Feature", "Tool_RBtn"); t3.Shape = right_btn_shape
+        t4 = doc.addObject("Part::Feature", "Tool_Numpad"); t4.Shape = numpad_shape
+        
+        compound_tool.Shapes = [t1, t2, t3, t4]
+        
+        # Perform Cut
+        final_btn_panel = doc.addObject("Part::Cut", "Button_Panel_Drilled")
+        final_btn_panel.Base = btn_panel
+        final_btn_panel.Tool = compound_tool
+        
+        # Hide internals
+        btn_panel.Visibility = False
+        t1.Visibility = False; t2.Visibility = False; t3.Visibility = False; t4.Visibility = False
+        compound_tool.Visibility = False
+        
+        doc.recompute()
+
+    # --------------------------------------------------------------------------
+    # C. MODIFY FRONT PANEL (Printer)
+    # --------------------------------------------------------------------------
+    # "Front panel below button panel"
+    front_panel = find_object_by_fuzzy_name(doc, "below_button_panel")
+    
+    if front_panel:
+        FreeCAD.Console.PrintMessage("Found Front Panel. Creating Printer slot...\n")
+        center, normal, face = get_face_center_and_orientation(front_panel)
+        
+        # Place printer slightly higher than center of this panel?
+        # Let's put it dead center for safety.
+        printer_shape = create_cutting_tool("box", PRINTER_W, PRINTER_H, PRINTER_DEPTH, center, None, normal)
+        
+        printer_cut = doc.addObject("Part::Cut", "Front_With_Printer")
+        printer_cut.Base = front_panel
+        printer_cut.Tool = doc.addObject("Part::Feature", "Printer_Tool")
+        printer_cut.Tool.Shape = printer_shape
+        
+        front_panel.Visibility = False
+        printer_cut.Tool.Visibility = False
+        doc.recompute()
+
+    doc.commitTransaction()
+    FreeCAD.Console.PrintMessage("Macro Complete. Please inspect the cuts.\n")
+    FreeCADGui.SendMsgToActiveView("ViewFit")

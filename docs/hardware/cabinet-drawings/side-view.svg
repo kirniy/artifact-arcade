@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1000" width="900" height="1000">
+  <title>ARTIFACT - Вид Сбоку (Разрез)</title>
+  <defs>
+    <style>
+      .panel { fill: #f5f5dc; stroke: #333; stroke-width: 2; }
+      .panel-section { fill: none; stroke: #333; stroke-width: 1.5; }
+      .internal { fill: #e8f4e8; stroke: #2e7d32; stroke-width: 1; stroke-dasharray: 5,3; }
+      .component { fill: #bbdefb; stroke: #1565c0; stroke-width: 1; }
+      .led-panel { fill: #1a1a1a; stroke: #333; stroke-width: 1; }
+      .dimension { stroke: #e74c3c; stroke-width: 1; fill: none; }
+      .dim-text { font-family: Arial, sans-serif; font-size: 11px; fill: #e74c3c; }
+      .label { font-family: Arial, sans-serif; font-size: 9px; fill: #333; }
+      .title { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; fill: #333; }
+      .scale { font-family: Arial, sans-serif; font-size: 10px; fill: #666; }
+      .angle-arc { fill: none; stroke: #9c27b0; stroke-width: 1; }
+      .angle-text { font-family: Arial, sans-serif; font-size: 10px; fill: #9c27b0; }
+      .cable { stroke: #ff5722; stroke-width: 2; fill: none; stroke-dasharray: 3,2; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrow-rev" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto">
+      <path d="M9,0 L9,6 L0,3 z" fill="#e74c3c"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="350" y="30" text-anchor="middle" class="title">ARTIFACT - ВИД СБОКУ (РАЗРЕЗ)</text>
+  <text x="350" y="50" text-anchor="middle" class="scale">Масштаб 1:2.5 | Все размеры в мм</text>
+
+  <!-- Side panel outline (complex profile) -->
+  <!-- Depth: 500mm = 200px, Height: 1750mm = 700px -->
+  <!-- Cabinet positioned at x=150, y=80 -->
+
+  <!-- Main side panel profile -->
+  <path d="
+    M 150,780
+    L 150,380
+    L 150,280
+    L 170,200
+    L 210,120
+    L 350,80
+    L 350,200
+    L 320,280
+    L 350,380
+    L 350,780
+    Z
+  " class="panel"/>
+
+  <!-- Internal structure lines -->
+  <!-- Base platform -->
+  <line x1="168" y1="630" x2="332" y2="630" class="panel-section"/>
+  <text x="250" y="645" text-anchor="middle" class="label">Полка основания</text>
+
+  <!-- Mid shelf -->
+  <line x1="168" y1="460" x2="332" y2="460" class="panel-section"/>
+  <text x="250" y="475" text-anchor="middle" class="label">Средняя полка</text>
+
+  <!-- Control panel (angled at 12°) -->
+  <path d="M 150,380 L 150,340 L 320,320 L 350,380 Z" fill="#e0d8b8" stroke="#333" stroke-width="1.5"/>
+  <text x="230" y="365" text-anchor="middle" class="label" font-size="8">Панель управления</text>
+
+  <!-- Screen section (angled at 20°) -->
+  <path d="M 170,200 L 210,120 L 280,120 L 320,200 Z" fill="#e0d8b8" stroke="#333" stroke-width="1.5"/>
+
+  <!-- LED panels (behind screen) -->
+  <rect x="200" y="140" width="70" height="70" class="led-panel"/>
+  <text x="235" y="180" text-anchor="middle" class="label" fill="#fff" font-size="7">LED 384×384</text>
+
+  <!-- Camera housing -->
+  <rect x="270" y="95" width="30" height="20" fill="#90a4ae" stroke="#333"/>
+  <text x="285" y="108" text-anchor="middle" class="label" fill="#fff" font-size="6">CAM</text>
+
+  <!-- ===== INTERNAL COMPONENTS ===== -->
+
+  <!-- Power supply in base -->
+  <rect x="200" y="680" width="80" height="40" class="component"/>
+  <text x="240" y="703" text-anchor="middle" class="label" font-size="7">БП LRS-200-5</text>
+  <text x="240" y="713" text-anchor="middle" class="label" font-size="6">199×98×38</text>
+
+  <!-- Raspberry Pi -->
+  <rect x="180" y="570" width="35" height="25" class="component"/>
+  <text x="197" y="587" text-anchor="middle" class="label" font-size="6">Pi 4</text>
+
+  <!-- NovaStar T50 -->
+  <rect x="230" y="490" width="55" height="35" class="component"/>
+  <text x="257" y="510" text-anchor="middle" class="label" font-size="6">T50</text>
+
+  <!-- NovaStar DH418 (behind LED) -->
+  <rect x="275" y="190" width="35" height="25" class="component" fill="#c8e6c9"/>
+  <text x="292" y="206" text-anchor="middle" class="label" font-size="6">DH418</text>
+
+  <!-- ===== CABLE ROUTING ===== -->
+  <path d="M197,570 L197,530 L257,530 L257,520" class="cable"/>
+  <text x="200" y="545" class="label" font-size="6" fill="#ff5722">HDMI</text>
+
+  <path d="M280,505 L290,505 L290,215" class="cable"/>
+  <text x="295" y="350" class="label" font-size="6" fill="#ff5722">ETH</text>
+
+  <!-- ===== DIMENSIONS ===== -->
+
+  <!-- Overall depth at base (500mm) -->
+  <line x1="150" y1="800" x2="150" y2="815" class="dimension"/>
+  <line x1="350" y1="800" x2="350" y2="815" class="dimension"/>
+  <line x1="150" y1="808" x2="350" y2="808" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="250" y="825" text-anchor="middle" class="dim-text">500</text>
+
+  <!-- Overall height (1750mm) -->
+  <line x1="370" y1="80" x2="385" y2="80" class="dimension"/>
+  <line x1="370" y1="780" x2="385" y2="780" class="dimension"/>
+  <line x1="378" y1="80" x2="378" y2="780" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="395" y="430" text-anchor="start" class="dim-text">1750</text>
+
+  <!-- Base height (400mm = 160px) -->
+  <line x1="120" y1="630" x2="135" y2="630" class="dimension"/>
+  <line x1="120" y1="780" x2="135" y2="780" class="dimension"/>
+  <line x1="128" y1="630" x2="128" y2="780" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="115" y="710" text-anchor="end" class="dim-text" font-size="9">400</text>
+
+  <!-- Control panel height (950mm from floor) -->
+  <line x1="100" y1="380" x2="115" y2="380" class="dimension"/>
+  <line x1="100" y1="780" x2="115" y2="780" class="dimension"/>
+  <line x1="108" y1="380" x2="108" y2="780" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="95" y="580" text-anchor="end" class="dim-text" font-size="9">950</text>
+
+  <!-- Screen center height (1200mm) -->
+  <line x1="410" y1="180" x2="425" y2="180" class="dimension"/>
+  <line x1="410" y1="780" x2="425" y2="780" class="dimension"/>
+  <line x1="418" y1="180" x2="418" y2="780" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="430" y="480" text-anchor="start" class="dim-text" font-size="9">~1200</text>
+
+  <!-- Control panel depth (300mm) -->
+  <line x1="150" y1="400" x2="320" y2="400" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="235" y="415" text-anchor="middle" class="dim-text" font-size="9">300</text>
+
+  <!-- ===== ANGLE INDICATORS ===== -->
+
+  <!-- Control panel angle (12°) -->
+  <path d="M 170,380 A 30,30 0 0,1 195,355" class="angle-arc"/>
+  <text x="190" y="345" class="angle-text">12°</text>
+
+  <!-- Screen angle (20°) -->
+  <path d="M 260,200 A 40,40 0 0,1 285,165" class="angle-arc"/>
+  <text x="290" y="160" class="angle-text">20°</text>
+
+  <!-- Floor line -->
+  <line x1="100" y1="780" x2="450" y2="780" stroke="#333" stroke-width="3"/>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="500" y="80" width="380" height="400" fill="#fff" stroke="#ccc" rx="5"/>
+  <text x="690" y="105" text-anchor="middle" class="label" font-weight="bold" font-size="12">ЛЕГЕНДА И СПЕЦИФИКАЦИИ</text>
+
+  <!-- Materials legend -->
+  <text x="520" y="135" class="label" font-weight="bold">Материалы:</text>
+  <rect x="520" y="145" width="25" height="15" class="panel"/>
+  <text x="555" y="157" class="label">Фанера 18мм</text>
+
+  <rect x="520" y="170" width="25" height="15" class="component"/>
+  <text x="555" y="182" class="label">Электроника</text>
+
+  <rect x="520" y="195" width="25" height="15" class="led-panel"/>
+  <text x="555" y="207" class="label">LED панели</text>
+
+  <line x1="520" y1="225" x2="545" y2="225" class="cable"/>
+  <text x="555" y="228" class="label">Кабельная трасса</text>
+
+  <!-- Height zones -->
+  <text x="520" y="260" class="label" font-weight="bold">Высотные зоны:</text>
+  <text x="520" y="280" class="label" font-size="8">0-400мм: Основание (БП, Pi)</text>
+  <text x="520" y="295" class="label" font-size="8">400-950мм: Панель управления</text>
+  <text x="520" y="310" class="label" font-size="8">950-1400мм: Секция экрана</text>
+  <text x="520" y="325" class="label" font-size="8">1400-1750мм: Маркиз/Камера</text>
+
+  <!-- Angles -->
+  <text x="520" y="355" class="label" font-weight="bold">Углы наклона:</text>
+  <text x="520" y="375" class="label" font-size="8">Панель управления: 12° от горизонтали</text>
+  <text x="520" y="390" class="label" font-size="8">Экран: 20° от вертикали (70° от горизонтали)</text>
+
+  <!-- Internal components -->
+  <text x="520" y="420" class="label" font-weight="bold">Компоновка электроники:</text>
+  <text x="520" y="440" class="label" font-size="8">1. БП Mean Well LRS-200-5 (основание)</text>
+  <text x="520" y="455" class="label" font-size="8">2. Raspberry Pi 4 (над БП)</text>
+  <text x="520" y="470" class="label" font-size="8">3. NovaStar T50 (средняя полка)</text>
+
+  <!-- Notes -->
+  <rect x="500" y="500" width="380" height="120" fill="#fffde7" stroke="#f9a825" rx="5"/>
+  <text x="690" y="520" text-anchor="middle" class="label" font-weight="bold" fill="#f57f17">ВАЖНЫЕ ПРИМЕЧАНИЯ</text>
+  <text x="520" y="545" class="label" font-size="8" fill="#333">1. Обеспечить вентиляционные отверстия в задней панели</text>
+  <text x="520" y="560" class="label" font-size="8" fill="#333">2. Полки крепить на уголках или в пазах</text>
+  <text x="520" y="575" class="label" font-size="8" fill="#333">3. Кабельные каналы прокладывать вдоль задней стенки</text>
+  <text x="520" y="590" class="label" font-size="8" fill="#333">4. Задняя панель - съёмная (на петлях или клипсах)</text>
+  <text x="520" y="605" class="label" font-size="8" fill="#333">5. Проверить доступ ко всем компонентам перед сборкой</text>
+
+  <!-- Cross-section indicator -->
+  <rect x="500" y="640" width="380" height="80" fill="#e3f2fd" stroke="#1565c0" rx="5"/>
+  <text x="690" y="665" text-anchor="middle" class="label" font-weight="bold" fill="#1565c0">РАЗРЕЗ A-A</text>
+  <text x="520" y="690" class="label" font-size="8" fill="#333">Вид показывает внутреннюю структуру корпуса</text>
+  <text x="520" y="705" class="label" font-size="8" fill="#333">со всеми полками, компонентами и кабельными трассами</text>
+
+</svg>

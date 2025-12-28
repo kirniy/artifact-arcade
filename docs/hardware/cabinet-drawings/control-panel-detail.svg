@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <title>ARTIFACT - Панель Управления (Детальный Чертёж)</title>
+  <defs>
+    <style>
+      .panel { fill: #f5f5dc; stroke: #333; stroke-width: 2; }
+      .cutout { fill: #2a2a2a; stroke: #333; stroke-width: 1.5; }
+      .button-ring { fill: none; stroke: #e74c3c; stroke-width: 2; }
+      .dimension { stroke: #e74c3c; stroke-width: 1; fill: none; }
+      .dim-text { font-family: Arial, sans-serif; font-size: 11px; fill: #e74c3c; }
+      .label { font-family: Arial, sans-serif; font-size: 10px; fill: #333; }
+      .title { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; fill: #333; }
+      .scale { font-family: Arial, sans-serif; font-size: 10px; fill: #666; }
+      .center-line { stroke: #999; stroke-width: 0.5; stroke-dasharray: 10,5; }
+      .component-label { font-family: Arial, sans-serif; font-size: 8px; fill: #666; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrow-rev" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto">
+      <path d="M9,0 L9,6 L0,3 z" fill="#e74c3c"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" class="title">ПАНЕЛЬ УПРАВЛЕНИЯ - ДЕТАЛЬНЫЙ ЧЕРТЁЖ</text>
+  <text x="400" y="50" text-anchor="middle" class="scale">Масштаб 1:1 | Все размеры в мм | Вид сверху</text>
+
+  <!-- Control panel outline (504×300mm internal = 504×300px at 1:1) -->
+  <!-- Centered at x=148, y=100 -->
+  <rect x="148" y="100" width="504" height="300" class="panel" rx="5"/>
+
+  <!-- Center lines -->
+  <line x1="400" y1="100" x2="400" y2="400" class="center-line"/>
+  <line x1="148" y1="250" x2="652" y2="250" class="center-line"/>
+
+  <!-- ===== CUTOUTS ===== -->
+
+  <!-- Big button (62mm diameter) - CENTER -->
+  <circle cx="400" cy="180" r="31" class="cutout"/>
+  <circle cx="400" cy="180" r="35" class="button-ring" stroke-dasharray="5,3"/>
+  <text x="400" y="185" text-anchor="middle" class="label" fill="#fff" font-size="9">БОЛЬШАЯ</text>
+  <text x="400" y="196" text-anchor="middle" class="label" fill="#fff" font-size="9">КНОПКА</text>
+  <text x="400" y="225" text-anchor="middle" class="component-label">62мм</text>
+
+  <!-- Left arcade button (30mm) -->
+  <circle cx="260" cy="180" r="15" class="cutout"/>
+  <circle cx="260" cy="180" r="18" class="button-ring" stroke-dasharray="3,2"/>
+  <text x="260" y="184" text-anchor="middle" class="label" fill="#fff" font-size="8">L</text>
+  <text x="260" y="208" text-anchor="middle" class="component-label">30мм</text>
+
+  <!-- Right arcade button (30mm) -->
+  <circle cx="540" cy="180" r="15" class="cutout"/>
+  <circle cx="540" cy="180" r="18" class="button-ring" stroke-dasharray="3,2"/>
+  <text x="540" y="184" text-anchor="middle" class="label" fill="#fff" font-size="8">R</text>
+  <text x="540" y="208" text-anchor="middle" class="component-label">30мм</text>
+
+  <!-- Keypad recess (55×75mm) -->
+  <rect x="372" y="280" width="55" height="75" class="cutout" rx="3"/>
+  <text x="400" y="320" text-anchor="middle" class="label" fill="#fff" font-size="8">КЛАВИАТУРА</text>
+  <text x="400" y="332" text-anchor="middle" class="label" fill="#aaa" font-size="7">3×4</text>
+  <text x="400" y="368" text-anchor="middle" class="component-label">55×75мм</text>
+
+  <!-- LCD window (85×40mm) - to the left of keypad -->
+  <rect x="270" y="295" width="85" height="40" class="cutout" rx="2"/>
+  <text x="312" y="318" text-anchor="middle" class="label" fill="#fff" font-size="8">LCD 16×1</text>
+  <text x="312" y="348" text-anchor="middle" class="component-label">85×40мм</text>
+
+  <!-- ===== DIMENSIONS ===== -->
+
+  <!-- Panel width (504mm) -->
+  <line x1="148" y1="80" x2="148" y2="95" class="dimension"/>
+  <line x1="652" y1="80" x2="652" y2="95" class="dimension"/>
+  <line x1="148" y1="88" x2="652" y2="88" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="400" y="82" text-anchor="middle" class="dim-text">504</text>
+
+  <!-- Panel depth (300mm) -->
+  <line x1="668" y1="100" x2="683" y2="100" class="dimension"/>
+  <line x1="668" y1="400" x2="683" y2="400" class="dimension"/>
+  <line x1="675" y1="100" x2="675" y2="400" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="690" y="255" text-anchor="start" class="dim-text">300</text>
+
+  <!-- Center to left button (140mm) -->
+  <line x1="260" y1="230" x2="400" y2="230" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="330" y="245" text-anchor="middle" class="dim-text" font-size="9">140</text>
+
+  <!-- Center to right button (140mm) -->
+  <line x1="400" y1="230" x2="540" y2="230" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="470" y="245" text-anchor="middle" class="dim-text" font-size="9">140</text>
+
+  <!-- Big button center from front edge (80mm) -->
+  <line x1="128" y1="180" x2="143" y2="180" class="dimension"/>
+  <line x1="128" y1="100" x2="143" y2="100" class="dimension"/>
+  <line x1="135" y1="100" x2="135" y2="180" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="120" y="145" text-anchor="end" class="dim-text" font-size="9">80</text>
+
+  <!-- Keypad from back edge (25mm) -->
+  <line x1="700" y1="355" x2="715" y2="355" class="dimension"/>
+  <line x1="700" y1="400" x2="715" y2="400" class="dimension"/>
+  <line x1="708" y1="355" x2="708" y2="400" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="723" y="380" text-anchor="start" class="dim-text" font-size="9">45</text>
+
+  <!-- LCD position from center -->
+  <line x1="312" y1="270" x2="400" y2="270" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="356" y="265" text-anchor="middle" class="dim-text" font-size="9">88</text>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="50" y="430" width="300" height="150" fill="#fff" stroke="#ccc" rx="5"/>
+  <text x="200" y="455" text-anchor="middle" class="label" font-weight="bold" font-size="11">СПЕЦИФИКАЦИЯ ВЫРЕЗОВ</text>
+
+  <circle cx="70" cy="480" r="8" class="cutout"/>
+  <text x="90" y="484" class="label">Вырез (отверстие насквозь)</text>
+
+  <circle cx="70" cy="510" r="8" class="button-ring" stroke-dasharray="3,2"/>
+  <text x="90" y="514" class="label">Зенковка / фаска (опционально)</text>
+
+  <line x1="60" y1="540" x2="80" y2="540" class="center-line"/>
+  <text x="90" y="544" class="label">Ось симметрии</text>
+
+  <!-- Component specs -->
+  <rect x="380" y="430" width="370" height="150" fill="#fff" stroke="#ccc" rx="5"/>
+  <text x="565" y="455" text-anchor="middle" class="label" font-weight="bold" font-size="11">КОМПОНЕНТЫ</text>
+
+  <text x="400" y="480" class="label" font-size="9">1. Большая кнопка USB: отверстие 62мм</text>
+  <text x="400" y="498" class="label" font-size="9">2. Аркадные кнопки L/R: отверстия 30мм</text>
+  <text x="400" y="516" class="label" font-size="9">3. Клавиатура 3×4: углубление 55×75мм, глубина 5мм</text>
+  <text x="400" y="534" class="label" font-size="9">4. LCD 16×1: окно 85×40мм</text>
+  <text x="400" y="555" class="label" font-size="9" fill="#666">* Все отверстия сверлить коронкой или фрезером</text>
+  <text x="400" y="570" class="label" font-size="9" fill="#666">* Углубление под клавиатуру - фрезеровка 5мм</text>
+
+  <!-- Notes box -->
+  <rect x="50" y="100" width="80" height="60" fill="#fffde7" stroke="#f9a825" rx="3"/>
+  <text x="90" y="120" text-anchor="middle" class="label" font-weight="bold" fill="#f57f17" font-size="8">НАКЛОН</text>
+  <text x="90" y="135" text-anchor="middle" class="label" fill="#333" font-size="10">12°</text>
+  <text x="90" y="150" text-anchor="middle" class="label" fill="#666" font-size="7">от горизонт.</text>
+
+  <!-- Front edge indicator -->
+  <text x="400" y="418" text-anchor="middle" class="label" fill="#1565c0">ПЕРЕДНИЙ КРАЙ (к пользователю)</text>
+  <path d="M350,408 L400,420 L450,408" fill="none" stroke="#1565c0" stroke-width="1"/>
+
+</svg>

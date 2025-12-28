@@ -28,6 +28,21 @@ ARTIFACT uses a Raspberry Pi 4 (8GB) as the main controller, connected to multip
 - **Mean Well LRS-200-5** - 5V 40A power supply
 - **RGB Matrix HAT** - HUB75 interface for LED matrix
 
+## Документация Корпуса
+
+Полная документация по изготовлению корпуса аркадного автомата:
+
+- **[Чертёж Корпуса](cabinet-blueprint.md)** — Габаритные размеры, спецификации, расчёты
+- **[Ведомость Раскроя](cabinet-cut-list.md)** — Детальный список деталей для резки
+- **[Инструкция по Сборке](cabinet-assembly.md)** — Пошаговое руководство
+
+### Чертежи (SVG)
+
+- [Вид спереди](cabinet-drawings/front-view.svg) — Передняя панель со всеми вырезами
+- [Вид сбоку](cabinet-drawings/side-view.svg) — Профиль с углами и внутренней компоновкой
+- [Панель управления](cabinet-drawings/control-panel-detail.svg) — Детальная разметка кнопок
+- [Раскрой фанеры](cabinet-drawings/cut-layout.svg) — Оптимизированная карта раскроя
+
 ## See Also
 
 - [Component Specs](component-specs.md)

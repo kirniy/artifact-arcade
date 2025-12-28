@@ -1,0 +1,323 @@
+import FreeCAD as App
+import FreeCADGui as Gui
+import Part
+import math
+from FreeCAD import Vector, Rotation, Placement
+
+# =============================================================================
+# ARTIFACT CABINET GENERATOR - The "Perfect" Parametric Script
+# =============================================================================
+
+def generate_cabinet():
+    # 1. DOCUMENT SETUP
+    # -------------------------------------------------------------------------
+    doc_name = "ARTIFACT_Cabinet_Master"
+    if App.ActiveDocument and App.ActiveDocument.Name == doc_name:
+        App.closeDocument(doc_name)
+    doc = App.newDocument(doc_name)
+
+    # 2. GLOBAL PARAMETERS (Millimeters)
+    # -------------------------------------------------------------------------
+    WIDTH_EXT = 540.0
+    DEPTH_BASE = 500.0
+    THICKNESS = 18.0
+    
+    # Derived parameters (The "Truth")
+    WIDTH_INT = WIDTH_EXT - (2 * THICKNESS)
+    
+    # Z-Heights (Landmarks)
+    Z_0 = 0.0
+    Z_KICK = 400.0       # Top of Base / Front of CP Notch
+    Z_SCREEN_BOT = 500.0 # Bottom of Screen / Back of CP Notch
+    Z_SCREEN_TOP = 1400.0
+    Z_MARQ_BOT = 1650.0
+    Z_TOP = 1750.0
+
+    # Colors
+    COL_WOOD = (0.76, 0.60, 0.42)
+    COL_CUT = (0.2, 0.2, 0.2)
+
+    # 3. HELPER FUNCTIONS
+    # -------------------------------------------------------------------------
+    def make_box_global(name, L, W, H, x, y, z, color=COL_WOOD):
+        """Creates a simple rectangular panel (Global coordinates)."""
+        obj = doc.addObject("Part::Box", name)
+        obj.Length = L
+        obj.Width = W
+        obj.Height = H
+        obj.Placement.Base = Vector(x, y, z)
+        obj.ViewObject.ShapeColor = color
+        return obj
+
+    def make_panel_local(name, width, length, thickness, placement, tools=[], color=COL_WOOD):
+        """
+        Creates a panel flat at (0,0,0), applies cuts, then moves it.
+        width: X axis, length: Y axis (depth/height), thickness: Z axis
+        """
+        # Create raw plate
+        raw = Part.makeBox(width, length, thickness)
+        
+        # Apply cuts (Tools must be defined in Local coordinates)
+        if tools:
+            for tool in tools:
+                t_shape = tool.Shape if hasattr(tool, "Shape") else tool
+                raw = raw.cut(t_shape)
+        
+        obj = doc.addObject("Part::Feature", name)
+        obj.Shape = raw
+        obj.Placement = placement
+        obj.ViewObject.ShapeColor = color
+        return obj
+
+    # 4. MASTER GEOMETRY: SIDE PROFILE
+    # -------------------------------------------------------------------------
+    # The "Spine" of the machine. defined as (Y, Z) points.
+    # We define the OUTER profile.
+    
+    # Profile Vertices (CCW winding)
+    pts = [
+        (0, Z_0),               # 0: Bottom Front
+        (DEPTH_BASE, Z_0),      # 1: Bottom Back
+        (DEPTH_BASE, Z_TOP),    # 2: Top Back
+        (350, Z_TOP),           # 3: Top Front (Marquee Top)
+        (100, Z_MARQ_BOT),      # 4: Marquee Bottom / Bezel Top
+        (100, 1500),            # 5: Bezel Angle Break
+        (0, Z_SCREEN_TOP),      # 6: Screen Top
+        (0, Z_SCREEN_BOT),      # 7: Screen Bottom / CP Notch Back
+        (150, Z_SCREEN_BOT),    # 8: Notch Depth Top
+        (150, Z_KICK),          # 9: Notch Depth Bottom
+        (0, Z_KICK),            # 10: CP Notch Front
+        (0, Z_0)                # Close loop
+    ]
+
+    # Function to extrude side panels
+    def make_side_panel(name, offset_x):
+        vecs = [Vector(offset_x, y, z) for y, z in pts]
+        wire = Part.makePolygon(vecs)
+        # Check if closed
+        if vecs[0] != vecs[-1]:
+             wire = Part.makePolygon(vecs + [vecs[0]])
+             
+        face = Part.Face(wire)
+        # Extrude X+
+        solid = face.extrude(Vector(THICKNESS, 0, 0))
+        obj = doc.addObject("Part::Feature", name)
+        obj.Shape = solid
+        obj.ViewObject.ShapeColor = COL_WOOD
+        return obj
+
+    # Build Sides
+    make_side_panel("Side_Left", 0)
+    make_side_panel("Side_Right", WIDTH_EXT - THICKNESS)
+
+
+    # 5. VERTICAL PANELS (Front & Back)
+    # -------------------------------------------------------------------------
+    
+    # --- Front Base (Kickplate) ---
+    # Fits between sides. Y=0. Z=0 to 400.
+    # Box(Width, Thickness, Height) -> Y occupies 0..18
+    p_base = make_box_global("Front_Base", WIDTH_INT, THICKNESS, Z_KICK, 
+                             THICKNESS, 0, 0)
+    
+    # Kickplate Cuts
+    # Printer Slot (Centered X, Z=300)
+    cut_printer = Part.makeBox(65, THICKNESS*3, 15)
+    cut_printer.translate(Vector(THICKNESS + (WIDTH_INT-65)/2, -10, 300))
+    
+    # Speakers (L/R) - Spec says "Y=400". We put them at Z=350 to fit inside the panel.
+    cut_spk_l = Part.makeCylinder(35, THICKNESS*3) # Dia 70
+    cut_spk_l.rotate(Vector(0,0,0), Vector(1,0,0), 90) # Face Front
+    cut_spk_l.translate(Vector(THICKNESS + 165, THICKNESS*2, 350))
+    
+    cut_spk_r = Part.makeCylinder(35, THICKNESS*3)
+    cut_spk_r.rotate(Vector(0,0,0), Vector(1,0,0), 90)
+    cut_spk_r.translate(Vector(THICKNESS + 375, THICKNESS*2, 350))
+    
+    p_base.Shape = p_base.Shape.cut(cut_printer).cut(cut_spk_l).cut(cut_spk_r)
+
+    # --- Front Screen Panel ---
+    # Vertical section from Z=500 to Z=1400.
+    h_screen = Z_SCREEN_TOP - Z_SCREEN_BOT
+    p_screen = make_box_global("Front_Screen", WIDTH_INT, THICKNESS, h_screen,
+                               THICKNESS, 0, Z_SCREEN_BOT)
+    
+    # Screen Cuts
+    # Main Matrix: 395x395. Spec "Local Z=200". Global Z = 500+200=700.
+    cut_matrix = Part.makeBox(395, THICKNESS*3, 395)
+    cut_matrix.translate(Vector(THICKNESS + (WIDTH_INT-395)/2, -10, 700))
+    
+    # Ticker: 490x90. Spec "Local Z=750". Global Z = 500+750=1250.
+    cut_ticker = Part.makeBox(490, THICKNESS*3, 90)
+    cut_ticker.translate(Vector(THICKNESS + (WIDTH_INT-490)/2, -10, 1250))
+    
+    p_screen.Shape = p_screen.Shape.cut(cut_matrix).cut(cut_ticker)
+
+    # --- Back Panel ---
+    # Fits between sides. Flush with Y=500.
+    # Box(W, T, H). Y will be 500-18=482.
+    # Height: Full height up to 1730 to clear top angle.
+    p_back = make_box_global("Back_Panel", WIDTH_INT, THICKNESS, 1730,
+                             THICKNESS, DEPTH_BASE - THICKNESS, 0)
+    
+    # Back Vents
+    cut_vent_bot = Part.makeBox(400, THICKNESS*3, 50)
+    cut_vent_bot.translate(Vector(THICKNESS + (WIDTH_INT-400)/2, DEPTH_BASE-20, 50))
+    
+    cut_vent_top = Part.makeBox(400, THICKNESS*3, 50)
+    cut_vent_top.translate(Vector(THICKNESS + (WIDTH_INT-400)/2, DEPTH_BASE-20, 1600))
+    
+    p_back.Shape = p_back.Shape.cut(cut_vent_bot).cut(cut_vent_top)
+
+
+    # 6. ANGLED PANELS (Control Panel, Marquee, Bezel)
+    # -------------------------------------------------------------------------
+    
+    # --- Control Panel ---
+    # We build the 300mm version (from Cut List) because the 150mm (Notch spec) is too small for controls.
+    # It will simply overhang the knee (Z_KICK), which is standard arcade design.
+    CP_DEPTH = 300.0
+    
+    # Tools (Local Coordinates on the flat board. Y=0 is BACK edge, Y=300 is FRONT edge)
+    tools_cp = []
+    
+    # Note: Spec coords are from "Front-Left". So Y_local = 300 - Y_spec.
+    
+    # Big Button (Center X, Spec Y=80)
+    t_big = Part.makeCylinder(31, THICKNESS*3, Vector(WIDTH_INT/2, 300-80, -10))
+    tools_cp.append(t_big)
+    
+    # Side Buttons (X=112, X=392, Spec Y=80)
+    # We subtract 18mm from X because spec usually assumes external edge? 
+    # Let's assume spec means "From Left Edge of Panel".
+    t_l = Part.makeCylinder(15, THICKNESS*3, Vector(112-18, 300-80, -10))
+    t_r = Part.makeCylinder(15, THICKNESS*3, Vector(392-18, 300-80, -10))
+    tools_cp.append(t_l)
+    tools_cp.append(t_r)
+    
+    # Keyboard (55x75, Center X, Spec Y=180) - Pocket (not through)
+    t_key = Part.makeBox(55, 75, 5) # Depth 5mm
+    t_key.translate(Vector((WIDTH_INT-55)/2, 300-180-75, THICKNESS-5))
+    tools_cp.append(t_key)
+    
+    # LCD (85x40, Spec X=122, Spec Y=195)
+    t_lcd = Part.makeBox(85, 40, THICKNESS*3)
+    t_lcd.translate(Vector(122-18, 300-195-40, -10))
+    tools_cp.append(t_lcd)
+    
+    # Placement Logic
+    # Pivot: Front edge of Notch (0, 400).
+    # Rotation: +12 degrees (Back goes UP, standard arcade slope).
+    # To place this 300mm board so it sits in the 150mm notch, we anchor the BACK edge.
+    # The notch back is at (150, 500). Wait, the shelf is at Z=400.
+    # Let's anchor the Front of the panel to the Front of the Cabinet (0, 400).
+    # Since we defined Y=300 as Front in local coords:
+    # We position at (18, 0, 400) and rotate.
+    
+    # NOTE: FreeCAD placement is tricky. We'll use the 'Back' anchor for stability.
+    # We place the panel at (18, 0, 400).
+    # If we rotate X axis +12, Y goes Up/Back.
+    # In Local, Y=0 is Back. We need Y=0 to be at the Notch Back position?
+    # Simplest: Place at (18, 0, 400). This corresponds to Front. 
+    # But our Local Y=0 is Back.
+    # So we move Local Y=-300 to match global 0.
+    
+    rot_cp = Rotation(Vector(1,0,0), 12.0)
+    # Calculate position to put the Front Edge at (0, 400)
+    # 300mm * cos(12) = horizontal projection ~293mm
+    # We want front at Y=0. Back will be at Y=293.
+    # We place the object at (18, 0, 400) - but we need to shift the visual shape.
+    # Easier: Just rotate the box, then move it.
+    
+    pos_cp = Vector(THICKNESS, 0, Z_KICK)
+    p_cp = make_panel_local("Control_Panel", WIDTH_INT, CP_DEPTH, THICKNESS,
+                            Placement(pos_cp, rot_cp), tools_cp)
+    
+    # Adjust position: The standard Rotation rotates around (0,0,0) of the object (its Back-Left-Bottom).
+    # If we place at (18, 0, 400), the Back of the panel is at the Front of the machine. That's backward.
+    # We need to rotate it so it points -Y? No.
+    # Let's rotate -12 deg? No, slope is up.
+    # We simply shift it back by its projected length.
+    # Or simpler: Rotate it, then visually move it in FreeCAD until it hits the notch.
+    # Calculating offset:
+    dy = CP_DEPTH * math.cos(math.radians(12))
+    dz = CP_DEPTH * math.sin(math.radians(12))
+    # We want the FRONT (Y=CP_DEPTH) to be at Y=0.
+    # Currently Y=0 is at Y=0.
+    # So we move Y by -dy? No, we want the panel sticking OUT? 
+    # Usually CP starts at cabinet front and goes back.
+    # But this is a 300mm panel in a 150mm notch.
+    # So it MUST stick out by ~150mm.
+    # So placing Back (Y=0) at Y=150 (Notch Back) is the correct physical anchor.
+    p_cp.Placement.Base = Vector(THICKNESS, 150 - dy, Z_KICK - dz)
+    # Note: This places the front edge roughly at Y=150-293 = -143 (Overhang). Perfect.
+
+
+    # --- Marquee Panel ---
+    # Connects Profile Pt 4 (100, 1650) to Pt 3 (350, 1750)
+    dy = 350.0 - 100.0
+    dz = 1750.0 - 1650.0
+    len_marq = math.sqrt(dy**2 + dz**2)
+    angle_marq = math.degrees(math.atan2(dz, dy)) # ~21.8 deg
+    
+    # Tools (Camera)
+    # Center X, Y=50 (from bottom/front edge)
+    tools_marq = []
+    t_cam = Part.makeCylinder(15, THICKNESS*3, Vector(WIDTH_INT/2, 50, -10))
+    tools_marq.append(t_cam)
+    
+    # Placement
+    # Pivot at (100, 1650). Rotation axis X.
+    pos_marq = Vector(THICKNESS, 100, Z_MARQ_BOT)
+    rot_marq = Rotation(Vector(1,0,0), angle_marq)
+    
+    p_marq = make_panel_local("Marquee_Panel", WIDTH_INT, len_marq, THICKNESS,
+                              Placement(pos_marq, rot_marq), tools_marq)
+
+
+    # --- Bezel Support (Forehead) ---
+    # Connects V6 (0, 1400) to V5 (100, 1500)
+    dy2 = 100.0 - 0.0
+    dz2 = 1500.0 - 1400.0
+    len_bezel = math.sqrt(dy2**2 + dz2**2)
+    angle_bezel = math.degrees(math.atan2(dz2, dy2)) # 45 deg
+    
+    pos_bezel = Vector(THICKNESS, 0, Z_SCREEN_TOP)
+    rot_bezel = Rotation(Vector(1,0,0), angle_bezel)
+    
+    make_panel_local("Bezel_Support", WIDTH_INT, len_bezel, THICKNESS,
+                     Placement(pos_bezel, rot_bezel))
+
+
+    # --- Top Roof ---
+    # Connects V3(350, 1750) to V2(500, 1750)
+    len_roof = 500.0 - 350.0
+    make_box_global("Roof_Panel", WIDTH_INT, len_roof, THICKNESS,
+                    THICKNESS, 350, Z_TOP - THICKNESS)
+
+
+    # 7. HORIZONTAL SHELVES
+    # -------------------------------------------------------------------------
+    
+    # Floor (Inside)
+    make_box_global("Floor", WIDTH_INT, DEPTH_BASE - THICKNESS, THICKNESS,
+                    THICKNESS, THICKNESS, 0)
+             
+    # Shelf 1 (Power/Pi) - Z=150
+    make_box_global("Shelf_Electronics", WIDTH_INT, 400, THICKNESS,
+                    THICKNESS, 50, 150)
+             
+    # Shelf 2 (T50) - Z=500
+    make_box_global("Shelf_Mid", WIDTH_INT, 200, THICKNESS,
+                    THICKNESS, 50, 500)
+
+    # 8. FINISH
+    # -------------------------------------------------------------------------
+    doc.recompute()
+    Gui.SendMsgToActiveView("ViewFit")
+    Gui.activeDocument().activeView().viewIsometric()
+    print("ARTIFACT Cabinet generated successfully.")
+    print(f"Internal Width check: {WIDTH_INT}mm")
+
+if __name__ == "__main__":
+    generate_cabinet()

@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" width="1000" height="800">
+  <title>ARTIFACT - Раскрой Фанеры</title>
+  <defs>
+    <style>
+      .sheet { fill: #fff3e0; stroke: #333; stroke-width: 2; }
+      .panel-1 { fill: #ffcdd2; stroke: #c62828; stroke-width: 1.5; }
+      .panel-2 { fill: #c8e6c9; stroke: #2e7d32; stroke-width: 1.5; }
+      .panel-3 { fill: #bbdefb; stroke: #1565c0; stroke-width: 1.5; }
+      .panel-4 { fill: #fff9c4; stroke: #f9a825; stroke-width: 1.5; }
+      .panel-5 { fill: #e1bee7; stroke: #7b1fa2; stroke-width: 1.5; }
+      .panel-6 { fill: #b2dfdb; stroke: #00695c; stroke-width: 1.5; }
+      .waste { fill: #f5f5f5; stroke: #bdbdbd; stroke-width: 1; stroke-dasharray: 3,3; }
+      .dimension { stroke: #e74c3c; stroke-width: 1; fill: none; }
+      .dim-text { font-family: Arial, sans-serif; font-size: 10px; fill: #e74c3c; }
+      .label { font-family: Arial, sans-serif; font-size: 9px; fill: #333; }
+      .title { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; fill: #333; }
+      .scale { font-family: Arial, sans-serif; font-size: 10px; fill: #666; }
+      .sheet-label { font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; fill: #333; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrow-rev" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto">
+      <path d="M9,0 L9,6 L0,3 z" fill="#e74c3c"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="800" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="500" y="30" text-anchor="middle" class="title">РАСКРОЙ ФАНЕРЫ 18мм</text>
+  <text x="500" y="50" text-anchor="middle" class="scale">Листы 2440×1220мм | Масштаб 1:5 | Все размеры в мм</text>
+
+  <!-- ===== SHEET 1 ===== -->
+  <text x="270" y="85" text-anchor="middle" class="sheet-label">ЛИСТ 1</text>
+
+  <!-- Sheet 1 outline (2440×1220mm = 488×244px at 1:5) -->
+  <rect x="26" y="100" width="488" height="244" class="sheet"/>
+
+  <!-- Side panel 1 (complex shape - approximated as rectangle for cutting) -->
+  <!-- 1750×500mm = 350×100px -->
+  <rect x="30" y="104" width="350" height="100" class="panel-1"/>
+  <text x="205" y="160" text-anchor="middle" class="label" fill="#c62828">БОКОВАЯ ПАНЕЛЬ 1</text>
+  <text x="205" y="175" text-anchor="middle" class="label" font-size="8">1750×500</text>
+
+  <!-- Side panel 2 -->
+  <rect x="30" y="208" width="350" height="100" class="panel-1"/>
+  <text x="205" y="264" text-anchor="middle" class="label" fill="#c62828">БОКОВАЯ ПАНЕЛЬ 2</text>
+  <text x="205" y="279" text-anchor="middle" class="label" font-size="8">1750×500</text>
+
+  <!-- Front panel (1200×540mm = 240×108px) -->
+  <rect x="384" y="104" width="108" height="240" class="panel-2"/>
+  <text x="438" y="230" text-anchor="middle" class="label" fill="#2e7d32" transform="rotate(-90, 438, 230)">ПЕРЕДНЯЯ ПАНЕЛЬ</text>
+  <text x="438" y="250" text-anchor="middle" class="label" font-size="8" transform="rotate(-90, 438, 250)">1200×540</text>
+
+  <!-- Sheet 1 dimensions -->
+  <line x1="26" y1="360" x2="514" y2="360" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="270" y="375" text-anchor="middle" class="dim-text">2440</text>
+
+  <line x1="530" y1="100" x2="530" y2="344" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="545" y="222" text-anchor="start" class="dim-text">1220</text>
+
+  <!-- ===== SHEET 2 ===== -->
+  <text x="770" y="85" text-anchor="middle" class="sheet-label">ЛИСТ 2</text>
+
+  <!-- Sheet 2 outline -->
+  <rect x="526" y="100" width="488" height="244" class="sheet"/>
+
+  <!-- Back panel (1650×540mm = 330×108px) -->
+  <rect x="530" y="104" width="330" height="108" class="panel-3"/>
+  <text x="695" y="165" text-anchor="middle" class="label" fill="#1565c0">ЗАДНЯЯ ПАНЕЛЬ</text>
+  <text x="695" y="180" text-anchor="middle" class="label" font-size="8">1650×540</text>
+
+  <!-- Base platform (500×540mm = 100×108px) -->
+  <rect x="864" y="104" width="100" height="108" class="panel-4"/>
+  <text x="914" y="160" text-anchor="middle" class="label" fill="#f9a825" font-size="8">ОСНОВАНИЕ</text>
+  <text x="914" y="175" text-anchor="middle" class="label" font-size="7">500×540</text>
+
+  <!-- Control panel (504×300mm = 100×60px) -->
+  <rect x="530" y="216" width="100" height="60" class="panel-5"/>
+  <text x="580" y="250" text-anchor="middle" class="label" fill="#7b1fa2" font-size="8">ПУ</text>
+  <text x="580" y="265" text-anchor="middle" class="label" font-size="7">504×300</text>
+
+  <!-- Top/Marquee section (540×350mm = 108×70px) -->
+  <rect x="634" y="216" width="70" height="108" class="panel-6"/>
+  <text x="669" y="275" text-anchor="middle" class="label" fill="#00695c" font-size="8">МАРКИЗ</text>
+  <text x="669" y="290" text-anchor="middle" class="label" font-size="7">540×350</text>
+
+  <!-- Internal shelf 1 (464×440mm = 92×88px) -->
+  <rect x="708" y="216" width="92" height="88" class="panel-4"/>
+  <text x="754" y="265" text-anchor="middle" class="label" fill="#f9a825" font-size="8">ПОЛКА 1</text>
+  <text x="754" y="280" text-anchor="middle" class="label" font-size="7">464×440</text>
+
+  <!-- Internal shelf 2 (464×200mm = 92×40px) -->
+  <rect x="804" y="216" width="92" height="40" class="panel-4"/>
+  <text x="850" y="240" text-anchor="middle" class="label" fill="#f9a825" font-size="7">ПОЛКА 2</text>
+  <text x="850" y="253" text-anchor="middle" class="label" font-size="6">464×200</text>
+
+  <!-- Waste/offcuts -->
+  <rect x="804" y="260" width="92" height="44" class="waste"/>
+  <rect x="900" y="216" width="60" height="88" class="waste"/>
+
+  <!-- Sheet 2 dimensions -->
+  <line x1="526" y1="360" x2="1014" y2="360" class="dimension" marker-start="url(#arrow-rev)" marker-end="url(#arrow)"/>
+  <text x="770" y="375" text-anchor="middle" class="dim-text">2440</text>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="50" y="420" width="400" height="350" fill="#fff" stroke="#ccc" rx="5"/>
+  <text x="250" y="450" text-anchor="middle" class="label" font-weight="bold" font-size="12">ВЕДОМОСТЬ ДЕТАЛЕЙ</text>
+
+  <!-- Color legend -->
+  <rect x="70" y="470" width="20" height="15" class="panel-1"/>
+  <text x="100" y="482" class="label">Боковые панели (×2) - 1750×500мм</text>
+
+  <rect x="70" y="495" width="20" height="15" class="panel-2"/>
+  <text x="100" y="507" class="label">Передняя панель - 1200×540мм</text>
+
+  <rect x="70" y="520" width="20" height="15" class="panel-3"/>
+  <text x="100" y="532" class="label">Задняя панель (съёмная) - 1650×540мм</text>
+
+  <rect x="70" y="545" width="20" height="15" class="panel-4"/>
+  <text x="100" y="557" class="label">Основание + Полки</text>
+
+  <rect x="70" y="570" width="20" height="15" class="panel-5"/>
+  <text x="100" y="582" class="label">Панель управления - 504×300мм</text>
+
+  <rect x="70" y="595" width="20" height="15" class="panel-6"/>
+  <text x="100" y="607" class="label">Секция маркиза - 540×350мм</text>
+
+  <rect x="70" y="620" width="20" height="15" class="waste"/>
+  <text x="100" y="632" class="label">Обрезки / отходы</text>
+
+  <!-- Material summary -->
+  <rect x="70" y="660" width="360" height="80" fill="#e8f5e9" stroke="#4caf50" rx="3"/>
+  <text x="250" y="685" text-anchor="middle" class="label" font-weight="bold" fill="#2e7d32">ИТОГО МАТЕРИАЛ</text>
+  <text x="80" y="705" class="label">Фанера 18мм: 2 листа 2440×1220мм</text>
+  <text x="80" y="720" class="label">Использование: ~85% (минимум отходов)</text>
+  <text x="80" y="735" class="label" fill="#666">Рекомендуется: берёзовая фанера ФК или ФСФ</text>
+
+  <!-- Cutting notes -->
+  <rect x="480" y="420" width="480" height="350" fill="#fff" stroke="#ccc" rx="5"/>
+  <text x="720" y="450" text-anchor="middle" class="label" font-weight="bold" font-size="12">РЕКОМЕНДАЦИИ ПО РАСКРОЮ</text>
+
+  <text x="500" y="480" class="label" font-weight="bold">Инструменты:</text>
+  <text x="500" y="500" class="label">- Циркулярная пила с направляющей</text>
+  <text x="500" y="515" class="label">- Электролобзик (для криволинейных резов)</text>
+  <text x="500" y="530" class="label">- Фрезер с копировальной втулкой</text>
+  <text x="500" y="545" class="label">- Коронки для отверстий (30, 62мм)</text>
+
+  <text x="500" y="575" class="label" font-weight="bold">Порядок резки:</text>
+  <text x="500" y="595" class="label">1. Сначала продольные резы (разделение на полосы)</text>
+  <text x="500" y="610" class="label">2. Затем поперечные резы (отделение деталей)</text>
+  <text x="500" y="625" class="label">3. Боковые панели - по шаблону (см. side-view.svg)</text>
+  <text x="500" y="640" class="label">4. Вырезы в панелях - после основных резов</text>
+
+  <text x="500" y="670" class="label" font-weight="bold">Припуски:</text>
+  <text x="500" y="690" class="label">- На рез пилы: 3-4мм между деталями</text>
+  <text x="500" y="705" class="label">- На чистовую обработку: 1-2мм по периметру</text>
+
+  <rect x="500" y="720" width="440" height="40" fill="#fff3e0" stroke="#ff9800" rx="3"/>
+  <text x="720" y="745" text-anchor="middle" class="label" fill="#e65100" font-size="9">
+    ВНИМАНИЕ: Проверьте размеры компонентов перед раскроем!
+  </text>
+
+</svg>
