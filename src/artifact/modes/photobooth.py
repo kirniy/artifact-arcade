@@ -183,7 +183,7 @@ class PhotoboothMode(BaseMode):
         if self._state.is_generating:
             # Update progress tracker
             self._progress_tracker.update(delta_ms)
-            self._state.generation_progress = self._progress_tracker.progress
+            self._state.generation_progress = self._progress_tracker.get_progress()
 
             # Update Santa runner minigame
             if self._santa_runner:

@@ -64,7 +64,6 @@ async def run_hardware() -> None:
     from artifact.modes.ai_prophet import AIProphetMode
     from artifact.modes.squid_game import SquidGameMode
     from artifact.modes.guess_me import GuessMeMode
-    from artifact.modes.autopsy import AutopsyMode
     from artifact.modes.roast import RoastMeMode
     from artifact.modes.bar_runner import BarRunnerMode
     from artifact.modes.flow_field import FlowFieldMode
@@ -128,8 +127,7 @@ async def run_hardware() -> None:
     # Priority 2: AI-powered experiences
     mode_manager.register_mode(RapGodMode)        # Rap track generator
     mode_manager.register_mode(RoastMeMode)       # AI roasts
-    mode_manager.register_mode(GuessMeMode)       # AI guessing game
-    mode_manager.register_mode(AutopsyMode)       # X-ray analysis
+    mode_manager.register_mode(GuessMeMode)       # AI guessing "Who Am I?"
 
     # Priority 3: Classic arcade games (removed: Pong, 2048, LunarLander, SnakeTiny)
     mode_manager.register_mode(SnakeClassicMode)

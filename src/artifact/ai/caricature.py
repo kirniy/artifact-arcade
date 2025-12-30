@@ -267,26 +267,256 @@ Christmas calligraphy style for both texts.
 Joyful holiday photo booth energy! Square aspect ratio.""",
 ]
 
-STYLE_PROMPTS = {
-    # =========================================================================
-    # GUESS MODE - "Кто Я?" - Detective investigation board
-    # =========================================================================
-    CaricatureStyle.GUESS: """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
+# GUESS VARIATIONS - Detective investigation board
+GUESS_VARIATIONS = [
+    """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
 Slight caricature - emphasize their distinctive facial features.
 True crime documentary aesthetic, case file photo energy.
 Polaroid snapshot with evidence markers, question marks, magnifying glass.
 Film noir shadows, detective board conspiracy vibes.
-RUSSIAN labels, ALL CAPS. High contrast black ink. Square aspect ratio.""",
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). High contrast black ink. Square aspect ratio.""",
 
-    # =========================================================================
-    # MEDICAL MODE - "Диагноз" - X-ray scan diagnostic
-    # =========================================================================
-    CaricatureStyle.MEDICAL: """BLACK AND WHITE portrait as a HUMOROUS MEDICAL SCAN.
+    """BLACK AND WHITE portrait as a DETECTIVE BOARD PHOTO.
+Slight caricature - play up what makes them suspicious.
+Newspaper clipping aesthetic, red string connections (in B&W).
+Pushpins, sticky notes, question marks around the portrait.
+Hard-boiled detective vibes, midnight investigation.
+ALL TEXT AND LABELS IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as an FBI WANTED POSTER.
+Slight caricature - emphasize memorable features.
+Vintage typewriter text, official stamp marks, file number.
+Document folder aesthetic, classified information vibes.
+Noir thriller energy, mystery to be solved.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). High contrast. Square aspect ratio.""",
+]
+
+# MEDICAL VARIATIONS - X-ray scan diagnostic
+MEDICAL_VARIATIONS = [
+    """BLACK AND WHITE portrait as a HUMOROUS MEDICAL SCAN.
 Slight caricature - play up their unique features.
 Vintage anatomy illustration style, diagnostic overlay.
 Their brain: gears? chaos? coffee? Their heart: fire? ice? butterflies?
-Arrow labels pointing to funny observations in RUSSIAN.
-Medical textbook woodcut style, high contrast. Square aspect ratio.""",
+Arrow labels pointing to funny observations.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Medical textbook woodcut style. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a PERSONALITY X-RAY.
+Slight caricature - what's inside this person?
+Transparent view showing their inner mechanisms.
+Thought bubbles, dream clouds, fear zones, hope organs.
+Anatomical diagram meets psychology chart.
+ALL LABELS IN RUSSIAN, ALL CAPS (except VNVNC). High contrast. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a DIAGNOSTIC CHART.
+Slight caricature - clinical observation aesthetic.
+Hospital record vibe with vital signs and readings.
+Charts showing: caffeine levels, overthinking index, kindness meter.
+Medical illustration meets character profile.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Clean lines. Square aspect ratio.""",
+]
+
+# QUIZ WINNER VARIATIONS - Game show champion
+QUIZ_WINNER_VARIATIONS = [
+    """BLACK AND WHITE portrait as a GAME SHOW CHAMPION!
+Slight caricature - emphasize what makes them look like a winner.
+Triumphant pose, championship energy, they just won it all!
+Confetti and trophy vibes, spotlight moment, victory celebration.
+Bold comic book style, action lines, champion's glow.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). High contrast ink drawing. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a QUIZ MASTER.
+Slight caricature - capture their victorious expression.
+Gold medal energy, podium champion, brain power visualized.
+Lightning bolts of knowledge, stars of success.
+Retro game show aesthetic, 80s TV vibes.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold lines. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a TRIVIA GENIUS.
+Slight caricature - play up their smart features.
+Graduation cap optional, encyclopedia knowledge radiating.
+Light bulb moments, eureka energy, intellectual swagger.
+Vintage academic illustration meets celebration poster.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+]
+
+# MYSTICAL VARIATIONS - Vintage magician style
+MYSTICAL_VARIATIONS = [
+    """BLACK AND WHITE portrait as a VINTAGE MAGICIAN.
+Slight caricature - bring out their charismatic features.
+Old school stage magic vibes, top hat and cape energy.
+Houdini-era showmanship, dramatic theatrical flair.
+Vintage playbill illustration style, bold lines.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Fun entertainer energy. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a VAUDEVILLE STAR.
+Slight caricature - emphasize their showman qualities.
+Classic illusionist aesthetic, cards and rabbits optional.
+Dramatic lighting, stage curtain frame, applause energy.
+1920s magic poster style, art deco flourishes.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a CIRCUS MENTALIST.
+Slight caricature - capture their mysterious charm.
+Mind-reading performer vibes, hypnotic spiral background optional.
+Crystal balls, playing cards, mysterious symbols.
+Vintage sideshow poster aesthetic.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold graphics. Square aspect ratio.""",
+]
+
+# FORTUNE VARIATIONS - Carnival showman style
+FORTUNE_VARIATIONS = [
+    """BLACK AND WHITE portrait as a CARNIVAL SHOWMAN.
+Slight caricature - emphasize their distinctive features.
+Vintage carnival poster aesthetic, ringmaster energy.
+Step right up! See the amazing! Barnum and Bailey vibes.
+Art deco circus poster style, bold graphic lines.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Fun theatrical energy. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a CIRCUS ANNOUNCER.
+Slight caricature - play up their charismatic features.
+Big top energy, striped tent frame, spotlight beams.
+Megaphone optional, crowd excitement, showtime vibes.
+Vintage broadside poster style.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a FORTUNE BOOTH KEEPER.
+Slight caricature - capture their knowing expression.
+Arcade fortune machine aesthetic, coin slot decorations.
+Mechanical fortune teller vibes, vintage automaton energy.
+Carnival fairground poster style.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). High contrast. Square aspect ratio.""",
+]
+
+# SKETCH VARIATIONS - Fashion sketch style
+SKETCH_VARIATIONS = [
+    """BLACK AND WHITE portrait in elegant FASHION SKETCH style.
+Slight caricature - capture what makes their face distinctive.
+Fashion illustration meets editorial portrait.
+Bold confident ink strokes, high contrast.
+Vogue-worthy composition, effortless cool.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Clean lines, artistic minimalism. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait in EDITORIAL ILLUSTRATION style.
+Slight caricature - emphasize their striking features.
+Magazine cover energy, sophisticated lines.
+Brush pen strokes, dynamic composition.
+High fashion meets fine art portraiture.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait in QUICK SKETCH style.
+Slight caricature - capture their essence in bold strokes.
+Artist's notebook aesthetic, spontaneous energy.
+Confident line work, expressive minimalism.
+Portrait study vibes, gallery worthy.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+]
+
+# CARTOON VARIATIONS - Playful cartoon style
+CARTOON_VARIATIONS = [
+    """BLACK AND WHITE portrait in playful CARTOON style.
+Moderate caricature - exaggerate their fun features.
+Pixar meets manga character design, friendly exaggeration.
+Capture their personality in bigger-than-life form.
+Joyful, friendly, inviting. Not mean, just playful.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold ink lines, dynamic pose. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait in ANIMATED CHARACTER style.
+Moderate caricature - bring out their animated personality.
+Disney energy meets anime expressiveness.
+Big eyes optional, exaggerated expressions welcome.
+Lovable character design, instant likability.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait in COMIC STRIP style.
+Moderate caricature - make them a comic character.
+Sunday funnies aesthetic, expressive simplicity.
+Speech bubble ready, panel-worthy pose.
+Classic newspaper comic energy.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold outlines. Square aspect ratio.""",
+]
+
+# VINTAGE VARIATIONS - Circus poster star
+VINTAGE_VARIATIONS = [
+    """BLACK AND WHITE portrait as a CIRCUS POSTER STAR.
+Slight caricature - emphasize their showman qualities.
+P.T. Barnum era showmanship meets Art Nouveau elegance.
+They are the main attraction, the star of the show!
+Victorian theatrical drama with decorative flourishes.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Woodcut poster style. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a SILENT FILM STAR.
+Slight caricature - capture their dramatic expression.
+1920s Hollywood glamour, title card aesthetic.
+Dramatic lighting, theatrical pose, silver screen energy.
+Art deco frame, vintage film grain texture.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a VAUDEVILLE PERFORMER.
+Slight caricature - play up their entertainer qualities.
+Stage lights, curtain frame, applause energy.
+Classic theatrical poster design.
+Ornate Victorian borders, showbiz glamour.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+]
+
+# ZODIAC VARIATIONS - Space explorer style
+ZODIAC_VARIATIONS = [
+    """BLACK AND WHITE portrait as a SPACE EXPLORER.
+Slight caricature - capture their adventurous spirit.
+Retro sci-fi pulp magazine cover energy, astronaut helmet optional.
+Star maps and constellations as decorative background.
+1950s space age optimism, rocket ship vibes.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold ink illustration. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a COSMIC NAVIGATOR.
+Slight caricature - emphasize their visionary gaze.
+Starship captain energy, control panel background.
+Galaxy swirls, planet rings, cosmic dust.
+Golden age sci-fi aesthetic, pulp adventure vibes.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as an ASTRAL VOYAGER.
+Slight caricature - capture their otherworldly charm.
+Constellation map overlay, celestial coordinates.
+Moon phases, shooting stars, orbital paths.
+Vintage astronomy textbook meets adventure poster.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+]
+
+# ROULETTE VARIATIONS - Casino winner style
+ROULETTE_VARIATIONS = [
+    """BLACK AND WHITE portrait as a HIGH ROLLER.
+Slight caricature - play up their lucky charm vibe.
+Casino royale winner moment, James Bond swagger.
+Poker chips flying, dice tumbling, jackpot energy.
+Retro Las Vegas lounge style, suave and sophisticated.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold ink drawing, dramatic spotlight. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a CASINO CHAMPION.
+Slight caricature - emphasize their winning expression.
+Slot machine jackpot energy, coins showering down.
+Neon sign aesthetic (in B&W), victory celebration.
+Vegas golden era, rat pack vibes.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait as a POKER MASTER.
+Slight caricature - capture their poker face (or lack thereof).
+Card shark energy, royal flush background.
+Smoke and mirrors, high stakes drama.
+Film noir casino aesthetic, tension and triumph.
+ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
+]
+
+STYLE_PROMPTS = {
+    # =========================================================================
+    # GUESS MODE - "Кто Я?" - Detective investigation board (uses GUESS_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.GUESS: "GUESS_VARIATION",  # Will be replaced with random variation
+
+    # =========================================================================
+    # MEDICAL MODE - "Диагноз" - X-ray scan diagnostic (uses MEDICAL_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.MEDICAL: "MEDICAL_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
     # ROAST MODE - "Прожарка" - Adult roast doodle (uses ROAST_VARIATIONS)
@@ -304,75 +534,44 @@ Medical textbook woodcut style, high contrast. Square aspect ratio.""",
     CaricatureStyle.TAROT: "TAROT_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # QUIZ WINNER - "Викторина" - Game show champion
+    # QUIZ WINNER - "Викторина" - Game show champion (uses QUIZ_WINNER_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.QUIZ_WINNER: """BLACK AND WHITE portrait as a GAME SHOW CHAMPION!
-Slight caricature - emphasize what makes them look like a winner.
-Triumphant pose, championship energy, they just won it all!
-Confetti and trophy vibes, spotlight moment, victory celebration.
-Bold comic book style, action lines, champion's glow.
-High contrast ink drawing. Square aspect ratio.""",
+    CaricatureStyle.QUIZ_WINNER: "QUIZ_WINNER_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # MYSTICAL - Now fun/stylish, not esoteric
+    # MYSTICAL - Now fun/stylish, not esoteric (uses MYSTICAL_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.MYSTICAL: """BLACK AND WHITE portrait as a VINTAGE MAGICIAN.
-Slight caricature - bring out their charismatic features.
-Old school stage magic vibes, top hat and cape energy.
-Houdini-era showmanship, dramatic theatrical flair.
-Vintage playbill illustration style, bold lines.
-Fun entertainer energy, NOT spooky. Square aspect ratio.""",
+    CaricatureStyle.MYSTICAL: "MYSTICAL_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # FORTUNE - Now fun/stylish carnival, not mystical
+    # FORTUNE - Now fun/stylish carnival, not mystical (uses FORTUNE_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.FORTUNE: """BLACK AND WHITE portrait as a CARNIVAL SHOWMAN.
-Slight caricature - emphasize their distinctive features.
-Vintage carnival poster aesthetic, ringmaster energy.
-Step right up! See the amazing! Barnum and Bailey vibes.
-Art deco circus poster style, bold graphic lines.
-Fun theatrical energy, NOT mystical. Square aspect ratio.""",
-
-    CaricatureStyle.SKETCH: """BLACK AND WHITE portrait in elegant FASHION SKETCH style.
-Slight caricature - capture what makes their face distinctive.
-Fashion illustration meets editorial portrait.
-Bold confident ink strokes, high contrast.
-Vogue-worthy composition, effortless cool.
-Clean lines, artistic minimalism. Square aspect ratio.""",
-
-    CaricatureStyle.CARTOON: """BLACK AND WHITE portrait in playful CARTOON style.
-Moderate caricature - exaggerate their fun features.
-Pixar meets manga character design, friendly exaggeration.
-Capture their personality in bigger-than-life form.
-Joyful, friendly, inviting. Not mean, just playful.
-Bold ink lines, dynamic pose. Square aspect ratio.""",
-
-    CaricatureStyle.VINTAGE: """BLACK AND WHITE portrait as a CIRCUS POSTER STAR.
-Slight caricature - emphasize their showman qualities.
-P.T. Barnum era showmanship meets Art Nouveau elegance.
-They are the main attraction, the star of the show!
-Victorian theatrical drama with decorative flourishes.
-Woodcut poster style, high contrast. Square aspect ratio.""",
+    CaricatureStyle.FORTUNE: "FORTUNE_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # ZODIAC MODE - Now fun/stylish space theme
+    # SKETCH - Fashion sketch style (uses SKETCH_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.ZODIAC: """BLACK AND WHITE portrait as a SPACE EXPLORER.
-Slight caricature - capture their adventurous spirit.
-Retro sci-fi pulp magazine cover energy, astronaut helmet optional.
-Star maps and constellations as decorative background.
-1950s space age optimism, rocket ship vibes.
-Bold ink illustration, adventure awaits. Square aspect ratio.""",
+    CaricatureStyle.SKETCH: "SKETCH_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # ROULETTE MODE - Casino winner style
+    # CARTOON - Playful cartoon style (uses CARTOON_VARIATIONS)
     # =========================================================================
-    CaricatureStyle.ROULETTE: """BLACK AND WHITE portrait as a HIGH ROLLER.
-Slight caricature - play up their lucky charm vibe.
-Casino royale winner moment, James Bond swagger.
-Poker chips flying, dice tumbling, jackpot energy.
-Retro Las Vegas lounge style, suave and sophisticated.
-Bold ink drawing, dramatic spotlight. Square aspect ratio.""",
+    CaricatureStyle.CARTOON: "CARTOON_VARIATION",  # Will be replaced with random variation
+
+    # =========================================================================
+    # VINTAGE - Circus poster star (uses VINTAGE_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.VINTAGE: "VINTAGE_VARIATION",  # Will be replaced with random variation
+
+    # =========================================================================
+    # ZODIAC MODE - Space explorer style (uses ZODIAC_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.ZODIAC: "ZODIAC_VARIATION",  # Will be replaced with random variation
+
+    # =========================================================================
+    # ROULETTE MODE - Casino winner style (uses ROULETTE_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.ROULETTE: "ROULETTE_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
     # PHOTOBOOTH MODE - Christmas 2x2 photo booth grid (uses PHOTOBOOTH_VARIATIONS)
@@ -434,14 +633,24 @@ class CaricatureService:
             style_prompt = STYLE_PROMPTS.get(style, STYLE_PROMPTS[CaricatureStyle.SKETCH])
 
             # Replace placeholders with random variations for more variety
-            if style_prompt == "ROAST_VARIATION":
-                style_prompt = random.choice(ROAST_VARIATIONS)
-            elif style_prompt == "PROPHET_VARIATION":
-                style_prompt = random.choice(PROPHET_VARIATIONS)
-            elif style_prompt == "TAROT_VARIATION":
-                style_prompt = random.choice(TAROT_VARIATIONS)
-            elif style_prompt == "PHOTOBOOTH_VARIATION":
-                style_prompt = random.choice(PHOTOBOOTH_VARIATIONS)
+            variation_map = {
+                "ROAST_VARIATION": ROAST_VARIATIONS,
+                "PROPHET_VARIATION": PROPHET_VARIATIONS,
+                "TAROT_VARIATION": TAROT_VARIATIONS,
+                "PHOTOBOOTH_VARIATION": PHOTOBOOTH_VARIATIONS,
+                "GUESS_VARIATION": GUESS_VARIATIONS,
+                "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
+                "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
+                "MYSTICAL_VARIATION": MYSTICAL_VARIATIONS,
+                "FORTUNE_VARIATION": FORTUNE_VARIATIONS,
+                "SKETCH_VARIATION": SKETCH_VARIATIONS,
+                "CARTOON_VARIATION": CARTOON_VARIATIONS,
+                "VINTAGE_VARIATION": VINTAGE_VARIATIONS,
+                "ZODIAC_VARIATION": ZODIAC_VARIATIONS,
+                "ROULETTE_VARIATION": ROULETTE_VARIATIONS,
+            }
+            if style_prompt in variation_map:
+                style_prompt = random.choice(variation_map[style_prompt])
 
             # Build personality-aware prompt
             personality_hint = ""
@@ -462,6 +671,8 @@ CRITICAL REQUIREMENTS:
 - BLACK AND WHITE ONLY - pure black ink on white background, high contrast
 - NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic
+- ALL TEXT IN THE IMAGE MUST BE IN RUSSIAN! Except for the word "VNVNC" which stays in English
+- Any labels, annotations, or decorative text: WRITE IN RUSSIAN, ALL CAPS
 {personality_hint}
 {style_prompt}
 

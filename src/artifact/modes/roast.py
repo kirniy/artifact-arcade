@@ -654,30 +654,38 @@ class RoastMeMode(BaseMode):
     def render_ticker(self, buffer) -> None:
         """Render ticker display with phase-specific messages."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.text_utils import draw_centered_text
+        from artifact.graphics.text_utils import render_ticker_static, render_ticker_animated, TickerEffect, TextEffect
 
         clear(buffer)  # Always clear the buffer!
 
         if self._sub_phase == RoastPhase.INTRO:
-            draw_centered_text(buffer, "ПРОЖАРКА", 2, self._red)
+            render_ticker_animated(
+                buffer, "ПРОЖАРКА",
+                self._time_in_phase, self._red,
+                TickerEffect.PULSE, speed=0.03
+            )
 
         elif self._sub_phase == RoastPhase.CAMERA_PREP:
-            draw_centered_text(buffer, "КАМЕРА", 2, self._yellow)
+            render_ticker_static(buffer, "КАМЕРА", self._time_in_phase, self._yellow, TextEffect.GLOW)
 
         elif self._sub_phase == RoastPhase.CAMERA_CAPTURE:
             cnt = int(self._camera_countdown) + 1
-            draw_centered_text(buffer, f"ФОТО: {cnt}", 2, self._yellow)
+            render_ticker_static(buffer, f"ФОТО: {cnt}", self._time_in_phase, self._yellow, TextEffect.GLOW)
 
         elif self._sub_phase == RoastPhase.PROCESSING:
             # Animated processing indicator
             dots = "." * (int(self._time_in_phase / 300) % 4)
-            draw_centered_text(buffer, f"ГОТОВЛЮ{dots}", 2, self._red)
+            render_ticker_static(buffer, f"ГОТОВЛЮ{dots}", self._time_in_phase, self._red, TextEffect.GLOW)
 
         elif self._sub_phase == RoastPhase.REVEAL:
-            draw_centered_text(buffer, "ПОЛУЧАЙ!", 2, self._red)
+            render_ticker_animated(
+                buffer, "ПОЛУЧАЙ!",
+                self._time_in_phase, self._red,
+                TickerEffect.PULSE, speed=0.05
+            )
 
         elif self._sub_phase == RoastPhase.RESULT:
-            draw_centered_text(buffer, f"ВАЙБ: {self._vibe_score[:8]}", 2, self._yellow)
+            render_ticker_static(buffer, f"ВАЙБ: {self._vibe_score[:8]}", self._time_in_phase, self._yellow, TextEffect.GLOW)
 
     def get_lcd_text(self) -> str:
         """Get LCD text with phase-specific animation."""

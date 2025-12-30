@@ -27,7 +27,8 @@ from artifact.modes.fortune import FortuneMode           # 1. ГАДАЛКА
 from artifact.modes.ai_prophet import AIProphetMode      # 2. ПРОРОК
 from artifact.modes.photobooth import PhotoboothMode     # 3. ФОТОБУДКА
 from artifact.modes.roast import RoastMeMode             # 4. ПРОЖАРКА
-from artifact.modes.squid_game import SquidGameMode      # 5. КАЛЬМАР
+from artifact.modes.guess_me import GuessMeMode          # 5. КТО Я?
+from artifact.modes.squid_game import SquidGameMode      # 6. КАЛЬМАР
 from artifact.modes.quiz import QuizMode                 # 6. КВИЗ
 from artifact.modes.tower_stack import TowerStackMode    # 7. БАШНЯ
 from artifact.modes.brick_breaker import BrickBreakerMode  # 8. КИРПИЧИ
@@ -146,7 +147,10 @@ class ArtifactSimulator:
         # 4. ПРОЖАРКА - Roast mode
         self.mode_manager.register_mode(RoastMeMode)
 
-        # 5. КАЛЬМАР - Squid game (red light/green light)
+        # 5. КТО Я? - AI guessing "Who Am I?"
+        self.mode_manager.register_mode(GuessMeMode)
+
+        # 6. КАЛЬМАР - Squid game (red light/green light)
         self.mode_manager.register_mode(SquidGameMode)
 
         # 6. КВИЗ - Quiz
