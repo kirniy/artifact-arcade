@@ -3991,6 +3991,7 @@ class RotatingIdleAnimation:
     def reset(self) -> None:
         """Reset animation state."""
         self._close_camera()
+        self._stop_saga_video()  # Stop video and its audio
         self.state = SceneState()
         # DIVOOM_GALLERY is FIRST (New Year special!), then VNVNC_ENTRANCE, then shuffle the rest
         self.scenes = []
