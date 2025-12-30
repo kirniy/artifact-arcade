@@ -11,6 +11,8 @@ import logging
 from typing import Optional, Dict, Any
 from datetime import datetime
 from dataclasses import dataclass
+from io import BytesIO
+from pathlib import Path
 
 from artifact.printing.layout import (
     LayoutEngine,
@@ -87,6 +89,12 @@ class ReceiptGenerator:
             layout = self._create_photobooth_receipt(data)
         elif mode_name == "rap_god":
             layout = self._create_rapgod_receipt(data)
+        elif mode_name == "tower_stack":
+            layout = self._create_tower_stack_receipt(data)
+        elif mode_name == "brick_breaker":
+            layout = self._create_brick_breaker_receipt(data)
+        elif mode_name == "video":
+            layout = self._create_video_receipt(data)
         else:
             layout = self._create_generic_receipt(mode_name, data)
 
@@ -96,13 +104,87 @@ class ReceiptGenerator:
         # Generate preview
         preview = self._layout_engine.preview_text(layout)
 
+        timestamp = self._parse_timestamp(data)
         return Receipt(
             mode_name=mode_name,
             layout=layout,
             raw_commands=raw_commands,
             preview=preview,
-            timestamp=datetime.now(),
+            timestamp=timestamp,
         )
+
+    def _parse_timestamp(self, data: Dict[str, Any]) -> datetime:
+        """Parse an ISO timestamp from mode data, falling back to now."""
+        ts = data.get("timestamp")
+        if isinstance(ts, datetime):
+            return ts
+        if isinstance(ts, str):
+            try:
+                return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except Exception:
+                pass
+        return datetime.now()
+
+    def _coerce_image(self, image: Any) -> Optional[bytes]:
+        """Convert image-like input to PNG bytes."""
+        if image is None:
+            return None
+        if isinstance(image, (bytes, bytearray, memoryview)):
+            return bytes(image)
+        if isinstance(image, str):
+            try:
+                path = Path(image)
+                if path.exists():
+                    from PIL import Image
+                    img = Image.open(path)
+                    buf = BytesIO()
+                    img.save(buf, format="PNG")
+                    return buf.getvalue()
+            except Exception:
+                return None
+
+        try:
+            from PIL import Image
+        except Exception:
+            return None
+
+        try:
+            if isinstance(image, Image.Image):
+                img = image
+            else:
+                import numpy as np
+                if isinstance(image, np.ndarray):
+                    img = Image.fromarray(image)
+                else:
+                    return None
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception:
+            return None
+
+    def _prepare_qr_image(self, image: Any) -> Optional[bytes]:
+        """Normalize QR image to black-on-white for thermal printing."""
+        raw = self._coerce_image(image)
+        if not raw:
+            return None
+        try:
+            from PIL import Image, ImageOps, ImageStat
+
+            img = Image.open(BytesIO(raw)).convert("L")
+            if ImageStat.Stat(img).mean[0] < 128:
+                img = ImageOps.invert(img)
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception:
+            return raw
+
+    def _add_body_text(self, layout: ReceiptLayout, text: str, size: TextSize = TextSize.SMALL) -> None:
+        layout.add_text(text, alignment=Alignment.LEFT, size=size)
+
+    def _add_kv(self, layout: ReceiptLayout, label: str, value: str) -> None:
+        layout.add_text(f"{label}: {value}", alignment=Alignment.LEFT, size=TextSize.SMALL)
 
     def _create_header(self, layout: ReceiptLayout) -> None:
         """Add standard ARTIFACT header to layout."""
@@ -112,23 +194,24 @@ class ReceiptGenerator:
             layout.add_space(1)
         else:
             # Text logo fallback
-            layout.add_text("* VNVNC *", size=TextSize.LARGE, bold=True)
-            layout.add_text("AI Fortune Machine", size=TextSize.SMALL)
+            layout.add_text("VNVNC", size=TextSize.LARGE, bold=True)
+            layout.add_text("ARTIFACT ARCADE", size=TextSize.SMALL)
 
         layout.add_separator("double")
         layout.add_space(1)
 
-    def _create_footer(self, layout: ReceiptLayout) -> None:
+    def _create_footer(self, layout: ReceiptLayout, data: Dict[str, Any]) -> None:
         """Add standard footer with date/time."""
         layout.add_space(1)
         layout.add_separator("line")
 
         # Date and time
-        now = datetime.now()
+        now = self._parse_timestamp(data)
         date_str = now.strftime("%d.%m.%Y %H:%M")
         layout.add_text(date_str, size=TextSize.SMALL)
 
         layout.add_space(1)
+        layout.add_text("Спасибо за визит!", size=TextSize.SMALL)
         layout.add_text("vnvnc.ai", size=TextSize.SMALL)
         layout.add_space(2)
 
@@ -137,19 +220,57 @@ class ReceiptGenerator:
         layout = ReceiptLayout()
         self._create_header(layout)
 
-        # Fortune title
-        layout.add_text("YOUR FORTUNE", size=TextSize.MEDIUM, bold=True)
-        layout.add_separator("stars")
+        layout.add_text("ГАДАЛКА", size=TextSize.LARGE, bold=True)
+        layout.add_separator("line")
         layout.add_space(1)
 
-        # Fortune text
-        fortune = data.get("fortune", "The stars are silent...")
-        layout.add_text(fortune, size=TextSize.MEDIUM)
+        caricature = self._coerce_image(data.get("caricature"))
+        if caricature:
+            layout.add_image(caricature, width=384, dither=True)
+            layout.add_space(1)
 
-        layout.add_space(1)
-        layout.add_separator("stars")
+        fortune = (
+            data.get("fortune") or
+            data.get("prediction") or
+            data.get("display_text") or
+            "Звезды молчат..."
+        )
+        layout.add_text("ПРЕДСКАЗАНИЕ", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+        layout.add_text(fortune, alignment=Alignment.LEFT, size=TextSize.MEDIUM)
 
-        self._create_footer(layout)
+        details = []
+        birthdate = data.get("birthdate") or data.get("birthday")
+        if birthdate:
+            details.append(("Дата рождения", birthdate))
+        zodiac = data.get("zodiac_sign") or data.get("zodiac_ru")
+        if zodiac:
+            details.append(("Знак", zodiac))
+        chinese = data.get("chinese_zodiac")
+        if chinese:
+            details.append(("Китайский знак", chinese))
+        lucky_color = data.get("lucky_color")
+        if lucky_color:
+            details.append(("Счастливый цвет", lucky_color))
+
+        if details:
+            layout.add_space(1)
+            layout.add_separator("line")
+            layout.add_text("ДАННЫЕ", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+            for label, value in details:
+                self._add_kv(layout, label, value)
+
+        qr_image = self._prepare_qr_image(data.get("qr_image"))
+        qr_url = data.get("qr_url")
+        if qr_image or qr_url:
+            layout.add_space(1)
+            layout.add_separator("line")
+            layout.add_text("СКАЧАТЬ:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+            if qr_image:
+                layout.add_image(qr_image, width=192, dither=False)
+            else:
+                layout.add_text(qr_url, alignment=Alignment.LEFT, size=TextSize.SMALL)
+
+        self._create_footer(layout, data)
         return layout
 
     def _create_zodiac_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -172,12 +293,12 @@ class ReceiptGenerator:
 
         # Horoscope
         horoscope = data.get("horoscope", "The stars await...")
-        layout.add_text(horoscope, size=TextSize.MEDIUM)
+        layout.add_text(horoscope, alignment=Alignment.LEFT, size=TextSize.MEDIUM)
 
         layout.add_space(1)
         layout.add_separator("stars")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_ai_prophet_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -192,47 +313,50 @@ class ReceiptGenerator:
         layout = ReceiptLayout()
         self._create_header(layout)
 
-        # AI Prophet title
-        layout.add_text("AI PROPHECY", size=TextSize.LARGE, bold=True)
+        layout.add_text("ИИ ПРОРОК", size=TextSize.LARGE, bold=True)
         layout.add_separator("double")
         layout.add_space(1)
 
-        # Caricature image (if available) - FULL WIDTH, NO FRAME
-        caricature = data.get("caricature")
+        caricature = self._coerce_image(data.get("caricature"))
         if caricature:
             layout.add_image(caricature, width=384, dither=True)
             layout.add_space(1)
 
-        layout.add_separator("stars")
-        layout.add_space(1)
+        prediction = (
+            data.get("prediction") or
+            data.get("display_text") or
+            "Твое будущее сияет..."
+        )
+        layout.add_text("ПРОРОЧЕСТВО", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+        layout.add_text(prediction, alignment=Alignment.LEFT, size=TextSize.MEDIUM)
 
-        # Prediction
-        prediction = data.get("prediction", "Your future is bright...")
-        layout.add_text(prediction, size=TextSize.MEDIUM)
-
-        layout.add_space(1)
-
-        # Lucky number and color
         lucky_number = data.get("lucky_number")
         lucky_color = data.get("lucky_color")
-
-        if lucky_number:
-            layout.add_text(f"Lucky Number: {lucky_number}", size=TextSize.SMALL)
-
-        if lucky_color:
-            layout.add_text(f"Lucky Color: {lucky_color}", size=TextSize.SMALL)
-
-        # Personality traits
         traits = data.get("traits", [])
-        if traits:
+
+        if lucky_number or lucky_color or traits:
             layout.add_space(1)
-            layout.add_text("Your Traits:", size=TextSize.SMALL)
-            layout.add_text(", ".join(traits[:3]), size=TextSize.SMALL)
+            layout.add_separator("line")
+            if lucky_number:
+                self._add_kv(layout, "Счастливое число", str(lucky_number))
+            if lucky_color:
+                self._add_kv(layout, "Счастливый цвет", str(lucky_color))
+            if traits:
+                layout.add_text("Черты характера:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+                layout.add_text(", ".join(traits[:3]), alignment=Alignment.LEFT, size=TextSize.SMALL)
 
-        layout.add_space(1)
-        layout.add_separator("double")
+        qr_image = self._prepare_qr_image(data.get("qr_image"))
+        qr_url = data.get("qr_url")
+        if qr_image or qr_url:
+            layout.add_space(1)
+            layout.add_separator("line")
+            layout.add_text("СКАЧАТЬ:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+            if qr_image:
+                layout.add_image(qr_image, width=192, dither=False)
+            else:
+                layout.add_text(qr_url, alignment=Alignment.LEFT, size=TextSize.SMALL)
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_roulette_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -256,7 +380,7 @@ class ReceiptGenerator:
         layout.add_space(1)
         layout.add_separator("line")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_quiz_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -264,30 +388,46 @@ class ReceiptGenerator:
         layout = ReceiptLayout()
         self._create_header(layout)
 
-        layout.add_text("QUIZ RESULTS", size=TextSize.LARGE, bold=True)
+        layout.add_text("ВИКТОРИНА", size=TextSize.LARGE, bold=True)
         layout.add_separator("double")
         layout.add_space(1)
 
-        # Score
+        doodle = self._coerce_image(data.get("caricature"))
+        if doodle:
+            layout.add_image(doodle, width=384, dither=True)
+            layout.add_space(1)
+
         score = data.get("score", 0)
         total = data.get("total", 0)
-        layout.add_text(f"Score: {score}/{total}", size=TextSize.LARGE, bold=True)
+        layout.add_text(f"СЧЕТ: {score}/{total}", alignment=Alignment.LEFT, size=TextSize.MEDIUM, bold=True)
 
-        # Percentage
-        if total > 0:
+        percentage = data.get("percentage")
+        if percentage is None and total > 0:
             percentage = int(score / total * 100)
-            layout.add_text(f"{percentage}%", size=TextSize.MEDIUM)
+        if percentage is not None:
+            layout.add_text(f"{percentage}%", alignment=Alignment.LEFT, size=TextSize.SMALL)
 
-        # Rank
+        if data.get("won_cocktail"):
+            layout.add_space(1)
+            layout.add_text("ПРИЗ: БЕСПЛАТНЫЙ КОКТЕЙЛЬ", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+
+            # Show coupon code if available
+            coupon = data.get("coupon_code")
+            if coupon:
+                layout.add_separator("line")
+                layout.add_text(f"КОД: {coupon}", size=TextSize.LARGE, bold=True)
+                layout.add_text("Покажи бармену", size=TextSize.MEDIUM)
+                layout.add_separator("line")
+
         rank = data.get("rank", "")
         if rank:
             layout.add_space(1)
-            layout.add_text(rank, size=TextSize.MEDIUM)
+            layout.add_text(rank, alignment=Alignment.LEFT, size=TextSize.SMALL)
 
         layout.add_space(1)
         layout.add_separator("double")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_squid_game_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -295,16 +435,17 @@ class ReceiptGenerator:
         layout = ReceiptLayout()
         self._create_header(layout)
 
-        layout.add_text("SQUID GAME", size=TextSize.LARGE, bold=True)
+        layout.add_text("ИГРА В КАЛЬМАРА", size=TextSize.LARGE, bold=True)
         layout.add_separator("double")
         layout.add_space(1)
 
-        result = data.get("result", "").upper()
+        result = (data.get("result") or "").upper()
         if result:
-            layout.add_text(result, size=TextSize.MEDIUM, bold=True)
+            result_text = "ПОБЕДА" if result == "VICTORY" else "ВЫБЫЛ" if result == "ELIMINATED" else result
+            layout.add_text(result_text, size=TextSize.MEDIUM, bold=True)
 
         # Sketch photo - FULL WIDTH, NO FRAME
-        sketch = data.get("caricature") or data.get("sketch")
+        sketch = self._coerce_image(data.get("caricature") or data.get("sketch"))
         if sketch:
             layout.add_space(1)
             layout.add_image(sketch, width=384, dither=True)
@@ -321,16 +462,16 @@ class ReceiptGenerator:
         reason = data.get("elimination_reason")
         if reason:
             layout.add_space(1)
-            layout.add_text(reason, size=TextSize.SMALL)
+            layout.add_text(reason, alignment=Alignment.LEFT, size=TextSize.SMALL)
 
         survived = data.get("survived_time")
         if survived:
-            layout.add_text(f"Время: {survived}", size=TextSize.SMALL)
+            layout.add_text(f"Время: {survived}", alignment=Alignment.LEFT, size=TextSize.SMALL)
 
         layout.add_space(1)
         layout.add_separator("double")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_roast_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -343,7 +484,7 @@ class ReceiptGenerator:
         layout.add_space(1)
 
         # Doodle image - FULL WIDTH, NO FRAME
-        doodle = data.get("doodle") or data.get("caricature")
+        doodle = self._coerce_image(data.get("doodle") or data.get("caricature"))
         if doodle:
             layout.add_image(doodle, width=384, dither=True)
             layout.add_space(1)
@@ -351,12 +492,28 @@ class ReceiptGenerator:
         # Roast text
         roast_text = data.get("roast") or data.get("display_text") or ""
         if roast_text:
-            layout.add_text(roast_text, size=TextSize.MEDIUM)
+            layout.add_text(roast_text, alignment=Alignment.LEFT, size=TextSize.MEDIUM)
+
+        vibe = data.get("vibe")
+        if vibe:
+            layout.add_space(1)
+            self._add_kv(layout, "Вайб", str(vibe))
+
+        qr_image = self._prepare_qr_image(data.get("qr_image"))
+        qr_url = data.get("qr_url")
+        if qr_image or qr_url:
+            layout.add_space(1)
+            layout.add_separator("line")
+            layout.add_text("СКАЧАТЬ:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+            if qr_image:
+                layout.add_image(qr_image, width=192, dither=False)
+            else:
+                layout.add_text(qr_url, alignment=Alignment.LEFT, size=TextSize.SMALL)
 
         layout.add_space(1)
         layout.add_separator("double")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_autopsy_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -369,7 +526,7 @@ class ReceiptGenerator:
         layout.add_space(1)
 
         # X-ray scan image - FULL WIDTH, NO FRAME
-        scan_image = data.get("scan_image") or data.get("caricature")
+        scan_image = self._coerce_image(data.get("scan_image") or data.get("caricature"))
         if scan_image:
             layout.add_image(scan_image, width=384, dither=True)
             layout.add_space(1)
@@ -382,12 +539,12 @@ class ReceiptGenerator:
         # Diagnosis text
         diagnosis = data.get("diagnosis") or data.get("display_text") or ""
         if diagnosis:
-            layout.add_text(diagnosis, size=TextSize.MEDIUM)
+            layout.add_text(diagnosis, alignment=Alignment.LEFT, size=TextSize.MEDIUM)
 
         layout.add_space(1)
         layout.add_separator("double")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_generic_receipt(self, mode_name: str, data: Dict[str, Any]) -> ReceiptLayout:
@@ -403,12 +560,12 @@ class ReceiptGenerator:
         # Display text if available
         display_text = data.get("display_text") or data.get("result", "")
         if display_text:
-            layout.add_text(display_text, size=TextSize.MEDIUM)
+            layout.add_text(display_text, alignment=Alignment.LEFT, size=TextSize.MEDIUM)
 
         layout.add_space(1)
         layout.add_separator("line")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_photobooth_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -425,27 +582,26 @@ class ReceiptGenerator:
         layout.add_space(1)
 
         # Photo image - FULL WIDTH, adapted from raspi-photo-booth printPhoto()
-        photo = data.get("caricature") or data.get("photo")
+        photo = self._coerce_image(data.get("caricature") or data.get("photo"))
         if photo:
             layout.add_image(photo, width=384, dither=True)
             layout.add_space(1)
 
         # QR code URL if available (from file.io upload)
+        qr_image = self._prepare_qr_image(data.get("qr_image"))
         qr_url = data.get("qr_url")
-        if qr_url:
+        if qr_image or qr_url:
             layout.add_separator("line")
-            layout.add_text("СКАЧАТЬ ФОТО:", size=TextSize.SMALL)
-            # Wrap long URL
-            if len(qr_url) > 32:
-                layout.add_text(qr_url[:32], size=TextSize.SMALL)
-                layout.add_text(qr_url[32:], size=TextSize.SMALL)
+            layout.add_text("СКАЧАТЬ ФОТО:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+            if qr_image:
+                layout.add_image(qr_image, width=192, dither=False)
             else:
-                layout.add_text(qr_url, size=TextSize.SMALL)
+                layout.add_text(qr_url, alignment=Alignment.LEFT, size=TextSize.SMALL)
 
         layout.add_space(1)
         layout.add_separator("double")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout
 
     def _create_rapgod_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -464,50 +620,151 @@ class ReceiptGenerator:
         song_title = data.get("song_title") or "Untitled"
         artist = data.get("artist") or "ARTIFACT AI"
 
-        layout.add_text(song_title, size=TextSize.MEDIUM, bold=True)
-        layout.add_text(artist, size=TextSize.SMALL)
+        layout.add_text(song_title, alignment=Alignment.LEFT, size=TextSize.MEDIUM, bold=True)
+        layout.add_text(artist, alignment=Alignment.LEFT, size=TextSize.SMALL)
         layout.add_space(1)
 
         # Genre and BPM
         genre = data.get("genre") or "trap"
         bpm = data.get("bpm") or 140
-        layout.add_text(f"{genre.upper()} / {bpm} BPM", size=TextSize.SMALL)
+        layout.add_text(f"{genre.upper()} / {bpm} BPM", alignment=Alignment.LEFT, size=TextSize.SMALL)
         layout.add_separator("line")
         layout.add_space(1)
 
         # Hook lyrics (4-6 lines)
         hook = data.get("hook") or ""
         if hook:
-            layout.add_text("ПРИПЕВ:", size=TextSize.SMALL, bold=True)
+            layout.add_text("ПРИПЕВ:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
             # Split and print each line
             lines = hook.split("\n")[:6]  # Max 6 lines
             for line in lines:
                 if line.strip():
-                    layout.add_text(line.strip()[:40], size=TextSize.SMALL)
+                    layout.add_text(line.strip()[:40], alignment=Alignment.LEFT, size=TextSize.SMALL)
             layout.add_space(1)
 
         # One-liner tagline
         one_liner = data.get("one_liner")
         if one_liner:
-            layout.add_text(f'"{one_liner}"', size=TextSize.SMALL)
+            layout.add_text(f'"{one_liner}"', alignment=Alignment.LEFT, size=TextSize.SMALL)
             layout.add_space(1)
 
         # Download URL with QR
         download_url = data.get("download_url")
         if download_url:
             layout.add_separator("line")
-            layout.add_text("СКАЧАТЬ ТРЕК:", size=TextSize.SMALL, bold=True)
+            layout.add_text("СКАЧАТЬ ТРЕК:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
             # Wrap long URL
             if len(download_url) > 32:
-                layout.add_text(download_url[:32], size=TextSize.SMALL)
-                layout.add_text(download_url[32:], size=TextSize.SMALL)
+                layout.add_text(download_url[:32], alignment=Alignment.LEFT, size=TextSize.SMALL)
+                layout.add_text(download_url[32:], alignment=Alignment.LEFT, size=TextSize.SMALL)
             else:
-                layout.add_text(download_url, size=TextSize.SMALL)
+                layout.add_text(download_url, alignment=Alignment.LEFT, size=TextSize.SMALL)
 
         layout.add_space(1)
         layout.add_separator("double")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
+        return layout
+
+    def _create_tower_stack_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Tower Stack mode."""
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("БАШНЯ", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        score = data.get("score", 0)
+        layout.add_text(f"СЧЕТ: {score}", alignment=Alignment.LEFT, size=TextSize.MEDIUM, bold=True)
+
+        height = data.get("height")
+        if height is not None:
+            self._add_kv(layout, "Высота", str(height))
+
+        max_streak = data.get("max_streak")
+        if max_streak is not None:
+            self._add_kv(layout, "Макс. серия", str(max_streak))
+
+        difficulty = data.get("difficulty")
+        if difficulty:
+            self._add_kv(layout, "Сложность", str(difficulty))
+
+        layout.add_space(1)
+        layout.add_separator("double")
+
+        self._create_footer(layout, data)
+        return layout
+
+    def _create_brick_breaker_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Brick Breaker mode."""
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("КИРПИЧИ", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        score = data.get("score", 0)
+        layout.add_text(f"СЧЕТ: {score}", alignment=Alignment.LEFT, size=TextSize.MEDIUM, bold=True)
+
+        level = data.get("level")
+        if level is not None:
+            self._add_kv(layout, "Уровень", str(level))
+
+        max_combo = data.get("max_combo")
+        if max_combo is not None:
+            self._add_kv(layout, "Комбо", f"x{max_combo}")
+
+        lives = data.get("lives_remaining")
+        if lives is not None:
+            self._add_kv(layout, "Жизни", str(lives))
+
+        win = data.get("win")
+        if win is not None:
+            outcome = "ПОБЕДА" if win else "ПРОИГРЫШ"
+            self._add_kv(layout, "Итог", outcome)
+
+        layout.add_space(1)
+        layout.add_separator("double")
+
+        self._create_footer(layout, data)
+        return layout
+
+    def _create_video_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Video mode."""
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        layout.add_text("ВИДЕО", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
+        layout.add_space(1)
+
+        title = data.get("title") or data.get("media_name") or "Без названия"
+        layout.add_text(title, alignment=Alignment.LEFT, size=TextSize.MEDIUM, bold=True)
+
+        media_type = data.get("media_type")
+        if media_type:
+            type_map = {
+                "VIDEO": "ВИДЕО",
+                "IMAGE": "ФОТО",
+                "GIF": "GIF",
+            }
+            self._add_kv(layout, "Тип", type_map.get(str(media_type), str(media_type)))
+
+        index = data.get("index")
+        total = data.get("total")
+        if index is not None and total is not None:
+            self._add_kv(layout, "Позиция", f"{index}/{total}")
+
+        status = data.get("status")
+        if status:
+            self._add_kv(layout, "Статус", str(status))
+
+        layout.add_space(1)
+        layout.add_separator("double")
+
+        self._create_footer(layout, data)
         return layout
 
     def _create_guess_me_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -521,13 +778,13 @@ class ReceiptGenerator:
 
         title = data.get("title") or "Загадка"
         prediction = data.get("prediction") or ""
-        layout.add_text(title, size=TextSize.MEDIUM, bold=True)
+        layout.add_text(title, alignment=Alignment.LEFT, size=TextSize.MEDIUM, bold=True)
         if prediction:
             layout.add_space(1)
-            layout.add_text(prediction, size=TextSize.MEDIUM)
+            layout.add_text(prediction, alignment=Alignment.LEFT, size=TextSize.MEDIUM)
 
         # Caricature - FULL WIDTH, NO FRAME
-        caricature = data.get("caricature")
+        caricature = self._coerce_image(data.get("caricature"))
         if caricature:
             layout.add_space(1)
             layout.add_image(caricature, width=384, dither=True)
@@ -535,5 +792,5 @@ class ReceiptGenerator:
         layout.add_space(1)
         layout.add_separator("double")
 
-        self._create_footer(layout)
+        self._create_footer(layout, data)
         return layout

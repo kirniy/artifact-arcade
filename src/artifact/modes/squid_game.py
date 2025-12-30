@@ -26,6 +26,7 @@ from artifact.ai.caricature import CaricatureService
 from artifact.audio.engine import get_audio_engine
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.coupon_service import get_coupon_service, CouponResult
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class SquidGameMode(BaseMode):
     """
 
     name = "squid_game"
-    display_name = "ИГРА"
+    display_name = "КАЛЬМАР"
     description = "Красный свет - Зелёный свет"
     icon = "☠"
     style = "squid"
@@ -139,6 +140,8 @@ class SquidGameMode(BaseMode):
 
         # Result
         self._coupon_code: str = ""
+        self._coupon_result: Optional[CouponResult] = None
+        self._coupon_task: Optional[asyncio.Task] = None
         self._survived_time: float = 0.0
         self._player_photo: Optional[bytes] = None
         self._sketch_image: Optional[bytes] = None
@@ -147,6 +150,7 @@ class SquidGameMode(BaseMode):
         self._photo_countdown: float = 0.0
         self._sketch_task: Optional[asyncio.Task] = None
         self._caricature_service = CaricatureService()
+        self._coupon_service = get_coupon_service()
         self._sketch_cache: dict[int, np.ndarray] = {}
         self._audio = get_audio_engine()
         self._countdown_second: int = 3
@@ -625,10 +629,13 @@ class SquidGameMode(BaseMode):
         self._sub_phase = SquidPhase.VICTORY
         self.change_phase(ModePhase.RESULT)
         self._survived_time = self._total_time
-        self._coupon_code = generate_coupon_code()
+        self._coupon_code = "Загрузка..."  # Placeholder while registering
         self._sketch_variant = "victory"
         if not self._sketch_image and self._player_photo:
             self._start_sketch_generation(eliminated=False)
+
+        # Start async coupon registration
+        self._coupon_task = asyncio.create_task(self._register_victory_coupon())
 
         # Celebration effects
         self._flash_alpha = 1.0
@@ -643,7 +650,24 @@ class SquidGameMode(BaseMode):
         if confetti:
             confetti.burst(100)
 
-        logger.info(f"VICTORY! Coupon: {self._coupon_code}")
+        logger.info("VICTORY! Registering coupon...")
+
+    async def _register_victory_coupon(self) -> None:
+        """Register coupon with vnvnc-bot API."""
+        try:
+            result = await self._coupon_service.register_squid_win()
+            if result.success and result.coupon_code:
+                self._coupon_code = result.coupon_code
+                self._coupon_result = result
+                logger.info(f"Coupon registered: {self._coupon_code}")
+            else:
+                # Fallback to local code if API fails
+                self._coupon_code = generate_coupon_code()
+                logger.warning(f"Coupon API failed ({result.error}), using local code: {self._coupon_code}")
+        except Exception as e:
+            # Fallback to local code on any error
+            self._coupon_code = generate_coupon_code()
+            logger.error(f"Coupon registration failed: {e}, using local code: {self._coupon_code}")
 
     def on_input(self, event: Event) -> bool:
         """Handle input."""
@@ -673,6 +697,11 @@ class SquidGameMode(BaseMode):
         if self._sketch_task and not self._sketch_task.done():
             self._sketch_task.cancel()
         self._sketch_task = None
+
+        # Cancel coupon registration if in progress
+        if self._coupon_task and not self._coupon_task.done():
+            self._coupon_task.cancel()
+        self._coupon_task = None
 
         self._particles.clear_all()
         self.stop_animations()

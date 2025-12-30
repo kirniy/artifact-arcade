@@ -21,6 +21,7 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.coupon_service import get_coupon_service, CouponResult
 from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
@@ -318,7 +319,7 @@ class QuizMode(BaseMode):
     """
 
     name = "quiz"
-    display_name = "ВИКТОРИНА"
+    display_name = "КВИЗ"
     description = "Проверь свои знания!"
     icon = "?"
     style = "quiz"
@@ -348,6 +349,11 @@ class QuizMode(BaseMode):
         self._victory_doodle: Optional[Caricature] = None
         self._ai_task: Optional[asyncio.Task] = None
         self._progress_tracker = SmartProgressTracker(mode_theme="quiz")
+
+        # Coupon service for prize registration
+        self._coupon_service = get_coupon_service()
+        self._coupon_code: Optional[str] = None
+        self._coupon_result: Optional[CouponResult] = None
 
         # Game state
         self._questions: List[Tuple[str, List[str], int]] = []
@@ -666,7 +672,7 @@ class QuizMode(BaseMode):
             logger.warning(f"Quiz camera preview error: {e}")
 
     async def _generate_victory_doodle(self) -> None:
-        """Generate a celebratory doodle for the winner."""
+        """Generate a celebratory doodle for the winner and register coupon."""
         try:
             if not self._photo_data:
                 return
@@ -674,17 +680,35 @@ class QuizMode(BaseMode):
             # Advance to image generation phase
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
 
-            # Generate victory-themed caricature with QUIZ_WINNER style
-            # Designed for 128x128 pixel display with Russian labels
-            self._victory_doodle = await self._caricature_service.generate_caricature(
-                reference_photo=self._photo_data,
-                style=CaricatureStyle.QUIZ_WINNER,
-                personality_context=f"ПОБЕДИТЕЛЬ! Набрал {self._score} из {len(self._questions)}! Триумф, праздник, чемпион!"
+            # Run caricature generation and coupon registration in parallel
+            caricature_task = asyncio.create_task(
+                self._caricature_service.generate_caricature(
+                    reference_photo=self._photo_data,
+                    style=CaricatureStyle.QUIZ_WINNER,
+                    personality_context=f"ПОБЕДИТЕЛЬ! Набрал {self._score} из {len(self._questions)}! Триумф, праздник, чемпион!"
+                )
             )
+            coupon_task = asyncio.create_task(
+                self._coupon_service.register_quiz_win()
+            )
+
+            # Wait for both tasks
+            self._victory_doodle, self._coupon_result = await asyncio.gather(
+                caricature_task, coupon_task, return_exceptions=False
+            )
+
             if self._victory_doodle:
                 logger.info(f"Victory doodle generated: {len(self._victory_doodle.image_data)} bytes")
             else:
                 logger.warning("Victory doodle generation returned None")
+
+            # Store coupon code for display
+            if self._coupon_result and self._coupon_result.success:
+                self._coupon_code = self._coupon_result.coupon_code
+                logger.info(f"Coupon registered: {self._coupon_code}")
+            else:
+                error = self._coupon_result.error if self._coupon_result else "Unknown"
+                logger.warning(f"Coupon registration failed: {error}")
 
             # Advance to finalizing
             self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
@@ -719,8 +743,12 @@ class QuizMode(BaseMode):
         pct = int(self._score / total * 100) if total > 0 else 0
 
         if self._won_cocktail:
-            display = "КОКТЕЙЛЬ ТВОЙ!"
-            ticker = f"ПОБЕДА! {self._score}/{total} - БЕСПЛАТНЫЙ КОКТЕЙЛЬ!"
+            if self._coupon_code:
+                display = f"КОД: {self._coupon_code}"
+                ticker = f"ПОБЕДА! КОКТЕЙЛЬ: {self._coupon_code}"
+            else:
+                display = "КОКТЕЙЛЬ ТВОЙ!"
+                ticker = f"ПОБЕДА! {self._score}/{total} - БЕСПЛАТНЫЙ КОКТЕЙЛЬ!"
             lcd = "КОКТЕЙЛЬ ТВОЙ!"
         else:
             display = f"Счёт: {self._score}/{total}"
@@ -741,6 +769,7 @@ class QuizMode(BaseMode):
                 "won_cocktail": self._won_cocktail,
                 "type": "quiz",
                 "caricature": self._victory_doodle.image_data if self._victory_doodle else None,
+                "coupon_code": self._coupon_code,  # Add coupon code for printing
                 "timestamp": datetime.now().isoformat()
             }
         )
