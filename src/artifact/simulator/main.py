@@ -22,34 +22,16 @@ from artifact.core.events import EventBus, Event, EventType
 from artifact.graphics.renderer import Renderer
 from artifact.animation.engine import AnimationEngine
 from artifact.modes.manager import ModeManager
-from artifact.modes.fortune import FortuneMode
-from artifact.modes.roulette import RouletteMode
-from artifact.modes.quiz import QuizMode
-from artifact.modes.ai_prophet import AIProphetMode
-from artifact.modes.squid_game import SquidGameMode
-from artifact.modes.guess_me import GuessMeMode
-from artifact.modes.autopsy import AutopsyMode
-from artifact.modes.roast import RoastMeMode
-from artifact.modes.bar_runner import BarRunnerMode
-from artifact.modes.flow_field import FlowFieldMode
-from artifact.modes.glitch_mirror import GlitchMirrorMode
-from artifact.modes.dither_art import DitherArtMode
-from artifact.modes.ascii_art import AsciiArtMode
-from artifact.modes.brick_breaker import BrickBreakerMode
-from artifact.modes.snake_classic import SnakeClassicMode
-from artifact.modes.snake_tiny import SnakeTinyMode
-from artifact.modes.lunar_lander import LunarLanderMode
-from artifact.modes.pong import PongMode
-from artifact.modes.flappy import FlappyMode
-from artifact.modes.game_2048 import Game2048Mode
-from artifact.modes.tower_stack import TowerStackMode
-from artifact.modes.hand_snake import HandSnakeMode
-from artifact.modes.rocketpy import RocketPyMode
-from artifact.modes.skii import SkiiMode
-from artifact.modes.ninja_fruit import NinjaFruitMode
-from artifact.modes.photobooth import PhotoboothMode
-from artifact.modes.gesture_game import GestureGameMode
-from artifact.modes.rapgod import RapGodMode
+# Active modes only (in display order)
+from artifact.modes.fortune import FortuneMode           # 1. ГАДАЛКА
+from artifact.modes.ai_prophet import AIProphetMode      # 2. ПРОРОК
+from artifact.modes.photobooth import PhotoboothMode     # 3. ФОТОБУДКА
+from artifact.modes.roast import RoastMeMode             # 4. ПРОЖАРКА
+from artifact.modes.squid_game import SquidGameMode      # 5. КАЛЬМАР
+from artifact.modes.quiz import QuizMode                 # 6. КВИЗ
+from artifact.modes.tower_stack import TowerStackMode    # 7. БАШНЯ
+from artifact.modes.brick_breaker import BrickBreakerMode  # 8. КИРПИЧИ
+from artifact.modes.video import VideoMode               # 9. ВИДЕО
 from artifact.audio.engine import AudioEngine, get_audio_engine
 from artifact.utils.camera_service import camera_service
 
@@ -141,53 +123,39 @@ class ArtifactSimulator:
         logger.info("ArtifactSimulator initialized")
 
     def _register_modes(self) -> None:
-        """Register all available game modes."""
-        # Priority 1: Main attractions
-        self.mode_manager.register_mode(FortuneMode)       # Fortune teller - classic
-        self.mode_manager.register_mode(PhotoboothMode)    # Photo booth - instant gratification
-        self.mode_manager.register_mode(BrickBreakerMode)  # Brick breaker - addictive arcade
-        self.mode_manager.register_mode(QuizMode)          # Quiz - engaging competition
-
-        # Priority 2: AI-powered experiences
-        self.mode_manager.register_mode(RapGodMode)        # Rap track generator
-        self.mode_manager.register_mode(RoastMeMode)       # AI roasts
-        self.mode_manager.register_mode(GuessMeMode)       # AI guessing game
-        self.mode_manager.register_mode(AutopsyMode)       # X-ray analysis
-
-        # Priority 3: Classic arcade games
-        self.mode_manager.register_mode(SnakeClassicMode)
-        self.mode_manager.register_mode(PongMode)
-        self.mode_manager.register_mode(FlappyMode)
-        self.mode_manager.register_mode(Game2048Mode)
-        self.mode_manager.register_mode(TowerStackMode)
-        self.mode_manager.register_mode(LunarLanderMode)
-        self.mode_manager.register_mode(NinjaFruitMode)
-        self.mode_manager.register_mode(SkiiMode)
-        self.mode_manager.register_mode(RocketPyMode)
-
-        # Priority 4: Camera/gesture modes
-        self.mode_manager.register_mode(GestureGameMode)
-        self.mode_manager.register_mode(SquidGameMode)
-        self.mode_manager.register_mode(HandSnakeMode)
-
-        # Priority 5: Art modes
-        self.mode_manager.register_mode(FlowFieldMode)
-        self.mode_manager.register_mode(GlitchMirrorMode)
-        self.mode_manager.register_mode(DitherArtMode)
-        self.mode_manager.register_mode(AsciiArtMode)
-
-        # Priority 6: Other modes
-        self.mode_manager.register_mode(RouletteMode)
-        self.mode_manager.register_mode(BarRunnerMode)
-        self.mode_manager.register_mode(SnakeTinyMode)
-
-        # AI Prophet mode - uses webcam and Gemini AI
+        """Register game modes in display order."""
         import os
+
+        # 1. ГАДАЛКА - Fortune teller
+        self.mode_manager.register_mode(FortuneMode)
+
+        # 2. ПРОРОК - AI Prophet (requires API key)
         if os.environ.get("GEMINI_API_KEY"):
             self.mode_manager.register_mode(AIProphetMode)
             logger.info("AI Prophet mode enabled (API key found)")
         else:
             logger.warning("AI Prophet mode disabled (no GEMINI_API_KEY)")
+
+        # 3. ФОТОБУДКА - Photo booth
+        self.mode_manager.register_mode(PhotoboothMode)
+
+        # 4. ПРОЖАРКА - Roast mode
+        self.mode_manager.register_mode(RoastMeMode)
+
+        # 5. КАЛЬМАР - Squid game (red light/green light)
+        self.mode_manager.register_mode(SquidGameMode)
+
+        # 6. КВИЗ - Quiz
+        self.mode_manager.register_mode(QuizMode)
+
+        # 7. БАШНЯ - Tower stack
+        self.mode_manager.register_mode(TowerStackMode)
+
+        # 8. КИРПИЧИ - Brick breaker
+        self.mode_manager.register_mode(BrickBreakerMode)
+
+        # 9. ВИДЕО - Video player
+        self.mode_manager.register_mode(VideoMode)
 
         logger.info(f"Registered {len(self.mode_manager._registered_modes)} modes")
 

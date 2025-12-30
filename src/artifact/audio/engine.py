@@ -69,6 +69,21 @@ class AudioEngine:
     - Бригада - melancholic drama
     """
 
+    # Nostalgic idle tracks that cycle - each has its own vibe
+    IDLE_TRACKS = [
+        "music_christmas",      # Christmas/NYE - festive bells (first for NYE!)
+        "music_nightcall",      # Synthwave - Kavinsky vibes
+        "music_bumer",          # Russian club - Черный бумер
+        "music_satisfaction",   # Electro house - Benny Benassi
+        "music_brigada",        # Melancholic - Бригада drama
+        "music_arcade",         # 8-bit games - classic arcade
+        "music_trance",         # Energetic - party vibes
+        "music_chill",          # Ambient - chill mode
+    ]
+
+    IDLE_TRACK_DURATION = 25000  # 25 seconds per track before cycling (more variety)
+    IDLE_PAUSE_TIMEOUT = 120000  # 2 minutes of no motion = pause music
+
     def __init__(self):
         self._initialized = False
         self._sounds: Dict[str, pygame.mixer.Sound] = {}
@@ -80,6 +95,14 @@ class AudioEngine:
         self._current_music: Optional[str] = None
         self._music_channel: Optional[pygame.mixer.Channel] = None
         self._generated = False
+
+        # Idle music cycling state
+        self._idle_mode = False
+        self._idle_track_index = 0
+        self._idle_track_timer = 0.0
+        self._idle_paused = False
+        self._last_motion_time = 0.0
+        self._motion_detected = True  # Start with motion detected
 
     def init(self, skip_generation: bool = False) -> bool:
         """Initialize the audio system."""
@@ -459,6 +482,9 @@ class AudioEngine:
     def _gen_all_music(self) -> None:
         """Generate all iconic music tracks."""
 
+        # CHRISTMAS style - festive bells for NYE celebration
+        self._gen_christmas_style()
+
         # NIGHTCALL style - synthwave for fortune/mystical modes
         self._gen_nightcall_style()
 
@@ -483,12 +509,68 @@ class AudioEngine:
         # QUIZ style - tension/thinking music
         self._gen_quiz_style()
 
+    def _gen_christmas_style(self) -> None:
+        """Festive Christmas/NYE music with bells and chimes. Holiday vibes!"""
+        samples = array.array('h')
+        bpm = 120
+        beat = 60.0 / bpm
+        duration = beat * 32  # 8 bars for full melody
+
+        # Jingle Bells-inspired melody (simplified)
+        # C-C-C | C-C-C | C-E-G-C | D-D-D-D | D-C-C-C | C-C-B-B | C-D-E-F | G
+        melody_notes = [
+            262, 262, 262, 0,   # C C C rest
+            262, 262, 262, 0,   # C C C rest
+            262, 330, 392, 262, # C E G C
+            294, 294, 294, 294, # D D D D
+            294, 262, 262, 262, # D C C C
+            262, 262, 247, 247, # C C B B
+            262, 294, 330, 349, # C D E F
+            392, 392, 392, 0,   # G G G rest
+        ]
+
+        for i in range(int(SAMPLE_RATE * duration)):
+            t = i / SAMPLE_RATE
+            beat_idx = int(t / (beat / 2)) % len(melody_notes)
+            val = 0
+
+            # Melody with bell-like tone
+            note = melody_notes[beat_idx]
+            if note > 0:
+                # Bell sound - sine with harmonic overtones and decay
+                env = max(0, 1 - ((t * 4) % 1) * 2)  # Quick decay
+                val += sine(t, note) * 0.2 * env
+                val += sine(t, note * 2) * 0.08 * env  # Octave
+                val += sine(t, note * 3) * 0.04 * env  # Third harmonic
+                val += triangle(t, note * 4) * 0.02 * env  # Chime sparkle
+
+            # Sleigh bells - high frequency jingle
+            if ((t * 8) % 1) < 0.1:
+                jingle_env = max(0, 1 - ((t * 8) % 1) * 10)
+                val += (sine(t, 2000) * 0.03 + sine(t, 3000) * 0.02) * jingle_env
+
+            # Warm pad chord (C major)
+            pad_env = 0.3
+            val += sine(t, 130) * 0.08 * pad_env  # C2 bass
+            val += sine(t, 165) * 0.04 * pad_env  # E2
+            val += sine(t, 196) * 0.04 * pad_env  # G2
+
+            # Subtle bass pulse on beat
+            beat_phase = (t / beat) % 1
+            if beat_phase < 0.1:
+                kick_freq = 80 * (1 - beat_phase * 8)
+                val += sine(t, max(30, kick_freq)) * 0.15 * (1 - beat_phase * 10)
+
+            samples.append(int(max(-1, min(1, val)) * 32767 * 0.7))
+
+        self._sounds["music_christmas"] = self._create_sound(samples)
+
     def _gen_nightcall_style(self) -> None:
         """Kavinsky Nightcall-inspired synthwave. Dark, arpeggiated, 80s vibes."""
         samples = array.array('h')
         bpm = 98
         beat = 60.0 / bpm
-        duration = beat * 16  # 4 bars
+        duration = beat * 32  # 8 bars for more variety
 
         # Am - F - C - G progression (Nightcall-esque)
         chords = [
@@ -550,7 +632,7 @@ class AudioEngine:
         samples = array.array('h')
         bpm = 130
         beat = 60.0 / bpm
-        duration = beat * 16
+        duration = beat * 32  # 8 bars for more variety
 
         # Em - Am progression (Russian club vibes)
         bass_notes = [82, 82, 110, 110]  # E, E, A, A
@@ -606,7 +688,7 @@ class AudioEngine:
         samples = array.array('h')
         bpm = 130
         beat = 60.0 / bpm
-        duration = beat * 16
+        duration = beat * 32  # 8 bars for more variety
 
         # The iconic riff pattern (simplified)
         # D - D - D - D - F - D - D - rest
@@ -649,7 +731,7 @@ class AudioEngine:
         samples = array.array('h')
         bpm = 85
         beat = 60.0 / bpm
-        duration = beat * 16
+        duration = beat * 32  # 8 bars for more variety
 
         # Am - Dm - E - Am (Russian melancholic progression)
         chords = [
@@ -701,7 +783,7 @@ class AudioEngine:
         samples = array.array('h')
         bpm = 155
         beat = 60.0 / bpm
-        duration = beat * 16
+        duration = beat * 32  # 8 bars for more variety
 
         # Major key, happy arcade vibes
         melody = [523, 587, 659, 784, 880, 784, 659, 587,
@@ -748,7 +830,7 @@ class AudioEngine:
         samples = array.array('h')
         bpm = 140
         beat = 60.0 / bpm
-        duration = beat * 16
+        duration = beat * 32  # 8 bars for more variety
 
         # Trance chord progression
         chords = [
@@ -801,7 +883,7 @@ class AudioEngine:
         samples = array.array('h')
         bpm = 80
         beat = 60.0 / bpm
-        duration = beat * 16
+        duration = beat * 32  # 8 bars for more variety
 
         # Dreamy chords
         chords = [
@@ -852,7 +934,7 @@ class AudioEngine:
         samples = array.array('h')
         bpm = 110
         beat = 60.0 / bpm
-        duration = beat * 16
+        duration = beat * 32  # 8 bars for more variety
 
         # Tense diminished/sus chords
         chords = [
@@ -1138,6 +1220,32 @@ class AudioEngine:
         """Set SFX volume (0.0 - 1.0)."""
         self._volume_sfx = max(0.0, min(1.0, volume))
 
+    def set_volume(self, volume: float) -> None:
+        """Set master volume (alias for set_master_volume)."""
+        self.set_master_volume(volume)
+
+    def get_volume(self) -> float:
+        """Get current master volume (0.0 - 1.0)."""
+        return self._volume_master
+
+    def is_muted(self) -> bool:
+        """Check if audio is muted."""
+        return self._muted
+
+    def mute(self) -> None:
+        """Mute audio."""
+        if not self._muted:
+            self._muted = True
+            pygame.mixer.pause()
+            logger.info("Audio muted")
+
+    def unmute(self) -> None:
+        """Unmute audio."""
+        if self._muted:
+            self._muted = False
+            pygame.mixer.unpause()
+            logger.info("Audio unmuted")
+
     def toggle_mute(self) -> bool:
         """Toggle mute state."""
         self._muted = not self._muted
@@ -1146,6 +1254,93 @@ class AudioEngine:
         else:
             pygame.mixer.unpause()
         return self._muted
+
+    # ===== CYCLING IDLE MUSIC =====
+
+    def start_idle_music(self) -> None:
+        """Start cycling idle music mode."""
+        self._idle_mode = True
+        self._idle_paused = False
+        self._idle_track_timer = 0.0
+        self._motion_detected = True
+        self._last_motion_time = 0.0
+        # Start with a random track for variety
+        self._idle_track_index = random.randint(0, len(self.IDLE_TRACKS) - 1)
+        self._play_idle_track()
+        logger.info(f"Idle music started with track: {self.IDLE_TRACKS[self._idle_track_index]}")
+
+    def stop_idle_music(self) -> None:
+        """Stop idle music cycling."""
+        self._idle_mode = False
+        self.stop_music(fade_out_ms=500)
+        logger.info("Idle music stopped")
+
+    def _play_idle_track(self) -> None:
+        """Play the current idle track."""
+        if not self._idle_mode or self._idle_paused:
+            return
+
+        track_name = self.IDLE_TRACKS[self._idle_track_index]
+        sound = self._sounds.get(track_name)
+        if sound:
+            self.stop_music(fade_out_ms=300)
+            volume = self._volume_music * self._volume_master
+            sound.set_volume(volume)
+            try:
+                self._music_channel = pygame.mixer.Channel(0)
+                self._music_channel.set_volume(volume)
+                self._music_channel.play(sound, loops=-1, fade_ms=500)
+                self._current_music = track_name
+                self._music_playing = True
+            except Exception as e:
+                logger.error(f"Failed to play idle track: {e}")
+
+    def update_idle_music(self, delta_ms: float, motion_detected: bool = True) -> None:
+        """Update idle music cycling and motion detection.
+
+        Call this every frame during idle state.
+        Args:
+            delta_ms: Time since last update in milliseconds
+            motion_detected: True if camera detected motion
+        """
+        if not self._idle_mode:
+            return
+
+        # Track motion state
+        if motion_detected:
+            self._motion_detected = True
+            self._last_motion_time = 0.0
+
+            # Resume if was paused
+            if self._idle_paused:
+                self._idle_paused = False
+                self._play_idle_track()
+                logger.info("Idle music resumed - motion detected")
+        else:
+            self._last_motion_time += delta_ms
+
+            # Pause after timeout with no motion
+            if not self._idle_paused and self._last_motion_time > self.IDLE_PAUSE_TIMEOUT:
+                self._idle_paused = True
+                self.stop_music(fade_out_ms=2000)  # Slow fade out
+                logger.info("Idle music paused - no motion detected")
+
+        # Cycle to next track after duration
+        if not self._idle_paused:
+            self._idle_track_timer += delta_ms
+            if self._idle_track_timer >= self.IDLE_TRACK_DURATION:
+                self._idle_track_timer = 0.0
+                self._idle_track_index = (self._idle_track_index + 1) % len(self.IDLE_TRACKS)
+                self._play_idle_track()
+                logger.info(f"Idle music cycling to: {self.IDLE_TRACKS[self._idle_track_index]}")
+
+    def is_idle_music_active(self) -> bool:
+        """Check if idle music mode is active."""
+        return self._idle_mode
+
+    def is_idle_music_paused(self) -> bool:
+        """Check if idle music is paused due to no motion."""
+        return self._idle_mode and self._idle_paused
 
     def cleanup(self) -> None:
         """Cleanup audio resources."""

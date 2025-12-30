@@ -1,12 +1,18 @@
 """Efficient idle animation scenes optimized for 60fps on Raspberry Pi.
 
-This module provides 4 smooth, visually stunning idle scenes that cycle automatically.
+This module provides 9 curated idle scenes that cycle automatically.
 All effects are optimized using pygame primitives and simple math - no per-pixel loops.
 
-1. MYSTICAL EYE - Animated eye with pulsing aura
-2. COSMIC PORTAL - Starfield with rotating portal
-3. CAMERA_MIRROR - Live camera feed with effects
-4. PLASMA_WAVE - Smooth plasma color cycling
+Scenes:
+1. VNVNC_ENTRANCE - Grand entrance with neon sign
+2. CAMERA_EFFECTS - Live camera with cycling effects
+3. DIVOOM_GALLERY - Cycling Divoom pixel art GIFs
+4. SAGA_LIVE - SAGA live video with audio
+5. POSTER_SLIDESHOW - Fast slideshow of event posters
+6. DNA_HELIX - DNA double helix animation
+7. SNOWFALL - Winter snowfall
+8. FIREPLACE - Cozy fireplace
+9. HYPERCUBE - 4D hypercube rotation
 
 Each scene has coordinated animations for:
 - Main display (128x128)
@@ -17,63 +23,65 @@ Each scene has coordinated animations for:
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import Path
 import math
 import random
+import logging
 import numpy as np
 from numpy.typing import NDArray
 
 from artifact.graphics.primitives import clear, draw_circle, draw_rect, fill, draw_line
+
+logger = logging.getLogger(__name__)
 from artifact.graphics.fonts import load_font, draw_text_bitmap
 from artifact.graphics.text_utils import (
     draw_animated_text, draw_centered_text, TextEffect,
-    render_ticker_animated, TickerEffect, hsv_to_rgb
+    render_ticker_animated, render_ticker_static, TickerEffect, hsv_to_rgb
 )
 from artifact.utils.camera_service import camera_service
+from artifact.utils.audio_utils import extract_audio_from_video
 
 
 # Scene duration in milliseconds
 SCENE_DURATION = 12000  # 12 seconds per scene (more dynamic pacing)
 TRANSITION_DURATION = 1000  # 1 second smooth fade (increased from 500ms)
+CAMERA_EFFECT_DURATION = 8000  # 8 seconds per camera effect before auto-cycling
+
+# Scene-specific duration overrides (ms)
+SCENE_DURATIONS = {
+    # DIVOOM_GALLERY is the star - New Year celebration, plays all GIFs fully
+    'DIVOOM_GALLERY': 180000,  # 3 minutes - cycles through ~15 GIFs
+    # VNVNC entrance gets more time - it's the signature scene
+    'VNVNC_ENTRANCE': 25000,  # 25 seconds
+    # SAGA_LIVE video plays once with audio
+    'SAGA_LIVE': 45000,       # 45 seconds - video duration
+    # POSTER_SLIDESHOW cycles quickly through event posters
+    'POSTER_SLIDESHOW': 60000,  # 60 seconds to show many posters
+}
 
 
 class IdleScene(Enum):
-    """Available idle scenes."""
-    MYSTICAL_EYE = auto()
-    COSMIC_PORTAL = auto()
-    CAMERA_MIRROR = auto()
-    PLASMA_WAVE = auto()
-    # New scenes with camera background
-    NEON_TUNNEL = auto()      # Camera with neon ring tunnel
-    GLITCH_GRID = auto()      # Camera with glitch scanlines
-    FIRE_SILHOUETTE = auto()  # Camera with fire/heat effect
-    MATRIX_RAIN = auto()      # Camera with matrix code rain
-    STARFIELD_3D = auto()     # Camera with 3D starfield overlay
-    # EPIC demo effects (ported from led_demo.py)
-    PLASMA_VORTEX = auto()    # Intense plasma vortex
-    NEON_GRID = auto()        # Retro synthwave grid
-    ELECTRIC_STORM = auto()   # Lightning storm
-    QUANTUM_FIELD = auto()    # Quantum particles
-    DNA_HELIX = auto()        # DNA double helix
-    # Classic effects
+    """Available idle scenes - curated set of 9 effects."""
+    VNVNC_ENTRANCE = auto()   # Grand entrance with neon sign - ALWAYS FIRST
+    CAMERA_EFFECTS = auto()   # Camera with cycling effects (mirror, neon, glitch, fire, matrix, starfield)
+    DIVOOM_GALLERY = auto()   # Cycling Divoom pixel art GIFs
+    SAGA_LIVE = auto()        # SAGA live video with audio
+    POSTER_SLIDESHOW = auto() # Fast slideshow of event posters
+    DNA_HELIX = auto()        # DNA double helix animation
     SNOWFALL = auto()         # Winter snowfall
     FIREPLACE = auto()        # Cozy fireplace
-    PLASMA_CLASSIC = auto()   # Classic plasma effect
-    TUNNEL = auto()           # Infinite tunnel
-    WAVE_PATTERN = auto()     # Wave interference
-    AURORA = auto()           # Northern lights
-    KALEIDOSCOPE = auto()     # Kaleidoscope pattern
-    FIREWORKS = auto()        # Exploding fireworks
-    LAVA_LAMP = auto()        # Floating blobs
-    GAME_OF_LIFE = auto()     # Conway's game
-    RADAR_SWEEP = auto()      # Radar scanning
-    SPIRAL_GALAXY = auto()    # Spinning galaxy
-    BLACK_HOLE = auto()       # Black hole effect
-    HYPERCUBE = auto()        # 4D hypercube
-    # Iconic/character scenes
-    PACMAN = auto()           # Pac-Man chase
-    NYAN_CAT = auto()         # Rainbow cat
-    TETRIS = auto()           # Falling blocks
-    FOUR_SEASONS = auto()     # Fractal tree with seasons
+    HYPERCUBE = auto()        # 4D hypercube rotation
+
+
+# Camera effect sub-modes (cycled within CAMERA_EFFECTS scene)
+class CameraEffect(Enum):
+    """Sub-effects for CAMERA_EFFECTS scene."""
+    MIRROR = auto()           # Basic silhouette mirror
+    NEON_TUNNEL = auto()      # Neon ring tunnel overlay
+    GLITCH_GRID = auto()      # Glitch scanlines
+    FIRE_SILHOUETTE = auto()  # Fire/heat effect
+    MATRIX_RAIN = auto()      # Matrix code rain
+    STARFIELD_3D = auto()     # 3D starfield overlay
 
 
 @dataclass
@@ -82,7 +90,10 @@ class SceneState:
     time: float = 0.0
     scene_time: float = 0.0
     frame: int = 0
-    current_scene: IdleScene = IdleScene.MYSTICAL_EYE
+    current_scene: IdleScene = IdleScene.VNVNC_ENTRANCE
+    # Camera effects sub-mode state
+    camera_effect: CameraEffect = CameraEffect.MIRROR
+    camera_effect_time: float = 0.0  # Time in current effect
 
 
 class RotatingIdleAnimation:
@@ -94,14 +105,20 @@ class RotatingIdleAnimation:
 
     def __init__(self):
         self.state = SceneState()
-        self.scenes = list(IdleScene)
-        random.shuffle(self.scenes)
+        # VNVNC_ENTRANCE is ALWAYS first, then shuffle the rest
+        self.scenes = [IdleScene.VNVNC_ENTRANCE]
+        other_scenes = [s for s in IdleScene if s != IdleScene.VNVNC_ENTRANCE]
+        random.shuffle(other_scenes)
+        self.scenes.extend(other_scenes)
         self.scene_index = 0
         self.state.current_scene = self.scenes[0]
 
         # Manual control
         self.manual_mode = False
         self.manual_timeout = 0.0
+
+        # Lock current scene (numpad 0 toggles)
+        self.locked = False
 
         # Scene transition with crossfade
         self.transition_progress = 0.0
@@ -221,6 +238,19 @@ class RotatingIdleAnimation:
                 if diff == 2:
                     self.hypercube_edges.append((i, j))
 
+        # Poster slideshow state
+        self.poster_images: List[NDArray[np.uint8]] = []
+        self.poster_index = 0
+        self.poster_time = 0.0
+        self.poster_interval = 500.0  # 500ms per poster (fast!)
+        self.poster_dates: List[str] = []  # DD.MM.YY format
+        self._pil_available = False
+        try:
+            from PIL import Image
+            self._pil_available = True
+        except ImportError:
+            logger.warning("PIL not available for poster slideshow")
+
         # Pac-Man maze and state
         self.pacman_tile = 8
         self.pacman_maze = [
@@ -282,6 +312,200 @@ class RotatingIdleAnimation:
         self.tree_particles: List[dict] = []
         self.tree_branch_cache: List[Tuple[float, float, int]] = []
 
+        # VNVNC Entrance state
+        self.entrance_confetti: List[dict] = []
+        self.entrance_diamonds: List[dict] = [
+            {'x': 20, 'y': 25, 'phase': 0, 'scale': 0.8},
+            {'x': 108, 'y': 25, 'phase': 1.5, 'scale': 0.8},
+        ]
+        self.entrance_snow: List[dict] = []
+        for _ in range(50):
+            self.entrance_snow.append({
+                'x': random.randint(0, 127), 'y': random.randint(100, 127),
+                'speed': random.uniform(0.1, 0.3), 'size': 1
+            })
+
+        # Bar Cocktails state
+        self.bar_glasses: List[dict] = []
+        self.bar_shots: List[dict] = []
+        self.bar_bubbles: List[dict] = []
+        self.bar_neon_flicker = 1.0
+        self._init_bar_scene()
+
+        # Divoom Gallery state (GIF animations from Divoom)
+        self.divoom_gifs: List[List[np.ndarray]] = []  # List of GIFs, each is list of frames
+        self.divoom_gif_index = 0
+        self.divoom_frame_index = 0
+        self.divoom_frame_time = 0.0
+        self.divoom_frame_duration = 100.0  # ms per frame
+        self.divoom_gif_duration = 12000.0  # 12 seconds per GIF for full animation
+        self.divoom_gif_time = 0.0
+        self.divoom_gif_play_count = 0  # How many times current GIF has played
+        self.divoom_gif_plays_required = 2  # Play each GIF twice before moving on
+        self._load_divoom_gifs()
+
+        # SAGA_LIVE video state
+        self.saga_video_capture = None
+        self.saga_video_path: Optional[Path] = None
+        self.saga_audio_playing = False
+        self._cv2_available = False
+        self._pygame_mixer_available = False
+        self._load_saga_video()
+
+    def _load_divoom_gifs(self) -> None:
+        """Load all Divoom GIF animations from assets folder."""
+        try:
+            from PIL import Image
+        except ImportError:
+            logger.warning("PIL not available, Divoom GIFs disabled")
+            return
+
+        gif_dir = Path(__file__).parent.parent.parent.parent / "assets" / "divoom_animations"
+        if not gif_dir.exists():
+            logger.info(f"Divoom animations directory not found: {gif_dir}")
+            return
+
+        gif_files = sorted(gif_dir.glob("*.gif"))
+        if not gif_files:
+            logger.info("No Divoom GIF files found")
+            return
+
+        logger.info(f"Loading {len(gif_files)} Divoom GIF animations...")
+
+        for gif_path in gif_files:
+            try:
+                img = Image.open(gif_path)
+                frames = []
+
+                # Extract all frames
+                for frame_num in range(img.n_frames):
+                    img.seek(frame_num)
+                    # Convert to RGB and resize to 128x128 if needed
+                    frame = img.convert('RGB')
+                    if frame.size != (128, 128):
+                        frame = frame.resize((128, 128), Image.Resampling.NEAREST)
+                    # Convert to numpy array
+                    frame_array = np.array(frame, dtype=np.uint8)
+                    frames.append(frame_array)
+
+                if frames:
+                    self.divoom_gifs.append(frames)
+
+            except Exception as e:
+                logger.warning(f"Failed to load GIF {gif_path.name}: {e}")
+                continue
+
+        if self.divoom_gifs:
+            # Shuffle the GIFs for variety
+            random.shuffle(self.divoom_gifs)
+            logger.info(f"Loaded {len(self.divoom_gifs)} Divoom GIF animations")
+            # Re-initialize scenes with DIVOOM_GALLERY FIRST (New Year special!)
+            self.scenes = [IdleScene.DIVOOM_GALLERY, IdleScene.VNVNC_ENTRANCE]
+            other_scenes = [s for s in IdleScene if s not in (IdleScene.VNVNC_ENTRANCE, IdleScene.DIVOOM_GALLERY)]
+            random.shuffle(other_scenes)
+            self.scenes.extend(other_scenes)
+            self.scene_index = 0
+            self.state.current_scene = self.scenes[0]
+        else:
+            logger.warning("No Divoom GIFs loaded successfully")
+
+    def _load_saga_video(self) -> None:
+        """Load SAGA LIVE video for idle scene."""
+        # Check for opencv
+        try:
+            import cv2
+            self._cv2_available = True
+        except ImportError:
+            logger.warning("OpenCV not available, SAGA_LIVE disabled")
+            return
+
+        # Check for pygame.mixer
+        try:
+            import pygame.mixer
+            self._pygame_mixer_available = True
+        except ImportError:
+            logger.warning("pygame.mixer not available for SAGA_LIVE audio")
+
+        # Find the video file
+        video_path = Path(__file__).parent.parent.parent.parent / "assets" / "videos" / "sagalive_crop_center.mp4"
+        if video_path.exists():
+            self.saga_video_path = video_path
+            logger.info(f"Loaded SAGA LIVE video: {video_path.name}")
+        else:
+            logger.warning(f"SAGA LIVE video not found: {video_path}")
+
+    def _start_saga_video(self) -> None:
+        """Start playing SAGA LIVE video with audio."""
+        if not self._cv2_available or not self.saga_video_path:
+            return
+
+        import cv2
+        import pygame
+        import pygame.mixer
+        from artifact.audio.engine import get_audio_engine
+
+        # Stop ALL audio before playing video
+        audio = get_audio_engine()
+        audio.stop_idle_music()
+        audio.stop_all()
+
+        # Ensure mixer is initialized
+        if not pygame.mixer.get_init():
+            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=2048)
+            logger.info("Initialized pygame.mixer for SAGA LIVE audio")
+
+        # Open video capture
+        self.saga_video_capture = cv2.VideoCapture(str(self.saga_video_path))
+
+        # Extract and start audio playback (pygame can't play MP4 directly)
+        try:
+            logger.info(f"Extracting audio from {self.saga_video_path.name}...")
+            audio_path = extract_audio_from_video(self.saga_video_path)
+            if audio_path and audio_path.exists():
+                pygame.mixer.music.load(str(audio_path))
+                pygame.mixer.music.set_volume(0.8)
+                pygame.mixer.music.play(loops=-1)  # Loop for idle
+                self.saga_audio_playing = True
+                logger.info(f"Started SAGA LIVE audio from {audio_path.name}")
+            else:
+                logger.error("Could not extract audio from SAGA video")
+        except Exception as e:
+            logger.exception(f"Failed to start SAGA LIVE audio: {e}")
+
+    def _stop_saga_video(self) -> None:
+        """Stop SAGA LIVE video and audio."""
+        if self.saga_video_capture:
+            self.saga_video_capture.release()
+            self.saga_video_capture = None
+
+        if self.saga_audio_playing and self._pygame_mixer_available:
+            try:
+                import pygame.mixer
+                pygame.mixer.music.stop()
+            except Exception:
+                pass
+            self.saga_audio_playing = False
+
+        # Resume idle music
+        from artifact.audio.engine import get_audio_engine
+        audio = get_audio_engine()
+        audio.start_idle_music()
+
+    def _init_bar_scene(self) -> None:
+        """Initialize bar scene with glasses and shots."""
+        # Cocktail glasses on bar counter
+        self.bar_glasses = [
+            {'x': 20, 'type': 'martini', 'color': (255, 100, 150), 'phase': 0},
+            {'x': 45, 'type': 'highball', 'color': (100, 200, 255), 'phase': 1.2},
+            {'x': 70, 'type': 'wine', 'color': (180, 50, 80), 'phase': 2.4},
+            {'x': 95, 'type': 'shot', 'color': (255, 180, 50), 'phase': 3.6},
+            {'x': 110, 'type': 'martini', 'color': (150, 255, 100), 'phase': 4.8},
+        ]
+        # Falling shots
+        self.bar_shots = []
+        # Rising bubbles
+        self.bar_bubbles = []
+
     def update(self, delta_ms: float) -> None:
         """Update animation state."""
         self.state.time += delta_ms
@@ -307,10 +531,22 @@ class RotatingIdleAnimation:
             if self.manual_timeout <= 0:
                 self.manual_mode = False
 
-        # Auto scene transition
-        if not self.manual_mode and not self.transitioning:
-            if self.state.scene_time >= SCENE_DURATION:
+        # Auto scene transition - use scene-specific duration if defined
+        # Skip if locked (numpad 0 toggles lock)
+        if not self.manual_mode and not self.transitioning and not self.locked:
+            scene_name = self.state.current_scene.name
+            duration = SCENE_DURATIONS.get(scene_name, SCENE_DURATION)
+            if self.state.scene_time >= duration:
                 self._start_transition((self.scene_index + 1) % len(self.scenes))
+
+        # Auto-cycle camera effects within CAMERA_EFFECTS scene
+        if self.state.current_scene == IdleScene.CAMERA_EFFECTS:
+            self.state.camera_effect_time += delta_ms
+            if self.state.camera_effect_time >= CAMERA_EFFECT_DURATION:
+                self.state.camera_effect_time = 0.0
+                effects = list(CameraEffect)
+                current_idx = effects.index(self.state.camera_effect)
+                self.state.camera_effect = effects[(current_idx + 1) % len(effects)]
 
         # Update eye movement
         t = self.state.scene_time
@@ -330,11 +566,16 @@ class RotatingIdleAnimation:
         if self.blink > 0:
             self.blink = max(0, self.blink - delta_ms * 0.01)
 
-        # Update camera for mirror mode
-        if self.state.current_scene == IdleScene.CAMERA_MIRROR:
+        # Update camera for camera effects mode
+        if self.state.current_scene == IdleScene.CAMERA_EFFECTS:
             self._update_camera()
-            # Cycle effects every 4 seconds
-            self._effect_index = int(self.state.scene_time / 4000) % len(self._effects)
+            # Cycle effects every 8 seconds
+            self.state.camera_effect_time += delta_ms
+            if self.state.camera_effect_time >= CAMERA_EFFECT_DURATION:
+                self.state.camera_effect_time = 0
+                effects = list(CameraEffect)
+                current_idx = effects.index(self.state.camera_effect)
+                self.state.camera_effect = effects[(current_idx + 1) % len(effects)]
 
     def _start_transition(self, target_index: int) -> None:
         """Start smooth transition to next scene with crossfade."""
@@ -357,53 +598,100 @@ class RotatingIdleAnimation:
         target = (self.scene_index - 1) % len(self.scenes)
         self._start_transition(target)
 
+    def next_gif(self) -> None:
+        """Navigate to next GIF in DIVOOM_GALLERY."""
+        if self.state.current_scene == IdleScene.DIVOOM_GALLERY and self.divoom_gifs:
+            self.divoom_gif_index = (self.divoom_gif_index + 1) % len(self.divoom_gifs)
+            self.divoom_frame_index = 0
+            self.divoom_frame_time = 0.0
+            self.divoom_gif_time = 0.0
+            self.divoom_gif_play_count = 0
+            logger.debug(f"Next GIF: {self.divoom_gif_index + 1}/{len(self.divoom_gifs)}")
+
+    def prev_gif(self) -> None:
+        """Navigate to previous GIF in DIVOOM_GALLERY."""
+        if self.state.current_scene == IdleScene.DIVOOM_GALLERY and self.divoom_gifs:
+            self.divoom_gif_index = (self.divoom_gif_index - 1) % len(self.divoom_gifs)
+            self.divoom_frame_index = 0
+            self.divoom_frame_time = 0.0
+            self.divoom_gif_time = 0.0
+            self.divoom_gif_play_count = 0
+            logger.debug(f"Prev GIF: {self.divoom_gif_index + 1}/{len(self.divoom_gifs)}")
+
+    def on_input(self, key: str) -> bool:
+        """Handle keypad input during idle animation.
+
+        Args:
+            key: Keypad key pressed ('0'-'9', '*', '#')
+
+        Returns:
+            True if input was handled, False otherwise
+        """
+        # Numpad 0 toggles lock on current scene
+        if key == '0':
+            self.locked = not self.locked
+            logger.info(f"Idle scene {'LOCKED' if self.locked else 'UNLOCKED'}: {self.state.current_scene.name}")
+            return True
+
+        # During DIVOOM_GALLERY, allow GIF navigation with 2 (prev) and 8 (next)
+        if self.state.current_scene == IdleScene.DIVOOM_GALLERY:
+            if key == '2':
+                self.prev_gif()
+                return True
+            elif key == '8':
+                self.next_gif()
+                return True
+
+        # During CAMERA_EFFECTS, allow effect cycling with 2 (prev) and 8 (next)
+        if self.state.current_scene == IdleScene.CAMERA_EFFECTS:
+            effects = list(CameraEffect)
+            current_idx = effects.index(self.state.camera_effect)
+            if key == '2':
+                new_idx = (current_idx - 1) % len(effects)
+                self.state.camera_effect = effects[new_idx]
+                self.state.camera_effect_time = 0.0
+                logger.info(f"Camera effect: {self.state.camera_effect.name}")
+                return True
+            elif key == '8':
+                new_idx = (current_idx + 1) % len(effects)
+                self.state.camera_effect = effects[new_idx]
+                self.state.camera_effect_time = 0.0
+                logger.info(f"Camera effect: {self.state.camera_effect.name}")
+                return True
+
+        return False
+
     def get_scene_name(self) -> str:
         names = {
-            IdleScene.MYSTICAL_EYE: "ГЛАЗ",
-            IdleScene.COSMIC_PORTAL: "ПОРТАЛ",
-            IdleScene.CAMERA_MIRROR: "ЗЕРКАЛО",
-            IdleScene.PLASMA_WAVE: "ПЛАЗМА",
-            IdleScene.NEON_TUNNEL: "ТОННЕЛЬ",
-            IdleScene.GLITCH_GRID: "ГЛИТЧ",
-            IdleScene.FIRE_SILHOUETTE: "ОГОНЬ",
-            IdleScene.MATRIX_RAIN: "МАТРИЦА",
-            IdleScene.STARFIELD_3D: "ЗВЁЗДЫ",
-            IdleScene.PLASMA_VORTEX: "ВОРТЕКС",
-            IdleScene.NEON_GRID: "СЕТКА",
-            IdleScene.ELECTRIC_STORM: "ШТОРМ",
-            IdleScene.QUANTUM_FIELD: "КВАНТ",
+            IdleScene.VNVNC_ENTRANCE: "ВХОД",
+            IdleScene.CAMERA_EFFECTS: "КАМЕРА",
+            IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
+            IdleScene.SAGA_LIVE: "САГА",
+            IdleScene.POSTER_SLIDESHOW: "АФИШИ",
             IdleScene.DNA_HELIX: "ДНК",
+            IdleScene.SNOWFALL: "СНЕГ",
+            IdleScene.FIREPLACE: "КАМИН",
+            IdleScene.HYPERCUBE: "ГИПЕР",
         }
         return names.get(self.state.current_scene, "СЦЕНА")
 
-    # Scenes that use camera
-    CAMERA_SCENES = {
-        IdleScene.CAMERA_MIRROR,
-        IdleScene.NEON_TUNNEL,
-        IdleScene.GLITCH_GRID,
-        IdleScene.FIRE_SILHOUETTE,
-        IdleScene.MATRIX_RAIN,
-        IdleScene.STARFIELD_3D,
-    }
-
     def _on_scene_enter(self) -> None:
         scene = self.state.current_scene
-        # Open camera for all camera-based scenes
-        if scene in self.CAMERA_SCENES:
+        # Open camera for CAMERA_EFFECTS scene
+        if scene == IdleScene.CAMERA_EFFECTS:
             self._open_camera()
-        elif scene == IdleScene.COSMIC_PORTAL:
-            # Regenerate stars with new positions
-            self.stars = [
-                (random.randint(0, 127), random.randint(0, 127),
-                 random.uniform(0.3, 1.0), random.uniform(0, 6.28))
-                for _ in range(30)
-            ]
-        elif scene == IdleScene.PACMAN:
-            self._reset_pacman_scene()
+            self.state.camera_effect = CameraEffect.MIRROR
+            self.state.camera_effect_time = 0.0
+        elif scene == IdleScene.POSTER_SLIDESHOW:
+            self._load_poster_slideshow()
+        elif scene == IdleScene.SAGA_LIVE:
+            self._start_saga_video()
 
     def _on_scene_exit(self, scene: IdleScene) -> None:
-        if scene in self.CAMERA_SCENES:
+        if scene == IdleScene.CAMERA_EFFECTS:
             self._close_camera()
+        elif scene == IdleScene.SAGA_LIVE:
+            self._stop_saga_video()
 
     def _open_camera(self) -> None:
         """Open camera - uses shared camera_service (always running)."""
@@ -463,73 +751,24 @@ class RotatingIdleAnimation:
         """Render current scene to main display."""
         scene = self.state.current_scene
 
-        if scene == IdleScene.MYSTICAL_EYE:
-            self._render_eye(buffer)
-        elif scene == IdleScene.COSMIC_PORTAL:
-            self._render_portal(buffer)
-        elif scene == IdleScene.CAMERA_MIRROR:
-            self._render_camera(buffer)
-        elif scene == IdleScene.PLASMA_WAVE:
-            self._render_plasma(buffer)
-        elif scene == IdleScene.NEON_TUNNEL:
-            self._render_neon_tunnel(buffer)
-        elif scene == IdleScene.GLITCH_GRID:
-            self._render_glitch_grid(buffer)
-        elif scene == IdleScene.FIRE_SILHOUETTE:
-            self._render_fire_silhouette(buffer)
-        elif scene == IdleScene.MATRIX_RAIN:
-            self._render_matrix_rain(buffer)
-        elif scene == IdleScene.STARFIELD_3D:
-            self._render_starfield_3d(buffer)
-        # EPIC demo effects
-        elif scene == IdleScene.PLASMA_VORTEX:
-            self._render_plasma_vortex(buffer)
-        elif scene == IdleScene.NEON_GRID:
-            self._render_neon_grid(buffer)
-        elif scene == IdleScene.ELECTRIC_STORM:
-            self._render_electric_storm(buffer)
-        elif scene == IdleScene.QUANTUM_FIELD:
-            self._render_quantum_field(buffer)
+        if scene == IdleScene.VNVNC_ENTRANCE:
+            self._render_vnvnc_entrance(buffer)
+        elif scene == IdleScene.CAMERA_EFFECTS:
+            self._render_camera_effects(buffer)
+        elif scene == IdleScene.DIVOOM_GALLERY:
+            self._render_divoom_gallery(buffer)
+        elif scene == IdleScene.SAGA_LIVE:
+            self._render_saga_live(buffer)
+        elif scene == IdleScene.POSTER_SLIDESHOW:
+            self._render_poster_slideshow(buffer)
         elif scene == IdleScene.DNA_HELIX:
             self._render_dna_helix(buffer)
-        # Classic effects
         elif scene == IdleScene.SNOWFALL:
             self._render_snowfall(buffer)
         elif scene == IdleScene.FIREPLACE:
             self._render_fireplace(buffer)
-        elif scene == IdleScene.PLASMA_CLASSIC:
-            self._render_plasma_classic(buffer)
-        elif scene == IdleScene.TUNNEL:
-            self._render_tunnel(buffer)
-        elif scene == IdleScene.WAVE_PATTERN:
-            self._render_wave_pattern(buffer)
-        elif scene == IdleScene.AURORA:
-            self._render_aurora(buffer)
-        elif scene == IdleScene.KALEIDOSCOPE:
-            self._render_kaleidoscope(buffer)
-        elif scene == IdleScene.FIREWORKS:
-            self._render_fireworks(buffer)
-        elif scene == IdleScene.LAVA_LAMP:
-            self._render_lava_lamp(buffer)
-        elif scene == IdleScene.GAME_OF_LIFE:
-            self._render_game_of_life(buffer)
-        elif scene == IdleScene.RADAR_SWEEP:
-            self._render_radar_sweep(buffer)
-        elif scene == IdleScene.SPIRAL_GALAXY:
-            self._render_spiral_galaxy(buffer)
-        elif scene == IdleScene.BLACK_HOLE:
-            self._render_black_hole(buffer)
         elif scene == IdleScene.HYPERCUBE:
             self._render_hypercube(buffer)
-        # Iconic/character scenes
-        elif scene == IdleScene.PACMAN:
-            self._render_pacman(buffer)
-        elif scene == IdleScene.NYAN_CAT:
-            self._render_nyan_cat(buffer)
-        elif scene == IdleScene.TETRIS:
-            self._render_tetris(buffer)
-        elif scene == IdleScene.FOUR_SEASONS:
-            self._render_four_seasons(buffer)
 
         # Apply smooth crossfade transition with easing
         if self.transitioning:
@@ -553,6 +792,488 @@ class RotatingIdleAnimation:
                     buffer.astype(np.float32) * alpha,
                     0, 255
                 ).astype(np.uint8)
+
+    def _render_vnvnc_entrance(self, buffer: NDArray[np.uint8]) -> None:
+        """Render grand VNVNC entrance - neon sign, red carpet, golden doorway."""
+        t = self.state.scene_time / 1000
+
+        # === SKY / BACKGROUND ===
+        # Warm evening gradient
+        for y in range(60):
+            tt = y / 60
+            r = int(40 + 30 * tt)
+            g = int(30 + 20 * tt)
+            b = int(50 + 30 * tt)
+            buffer[y, :] = (r, g, b)
+
+        # === BUILDING FACADE ===
+        # Cream/beige building walls
+        for y in range(20, 100):
+            for x in range(128):
+                # Left column area
+                if x < 25 or x > 102:
+                    buffer[y, x] = (180, 160, 130)  # Beige stone
+                # Main wall
+                elif 25 <= x <= 102:
+                    buffer[y, x] = (160, 145, 115)  # Slightly darker
+
+        # === COLUMNS (Greek style) ===
+        # Left column
+        for y in range(25, 95):
+            for x in range(10, 22):
+                dist = abs(x - 16)
+                shade = int(200 - dist * 10)
+                buffer[y, x] = (shade, shade - 10, shade - 20)
+        # Right column
+        for y in range(25, 95):
+            for x in range(106, 118):
+                dist = abs(x - 112)
+                shade = int(200 - dist * 10)
+                buffer[y, x] = (shade, shade - 10, shade - 20)
+
+        # Column tops (capitals)
+        for x in range(8, 24):
+            for y in range(22, 27):
+                buffer[y, x] = (220, 210, 190)
+        for x in range(104, 120):
+            for y in range(22, 27):
+                buffer[y, x] = (220, 210, 190)
+
+        # === CHRISTMAS WREATHS on columns ===
+        # Left wreath
+        wreath_pulse = 0.8 + 0.2 * math.sin(t * 2)
+        for angle in range(0, 360, 15):
+            rad = math.radians(angle)
+            for r in range(6, 10):
+                wx = int(16 + r * math.cos(rad))
+                wy = int(45 + r * math.sin(rad))
+                if 0 <= wx < 128 and 0 <= wy < 128:
+                    green = int((100 + 50 * math.sin(angle * 0.1 + t)) * wreath_pulse)
+                    buffer[wy, wx] = (30, max(80, min(200, green)), 30)
+        # Red bow
+        for dy in range(-2, 3):
+            for dx in range(-3, 4):
+                if abs(dx) + abs(dy) < 4:
+                    buffer[53 + dy, 16 + dx] = (200, 50, 50)
+
+        # Right wreath
+        for angle in range(0, 360, 15):
+            rad = math.radians(angle)
+            for r in range(6, 10):
+                wx = int(112 + r * math.cos(rad))
+                wy = int(45 + r * math.sin(rad))
+                if 0 <= wx < 128 and 0 <= wy < 128:
+                    green = int((100 + 50 * math.sin(angle * 0.1 + t + 1)) * wreath_pulse)
+                    buffer[wy, wx] = (30, max(80, min(200, green)), 30)
+        for dy in range(-2, 3):
+            for dx in range(-3, 4):
+                if abs(dx) + abs(dy) < 4:
+                    buffer[53 + dy, 112 + dx] = (200, 50, 50)
+
+        # === ARCH / DOORWAY ===
+        # Dark archway
+        for y in range(35, 95):
+            arch_width = int(20 + 15 * (1 - ((y - 35) / 60) ** 2))
+            for x in range(64 - arch_width, 64 + arch_width):
+                if 0 <= x < 128:
+                    buffer[y, x] = (30, 25, 20)
+
+        # Arch frame (ornate)
+        for y in range(33, 95):
+            arch_width = int(22 + 15 * (1 - ((max(35, y) - 35) / 60) ** 2))
+            # Left frame
+            if 64 - arch_width - 3 >= 0:
+                buffer[y, 64 - arch_width - 2] = (80, 70, 50)
+                buffer[y, 64 - arch_width - 1] = (100, 90, 70)
+            # Right frame
+            if 64 + arch_width + 3 < 128:
+                buffer[y, 64 + arch_width + 1] = (100, 90, 70)
+                buffer[y, 64 + arch_width + 2] = (80, 70, 50)
+
+        # === GOLDEN LIGHT from doorway ===
+        glow_intensity = 0.7 + 0.3 * math.sin(t * 1.5)
+        for y in range(40, 95):
+            glow_width = int(15 + 10 * ((y - 40) / 55))
+            for x in range(64 - glow_width, 64 + glow_width):
+                if 0 <= x < 128:
+                    dist = abs(x - 64) / glow_width
+                    intensity = (1 - dist) * glow_intensity
+                    r = int(255 * intensity)
+                    g = int(200 * intensity)
+                    b = int(100 * intensity * 0.5)
+                    # Blend with existing
+                    existing = buffer[y, x]
+                    buffer[y, x] = (
+                        min(255, existing[0] + r),
+                        min(255, existing[1] + g),
+                        min(255, existing[2] + b)
+                    )
+
+        # === WROUGHT IRON GATE (open) ===
+        gate_swing = 0.3 + 0.1 * math.sin(t * 0.5)  # Slightly moving
+        # Left gate panel
+        for y in range(45, 90):
+            gx = int(44 - gate_swing * 8)
+            if 0 <= gx < 128:
+                buffer[y, gx] = (40, 35, 30)
+                buffer[y, gx + 1] = (50, 45, 40)
+        # Right gate panel
+        for y in range(45, 90):
+            gx = int(84 + gate_swing * 8)
+            if 0 <= gx < 128:
+                buffer[y, gx] = (50, 45, 40)
+                buffer[y, gx - 1] = (40, 35, 30)
+
+        # === RED CARPET ===
+        for y in range(90, 128):
+            carpet_width = int(10 + (y - 90) * 0.4)
+            for x in range(64 - carpet_width, 64 + carpet_width):
+                if 0 <= x < 128:
+                    # Carpet texture
+                    shade = 150 + int(20 * math.sin(y * 0.5 + x * 0.1))
+                    buffer[y, x] = (shade, 20, 30)
+        # Carpet gold trim
+        for y in range(90, 128):
+            carpet_width = int(10 + (y - 90) * 0.4)
+            if 64 - carpet_width >= 0:
+                buffer[y, 64 - carpet_width] = (200, 170, 80)
+            if 64 + carpet_width - 1 < 128:
+                buffer[y, 64 + carpet_width - 1] = (200, 170, 80)
+
+        # === COBBLESTONE GROUND ===
+        for y in range(100, 128):
+            for x in range(128):
+                # Skip carpet area
+                carpet_width = int(10 + (y - 90) * 0.4)
+                if 64 - carpet_width <= x < 64 + carpet_width:
+                    continue
+                # Cobblestone pattern
+                stone = ((x // 5) + (y // 4)) % 3
+                shades = [(100, 95, 90), (90, 85, 80), (110, 105, 100)]
+                buffer[y, x] = shades[stone]
+
+        # === SNOW on ground ===
+        for snow in self.entrance_snow:
+            snow['x'] += math.sin(t + snow['y'] * 0.1) * 0.1
+            snow['y'] += snow['speed']
+            if snow['y'] > 127:
+                snow['y'] = 100
+                snow['x'] = random.randint(0, 127)
+            px, py = int(snow['x']) % 128, int(snow['y'])
+            if 0 <= px < 128 and 0 <= py < 128:
+                buffer[py, px] = (240, 240, 250)
+
+        # === DIAMONDS floating ===
+        for diamond in self.entrance_diamonds:
+            dx = diamond['x']
+            dy = int(diamond['y'] + 5 * math.sin(t * 2 + diamond['phase']))
+            scale = diamond['scale']
+            sparkle = 0.7 + 0.3 * math.sin(t * 6 + diamond['phase'])
+
+            # Diamond shape (simple)
+            points = [
+                (0, -6), (-4, 0), (0, 4), (4, 0)  # Top, left, bottom, right
+            ]
+            color = (
+                int(150 * sparkle + 100),
+                int(200 * sparkle + 50),
+                int(255 * sparkle)
+            )
+            # Fill diamond
+            for py in range(-6, 5):
+                width = 4 - abs(py) if py < 0 else 4 - py
+                for px in range(-width, width + 1):
+                    ddx, ddy = int(dx + px * scale), int(dy + py * scale)
+                    if 0 <= ddx < 128 and 0 <= ddy < 128:
+                        buffer[ddy, ddx] = color
+
+        # === NEON SIGN "VNVNC" at top ===
+        sign_y = 8
+        neon_pulse = 0.85 + 0.15 * math.sin(t * 4)
+        flicker = 1.0 if random.random() > 0.02 else 0.6  # Occasional flicker
+
+        # Sign background (dark panel)
+        for y in range(4, 20):
+            for x in range(30, 98):
+                buffer[y, x] = (30, 20, 35)
+
+        # Neon glow behind text
+        for ox in range(-2, 3):
+            for oy in range(-2, 3):
+                if ox != 0 or oy != 0:
+                    glow_color = (
+                        int(100 * neon_pulse * flicker),
+                        int(40 * neon_pulse * flicker),
+                        int(120 * neon_pulse * flicker)
+                    )
+                    draw_centered_text(buffer, "VNVNC", sign_y + oy, glow_color, scale=2)
+
+        # Main neon text
+        neon_color = (
+            int(255 * neon_pulse * flicker),
+            int(100 * neon_pulse * flicker),
+            int(220 * neon_pulse * flicker)
+        )
+        draw_centered_text(buffer, "VNVNC", sign_y, neon_color, scale=2)
+
+        # === CONFETTI particles ===
+        # Spawn new confetti
+        if random.random() < 0.15:
+            self.entrance_confetti.append({
+                'x': random.randint(0, 127),
+                'y': random.randint(-10, 0),
+                'vx': random.uniform(-0.5, 0.5),
+                'vy': random.uniform(0.5, 1.5),
+                'color': random.choice([
+                    (255, 215, 0),    # Gold
+                    (255, 100, 150),  # Pink
+                    (100, 200, 255),  # Light blue
+                    (255, 255, 255),  # White
+                    (200, 100, 255),  # Purple
+                ])
+            })
+
+        # Update and draw confetti
+        new_confetti = []
+        for c in self.entrance_confetti:
+            c['x'] += c['vx'] + math.sin(t * 3 + c['y'] * 0.1) * 0.3
+            c['y'] += c['vy']
+            if c['y'] < 120:
+                px, py = int(c['x']), int(c['y'])
+                if 0 <= px < 128 and 0 <= py < 128:
+                    buffer[py, px] = c['color']
+                new_confetti.append(c)
+        self.entrance_confetti = new_confetti[-100:]  # Limit particles
+
+        # === "НАЖМИ СТАРТ" prompt ===
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 118, (255, 220, 150), scale=1)
+
+    def _render_bar_cocktails(self, buffer: NDArray[np.uint8]) -> None:
+        """Render bar scene with cocktails, shots, and neon vibes."""
+        t = self.state.scene_time / 1000
+
+        # === BACKGROUND - Dark bar atmosphere ===
+        for y in range(128):
+            # Gradient from dark ceiling to slightly lit bar
+            tt = y / 128
+            r = int(15 + 20 * tt)
+            g = int(10 + 15 * tt)
+            b = int(25 + 30 * tt)
+            buffer[y, :] = (r, g, b)
+
+        # === BACK BAR SHELVES with bottles ===
+        shelf_y = 30
+        # Shelf
+        for x in range(10, 118):
+            buffer[shelf_y, x] = (60, 50, 40)
+            buffer[shelf_y + 1, x] = (50, 40, 30)
+
+        # Bottles on shelf (silhouettes with colored liquid)
+        bottles = [
+            (20, (100, 200, 100), 15),   # Green (absinthe)
+            (35, (200, 150, 50), 12),    # Amber (whiskey)
+            (50, (255, 100, 100), 14),   # Red (campari)
+            (65, (150, 200, 255), 13),   # Blue (curaçao)
+            (80, (255, 200, 150), 11),   # Orange (aperol)
+            (95, (200, 100, 200), 14),   # Purple (violet)
+            (110, (255, 255, 200), 12),  # Pale (vodka)
+        ]
+
+        for bx, color, height in bottles:
+            # Bottle silhouette
+            for by in range(shelf_y - height, shelf_y):
+                width = 3 if by < shelf_y - height + 3 else 4
+                for dx in range(-width, width + 1):
+                    px = bx + dx
+                    if 0 <= px < 128:
+                        # Glass with liquid
+                        liquid_level = shelf_y - height + 4
+                        if by >= liquid_level:
+                            buffer[by, px] = color
+                        else:
+                            buffer[by, px] = (40, 35, 45)  # Empty glass
+
+        # Second shelf
+        shelf_y2 = 50
+        for x in range(10, 118):
+            buffer[shelf_y2, x] = (60, 50, 40)
+
+        # === BAR COUNTER ===
+        counter_y = 85
+        # Wood grain counter
+        for y in range(counter_y, counter_y + 8):
+            for x in range(128):
+                grain = int(math.sin(x * 0.2 + y * 0.1) * 10)
+                buffer[y, x] = (80 + grain, 50 + grain // 2, 30 + grain // 3)
+
+        # Counter edge (brass rail)
+        for x in range(128):
+            shimmer = int(30 * math.sin(x * 0.3 + t * 2))
+            buffer[counter_y - 1, x] = (180 + shimmer, 150 + shimmer, 50)
+
+        # === COCKTAIL GLASSES on counter ===
+        for glass in self.bar_glasses:
+            gx = glass['x']
+            gy = counter_y - 2
+            color = glass['color']
+            gtype = glass['type']
+            phase = glass['phase']
+
+            # Glass shimmer
+            shimmer = 0.7 + 0.3 * math.sin(t * 3 + phase)
+            r, g, b = color
+            c = (int(r * shimmer), int(g * shimmer), int(b * shimmer))
+
+            if gtype == 'martini':
+                # Martini glass shape (V)
+                for dy in range(-15, 0):
+                    width = (-dy) // 2
+                    for dx in range(-width, width + 1):
+                        px, py = gx + dx, gy + dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            if dy > -12:  # Liquid level
+                                buffer[py, px] = c
+                            else:
+                                buffer[py, px] = (200, 200, 220)  # Glass rim
+                # Stem
+                for dy in range(0, 8):
+                    if 0 <= gy + dy < 128:
+                        buffer[gy + dy, gx] = (180, 180, 200)
+                # Olive
+                buffer[gy - 8, gx] = (80, 120, 50)
+
+            elif gtype == 'highball':
+                # Tall glass
+                for dy in range(-20, 0):
+                    for dx in range(-4, 5):
+                        px, py = gx + dx, gy + dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            if dy > -16:  # Liquid
+                                buffer[py, px] = c
+                            else:
+                                buffer[py, px] = (150, 200, 255)  # Ice
+                # Straw
+                if 0 <= gx + 2 < 128:
+                    for dy in range(-22, -5):
+                        if 0 <= gy + dy < 128:
+                            buffer[gy + dy, gx + 2] = (255, 50, 50)
+
+            elif gtype == 'wine':
+                # Wine glass (rounded bowl)
+                for dy in range(-12, 0):
+                    width = int(5 * math.sin((dy + 12) / 12 * math.pi * 0.8))
+                    for dx in range(-width, width + 1):
+                        px, py = gx + dx, gy + dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            if dy > -8:
+                                buffer[py, px] = c
+                            else:
+                                buffer[py, px] = (220, 200, 220)
+                # Stem
+                for dy in range(0, 6):
+                    if 0 <= gy + dy < 128:
+                        buffer[gy + dy, gx] = (200, 200, 220)
+
+            elif gtype == 'shot':
+                # Shot glass (small)
+                for dy in range(-8, 0):
+                    width = 2 + dy // 4
+                    for dx in range(-width, width + 1):
+                        px, py = gx + dx, gy + dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            buffer[py, px] = c
+
+        # === FALLING SHOTS animation ===
+        if random.random() < 0.03:
+            self.bar_shots.append({
+                'x': random.randint(20, 108),
+                'y': 0,
+                'vy': 0,
+                'color': random.choice([
+                    (255, 180, 50),   # Whiskey
+                    (200, 255, 200),  # Absinthe
+                    (255, 100, 100),  # Grenadine
+                    (100, 200, 255),  # Blue shot
+                ])
+            })
+
+        new_shots = []
+        for shot in self.bar_shots:
+            shot['vy'] += 0.2  # Gravity
+            shot['y'] += shot['vy']
+
+            if shot['y'] < counter_y - 8:
+                # Draw falling shot
+                gx, gy = int(shot['x']), int(shot['y'])
+                for dy in range(-6, 0):
+                    for dx in range(-2, 3):
+                        px, py = gx + dx, gy + dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            buffer[py, px] = shot['color']
+                new_shots.append(shot)
+            else:
+                # Splash effect - create bubbles
+                for _ in range(8):
+                    self.bar_bubbles.append({
+                        'x': shot['x'] + random.randint(-5, 5),
+                        'y': counter_y - 10,
+                        'vy': random.uniform(-2, -0.5),
+                        'life': random.randint(20, 40),
+                        'color': shot['color']
+                    })
+        self.bar_shots = new_shots
+
+        # === BUBBLES ===
+        new_bubbles = []
+        for bubble in self.bar_bubbles:
+            bubble['y'] += bubble['vy']
+            bubble['vy'] += 0.05  # Slow down
+            bubble['life'] -= 1
+
+            if bubble['life'] > 0 and bubble['y'] > 0:
+                px, py = int(bubble['x']), int(bubble['y'])
+                if 0 <= px < 128 and 0 <= py < 128:
+                    alpha = bubble['life'] / 40
+                    c = bubble['color']
+                    buffer[py, px] = (int(c[0] * alpha), int(c[1] * alpha), int(c[2] * alpha))
+                new_bubbles.append(bubble)
+        self.bar_bubbles = new_bubbles[-50:]
+
+        # === NEON SIGNS on wall ===
+        # "BAR" neon
+        neon_pulse = 0.8 + 0.2 * math.sin(t * 3)
+        self.bar_neon_flicker = 1.0 if random.random() > 0.03 else 0.5
+
+        # Glow
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                glow = (int(100 * neon_pulse), int(50 * neon_pulse), int(150 * neon_pulse))
+                draw_centered_text(buffer, "VNVNC ARCADE", 55 + oy, glow, scale=1)
+
+        # Main text
+        neon_color = (
+            int(255 * neon_pulse * self.bar_neon_flicker),
+            int(100 * neon_pulse * self.bar_neon_flicker),
+            int(200 * neon_pulse * self.bar_neon_flicker)
+        )
+        draw_centered_text(buffer, "VNVNC ARCADE", 55, neon_color, scale=1)
+
+        # === Floor (dark tiles) ===
+        for y in range(counter_y + 8, 128):
+            for x in range(128):
+                tile = ((x // 8) + (y // 8)) % 2
+                if tile:
+                    buffer[y, x] = (25, 20, 30)
+                else:
+                    buffer[y, x] = (35, 30, 40)
+
+        # === VNVNC title ===
+        draw_centered_text(buffer, "VNVNC", 4, (255, 200, 100), scale=2)
+
+        # === Prompt ===
+        if int(t * 2) % 2 == 0:
+            draw_centered_text(buffer, "НАЖМИ СТАРТ", 118, self.teal, scale=1)
 
     def _render_eye(self, buffer: NDArray[np.uint8]) -> None:
         """Render ALIVE all-seeing eye - FULL SCREEN, WATCHING, BREATHING."""
@@ -1753,47 +2474,105 @@ class RotatingIdleAnimation:
         draw_centered_text(buffer, "VNVNC", 4, (100, 200, 255), scale=2)
 
     def _render_aurora(self, buffer: NDArray[np.uint8]) -> None:
-        """Render northern lights / aurora borealis."""
+        """Render stunning northern lights / aurora borealis with layered curtains."""
         t = self.state.scene_time / 1000
 
-        # Dark night sky gradient
+        # Deep night sky gradient with subtle stars
         for y in range(128):
-            darkness = 5 + int(y / 128 * 15)
-            buffer[y, :] = (0, darkness // 4, darkness)
+            # Night sky gradient: deep blue at top, darker blue-green at bottom
+            progress = y / 128
+            r = int(5 + progress * 5)
+            g = int(8 + (1 - progress) * 15)
+            b = int(25 + (1 - progress) * 20)
+            buffer[y, :] = (r, g, b)
 
-        # Stars
-        for i in range(30):
-            sx = (i * 73 + int(t * 3)) % 128
-            sy = (i * 41) % 64
-            twinkle = 150 + int(50 * math.sin(t * 3 + i))
+        # Twinkling stars (more visible)
+        for i in range(50):
+            sx = (i * 73 + int(t * 2)) % 128
+            sy = (i * 41) % 70  # Keep stars in upper portion
+            twinkle = 100 + int(100 * math.sin(t * 4 + i * 0.7))
             if 0 <= sx < 128 and 0 <= sy < 128:
-                buffer[sy, sx] = (twinkle, twinkle, twinkle)
+                buffer[sy, sx] = (twinkle, twinkle, min(255, twinkle + 50))
+                # Some stars have small glow
+                if i % 5 == 0 and twinkle > 150:
+                    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                        nx, ny = sx + dx, sy + dy
+                        if 0 <= nx < 128 and 0 <= ny < 128:
+                            buffer[ny, nx] = tuple(min(255, c + 30) for c in buffer[ny, nx])
 
-        # Aurora curtains
-        for curtain in self.aurora_curtains:
-            for y in range(20, 80):
-                wave = math.sin(y / 15 + t * 2 + curtain['phase']) * 15
-                wave += math.sin(y / 8 + t * 3) * 5
-                x = int(curtain['x'] + wave)
+        # Multi-layered aurora curtains with different colors
+        aurora_colors = [
+            (120, 0.9, 0.9),   # Green
+            (160, 0.7, 0.8),   # Cyan-green
+            (280, 0.6, 0.7),   # Purple
+            (100, 0.8, 0.6),   # Yellow-green
+        ]
 
-                intensity = 1.0 - abs(y - 50) / 40
-                intensity *= 0.5 + 0.5 * math.sin(t + curtain['phase'])
+        for idx, curtain in enumerate(self.aurora_curtains):
+            color_idx = idx % len(aurora_colors)
+            base_hue, saturation, value = aurora_colors[color_idx]
 
-                if intensity > 0 and 0 <= x < 128:
-                    hue = 120 + (y - 20) * 1.5 + math.sin(t) * 30
-                    color = hsv_to_rgb(hue, 0.8, intensity * 0.8)
+            # Curtain spans most of the screen vertically
+            y_start = 15 + int(math.sin(t * 0.5 + idx) * 10)
+            y_end = 95 + int(math.sin(t * 0.3 + idx * 2) * 15)
 
-                    for gx in range(-2, 3):
+            for y in range(max(0, y_start), min(128, y_end)):
+                # Complex wave motion for realistic curtain movement
+                wave1 = math.sin(y / 12 + t * 1.5 + curtain['phase']) * 20
+                wave2 = math.sin(y / 6 + t * 2.5 + curtain['phase'] * 2) * 8
+                wave3 = math.sin(y / 25 + t * 0.8) * 12
+                x = int(curtain['x'] + wave1 + wave2 + wave3)
+
+                # Intensity varies with height (brightest in middle)
+                y_center = (y_start + y_end) / 2
+                y_range = (y_end - y_start) / 2
+                height_factor = max(0, 1 - abs(y - y_center) / y_range)
+
+                # Pulsing intensity
+                pulse = 0.6 + 0.4 * math.sin(t * 2 + curtain['phase'] + y / 30)
+                intensity = height_factor * pulse
+
+                if intensity > 0.1 and 0 <= x < 128:
+                    # Color shifts with height and time
+                    hue = base_hue + (y - y_start) * 0.8 + math.sin(t * 0.5 + idx) * 20
+                    color = hsv_to_rgb(hue % 360, saturation, intensity * value)
+
+                    # Wide glow for each curtain line
+                    for gx in range(-4, 5):
                         px = x + gx
                         if 0 <= px < 128:
-                            glow = max(0, 1 - abs(gx) / 3)
+                            glow = max(0, 1 - abs(gx) / 4.5) ** 1.5
                             old = buffer[y, px]
-                            new = tuple(min(255, int(old[i] + color[i] * glow)) for i in range(3))
-                            buffer[y, px] = new
+                            blend = [min(255, int(old[i] + color[i] * glow)) for i in range(3)]
+                            buffer[y, px] = tuple(blend)
 
-            curtain['x'] += math.sin(t * 0.5 + curtain['phase']) * 0.3
+            # Slow curtain drift
+            curtain['x'] += math.sin(t * 0.3 + curtain['phase']) * 0.4
+            if curtain['x'] < -20:
+                curtain['x'] = 140
+            elif curtain['x'] > 148:
+                curtain['x'] = -12
 
-        # Branding
+        # Occasional bright flash/shimmer
+        if int(t * 10) % 40 < 2:
+            flash_x = int(64 + math.sin(t * 7) * 50)
+            flash_y = int(50 + math.sin(t * 5) * 20)
+            if 0 <= flash_x < 128 and 0 <= flash_y < 128:
+                for dx in range(-6, 7):
+                    for dy in range(-3, 4):
+                        px, py = flash_x + dx, flash_y + dy
+                        if 0 <= px < 128 and 0 <= py < 128:
+                            dist = abs(dx) + abs(dy)
+                            if dist < 6:
+                                glow = int((6 - dist) * 20)
+                                old = buffer[py, px]
+                                buffer[py, px] = tuple(min(255, c + glow) for c in old)
+
+        # Branding with glow
+        for ox in [-1, 0, 1]:
+            for oy in [-1, 0, 1]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, "VNVNC", 4 + oy, (0, 20, 10), scale=2)
         draw_centered_text(buffer, "VNVNC", 4, (100, 255, 150), scale=2)
 
     def _render_kaleidoscope(self, buffer: NDArray[np.uint8]) -> None:
@@ -2847,93 +3626,343 @@ class RotatingIdleAnimation:
         season_colors = [(255, 150, 200), (100, 200, 100), (255, 150, 50), (200, 200, 255)]
         draw_centered_text(buffer, "VNVNC", 4, season_colors[self.tree_season], scale=2)
 
+    def _render_divoom_gallery(self, buffer: NDArray[np.uint8]) -> None:
+        """Render Divoom GIF animation - pixel art from Divoom gallery."""
+        if not self.divoom_gifs:
+            # Fallback to plasma if no GIFs loaded
+            self._render_plasma(buffer)
+            return
+
+        # Get current GIF and frame
+        current_gif = self.divoom_gifs[self.divoom_gif_index]
+        current_frame = current_gif[self.divoom_frame_index]
+
+        # Copy frame to buffer
+        buffer[:] = current_frame
+
+        # Update frame timing
+        delta = 16.67  # Approximate 60fps
+        self.divoom_frame_time += delta
+        if self.divoom_frame_time >= self.divoom_frame_duration:
+            self.divoom_frame_time = 0
+            self.divoom_frame_index = (self.divoom_frame_index + 1) % len(current_gif)
+
+        # Update GIF timing (play each GIF twice before moving on)
+        self.divoom_gif_time += delta
+        if self.divoom_gif_time >= self.divoom_gif_duration:
+            self.divoom_gif_time = 0
+            self.divoom_frame_index = 0
+            self.divoom_gif_play_count += 1
+            # Move to next GIF after playing twice
+            if self.divoom_gif_play_count >= self.divoom_gif_plays_required:
+                self.divoom_gif_play_count = 0
+                self.divoom_gif_index = (self.divoom_gif_index + 1) % len(self.divoom_gifs)
+
+    def _render_saga_live(self, buffer: NDArray[np.uint8]) -> None:
+        """Render SAGA LIVE video frame."""
+        if not self._cv2_available or not self.saga_video_capture:
+            # Fallback to plasma if video not available
+            self._render_plasma(buffer)
+            return
+
+        import cv2
+
+        if not self.saga_video_capture.isOpened():
+            self._render_plasma(buffer)
+            return
+
+        ret, frame = self.saga_video_capture.read()
+        if not ret:
+            # Video ended - loop it
+            self.saga_video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = self.saga_video_capture.read()
+            if not ret:
+                self._render_plasma(buffer)
+                return
+
+        # Convert BGR to RGB and resize if needed
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if frame.shape[0] != 128 or frame.shape[1] != 128:
+            frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_AREA)
+
+        buffer[:] = frame
+
+    def _render_camera_effects(self, buffer: NDArray[np.uint8]) -> None:
+        """Render camera with currently selected effect."""
+        effect = self.state.camera_effect
+        if effect == CameraEffect.MIRROR:
+            self._render_camera(buffer)
+        elif effect == CameraEffect.NEON_TUNNEL:
+            self._render_neon_tunnel(buffer)
+        elif effect == CameraEffect.GLITCH_GRID:
+            self._render_glitch_grid(buffer)
+        elif effect == CameraEffect.FIRE_SILHOUETTE:
+            self._render_fire_silhouette(buffer)
+        elif effect == CameraEffect.MATRIX_RAIN:
+            self._render_matrix_rain(buffer)
+        elif effect == CameraEffect.STARFIELD_3D:
+            self._render_starfield_3d(buffer)
+        else:
+            self._render_camera(buffer)
+
+    def _load_poster_slideshow(self) -> None:
+        """Load event posters for slideshow with date extraction."""
+        if not self._pil_available:
+            return
+
+        from PIL import Image
+        import re
+
+        # Load from 2025video folder
+        assets_dir = Path(__file__).parent.parent.parent.parent / "assets" / "videos" / "2025video"
+        if not assets_dir.exists():
+            logger.warning(f"Poster directory not found: {assets_dir}")
+            return
+
+        # Get all image files (sorted by name/date)
+        image_files = sorted(
+            list(assets_dir.glob("*.jpg")) +
+            list(assets_dir.glob("*.png"))
+        )
+
+        self.poster_images = []
+        self.poster_dates = []
+
+        for img_path in image_files:
+            try:
+                img = Image.open(img_path).convert('RGB')
+                # Same resize as VideoMode - direct 128x128
+                img = img.resize((128, 128), Image.Resampling.LANCZOS)
+                self.poster_images.append(np.array(img, dtype=np.uint8))
+
+                # Extract date from filename (format: YYYY-MM-DD_*.jpg)
+                match = re.match(r'(\d{4})-(\d{2})-(\d{2})', img_path.stem)
+                if match:
+                    year, month, day = match.groups()
+                    date_str = f"{day}.{month}.{year[2:]}"  # DD.MM.YY
+                    self.poster_dates.append(date_str)
+                else:
+                    self.poster_dates.append("")
+
+                logger.debug(f"Loaded poster: {img_path.name}")
+            except Exception as e:
+                logger.warning(f"Failed to load poster {img_path.name}: {e}")
+
+        # Keep sorted order (by date in filename)
+        self.poster_index = 0
+        self.poster_time = 0.0
+        logger.info(f"Loaded {len(self.poster_images)} posters for slideshow")
+
+    def _render_poster_slideshow(self, buffer: NDArray[np.uint8]) -> None:
+        """Render fast poster slideshow."""
+        if not self.poster_images:
+            # Fallback to snowfall if no posters
+            self._render_snowfall(buffer)
+            return
+
+        # Use scene_time directly to calculate poster index
+        # This ensures smooth cycling through ALL posters
+        t = self.state.scene_time
+        self.poster_index = int(t / self.poster_interval) % len(self.poster_images)
+
+        # Render current poster
+        buffer[:] = self.poster_images[self.poster_index]
+
+    def _render_divoom_ticker(self, buffer: NDArray[np.uint8], t: float) -> None:
+        """Render special NYE ticker for Divoom Gallery with static text and animations."""
+        # Alternating text every 5 seconds
+        cycle = int(t / 5000) % 2
+        if cycle == 0:
+            text = "VNVNC"
+            color = (255, 215, 0)  # Gold
+        else:
+            text = "2026"
+            color = (255, 50, 50)  # Red for NYE
+
+        # Render static centered text with pulse effect
+        render_ticker_static(buffer, text, t, color, TextEffect.PULSE)
+
+        # Add snowflake decorations at edges
+        snow_color = (200, 220, 255)  # Light blue
+        t_sec = t / 1000
+
+        # Animated snowflakes on left and right
+        for i in range(2):
+            # Left snowflake
+            x_left = 1 + int(math.sin(t_sec * 2 + i) * 1)
+            y_left = 1 + i * 3
+            if 0 <= x_left < buffer.shape[1] and 0 <= y_left < buffer.shape[0]:
+                buffer[y_left, x_left] = snow_color
+
+            # Right snowflake
+            x_right = buffer.shape[1] - 2 + int(math.sin(t_sec * 2 + i + 1) * 1)
+            y_right = 1 + i * 3
+            if 0 <= x_right < buffer.shape[1] and 0 <= y_right < buffer.shape[0]:
+                buffer[y_right, x_right] = snow_color
+
+        # Add subtle sparkles
+        if random.random() < 0.3:
+            sparkle_x = random.randint(0, buffer.shape[1] - 1)
+            sparkle_y = random.randint(0, buffer.shape[0] - 1)
+            brightness = random.randint(150, 255)
+            buffer[sparkle_y, sparkle_x] = (brightness, brightness, brightness)
+
+    def _render_ticker_static_winter(self, buffer: NDArray[np.uint8], text: str, color: tuple, t: float) -> None:
+        """Render static ticker text with winter sparkle effects and scrolling for long text."""
+        from artifact.graphics.text_utils import draw_centered_text, draw_text
+
+        # Approximate character width at scale=1 (including spacing)
+        char_width = 6
+        text_width = len(text) * char_width
+        ticker_width = buffer.shape[1]  # 48 pixels
+
+        if text_width <= ticker_width:
+            # Short text - just center it
+            draw_centered_text(buffer, text, 1, color, scale=1)
+        else:
+            # Long text - horizontal scroll
+            # Scroll speed: complete scroll in ~2.5 seconds (fits within 3s display time)
+            scroll_duration = 2500  # ms
+            pause_at_start = 300  # ms pause before scrolling
+            pause_at_end = 200  # ms pause at end
+
+            # Calculate scroll position
+            t_in_display = t % 3000  # Time within this text's display cycle
+
+            if t_in_display < pause_at_start:
+                # Pause at start - show beginning
+                x_offset = 0
+            elif t_in_display > (scroll_duration + pause_at_start):
+                # Pause at end - show end
+                x_offset = text_width - ticker_width
+            else:
+                # Scrolling
+                scroll_progress = (t_in_display - pause_at_start) / scroll_duration
+                scroll_progress = min(1.0, max(0.0, scroll_progress))
+                # Ease in-out for smooth scrolling
+                if scroll_progress < 0.5:
+                    eased = 2 * scroll_progress * scroll_progress
+                else:
+                    eased = 1 - pow(-2 * scroll_progress + 2, 2) / 2
+                x_offset = int(eased * (text_width - ticker_width))
+
+            # Draw text at offset position
+            draw_text(buffer, text, -x_offset, 1, color, scale=1)
+
+        # Add winter sparkles - random twinkling pixels
+        t_sec = t / 1000
+        num_sparkles = 3
+        for i in range(num_sparkles):
+            # Deterministic but animated sparkle positions
+            phase = t_sec * 2 + i * 2.1
+            if math.sin(phase) > 0.7:  # Only show some of the time
+                sparkle_x = int((math.sin(phase * 0.7 + i) * 0.5 + 0.5) * (buffer.shape[1] - 1))
+                sparkle_y = int((math.cos(phase * 0.5 + i * 1.3) * 0.5 + 0.5) * (buffer.shape[0] - 1))
+                brightness = int(200 + 55 * math.sin(phase * 3))
+                if 0 <= sparkle_x < buffer.shape[1] and 0 <= sparkle_y < buffer.shape[0]:
+                    buffer[sparkle_y, sparkle_x] = (brightness, brightness, brightness)
+
+    def _render_ticker_flip(self, buffer: NDArray[np.uint8], old_text: str, new_text: str,
+                            old_color: tuple, new_color: tuple, progress: float, t: float) -> None:
+        """Render vertical flip transition between two texts."""
+        from artifact.graphics.text_utils import draw_centered_text
+
+        h, w = buffer.shape[:2]
+
+        # Eased progress for smooth animation
+        eased = 1 - (1 - progress) ** 2  # Ease out quad
+
+        if eased < 0.5:
+            # First half: old text slides up and out
+            offset = int(eased * 2 * h)  # 0 to h
+            # Draw old text sliding up
+            temp = np.zeros_like(buffer)
+            draw_centered_text(temp, old_text, 1, old_color, scale=1)
+            # Shift up
+            if offset < h:
+                buffer[0:h-offset, :, :] = temp[offset:h, :, :]
+            # Fade effect
+            fade = 1.0 - eased * 2
+            buffer[:] = (buffer * fade).astype(np.uint8)
+        else:
+            # Second half: new text slides in from bottom
+            offset = int((1 - (eased - 0.5) * 2) * h)  # h to 0
+            # Draw new text
+            temp = np.zeros_like(buffer)
+            draw_centered_text(temp, new_text, 1, new_color, scale=1)
+            # Shift down (slide in from bottom)
+            if offset > 0 and offset < h:
+                buffer[offset:h, :, :] = temp[0:h-offset, :, :]
+            elif offset <= 0:
+                buffer[:] = temp
+            # Fade in effect
+            fade = (eased - 0.5) * 2
+            buffer[:] = (buffer * fade).astype(np.uint8)
+
     # =========================================================================
     # TICKER DISPLAY RENDERING
     # =========================================================================
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display."""
+        """Render unified ticker with vertical flip animation - same for all idle scenes."""
         clear(buffer)
-        scene = self.state.current_scene
-        t = self.state.scene_time
+        t = self.state.time  # Use global time for consistent animation
 
-        texts = {
-            IdleScene.MYSTICAL_EYE: "ВЗГЛЯНИ В ГЛАЗА СУДЬБЫ",
-            IdleScene.COSMIC_PORTAL: "ПОРТАЛ В НЕИЗВЕДАННОЕ",
-            IdleScene.CAMERA_MIRROR: "ПОСМОТРИ НА СЕБЯ",
-            IdleScene.PLASMA_WAVE: "МАГИЯ ЦВЕТА",
-            IdleScene.NEON_TUNNEL: "ЛЕТИ СКВОЗЬ НЕОН",
-            IdleScene.GLITCH_GRID: "СБОЙ В МАТРИЦЕ",
-            IdleScene.FIRE_SILHOUETTE: "ОГНЕННЫЙ СИЛУЭТ",
-            IdleScene.MATRIX_RAIN: "ДОБРО ПОЖАЛОВАТЬ В МАТРИЦУ",
-            IdleScene.STARFIELD_3D: "ПОЛЁТ К ЗВЁЗДАМ",
-            IdleScene.PLASMA_VORTEX: "ПЛАЗМЕННЫЙ ВОРТЕКС",
-            IdleScene.NEON_GRID: "РЕТРО ВОЛНА 80-Х",
-            IdleScene.ELECTRIC_STORM: "ЭЛЕКТРИЧЕСКИЙ ШТОРМ",
-            IdleScene.QUANTUM_FIELD: "КВАНТОВОЕ ПОЛЕ",
-            IdleScene.DNA_HELIX: "СПИРАЛЬ ЖИЗНИ",
-            # Classic effects
-            IdleScene.SNOWFALL: "ЗИМНЯЯ СКАЗКА",
-            IdleScene.FIREPLACE: "УЮТНЫЙ КАМИН",
-            IdleScene.PLASMA_CLASSIC: "КЛАССИЧЕСКАЯ ПЛАЗМА",
-            IdleScene.TUNNEL: "БЕСКОНЕЧНЫЙ ТОННЕЛЬ",
-            IdleScene.WAVE_PATTERN: "ВОЛНОВАЯ ИНТЕРФЕРЕНЦИЯ",
-            IdleScene.AURORA: "СЕВЕРНОЕ СИЯНИЕ",
-            IdleScene.KALEIDOSCOPE: "КАЛЕЙДОСКОП",
-            IdleScene.FIREWORKS: "ФЕЙЕРВЕРК",
-            IdleScene.LAVA_LAMP: "ЛАВОВАЯ ЛАМПА",
-            IdleScene.GAME_OF_LIFE: "ИГРА ЖИЗНИ КОНВЕЯ",
-            IdleScene.RADAR_SWEEP: "РАДАРНОЕ СКАНИРОВАНИЕ",
-            IdleScene.SPIRAL_GALAXY: "СПИРАЛЬНАЯ ГАЛАКТИКА",
-            IdleScene.BLACK_HOLE: "ЧЁРНАЯ ДЫРА",
-            IdleScene.HYPERCUBE: "ГИПЕРКУБ 4D",
-            # Iconic scenes
-            IdleScene.PACMAN: "PAC-MAN ПОГОНЯ",
-            IdleScene.NYAN_CAT: "NYAN CAT В КОСМОСЕ",
-            IdleScene.TETRIS: "ТЕТРИС",
-            IdleScene.FOUR_SEASONS: "ЧЕТЫРЕ СЕЗОНА",
-        }
-        text = texts.get(scene, "VNVNC ARCADE")
+        # Special case: POSTER_SLIDESHOW shows dates
+        if self.state.current_scene == IdleScene.POSTER_SLIDESHOW and self.poster_dates:
+            idx = self.poster_index % len(self.poster_dates)
+            date_text = self.poster_dates[idx] if self.poster_dates[idx] else "АФИШИ"
+            color = (255, 200, 100)  # Gold/amber
+            from artifact.graphics.text_utils import draw_centered_text
+            draw_centered_text(buffer, date_text, 1, color, scale=1)
+            return
 
-        colors = {
-            IdleScene.MYSTICAL_EYE: self.gold,
-            IdleScene.COSMIC_PORTAL: self.pink,
-            IdleScene.CAMERA_MIRROR: self.teal,
-            IdleScene.PLASMA_WAVE: (255, 200, 100),
-            IdleScene.NEON_TUNNEL: self.pink,
-            IdleScene.GLITCH_GRID: (0, 255, 100),
-            IdleScene.FIRE_SILHOUETTE: (255, 150, 50),
-            IdleScene.MATRIX_RAIN: (100, 255, 100),
-            IdleScene.STARFIELD_3D: (150, 150, 255),
-            IdleScene.PLASMA_VORTEX: (200, 100, 255),
-            IdleScene.NEON_GRID: (255, 100, 200),
-            IdleScene.ELECTRIC_STORM: (100, 150, 255),
-            IdleScene.QUANTUM_FIELD: (100, 200, 255),
-            IdleScene.DNA_HELIX: (100, 255, 150),
-            # Classic effects
-            IdleScene.SNOWFALL: (200, 220, 255),
-            IdleScene.FIREPLACE: (255, 150, 50),
-            IdleScene.PLASMA_CLASSIC: (255, 100, 200),
-            IdleScene.TUNNEL: (100, 200, 255),
-            IdleScene.WAVE_PATTERN: (100, 255, 200),
-            IdleScene.AURORA: (100, 255, 150),
-            IdleScene.KALEIDOSCOPE: (255, 200, 100),
-            IdleScene.FIREWORKS: (255, 255, 100),
-            IdleScene.LAVA_LAMP: (255, 100, 50),
-            IdleScene.GAME_OF_LIFE: (100, 255, 100),
-            IdleScene.RADAR_SWEEP: (0, 255, 100),
-            IdleScene.SPIRAL_GALAXY: (200, 150, 255),
-            IdleScene.BLACK_HOLE: (100, 50, 200),
-            IdleScene.HYPERCUBE: (0, 255, 255),
-            # Iconic scenes
-            IdleScene.PACMAN: (255, 255, 0),
-            IdleScene.NYAN_CAT: (255, 150, 200),
-            IdleScene.TETRIS: (100, 255, 255),
-            IdleScene.FOUR_SEASONS: (150, 200, 100),
-        }
-        color = colors.get(scene, (255, 255, 255))
+        # Unified rotating texts for all idle modes (horizontal scroll for longer ones)
+        texts = [
+            "VNVNC",
+            "WINTER SAGA",
+            "26.12-11.01",
+            "HAPPY NEW YEAR",
+            "VNVNC <3",
+            "С НОВЫМ ГОДОМ",
+        ]
 
-        render_ticker_animated(buffer, text, t, color, TickerEffect.SPARKLE_SCROLL)
+        # Colors cycle with texts - winter/festive palette
+        colors = [
+            (255, 100, 200),   # Pink
+            (100, 200, 255),   # Ice blue
+            (255, 215, 0),     # Gold
+            (100, 255, 150),   # Mint
+            (255, 150, 200),   # Light pink
+            (200, 220, 255),   # Snow white-blue
+        ]
+
+        # Timing: 3 seconds per text, with 0.3s transition
+        cycle_time = 3000  # ms per text
+        transition_time = 300  # ms for flip animation
+        total_cycle = len(texts) * cycle_time
+
+        # Calculate current and next text index
+        cycle_ms = t % total_cycle
+        current_idx = int(cycle_ms // cycle_time)
+        next_idx = (current_idx + 1) % len(texts)
+
+        # Time within current text's cycle
+        time_in_cycle = cycle_ms % cycle_time
+
+        current_text = texts[current_idx]
+        current_color = colors[current_idx]
+        next_text = texts[next_idx]
+        next_color = colors[next_idx]
+
+        # Render based on transition state
+        if time_in_cycle > (cycle_time - transition_time):
+            # In transition - vertical flip effect
+            progress = (time_in_cycle - (cycle_time - transition_time)) / transition_time
+            self._render_ticker_flip(buffer, current_text, next_text, current_color, next_color, progress, t)
+        else:
+            # Static display with sparkle effects
+            self._render_ticker_static_winter(buffer, current_text, current_color, t)
 
     # =========================================================================
     # LCD DISPLAY TEXT
@@ -2946,40 +3975,15 @@ class RotatingIdleAnimation:
         idx = int(t / 2000) % 3
 
         texts = {
-            IdleScene.MYSTICAL_EYE: ["  ВСЁ ВИДЯЩЕЕ  ", "    ГЛАЗ    ", " НАЖМИ СТАРТ "],
-            IdleScene.COSMIC_PORTAL: [" КОСМОС ЖДЁТ ", "  ТВОЙ ПУТЬ  ", " НАЖМИ СТАРТ "],
-            IdleScene.CAMERA_MIRROR: ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "],
-            IdleScene.PLASMA_WAVE: ["  ПЛАЗМЕННЫЙ  ", "   ТАНЕЦ    ", " НАЖМИ СТАРТ "],
-            IdleScene.NEON_TUNNEL: ["НЕОНОВЫЙ    ", "  ТОННЕЛЬ   ", " НАЖМИ СТАРТ "],
-            IdleScene.GLITCH_GRID: ["  ГЛИТЧ     ", "  СИСТЕМА   ", " НАЖМИ СТАРТ "],
-            IdleScene.FIRE_SILHOUETTE: ["  ОГНЕННЫЙ  ", "  СИЛУЭТ    ", " НАЖМИ СТАРТ "],
-            IdleScene.MATRIX_RAIN: ["  МАТРИЦА   ", "   ДОЖДЬ    ", " НАЖМИ СТАРТ "],
-            IdleScene.STARFIELD_3D: [" ЗВЁЗДНЫЙ   ", "  ПОЛЁТ     ", " НАЖМИ СТАРТ "],
-            IdleScene.PLASMA_VORTEX: ["  ВОРТЕКС   ", " ГИПНОТИЗМ  ", " НАЖМИ СТАРТ "],
-            IdleScene.NEON_GRID: [" SYNTHWAVE  ", "   80-Х     ", " НАЖМИ СТАРТ "],
-            IdleScene.ELECTRIC_STORM: ["   ШТОРМ    ", "   МОЛНИИ   ", " НАЖМИ СТАРТ "],
-            IdleScene.QUANTUM_FIELD: ["  КВАНТОВОЕ ", "    ПОЛЕ    ", " НАЖМИ СТАРТ "],
+            IdleScene.VNVNC_ENTRANCE: ["  ДОБРО       ", " ПОЖАЛОВАТЬ  ", " НАЖМИ СТАРТ "],
+            IdleScene.CAMERA_EFFECTS: ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "],
+            IdleScene.DIVOOM_GALLERY: [" С НОВЫМ    ", " ГОДОМ 2026!", " НАЖМИ СТАРТ "],
+            IdleScene.SAGA_LIVE: ["WINTER SAGA ", "26.12-11.01 ", " НАЖМИ СТАРТ "],
+            IdleScene.POSTER_SLIDESHOW: ["   АФИШИ    ", "  СОБЫТИЙ   ", " НАЖМИ СТАРТ "],
             IdleScene.DNA_HELIX: ["   СПИРАЛЬ  ", "   ЖИЗНИ    ", " НАЖМИ СТАРТ "],
-            # Classic effects
             IdleScene.SNOWFALL: ["   ЗИМНЯЯ   ", "   СКАЗКА   ", " НАЖМИ СТАРТ "],
             IdleScene.FIREPLACE: ["   УЮТНЫЙ   ", "   КАМИН    ", " НАЖМИ СТАРТ "],
-            IdleScene.PLASMA_CLASSIC: [" КЛАССИКА   ", "   ПЛАЗМЫ   ", " НАЖМИ СТАРТ "],
-            IdleScene.TUNNEL: ["БЕСКОНЕЧНЫЙ ", "  ТОННЕЛЬ   ", " НАЖМИ СТАРТ "],
-            IdleScene.WAVE_PATTERN: ["   ВОЛНЫ    ", "ИНТЕРФЕРЕНЦ.", " НАЖМИ СТАРТ "],
-            IdleScene.AURORA: ["  СЕВЕРНОЕ  ", "  СИЯНИЕ    ", " НАЖМИ СТАРТ "],
-            IdleScene.KALEIDOSCOPE: ["КАЛЕЙДОСКОП ", "   ЦВЕТА    ", " НАЖМИ СТАРТ "],
-            IdleScene.FIREWORKS: [" ФЕЙЕРВЕРК  ", "   ПРАЗДНИК ", " НАЖМИ СТАРТ "],
-            IdleScene.LAVA_LAMP: ["  ЛАВОВАЯ   ", "   ЛАМПА    ", " НАЖМИ СТАРТ "],
-            IdleScene.GAME_OF_LIFE: [" ИГРА ЖИЗНИ ", "   КОНВЕЯ   ", " НАЖМИ СТАРТ "],
-            IdleScene.RADAR_SWEEP: ["   РАДАР    ", "СКАНИРОВАНИЕ", " НАЖМИ СТАРТ "],
-            IdleScene.SPIRAL_GALAXY: ["СПИРАЛЬНАЯ  ", " ГАЛАКТИКА  ", " НАЖМИ СТАРТ "],
-            IdleScene.BLACK_HOLE: ["  ЧЁРНАЯ    ", "   ДЫРА     ", " НАЖМИ СТАРТ "],
             IdleScene.HYPERCUBE: [" ГИПЕРКУБ   ", "    4D      ", " НАЖМИ СТАРТ "],
-            # Iconic scenes
-            IdleScene.PACMAN: ["  PAC-MAN   ", "  ПОГОНЯ    ", " НАЖМИ СТАРТ "],
-            IdleScene.NYAN_CAT: [" NYAN CAT   ", "  РАДУГА    ", " НАЖМИ СТАРТ "],
-            IdleScene.TETRIS: ["  ТЕТРИС    ", "   БЛОКИ    ", " НАЖМИ СТАРТ "],
-            IdleScene.FOUR_SEASONS: ["  ЧЕТЫРЕ    ", "  СЕЗОНА    ", " НАЖМИ СТАРТ "],
         }
         scene_texts = texts.get(scene, ["    VNVNC    ", " НАЖМИ СТАРТ ", "    ★★★★    "])
         return scene_texts[idx].center(16)[:16]
@@ -2988,7 +3992,15 @@ class RotatingIdleAnimation:
         """Reset animation state."""
         self._close_camera()
         self.state = SceneState()
-        random.shuffle(self.scenes)
+        # DIVOOM_GALLERY is FIRST (New Year special!), then VNVNC_ENTRANCE, then shuffle the rest
+        self.scenes = []
+        # Divoom Gallery first if we have GIFs (New Year celebration!)
+        if self.divoom_gifs:
+            self.scenes.append(IdleScene.DIVOOM_GALLERY)
+        self.scenes.append(IdleScene.VNVNC_ENTRANCE)
+        other_scenes = [s for s in IdleScene if s not in (IdleScene.VNVNC_ENTRANCE, IdleScene.DIVOOM_GALLERY)]
+        random.shuffle(other_scenes)
+        self.scenes.extend(other_scenes)
         self.scene_index = 0
         self.state.current_scene = self.scenes[0]
         self.eye_x = 0.0

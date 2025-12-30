@@ -209,16 +209,23 @@ MODE_ICONS = {
     ],
 }
 
-# Mode colors for visual identity
+# Mode colors for visual identity - unique vibrant color per mode
 MODE_COLORS = {
-    "fortune": (200, 100, 255),     # Purple
+    # Currently active modes (in menu order)
+    "fortune": (180, 100, 255),     # Mystic purple
+    "ai_prophet": (0, 255, 180),    # Neon teal
+    "photobooth": (255, 80, 180),   # Hot pink
+    "roast": (255, 100, 30),        # Fire orange
+    "squid_game": (255, 50, 80),    # Red light
+    "quiz": (255, 220, 0),          # Gold
+    "tower_stack": (100, 200, 255), # Sky blue
+    "brick_breaker": (255, 150, 50),# Warm orange
+    "video": (150, 100, 255),       # Electric violet
+
+    # Other modes
     "roulette": (255, 50, 50),      # Red
-    "quiz": (255, 215, 0),          # Gold
-    "squid_game": (255, 100, 150),  # Pink
     "guess_me": (100, 200, 255),    # Cyan
     "autopsy": (150, 255, 150),     # Green
-    "roast": (255, 150, 50),        # Orange
-    "ai_prophet": (100, 255, 200),  # Teal
     "flow_field": (100, 150, 255),  # Blue
     "glitch_mirror": (255, 50, 150),# Magenta
     "dither_art": (150, 200, 100),  # Lime
@@ -231,12 +238,13 @@ MODE_COLORS = {
     "flappy": (255, 220, 80),
     "game_2048": (237, 194, 46),
     "lunar_lander": (200, 160, 80),
-    "tower_stack": (200, 190, 160),
     "hand_snake": (120, 255, 140),
     "rocketpy": (180, 220, 255),
     "skii": (180, 200, 220),
     "ninja_fruit": (255, 200, 120),
-    "rap_god": (255, 50, 200),  # Hot pink/magenta for rap
+    "rap_god": (255, 50, 200),      # Hot pink/magenta
+    "zodiac": (200, 180, 255),      # Cosmic lavender
+    "gesture_game": (255, 180, 100),# Warm amber
 }
 
 
@@ -394,8 +402,8 @@ class ModeManager:
         # Register event handlers
         self._setup_event_handlers()
 
-        # Start idle music
-        self._audio.play_music("idle", fade_in_ms=1000)
+        # Start cycling idle music (will cycle through nostalgic tracks)
+        self._audio.start_idle_music()
 
         # Mode selector camera and effects
         self._selector_frame = None
@@ -695,8 +703,8 @@ class ModeManager:
                         font = load_font("cyrillic")
                         lines = smart_wrap_text(self._last_result.display_text, 120, font, scale=1)
 
-                        # Pre-paginate text into pages (5 lines per page for readability)
-                        lines_per_page = 5
+                        # Pre-paginate text into pages (13 lines per page, fullscreen)
+                        lines_per_page = 13
                         self._result_text_pages = []
                         for i in range(0, len(lines), lines_per_page):
                             page_lines = lines[i:i + lines_per_page]
@@ -729,10 +737,11 @@ class ModeManager:
 
         # Handle music transitions and cross-display effects
         if new_state == ManagerState.IDLE:
-            self._audio.play_music("idle", fade_in_ms=1000)
+            self._audio.start_idle_music()  # Cycling nostalgic tracks
             self._display_coordinator.clear_effect()  # Clear effects on idle
             self._close_selector_camera()  # Close selector camera if open
         elif new_state == ManagerState.MODE_SELECT:
+            self._audio.stop_idle_music()  # Stop cycling idle music
             self._audio.play_music("menu", fade_in_ms=300)
             self._audio.play_ui_confirm()  # Confirmation sound
             self._display_coordinator.set_effect(CrossDisplayEffect.SPARKLE_CASCADE, 0.5)
@@ -925,6 +934,12 @@ class ModeManager:
             except Exception:
                 pass
 
+        # During idle, allow GIF navigation with keypad 2/8
+        if self._state == ManagerState.IDLE:
+            if self._idle_animation.on_input(key):
+                self._audio.play_ui_move()
+                return
+
         # Pass to active mode
         if self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
@@ -1095,6 +1110,15 @@ class ModeManager:
         # Handle state-specific updates
         if self._state == ManagerState.IDLE:
             self._idle_animation.update(delta_ms)
+            # Update cycling idle music with motion detection
+            # Get motion from camera to pause/resume music after inactivity
+            try:
+                from artifact.utils.camera_service import camera_service
+                _, confidence = camera_service.get_motion_position()
+                motion_detected = confidence > 0.1
+            except Exception:
+                motion_detected = True  # Assume motion if camera unavailable
+            self._audio.update_idle_music(delta_ms, motion_detected)
 
         elif self._state == ManagerState.MODE_SELECT:
             if self._use_pygame_menu:
@@ -1270,12 +1294,12 @@ class ModeManager:
         # Darken center area slightly for text readability - VECTORIZED
         import numpy as np
         panel_y1, panel_y2 = 36, 96
-        panel_x1, panel_x2 = 12, 116
+        panel_x1, panel_x2 = 4, 124  # Wider panel to fit long names like ФОТОБУДКА
 
         # Create distance masks for rounded corners
         y_coords = np.arange(panel_y1, panel_y2)[:, np.newaxis]
         x_coords = np.arange(panel_x1, panel_x2)[np.newaxis, :]
-        dist_x = np.abs(x_coords - 64) / 44
+        dist_x = np.abs(x_coords - 64) / 56  # Adjusted for wider panel
         dist_y = np.abs(y_coords - 65) / 25
         inside_mask = (dist_x <= 1) & (dist_y <= 1)
 
@@ -1289,7 +1313,7 @@ class ModeManager:
 
         label = (mode.display_name or mode.name).strip().upper()
         font = load_font("cyrillic")
-        max_width = panel_x2 - panel_x1 - 8
+        max_width = 116  # Allow up to 116px for text (fits 9+ Cyrillic chars at scale 2)
         max_height = panel_y2 - panel_y1 - 6
 
         def layout_lines(scale: int, max_lines: int):
@@ -1373,39 +1397,60 @@ class ModeManager:
         draw_centered_text(buffer, "▼НАЖМИ СТАРТ▼", prompt_y, prompt_color, scale=1)
 
     def _render_camera_effect_background(self, buffer, t: float) -> None:
-        """Apply current effect to camera frame and render to FULL 128x128 buffer."""
+        """Apply mode-colored tint over camera frame - smooth, not pixelated."""
         import numpy as np
 
         frame = self._selector_frame
         if frame is None:
             return
 
+        # Get current mode's unique color
+        mode = self.get_selected_mode()
+        mode_color = MODE_COLORS.get(mode.name, (255, 200, 0)) if mode else (255, 200, 0)
+
         # Mirror horizontally for selfie view
         frame = np.fliplr(frame)
 
-        # CRITICAL: Resize frame to EXACTLY 128x128 to fill entire screen
+        # Resize frame to 128x128
         if frame.shape[0] != 128 or frame.shape[1] != 128:
             try:
                 import cv2
                 frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_LINEAR)
             except ImportError:
-                # Manual nearest-neighbor resize if cv2 not available - VECTORIZED
                 old_h, old_w = frame.shape[:2]
                 y_indices = (np.arange(128) * old_h // 128).clip(0, old_h - 1)
                 x_indices = (np.arange(128) * old_w // 128).clip(0, old_w - 1)
                 frame = frame[y_indices[:, np.newaxis], x_indices]
 
-        # Apply effect based on current selection
-        if self._selector_effect == SelectorEffect.DITHER:
-            self._apply_dither_effect(buffer, frame, t)
-        elif self._selector_effect == SelectorEffect.SCANLINES:
-            self._apply_scanline_effect(buffer, frame, t)
-        elif self._selector_effect == SelectorEffect.PIXELATE:
-            self._apply_pixelate_effect(buffer, frame, t)
-        elif self._selector_effect == SelectorEffect.THERMAL:
-            self._apply_thermal_effect(buffer, frame, t)
-        elif self._selector_effect == SelectorEffect.MATRIX:
-            self._apply_matrix_effect(buffer, frame, t)
+        # Convert to grayscale for silhouette
+        gray = np.mean(frame, axis=2)
+
+        # Apply smooth color tint based on mode color
+        # Bright areas get the mode color, dark areas stay dark
+        h, w = 128, 128
+        r, g, b = mode_color
+
+        # Normalize brightness
+        brightness = gray / 255.0
+
+        # Smooth gradient - mode color for bright areas
+        pulse = 0.85 + 0.15 * math.sin(t * 2)
+        tinted_r = (brightness * r * pulse).astype(np.uint8)
+        tinted_g = (brightness * g * pulse).astype(np.uint8)
+        tinted_b = (brightness * b * pulse).astype(np.uint8)
+
+        # Dark background tint (complement of mode color, very dark)
+        bg_r = int(r * 0.1)
+        bg_g = int(g * 0.1)
+        bg_b = int(b * 0.1)
+
+        # Blend: dark areas get dark tint, bright areas get mode color
+        threshold = 0.3
+        blend = np.clip((brightness - threshold) / (1.0 - threshold), 0, 1)
+
+        buffer[:h, :w, 0] = (bg_r * (1 - blend) + tinted_r * blend).astype(np.uint8)
+        buffer[:h, :w, 1] = (bg_g * (1 - blend) + tinted_g * blend).astype(np.uint8)
+        buffer[:h, :w, 2] = (bg_b * (1 - blend) + tinted_b * blend).astype(np.uint8)
 
     def _apply_dither_effect(self, buffer, frame, t: float) -> None:
         """Apply Bayer ordered dithering to camera frame - VECTORIZED."""
@@ -1587,19 +1632,37 @@ class ModeManager:
         buffer[:h, :w, 2] = b
 
     def _render_fallback_gradient(self, buffer, t: float) -> None:
-        """Render animated gradient when no camera available - VECTORIZED."""
+        """Render animated gradient when no camera available - uses mode color."""
         import numpy as np
 
-        # Create y coordinate array
+        # Get current mode's unique color
+        mode = self.get_selected_mode()
+        mode_color = MODE_COLORS.get(mode.name, (255, 200, 0)) if mode else (255, 200, 0)
+        mr, mg, mb = mode_color
+
+        # Create coordinate arrays
         y_coords = np.arange(128)[:, np.newaxis]
+        x_coords = np.arange(128)[np.newaxis, :]
 
-        # Compute colors vectorized
-        wave = np.sin(y_coords / 20 + t * 2) * 10
-        r = np.clip(20 + wave + math.sin(t) * 10, 0, 255).astype(np.uint8)
-        g = np.clip(10 + y_coords / 10, 0, 255).astype(np.uint8)
-        b = np.clip(40 + y_coords / 4 + math.cos(t * 0.5) * 20, 0, 255).astype(np.uint8)
+        # Animated wave pattern
+        wave = np.sin(y_coords / 15 + t * 2) * 0.15
+        pulse = 0.7 + 0.3 * math.sin(t * 1.5)
 
-        # Broadcast to full width
+        # Gradient from dark to mode color (top to bottom)
+        gradient = y_coords / 128.0  # 0 at top, 1 at bottom
+
+        # Add some horizontal variation for interest
+        h_wave = np.sin(x_coords / 20 + t) * 0.1
+
+        # Combine effects
+        intensity = np.clip(gradient * 0.6 + wave + h_wave, 0.1, 0.8) * pulse
+
+        # Apply mode color with animated intensity
+        r = np.clip(mr * intensity, 0, 255).astype(np.uint8)
+        g = np.clip(mg * intensity, 0, 255).astype(np.uint8)
+        b = np.clip(mb * intensity, 0, 255).astype(np.uint8)
+
+        # Broadcast to full buffer
         buffer[:, :, 0] = np.broadcast_to(r, (128, 128))
         buffer[:, :, 1] = np.broadcast_to(g, (128, 128))
         buffer[:, :, 2] = np.broadcast_to(b, (128, 128))
@@ -1695,38 +1758,36 @@ class ModeManager:
 
         if view == 0:
             # Prediction text view with PAGINATION (no scrolling!)
-            # Title
-            draw_centered_text(buffer, "ПРОРОЧЕСТВО", 3, (255, 200, 100), scale=1)
+            # Compact title line with page arrows (saves vertical space)
+            total_pages = len(self._result_text_pages) if self._result_text_pages else 1
+            page_idx = min(self._result_text_page_index, total_pages - 1) if self._result_text_pages else 0
 
-            # Render current text page
+            if total_pages > 1:
+                # Arrows on sides of title: "◄ ПРОРОЧЕСТВО 1/11 ►"
+                left_arrow = "◄" if page_idx > 0 else " "
+                right_arrow = "►" if page_idx < total_pages - 1 else " "
+                title_text = f"{left_arrow} {page_idx + 1}/{total_pages} {right_arrow}"
+                draw_centered_text(buffer, title_text, 3, (100, 150, 200), scale=1)
+            else:
+                draw_centered_text(buffer, "ПРОРОЧЕСТВО", 3, (255, 200, 100), scale=1)
+
+            # Render current text page - FULLSCREEN (text goes to bottom)
             if self._result_text_pages:
-                page_idx = min(self._result_text_page_index, len(self._result_text_pages) - 1)
                 page_lines = self._result_text_pages[page_idx]
 
-                # Render lines with subtle animation
-                y = 16
-                line_height = 12
+                # Render lines with subtle animation (fullscreen, no wasted space)
+                y = 12
+                line_height = 8
                 for i, line in enumerate(page_lines):
                     # Subtle pulse for readability
                     pulse = 0.9 + 0.1 * math.sin(self._time_in_state / 400 + i * 0.3)
                     color = tuple(int(255 * pulse) for _ in range(3))
                     draw_centered_text(buffer, line, y, color, scale=1)
                     y += line_height
-
-                # Page indicator (e.g., "1/3")
-                total_pages = len(self._result_text_pages)
-                if total_pages > 1:
-                    page_indicator = f"{page_idx + 1}/{total_pages}"
-                    left_arrow = "◄" if page_idx > 0 else " "
-                    right_arrow = "►" if page_idx < total_pages - 1 else " "
-                    nav_text = f"{left_arrow} {page_indicator} {right_arrow}"
-                    draw_centered_text(buffer, nav_text, 95, (100, 150, 200), scale=1)
             else:
                 draw_centered_text(buffer, "...", 50, (100, 100, 100), scale=1)
 
-            # Navigation hints
-            if has_caricature or (self._result_text_pages and len(self._result_text_pages) > 1):
-                draw_centered_text(buffer, "◄ ► ЛИСТАТЬ", 105, (100, 120, 140), scale=1)
+            # No bottom hints - fullscreen text!
 
             # Printing status hint
             if self._state == ManagerState.PRINTING:
