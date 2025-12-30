@@ -27,6 +27,8 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.animation.santa_runner import SantaRunner
+from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +297,10 @@ class GuessMeMode(BaseMode):
         self._yes_color = (0, 255, 100)  # Green
         self._no_color = (255, 100, 0)   # Orange
 
+        # Santa runner minigame for waiting
+        self._santa_runner: Optional[SantaRunner] = None
+        self._audio = get_audio_engine()
+
     @property
     def is_ai_available(self) -> bool:
         return self._gemini_client.is_available
@@ -382,12 +388,28 @@ class GuessMeMode(BaseMode):
                 pass
 
         elif self.phase == ModePhase.PROCESSING:
+            # Update santa runner minigame
+            if self._santa_runner:
+                self._santa_runner.update(delta_ms)
+            self._progress_tracker.update(delta_ms)
+
             if self._ai_task and self._ai_task.done():
                 self._on_ai_complete()
             else:
-                self._processing_progress = min(0.95, self._processing_progress + delta_ms / 8000)
+                self._processing_progress = self._progress_tracker.get_progress()
 
     def on_input(self, event: Event) -> bool:
+        # Handle santa runner during processing
+        if self.phase == ModePhase.PROCESSING and self._santa_runner:
+            if event.type == EventType.BUTTON_PRESS:
+                self._santa_runner.handle_jump()
+                self._audio.play_ui_click()
+                return True
+            elif event.type in (EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT):
+                if self._santa_runner.handle_shoot():
+                    self._audio.play_ui_click()
+                return True
+
         # Handle question answering
         if self._sub_phase in (GuessPhase.QUESTIONS, GuessPhase.MORE_QUESTIONS):
             if not self._question_answered:
