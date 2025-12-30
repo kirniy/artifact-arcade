@@ -1,18 +1,18 @@
-"""Photobooth Mode - Adapted from raspi-photo-booth with QR sharing.
+"""Photobooth Mode - AI Christmas Photo Booth with QR sharing.
 
 Photo booth flow:
 1. Button press → Countdown (3-2-1)
 2. Camera flash → Take photo
-3. Show preview → Print + QR code
+3. AI generates Christmas-themed 2x2 photo booth grid
+4. Show preview → Print + QR code
 
-Original: https://github.com/kriskbx/raspi-photo-booth
-QR sharing: Inspired by https://github.com/momentobooth/momentobooth
+Uses Gemini 2.0 Flash for image generation to create festive
+photo booth strips with "VNVNC 2026" Christmas branding.
 """
 
 import logging
-import time
-import tempfile
 import io
+import asyncio
 from typing import Optional
 from dataclasses import dataclass
 
@@ -25,6 +25,10 @@ from artifact.graphics.primitives import fill, draw_rect
 from artifact.graphics.text_utils import draw_centered_text
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
+from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
+from artifact.animation.santa_runner import SantaRunner
+from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
 
@@ -34,37 +38,42 @@ class PhotoboothState:
     """State for photobooth session."""
     countdown: int = 3
     countdown_timer: float = 0.0
-    photo_bytes: Optional[bytes] = None
-    photo_frame: Optional[NDArray[np.uint8]] = None
+    photo_bytes: Optional[bytes] = None  # Original captured photo
+    photo_frame: Optional[NDArray[np.uint8]] = None  # Original photo for preview
+    ai_result_bytes: Optional[bytes] = None  # AI-generated Christmas grid
+    ai_result_frame: Optional[NDArray[np.uint8]] = None  # AI result for display
     photo_path: Optional[str] = None
     qr_url: Optional[str] = None
     qr_image: Optional[NDArray[np.uint8]] = None
     is_printing: bool = False
     is_uploading: bool = False
+    is_generating: bool = False  # AI generation in progress
     flash_timer: float = 0.0
     show_result: bool = False
     result_view: str = "photo"  # "photo" or "qr"
+    generation_progress: float = 0.0  # 0.0 to 1.0
 
 
 class PhotoboothMode(BaseMode):
-    """Photobooth mode - take, print, and share photos.
+    """AI Christmas Photo Booth - generates festive photo booth grids.
 
-    Adapted from raspi-photo-booth with additions from Momentobooth:
-    - Countdown timer with visual + audio feedback
-    - Photo capture at high resolution
-    - Thermal printing
-    - QR code for photo download
+    Flow:
+    1. Countdown timer with visual + audio feedback
+    2. Photo capture
+    3. AI generates Christmas-themed 2x2 photo booth grid with VNVNC 2026 branding
+    4. Upload to S3 for QR code sharing
+    5. Thermal printing of the AI-generated result
     """
 
     name = "photobooth"
-    display_name = "ФОТОБУДКА"
-    description = "Сделай фото и получи QR"
+    display_name = "ФОТОЗОНА"
+    description = "Новогоднее фото с AI!"
     icon = "camera"
     style = "arcade"
     requires_camera = True
-    estimated_duration = 20
+    requires_ai = True
+    estimated_duration = 30
 
-    # Adapted from raspi-photo-booth
     BEEP_TIME = 0.2
     COUNTDOWN_SECONDS = 3
     FLASH_DURATION = 0.5
@@ -75,16 +84,25 @@ class PhotoboothMode(BaseMode):
         self._state = PhotoboothState()
         self._working = False
         self._uploader = AsyncUploader()
+        self._caricature_service = CaricatureService()
+        self._ai_task: Optional[asyncio.Task] = None
+        self._progress_tracker = SmartProgressTracker(mode_theme="photobooth")
+        self._santa_runner: Optional[SantaRunner] = None
+        self._audio = get_audio_engine()
 
     def on_enter(self) -> None:
-        """Initialize mode - adapted from raspi-photo-booth setup()."""
+        """Initialize mode."""
         self._state = PhotoboothState()
         self._working = False
+        self._ai_task = None
+        self._progress_tracker.reset()
         self.change_phase(ModePhase.ACTIVE)
 
     def on_exit(self) -> None:
-        """Cleanup - adapted from raspi-photo-booth destroy()."""
+        """Cleanup."""
         self._working = False
+        if self._ai_task and not self._ai_task.done():
+            self._ai_task.cancel()
 
     def on_input(self, event: Event) -> bool:
         """Handle button press - adapted from buttonPress()."""
@@ -99,6 +117,13 @@ class PhotoboothMode(BaseMode):
                 # Reset timer on toggle to give more time
                 self._state.countdown_timer = self.RESULT_DURATION
                 return True
+
+        # Handle jump input for Santa runner during AI generation
+        if self._state.is_generating and event.type == EventType.BUTTON_PRESS:
+            if self._santa_runner:
+                self._santa_runner.handle_jump()
+                self._audio.play_ui_click()
+            return True
 
         if event.type not in (EventType.BUTTON_PRESS, EventType.KEYPAD_INPUT):
             return False
@@ -135,20 +160,61 @@ class PhotoboothMode(BaseMode):
             self._update_result(delta_ms)
 
     def _update_countdown(self, delta_ms: float) -> None:
-        """Update countdown timer - adapted from countdown loop."""
-        self._state.countdown_timer -= delta_ms / 1000.0
+        """Update countdown timer and AI generation progress."""
+        # Handle flash timer
+        if self._state.flash_timer > 0:
+            self._state.flash_timer -= delta_ms / 1000.0
 
-        if self._state.countdown_timer <= 0:
-            if self._state.countdown > 1:
-                # Next countdown number
-                self._state.countdown -= 1
-                self._state.countdown_timer = 1.0
-            else:
-                # Countdown finished - take photo!
-                self._do_flash_and_capture()
+        # Handle countdown
+        if self._state.countdown > 0:
+            self._state.countdown_timer -= delta_ms / 1000.0
+
+            if self._state.countdown_timer <= 0:
+                if self._state.countdown > 1:
+                    # Next countdown number
+                    self._state.countdown -= 1
+                    self._state.countdown_timer = 1.0
+                else:
+                    # Countdown finished - take photo!
+                    self._do_flash_and_capture()
+            return
+
+        # Handle AI generation progress
+        if self._state.is_generating:
+            # Update progress tracker
+            self._progress_tracker.update(delta_ms)
+            self._state.generation_progress = self._progress_tracker.progress
+
+            # Update Santa runner minigame
+            if self._santa_runner:
+                self._santa_runner.update(delta_ms)
+
+            # Check if AI task completed
+            if self._ai_task and self._ai_task.done():
+                try:
+                    result = self._ai_task.result()
+                    if result:
+                        self._state.ai_result_bytes = result
+                        self._state.ai_result_frame = self._decode_photo_frame(result)
+                        logger.info("AI Christmas grid generation completed")
+                        # Upload the AI result for QR
+                        self._upload_ai_result_async()
+                    else:
+                        logger.error("AI generation returned no result")
+                except Exception as e:
+                    logger.error(f"AI generation failed: {e}")
+
+                self._state.is_generating = False
+                self._ai_task = None
+                self._progress_tracker.complete()
+
+                # Show result
+                self._state.show_result = True
+                self._state.countdown_timer = self.RESULT_DURATION
+                self.change_phase(ModePhase.RESULT)
 
     def _do_flash_and_capture(self) -> None:
-        """Flash and capture - adapted from flashOn + takePhoto."""
+        """Flash, capture, and start AI generation."""
         self._state.flash_timer = self.FLASH_DURATION
         self._state.countdown = 0
 
@@ -158,17 +224,24 @@ class PhotoboothMode(BaseMode):
             self._state.photo_bytes = jpeg_bytes
             self._state.photo_frame = self._decode_photo_frame(jpeg_bytes)
 
-            # Save to temp file for printing
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
-                f.write(jpeg_bytes)
-                self._state.photo_path = f.name
+            # Start AI generation
+            self._state.is_generating = True
+            self._progress_tracker.start()
+            self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
 
-            # Start upload in background (inspired by momentobooth ffsend)
-            self._upload_photo_async()
+            # Initialize Santa runner minigame for the waiting screen
+            self._santa_runner = SantaRunner()
+            self._santa_runner.reset()
 
-        self.change_phase(ModePhase.RESULT)
-        self._state.show_result = True
-        self._state.countdown_timer = self.RESULT_DURATION
+            self._ai_task = asyncio.create_task(self._generate_christmas_grid())
+            logger.info("Starting AI Christmas photo booth generation")
+
+            self.change_phase(ModePhase.PROCESSING)
+        else:
+            # No photo captured, go to error state
+            logger.error("Photo capture failed")
+            self._working = False
+            self.change_phase(ModePhase.ACTIVE)
 
     def _decode_photo_frame(self, jpeg_bytes: bytes) -> Optional[NDArray[np.uint8]]:
         """Decode captured JPEG into a 128x128 RGB frame for preview."""
@@ -182,6 +255,51 @@ class PhotoboothMode(BaseMode):
             return np.array(img, dtype=np.uint8)
         except Exception:
             return None
+
+    async def _generate_christmas_grid(self) -> Optional[bytes]:
+        """Generate AI Christmas photo booth grid from captured photo."""
+        if not self._state.photo_bytes:
+            logger.error("No photo bytes for AI generation")
+            return None
+
+        try:
+            logger.info("Calling CaricatureService for Christmas photo booth grid generation")
+
+            # Generate the Christmas photo booth grid using CaricatureService
+            result = await self._caricature_service.generate_caricature(
+                reference_photo=self._state.photo_bytes,
+                style=CaricatureStyle.PHOTOBOOTH,
+            )
+
+            if result and result.image_data:
+                logger.info(f"AI generation successful, got {len(result.image_data)} bytes")
+                return result.image_data
+            else:
+                logger.error("AI generation returned no result")
+                return None
+
+        except Exception as e:
+            logger.error(f"AI Christmas grid generation failed: {e}")
+            return None
+
+    def _upload_ai_result_async(self) -> None:
+        """Upload AI-generated result for QR sharing."""
+        # Prefer AI result, fall back to original photo
+        upload_bytes = self._state.ai_result_bytes or self._state.photo_bytes
+        if not upload_bytes:
+            logger.warning("No image bytes available for upload")
+            return
+
+        logger.info("Starting async AI result upload via AsyncUploader")
+        self._state.is_uploading = True
+
+        self._uploader.upload_bytes(
+            upload_bytes,
+            prefix="photobooth",
+            extension="png" if self._state.ai_result_bytes else "jpg",
+            content_type="image/png" if self._state.ai_result_bytes else "image/jpeg",
+            callback=self._on_upload_complete
+        )
 
     def _upload_photo_async(self) -> None:
         """Upload photo for QR sharing using shared AsyncUploader."""
@@ -236,6 +354,7 @@ class PhotoboothMode(BaseMode):
             print_data={
                 "caricature": self._state.photo_bytes,
                 "qr_url": self._state.qr_url,
+                "qr_image": self._state.qr_image,
             }
         )
         self.complete(result)
@@ -248,7 +367,17 @@ class PhotoboothMode(BaseMode):
             fill(buffer, (255, 255, 255))
             return
 
-        # Get camera background
+        if self._state.is_generating:
+            # Show AI generation progress
+            self._render_generating(buffer)
+            return
+
+        if self._state.show_result:
+            # Show result with QR code
+            self._render_result(buffer)
+            return
+
+        # Get camera background for active/countdown states
         frame = camera_service.get_frame(timeout=0)
         if frame is not None and frame.shape[:2] == (128, 128):
             np.copyto(buffer, frame)
@@ -258,10 +387,6 @@ class PhotoboothMode(BaseMode):
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             # Show countdown number - big and centered
             self._render_countdown(buffer)
-
-        elif self._state.show_result:
-            # Show result with QR code
-            self._render_result(buffer)
 
         elif self.phase == ModePhase.ACTIVE:
             # Show "press button" prompt
@@ -276,6 +401,39 @@ class PhotoboothMode(BaseMode):
         num_str = str(self._state.countdown)
         draw_centered_text(buffer, num_str, 40, (255, 255, 0), scale=6)
 
+    def _render_generating(self, buffer: NDArray[np.uint8]) -> None:
+        """Render Santa runner minigame while AI is generating, with captured photo as background."""
+        # Render the Santa runner game with captured photo as background
+        if self._santa_runner:
+            self._santa_runner.render(buffer, background=self._state.photo_frame)
+
+            # Add compact progress bar at the top
+            bar_w, bar_h = 100, 4
+            bar_x = (128 - bar_w) // 2
+            bar_y = 2
+
+            # Semi-transparent dark background for progress bar
+            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, (20, 20, 40))
+
+            # Use the SmartProgressTracker's render method for the progress bar
+            self._progress_tracker.render_progress_bar(
+                buffer, bar_x, bar_y, bar_w, bar_h,
+                bar_color=(100, 255, 100),  # Christmas green
+                bg_color=(40, 40, 40),
+                time_ms=self._time_in_phase
+            )
+
+            # Show compact status at bottom
+            status_message = self._progress_tracker.get_message()
+            # Semi-transparent dark strip for text
+            draw_rect(buffer, 0, 118, 128, 10, (20, 20, 40))
+            draw_centered_text(buffer, status_message, 119, (200, 200, 200), scale=1)
+
+        else:
+            # Fallback to simple generating screen if no game
+            fill(buffer, (15, 20, 35))
+            draw_centered_text(buffer, "СОЗДАЕМ...", 55, (100, 255, 100), scale=2)
+
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
         """Render ready state."""
         # Semi-transparent overlay
@@ -289,10 +447,13 @@ class PhotoboothMode(BaseMode):
         draw_centered_text(buffer, "КНОПКУ", 120, (200, 200, 200), scale=1)
 
     def _render_result(self, buffer: NDArray[np.uint8]) -> None:
-        """Render result screen - full screen photo or QR."""
+        """Render result screen - full screen AI photo or QR."""
         if self._state.result_view == "photo":
-            # Full screen photo
-            if self._state.photo_frame is not None:
+            # Full screen AI-generated Christmas photo booth grid
+            if self._state.ai_result_frame is not None:
+                np.copyto(buffer, self._state.ai_result_frame)
+            elif self._state.photo_frame is not None:
+                # Fallback to original photo if AI failed
                 np.copyto(buffer, self._state.photo_frame)
             else:
                 fill(buffer, (10, 10, 20))
@@ -339,11 +500,15 @@ class PhotoboothMode(BaseMode):
             # Show countdown on ticker
             text = f"   {self._state.countdown}   "
             draw_centered_text(buffer, text, 1, (255, 255, 0), scale=1)
+        elif self._state.is_generating:
+            # Show generation progress on ticker
+            pct = int(self._state.generation_progress * 100)
+            draw_centered_text(buffer, f"AI {pct}%", 1, (255, 100, 100), scale=1)
         elif self._state.show_result:
             if self._state.result_view == "qr":
                 draw_centered_text(buffer, "QR", 1, (100, 255, 100), scale=1)
             else:
-                draw_centered_text(buffer, "ФОТО", 1, (100, 255, 100), scale=1)
+                draw_centered_text(buffer, "ГОТОВО", 1, (100, 255, 100), scale=1)
         else:
             draw_centered_text(buffer, "ФОТО", 1, (255, 150, 50), scale=1)
 

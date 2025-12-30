@@ -24,7 +24,7 @@ from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.ai.caricature import CaricatureService
 from artifact.audio.engine import get_audio_engine
-from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.coupon_service import get_coupon_service, CouponResult
 
@@ -109,20 +109,20 @@ class SquidGameMode(BaseMode):
         self._phase_time: float = 0       # Time in current green/red phase
         self._elimination_reason: str = ""
 
-        # Motion detection - BALANCED FOR CAMERA TRACKING
+        # Motion detection - TUNED FOR FUN & CHALLENGE
         self._camera: bool = False
         self._reference_frame: Optional[np.ndarray] = None
         self._current_frame: Optional[np.ndarray] = None
         self._camera_preview: Optional[np.ndarray] = None
         self._previous_frame: Optional[np.ndarray] = None
         self._motion_level: float = 0.0            # Red light check (vs reference)
-        self._motion_threshold: float = 0.12       # Sensitivity - higher = more forgiving (was 0.08)
+        self._motion_threshold: float = 0.08       # Sensitivity - lower = more sensitive = HARDER
         self._motion_history: List[float] = []     # Red light history smoothing
         self._live_motion_level: float = 0.0       # Continuous motion estimate
         self._live_motion_history: List[float] = []  # Rolling motion for green light
-        self._green_motion_threshold: float = 0.04  # How much to move on green - lower = easier
+        self._green_motion_threshold: float = 0.03  # How much to move on green - lower = easier to trigger
         self._green_idle_time: float = 0.0
-        self._green_idle_limit: float = 3500.0     # How long can be idle on green (was 2000)
+        self._green_idle_limit: float = 2500.0     # How long can be idle on green - shorter = must keep moving
         self._moved_this_green: bool = False
 
         # Doll animation
@@ -381,7 +381,17 @@ class SquidGameMode(BaseMode):
                 small = gray[::4, ::4]
                 self._current_frame = small
 
-                self._camera_preview = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=100)
+                # Clean B&W grayscale preview (no dithering)
+                if len(frame.shape) == 3:
+                    preview_gray = (0.299 * frame[:, :, 0] + 0.587 * frame[:, :, 1] + 0.114 * frame[:, :, 2]).astype(np.uint8)
+                else:
+                    preview_gray = frame
+                if preview_gray.shape != (128, 128):
+                    from PIL import Image
+                    img = Image.fromarray(preview_gray)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    preview_gray = np.array(img, dtype=np.uint8)
+                self._camera_preview = np.stack([preview_gray, preview_gray, preview_gray], axis=-1)
 
         except Exception as e:
             logger.warning(f"Camera frame error: {e}")

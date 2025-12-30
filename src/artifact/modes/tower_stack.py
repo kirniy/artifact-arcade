@@ -7,6 +7,7 @@ Inspired by classic stacker arcade games with proper physics.
 import math
 import random
 import logging
+from datetime import datetime
 from typing import List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -975,6 +976,14 @@ class TowerStackMode(BaseMode):
             display_text=f"СЧЕТ {self._score}",
             ticker_text="БАШНЯ",
             lcd_text=f"СЧЕТ {self._score}",
-            should_print=False,
+            should_print=True,
+            print_data={
+                "score": self._score,
+                "height": self._best_height,
+                "max_streak": self._max_streak,
+                "difficulty": self._difficulty_name,
+                "timestamp": datetime.now().isoformat(),
+                "type": "tower_stack",
+            },
         )
         self.complete(result)

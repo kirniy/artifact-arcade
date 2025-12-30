@@ -187,7 +187,7 @@ class ReceiptGenerator:
         layout.add_text(f"{label}: {value}", alignment=Alignment.LEFT, size=TextSize.SMALL)
 
     def _create_header(self, layout: ReceiptLayout) -> None:
-        """Add standard ARTIFACT header to layout."""
+        """Add standard VNVNC header to layout."""
         # Logo if available
         if self._logo_data:
             layout.add_image(self._logo_data, width=256, dither=True)
@@ -195,7 +195,7 @@ class ReceiptGenerator:
         else:
             # Text logo fallback
             layout.add_text("VNVNC", size=TextSize.LARGE, bold=True)
-            layout.add_text("ARTIFACT ARCADE", size=TextSize.SMALL)
+            layout.add_text("VNVNC ARCADE", size=TextSize.SMALL)
 
         layout.add_separator("double")
         layout.add_space(1)

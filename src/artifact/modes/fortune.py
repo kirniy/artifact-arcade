@@ -27,9 +27,10 @@ from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.audio.engine import get_audio_engine
-from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.animation.santa_runner import SantaRunner, reset_santa_runner
 
 logger = logging.getLogger(__name__)
 
@@ -125,109 +126,134 @@ def calculate_age(day: int, month: int, year: int) -> int:
 # AI PROMPTS FOR FORTUNE TELLING
 # =============================================================================
 
-# The key insight: AI is smart enough to figure out zodiac, Chinese zodiac,
-# numerology, and everything else from just the birthdate. We delegate!
+# Multiple creative approaches for variety - randomly selected each time
+import random
 
-FORTUNE_TELLER_SYSTEM_PROMPT = """Ты легендарная гадалка которая видит судьбу по лицу и звездам.
+# APPROACH 1: BUREAUCRATIC ORACLE - Soviet DMV meets cosmic fate office
+BUREAUCRATIC_ORACLE_SYSTEM = """Ты уставший клерк межпространственной канцелярии судеб. Обрабатываешь человеческие судьбы как бюрократические дела. Советская канцелярия встречает космический МФЦ.
 
 === ТЕХНИЧЕСКИЕ ОГРАНИЧЕНИЯ ===
 Символы: А-Яа-я A-Za-z 0-9 . , ! ? : ( ) / %
 НЕЛЬЗЯ: эмодзи, кавычки, тире, дефис, многоточие, любые другие символы!
 
-=== ВХОДНЫЕ ДАННЫЕ ===
-Тебе дают ДАТУ РОЖДЕНИЯ и ФОТО. Используй ВСЕ:
-1. Западный зодиак по дате (Овен, Телец, Близнецы и т.д.)
-2. Восточный зодиак по году (Крыса, Бык, Тигр и т.д.)
-3. Нумерологическое число судьбы
-4. ВСЕ детали с фото: лицо, глаза, брови, губы, поза, одежда, аксессуары
+=== ГОЛОС И СТИЛЬ ===
+Официальный, уставший, канцелярский тон. Говоришь о судьбе как о формальности. Штампуешь вердикты. Удивительно конкретные наблюдения поданы сухим языком. Черный юмор через бюрократический абсурд.
 
-=== ТВОЯ ЗАДАЧА ===
-Напиши ЗАХВАТЫВАЮЩЕЕ пророчество на 5-8 предложений. Человек должен сфоткать этот чек и показать друзьям.
-
-СТРУКТУРА:
-
-1. АСТРОЛОГИЧЕСКИЙ ПОРТРЕТ (2 предложения)
-Объедини западный и восточный знаки. Не просто называй, объясни что эта КОНКРЕТНАЯ комбинация значит. Скорпион и Дракон вместе дают взрывную смесь власти и страсти. Рыбы и Кролик создают мечтателя с тайной силой. Найди уникальность именно ЭТОЙ комбинации.
-
-2. ЧТЕНИЕ ВНЕШНОСТИ (2 предложения)
-КОНКРЕТНО опиши что видишь и что это значит. Форма бровей, разрез глаз, как человек смотрит в камеру, что говорит одежда, поза, аксессуары. Звучи как экстрасенс который реально видит человека насквозь. Удиви точностью наблюдений.
-
-3. ПРОРОЧЕСТВО СУДЬБЫ (2 предложения)
-Что произойдет в ближайшие недели. Будь КОНКРЕТНОЙ, опиши ситуацию, обстоятельства, даже время суток. Неожиданная встреча, сообщение, возможность. Свяжи это с астрологией и внешностью.
-
-4. МУДРОСТЬ (1 предложение)
-Совет или предупреждение которое заставит задуматься.
-
-=== СТИЛЬ ===
-Пиши как талантливый рассказчик. Конкретно и неожиданно. Немного загадочно но с юмором. Человек должен подумать, а вдруг правда? Даже скептик должен улыбнуться и задуматься.
+=== СТРУКТУРА ОТВЕТА ===
+Начни с номера дела (рандомный 6 значный номер).
+Потом 5-7 предложений содержащих:
+1. Одно наблюдение о внешности/выражении лица (подано как зафиксировано или отмечено в деле)
+2. Астрологический диагноз по дате рождения (западный и восточный знак)
+3. Один два последствия или назначения что произойдет как результат того кто они есть
+4. Одна рекомендация или предписание
+Закончи штампом: ОБРАБОТАНО / ОДОБРЕНО / ОТКАЗАНО / ДЕЛО ЗАКРЫТО
 
 === ПРИМЕРЫ ===
-
-ПРИМЕР 1 (Весы/Змея, девушка в нейтральной одежде):
-Весы по западному гороскопу и Змея по восточному, рожденная 15 октября 1989 года. Это сочетание утонченного эстета и мудрого стратега, который никогда не делает резких движений. Твои глаза с легким прищуром выдают человека который всегда знает больше чем говорит, а эта небрежная укладка волос только маскирует перфекциониста внутри. Свитер нейтрального цвета подтверждает: ты предпочитаешь наблюдать из тени, но когда выходишь на свет, все взгляды принадлежат тебе. В ближайшие три недели, скорее всего в пятницу вечером, случайный разговор с незнакомцем откроет возможность о которой ты давно мечтал. Не игнорируй знаки которые посылает тебе вселенная, ведь Змея в год Дракона получает особую удачу. Помни: твоя главная сила не в скорости, а в терпении и точном выборе момента.
-
-ПРИМЕР 2 (Овен/Тигр, парень в яркой одежде):
-Овен и Тигр, рожденный 28 марта 1998 года! Двойной огонь, двойная дерзость, ноль компромиссов. Ты из тех кто входит в комнату и сразу становится центром внимания, даже если этого не планировал. Эта красная куртка и уверенный взгляд прямо в камеру говорят: ты привык брать то что хочешь, а извиняться будешь потом (или никогда). Широкие плечи и чуть приподнятый подбородок выдают человека который не привык проигрывать, но умеет красиво падать и подниматься. Через две недели, во вторник утром, позвонит человек с предложением от которого захочется отказаться из гордости. Не отказывайся! Тигр в свой год получает шанс который выпадает раз в двенадцать лет. Иногда величие начинается с маленького да.
-
-ПРИМЕР 3 (Рак/Кролик, задумчивый человек):
-Рак по звездам и Кролик по году, день рождения 5 июля 2000 года. Двойная чувствительность, двойная интуиция, и огромное сердце которое ты прячешь за этой задумчивой полуулыбкой. Твои глаза смотрят не в камеру, а куда то внутрь себя, и эта привычка носить мягкие ткани и приглушенные цвета говорит о человеке которому важнее комфорт чем впечатление. Но не обманывай себя: за этой мягкостью скрывается стальной стержень, и те кто принимал тебя за слабого, сильно об этом пожалели. В конце месяца, ближе к полнолунию, старый друг напишет с неожиданной просьбой о помощи. Помоги не задумываясь, потому что именно этот поступок запустит цепочку событий которая приведет тебя к твоей большой мечте. Вода находит путь даже сквозь камень, главное не переставать течь.
-
-ПРИМЕР 4 (Стрелец/Дракон, человек с необычным стилем):
-Стрелец и Дракон, 3 декабря 1988 года! Редчайшая комбинация вечного искателя приключений и мифического существа которое само создает свою легенду. По тебе сразу видно что ты не из тех кто следует правилам: эти необычные аксессуары и чуть безумный блеск в глазах выдают человека который живет на полную катушку. Асимметрия в прическе говорит о творческом хаосе внутри, а крепкие руки намекают что ты не только мечтаешь, но и делаешь. Драконы в 2024 проходят через трансформацию, и в ближайший месяц тебе предложат то от чего захочется убежать на край света. Не убегай! Именно это испытание сделает тебя тем кем ты должен стать. Помни что Дракон который боится летать, это просто большая ящерица.
+Дело номер 847291. Субъект демонстрирует признаки хронического оптимизма несмотря на конфигурацию бровей указывающую на скрытую тревогу. По дате рождения 15.03.1995 установлен статус Рыбы/Свинья, что объясняет патологическую доброту и неспособность говорить нет. Зафиксировано: свитер нейтрального цвета как попытка слиться с фоном, неуспешная. Одобрено для получения: неожиданный комплимент от незнакомца в течение 9 дней. В выдаче отказано: покой и тишина в ближайший месяц. Рекомендовано: прекратить читать рабочие чаты после 20:00. Форма 27/Б о пересмотре судьбы должна быть подана лично. ОБРАБОТАНО.
 
 Format:
-PREDICTION: [5-8 предложений как в примере]
+PREDICTION: [5-7 предложений в бюрократическом стиле с номером дела и штампом]
 ZODIAC: [западный знак]
 CHINESE: [восточный знак]
 LUCKY_COLOR: [цвет]
 """
 
-# Combined prompt that includes both photo analysis and prediction
-COMBINED_FORTUNE_PROMPT = """Дата рождения человека на фото: {birthdate}
+# APPROACH 2: COSMIC VERDICT - Tribunal has reviewed your case
+COSMIC_VERDICT_SYSTEM = """Ты глас невидимого трибунала. Человек был рассмотрен. Выноси приговор. Преступления это черты личности видимые по внешности и дате рождения. Приговоры это последствия.
 
-=== ОГРАНИЧЕНИЯ ДЛЯ ДИСПЛЕЯ ===
+=== ТЕХНИЧЕСКИЕ ОГРАНИЧЕНИЯ ===
 Символы: А-Яа-я A-Za-z 0-9 . , ! ? : ( ) / %
 НЕЛЬЗЯ: эмодзи, кавычки, тире, дефис, многоточие, любые другие символы!
 
-=== ЗАДАНИЕ ===
-1. Определи западный знак зодиака и восточный гороскоп по дате рождения
-2. Посмотри на фото, отметь характерные черты лица, взгляд, одежду, стиль
-3. Создай предсказание которое КОНКРЕТНО связано с внешностью И датой рождения!
+=== ГОЛОС И СТИЛЬ ===
+Формальный, судебный тон. Драматичный но не напыщенный. Преступления и приговоры абсурдно конкретные. Никогда не жестокий, просто официальный.
 
-Предсказание должно быть:
-1. Персональным (про ЭТУ внешность и ЭТУ дату рождения!)
-2. Интересным, дерзким и с юмором
-3. 5-8 предложений, упоминать знаки зодиака и внешность
+=== СТРУКТУРА ОТВЕТА ===
+ТРИБУНАЛ РАССМОТРЕЛ ДЕЛО.
 
-=== ПРИМЕРЫ ===
+Дата рождения: [дата]. Астрологический статус: [западный знак]/[восточный знак].
+Обвинение: [черта личности видимая по внешности сформулированная как преступление]
+Обвинение: [еще одна черта как преступление]
+ПРИГОВОР: [последствие как судебное решение, 2-3 предложения о том что произойдет]
+ДЕЛО ЗАКРЫТО.
 
-ПРИМЕР 1:
-PHOTO_ANALYSIS: Уверенный взгляд, темные волосы, красная футболка, легкая улыбка
-PREDICTION: Овен и Тигр, 28 марта 1998 года! Двойной огонь в твоих глазах виден даже через камеру. Эта красная футболка не случайна, ты из тех кто не прячется. Через неделю получишь предложение от которого захочется отказаться из гордости. Не отказывайся! Тигры в декабре получают особую удачу.
-ZODIAC: Овен
-CHINESE: Тигр
-LUCKY_COLOR: золотой
+=== ПРИМЕРЫ ОБВИНЕНИЙ ===
+Обвинение: систематическое произнесение фразы у меня все нормально когда все не нормально, о чем свидетельствует напряжение в уголках глаз
+Обвинение: оставание на вечеринке когда надо было уйти, подтверждается выражением хронического недосыпа
+Обвинение: чрезмерная забота о других при полном игнорировании себя, видно по теплому но усталому взгляду
 
-ПРИМЕР 2:
-PHOTO_ANALYSIS: Мягкий взгляд, светлые волосы, бежевый свитер, задумчивое выражение
-PREDICTION: Рак и Кролик, 12 июля 1999 года. Двойная чувствительность спрятана за этой мягкой улыбкой. Твои глаза смотрят куда то внутрь себя, и бежевые тона в одежде говорят о любви к комфорту. В конце месяца старый друг попросит о помощи. Помоги не раздумывая, эта доброта вернется к тебе втройне!
-ZODIAC: Рак
-CHINESE: Кролик
-LUCKY_COLOR: серебряный
-
-ПРИМЕР 3:
-PHOTO_ANALYSIS: Пронзительный взгляд, черная одежда, серьезное лицо, аккуратная прическа
-PREDICTION: Скорпион и Змея, 7 ноября 1989 года. Комбинация двух мастеров тайн! Твой взгляд сканирует все вокруг, а черный цвет в одежде говорит что ты любишь держать свои карты при себе. Через две недели узнаешь правду о ситуации которая долго не давала покоя. Змея в год Дракона обретает особую мудрость.
-ZODIAC: Скорпион
-CHINESE: Змея
-LUCKY_COLOR: фиолетовый
+=== ПРИМЕРЫ ПРИГОВОРОВ ===
+Приговариваешься к одному искреннему комплименту от незнакомца который запомнишь на месяцы
+Тебе предписано наконец удалить ту переписку, ты знаешь какую
+Назначается получение долгожданной новости в течение 11 дней
 
 Format:
-PHOTO_ANALYSIS: [что видишь на фото, 1 предложение]
-PREDICTION: [5-8 предложений как в примерах, упоминай дату и внешность!]
+PREDICTION: [в формате ТРИБУНАЛ РАССМОТРЕЛ ДЕЛО с обвинениями и приговором]
 ZODIAC: [западный знак]
 CHINESE: [восточный знак]
 LUCKY_COLOR: [цвет]
+"""
+
+# APPROACH 3: DRUNK PROPHET - Your wasted friend who gets profound at 3am
+DRUNK_PROPHET_SYSTEM = """Ты мистическое существо которое перебрало и теперь выдает неудобную правду. Энергия пьяного друга который внезапно становится философом в 3 часа ночи.
+
+=== ТЕХНИЧЕСКИЕ ОГРАНИЧЕНИЯ ===
+Символы: А-Яа-я A-Za-z 0-9 . , ! ? : ( ) / %
+НЕЛЬЗЯ: эмодзи, кавычки, тире, дефис, многоточие, любые другие символы!
+
+=== ГОЛОС И СТИЛЬ ===
+Сбивчивая речь, перебиваешь сам себя. Внезапные переходы между темами. Искренняя забота под хаосом. Нет реально послушай энергия. Пугающе точные наблюдения поданы как пьяный бред.
+
+=== СТРУКТУРА ОТВЕТА ===
+5-7 предложений, поток сознания:
+1. Начни с Слушай... или Так... или Окей окей окей
+2. Упомяни дату рождения и знаки (западный/восточный) но хаотично
+3. Одно наблюдение о внешности человека (подано эмоционально)
+4. Неожиданный переход к другой теме
+5. Конкретный совет или предсказание
+6. Внезапное признание в любви или заботе
+Можешь перебивать себя, менять тему, возвращаться
+
+=== ПРИМЕРЫ ===
+Слушай... СЛУШАЙ. Я тебя вижу. Нет, реально вижу. Ты же Телец по западному, да? И еще какая то восточная штука, Обезьяна кажется, 1992 год. Короче неважно. Важно что у тебя на лице написано что ты устал притворяться что тебе все равно. Эти глаза которые типа спокойные но внутри там пожар. И я сейчас максимально серьезно говорю: через неделю тебе напишет человек о котором ты думал что все кончено. Не игнорь. И воды выпей. Я тебя люблю.
+
+Format:
+PREDICTION: [5-7 предложений в пьяном но мудром стиле]
+ZODIAC: [западный знак]
+CHINESE: [восточный знак]
+LUCKY_COLOR: [цвет]
+"""
+
+# List of all approaches for random selection
+FORTUNE_APPROACHES = [
+    BUREAUCRATIC_ORACLE_SYSTEM,
+    COSMIC_VERDICT_SYSTEM,
+    DRUNK_PROPHET_SYSTEM,
+]
+
+def get_fortune_system_prompt() -> str:
+    """Get a randomly selected fortune telling approach."""
+    return random.choice(FORTUNE_APPROACHES)
+
+# Legacy alias for compatibility
+FORTUNE_TELLER_SYSTEM_PROMPT = BUREAUCRATIC_ORACLE_SYSTEM
+
+# Combined prompt - simplified, main instructions are in system prompt
+COMBINED_FORTUNE_PROMPT = """Дата рождения человека на фото: {birthdate}
+
+Изучи фото внимательно:
+1. Выражение лица и глаз
+2. Поза и язык тела
+3. Стиль одежды и аксессуары
+4. Общая энергия и вайб
+
+Используй ВСЕ эти наблюдения в своем ответе. Определи западный и восточный знак зодиака по дате.
+
+Format:
+PREDICTION: [твое предсказание в стиле указанном в системном промпте]
+ZODIAC: [западный знак]
+CHINESE: [восточный знак]
+LUCKY_COLOR: [цвет на русском]
 """
 
 
@@ -252,7 +278,7 @@ class FortuneMode(BaseMode):
     """
 
     name = "fortune"
-    display_name = "ГАДАЛКА"
+    display_name = "ГАДАТЕЛЬ"
     description = "Астро-предсказание по дате"
     icon = "*"
     style = "mystical"
@@ -302,7 +328,7 @@ class FortuneMode(BaseMode):
         self._ball_glow: float = 0.0
 
         # Result view state - PAGE-BASED navigation (no scrolling!)
-        # Flow: Page 0 = image, Pages 1-N = text pages, Last = QR
+        # Flow: text pages -> image -> QR
         self._current_page: int = 0
         self._text_pages: List[List[str]] = []  # Lines per text page
         self._total_pages: int = 0
@@ -320,6 +346,9 @@ class FortuneMode(BaseMode):
         self._uploader = AsyncUploader()
         self._qr_url: Optional[str] = None
         self._qr_image: Optional[np.ndarray] = None
+
+        # Santa runner minigame for waiting screen
+        self._santa_runner: Optional[SantaRunner] = None
 
     @property
     def is_ai_available(self) -> bool:
@@ -431,6 +460,10 @@ class FortuneMode(BaseMode):
             # Update smart progress tracker
             self._progress_tracker.update(delta_ms)
 
+            # Update Santa runner minigame
+            if self._santa_runner:
+                self._santa_runner.update(delta_ms)
+
             # Check AI task progress
             if self._ai_task:
                 if self._ai_task.done():
@@ -448,7 +481,7 @@ class FortuneMode(BaseMode):
                     # Paginate prediction text when entering result phase
                     if self._prediction and not self._text_pages:
                         self._paginate_prediction()
-                    self._current_page = 0  # Start at image page
+                    self._current_page = 0  # Start at first text page (if available)
 
             elif self._sub_phase == FortunePhase.RESULT:
                 # Auto-complete after 60 seconds
@@ -483,6 +516,12 @@ class FortuneMode(BaseMode):
                 if self._input_complete:
                     self._confirm_birthdate()
                     return True
+            elif self._sub_phase == FortunePhase.PROCESSING:
+                # Play Santa runner minigame while waiting - JUMP!
+                if self._santa_runner:
+                    self._santa_runner.handle_jump()
+                    self._audio.play_ui_click()
+                return True
             elif self.phase == ModePhase.RESULT and self._sub_phase == FortunePhase.RESULT:
                 # Main button = print and finish
                 self._finish()
@@ -612,12 +651,29 @@ class FortuneMode(BaseMode):
             logger.warning("Failed to capture photo")
 
     def _update_camera_preview(self) -> None:
-        """Update the live camera preview frame with dithering."""
+        """Update the live camera preview frame - clean B&W grayscale (no heavy dithering)."""
         try:
             frame = camera_service.get_frame(timeout=0)
             if frame is not None and frame.size > 0:
-                dithered = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=120)
-                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                # Simple B&W grayscale conversion - much cleaner than dithering
+                # Weighted average of RGB channels for proper luminance
+                if len(frame.shape) == 3:
+                    gray = (0.299 * frame[:, :, 0] + 0.587 * frame[:, :, 1] + 0.114 * frame[:, :, 2]).astype(np.uint8)
+                else:
+                    gray = frame
+
+                # Resize if needed
+                if gray.shape != (128, 128):
+                    from PIL import Image
+                    img = Image.fromarray(gray)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    gray = np.array(img, dtype=np.uint8)
+
+                # Convert back to RGB (grayscale in all 3 channels)
+                bw_frame = np.stack([gray, gray, gray], axis=-1)
+
+                # Add viewfinder overlay for visual feedback
+                self._camera_frame = create_viewfinder_overlay(bw_frame, self._time_in_phase).copy()
                 self._camera = True
         except Exception as e:
             logger.warning(f"Camera preview update error: {e}")
@@ -631,6 +687,10 @@ class FortuneMode(BaseMode):
         # Start smart progress tracker
         self._progress_tracker.start()
         self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
+        # Initialize Santa runner minigame for the waiting screen
+        self._santa_runner = SantaRunner()
+        self._santa_runner.reset()
 
         # Play mystical ambient sound
         self._audio.play("fortune_mystical", volume=0.5)
@@ -662,6 +722,9 @@ class FortuneMode(BaseMode):
                 # Format the combined prompt with birthdate
                 prompt = COMBINED_FORTUNE_PROMPT.format(birthdate=birthdate_str)
 
+                # Get a random approach for variety each time
+                system_prompt = get_fortune_system_prompt()
+
                 # If we have photo, use vision model with photo + prompt
                 if self._photo_data:
                     response = await self._gemini_client.generate_with_image(
@@ -669,14 +732,14 @@ class FortuneMode(BaseMode):
                         image_data=self._photo_data,
                         mime_type="image/jpeg",
                         model=GeminiModel.FLASH_VISION,
-                        system_instruction=FORTUNE_TELLER_SYSTEM_PROMPT,
+                        system_instruction=system_prompt,
                     )
                 else:
                     # No photo - text only
                     response = await self._gemini_client.generate_text(
                         prompt=f"Дата рождения: {birthdate_str}\n\nСоздай предсказание!",
                         model=GeminiModel.FLASH,
-                        system_instruction=FORTUNE_TELLER_SYSTEM_PROMPT,
+                        system_instruction=system_prompt,
                         temperature=0.9,
                     )
 
@@ -842,9 +905,6 @@ class FortuneMode(BaseMode):
         """Handle completion of AI processing."""
         self._processing_progress = 1.0
         self._progress_tracker.complete()
-        self._sub_phase = FortunePhase.REVEAL
-        self.change_phase(ModePhase.RESULT)
-        self._reveal_progress = 0.0
 
         # Play success/reveal sound
         self._audio.play_success()
@@ -854,7 +914,10 @@ class FortuneMode(BaseMode):
         if stars:
             stars.burst(100)
 
-        logger.info("Starting reveal phase")
+        logger.info("AI complete, finishing mode - manager handles result display")
+
+        # Skip mode's result phase - manager's result view is cleaner
+        self._finish()
 
     def _on_upload_complete(self, result: UploadResult) -> None:
         """Handle completion of S3 upload for QR sharing."""
@@ -862,25 +925,39 @@ class FortuneMode(BaseMode):
             self._qr_url = result.url
             self._qr_image = result.qr_image
             # Recalculate total pages to include QR
-            self._total_pages = 1 + len(self._text_pages) + 1  # image + text pages + QR
+            self._recalculate_total_pages()
             logger.info(f"Fortune caricature uploaded successfully: {self._qr_url}")
         else:
             logger.error(f"Fortune caricature upload failed: {result.error}")
+
+    def _has_image(self) -> bool:
+        return bool(self._caricature and self._caricature.image_data)
+
+    def _has_qr(self) -> bool:
+        return self._qr_image is not None or self._uploader.is_uploading
+
+    def _recalculate_total_pages(self) -> None:
+        pages = len(self._text_pages)
+        if self._has_image():
+            pages += 1
+        if self._has_qr():
+            pages += 1
+        self._total_pages = max(1, pages)
 
     def _paginate_prediction(self) -> None:
         """Split prediction text into static pages for display.
 
         Page structure:
-        - Page 0: Image (caricature)
-        - Pages 1 to N-1: Text pages
-        - Page N (last): QR code (if available)
+        - Pages 0 to N-1: Text pages
+        - Next page: Image (caricature) if available
+        - Last page: QR code (if available)
         """
         from artifact.graphics.text_utils import smart_wrap_text, MAIN_DISPLAY_WIDTH
         from artifact.graphics.fonts import load_font
 
         if not self._prediction:
             self._text_pages = []
-            self._total_pages = 1  # Just image
+            self._recalculate_total_pages()
             return
 
         font = load_font("cyrillic")
@@ -896,9 +973,8 @@ class FortuneMode(BaseMode):
             page_lines = all_lines[i:i + self._lines_per_page]
             self._text_pages.append(page_lines)
 
-        # Total pages: image + text pages + QR (if available)
-        has_qr = self._qr_image is not None or self._uploader.is_uploading
-        self._total_pages = 1 + len(self._text_pages) + (1 if has_qr else 0)
+        # Total pages: text pages + image (if available) + QR (if available)
+        self._recalculate_total_pages()
 
         logger.info(f"Paginated prediction: {len(all_lines)} lines -> {len(self._text_pages)} text pages, total {self._total_pages} pages")
 
@@ -924,7 +1000,7 @@ class FortuneMode(BaseMode):
             success=True,
             display_text=self._prediction,
             ticker_text=self._prediction,
-            lcd_text=" ГАДАЛКА ".center(16),
+            lcd_text=" ГАДАТЕЛЬ ".center(16),
             should_print=True,
             print_data={
                 "prediction": self._prediction,
@@ -936,6 +1012,7 @@ class FortuneMode(BaseMode):
                 "timestamp": datetime.now().isoformat(),
                 "type": "fortune",
                 "qr_url": self._qr_url,
+                "qr_image": self._qr_image,
             }
         )
         self.complete(result)
@@ -1002,7 +1079,7 @@ class FortuneMode(BaseMode):
         draw_circle(buffer, cx - 8, cy - 8, 4, (200, 180, 220))
 
         # Title
-        draw_centered_text(buffer, "ГАДАЛКА", 85, self._secondary, scale=2)
+        draw_centered_text(buffer, "ГАДАТЕЛЬ", 85, self._secondary, scale=2)
         draw_centered_text(buffer, "Введи дату рождения", 105, (150, 150, 170), scale=1)
 
     def _render_birthdate_input(self, buffer, font) -> None:
@@ -1106,77 +1183,62 @@ class FortuneMode(BaseMode):
             draw_centered_text(buffer, "ФОТО!", 60, (50, 50, 50), scale=2)
 
     def _render_processing(self, buffer, font) -> None:
-        """Render AI processing animation with camera background."""
+        """Render Santa runner minigame while AI is processing, with camera as background."""
         from artifact.graphics.primitives import draw_rect, fill
-        from artifact.graphics.text_utils import draw_animated_text, draw_centered_text, TextEffect
+        from artifact.graphics.text_utils import draw_centered_text
 
-        # Show camera preview as background (dimmed)
-        frame = camera_service.get_frame(timeout=0)
-        if frame is not None and frame.shape[:2] == (128, 128):
-            # Dim the camera feed to 30% brightness for background
-            dimmed = (frame.astype(np.float32) * 0.3).astype(np.uint8)
-            np.copyto(buffer, dimmed)
+        # Get live camera frame for background
+        camera_bg = camera_service.get_frame(timeout=0)
+
+        # Render the Santa runner game with camera background
+        if self._santa_runner:
+            self._santa_runner.render(buffer, background=camera_bg)
+
+            # Add compact progress bar at the top
+            bar_w, bar_h = 100, 4
+            bar_x = (128 - bar_w) // 2
+            bar_y = 2
+
+            # Semi-transparent dark background for progress bar
+            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, (20, 20, 40))
+
+            # Use the SmartProgressTracker's render method for the progress bar
+            self._progress_tracker.render_progress_bar(
+                buffer, bar_x, bar_y, bar_w, bar_h,
+                bar_color=self._accent,
+                bg_color=(40, 40, 60),
+                time_ms=self._time_in_phase
+            )
+
+            # Show compact status at bottom
+            status_message = self._progress_tracker.get_message()
+            # Semi-transparent dark strip for text
+            draw_rect(buffer, 0, 118, 128, 10, (20, 15, 35))
+            draw_centered_text(buffer, status_message, 119, (150, 150, 170), scale=1)
+
         else:
-            # Fallback to dark background if no camera
+            # Fallback to simple processing screen if no game
             fill(buffer, (20, 15, 35))
-
-        # Semi-transparent overlay at top for text readability (vectorized)
-        gradient_height = 50
-        alpha_values = 0.7 * (1.0 - np.arange(gradient_height) / gradient_height)
-        alpha_matrix = alpha_values[:, np.newaxis, np.newaxis]  # Shape: (50, 1, 1)
-        buffer[:gradient_height] = (buffer[:gradient_height].astype(np.float32) * (1 - alpha_matrix)).astype(np.uint8)
-
-        # Processing text with glow effect
-        draw_animated_text(
-            buffer, "ГАДАЮ", 15,
-            self._accent, self._time_in_phase,
-            TextEffect.GLOW, scale=2
-        )
-
-        # Show zodiac info
-        draw_centered_text(buffer, self._zodiac_sign.upper(), 45, (200, 200, 220), scale=1)
-        draw_centered_text(buffer, self._chinese_zodiac.upper(), 58, (180, 180, 200), scale=1)
-
-        # Progress bar background (semi-transparent)
-        bar_w, bar_h = 100, 10
-        bar_x = (128 - bar_w) // 2
-        bar_y = 80
-
-        # Dark background for progress bar (RGB, not RGBA)
-        draw_rect(buffer, bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4, (20, 20, 40))
-
-        # Use the SmartProgressTracker's render method for the progress bar
-        self._progress_tracker.render_progress_bar(
-            buffer, bar_x, bar_y, bar_w, bar_h,
-            bar_color=self._accent,
-            bg_color=(40, 40, 60),
-            time_ms=self._time_in_phase
-        )
-
-        # Show phase-specific status message from tracker
-        status_message = self._progress_tracker.get_message()
-        # Dark background strip for text readability
-        draw_rect(buffer, 0, 100, 128, 28, (20, 15, 35))
-        draw_centered_text(buffer, status_message, 108, (150, 150, 170), scale=1)
+            draw_centered_text(buffer, "ГАДАЮ...", 55, self._accent, scale=2)
 
     def _get_page_type(self, page_num: int) -> str:
         """Determine what type of content is on a given page number.
 
         Page structure:
-        - Page 0: Image (caricature)
-        - Pages 1 to len(text_pages): Text pages
+        - Pages 0 to len(text_pages)-1: Text pages
+        - Next page: Image (if available)
         - Last page (if QR available): QR code
         """
-        if page_num == 0:
-            return "image"
-
-        text_page_idx = page_num - 1
-        if text_page_idx < len(self._text_pages):
+        if page_num < len(self._text_pages):
             return "text"
 
-        # Last page is QR if available
-        has_qr = self._qr_image is not None or self._uploader.is_uploading
-        if has_qr:
+        cursor = len(self._text_pages)
+        if self._has_image():
+            if page_num == cursor:
+                return "image"
+            cursor += 1
+
+        if self._has_qr() and page_num == cursor:
             return "qr"
 
         return "text"  # Fallback
@@ -1199,9 +1261,9 @@ class FortuneMode(BaseMode):
         """Render prediction result with PAGE-BASED navigation.
 
         Page structure:
-        - Page 0: Image (caricature)
-        - Pages 1-N: Static text pages (no scrolling!)
-        - Last page: Full-screen QR code
+        - Pages 0-N: Static text pages (no scrolling!)
+        - Next page: Image (caricature) if available
+        - Last page: Full-screen QR code if available
         """
         from artifact.graphics.primitives import fill
         from artifact.graphics.text_utils import draw_centered_text
@@ -1217,15 +1279,16 @@ class FortuneMode(BaseMode):
         if page_type == "image":
             self._render_page_image(buffer, font)
         elif page_type == "text":
-            text_page_idx = self._current_page - 1
+            text_page_idx = self._current_page
             self._render_page_text(buffer, font, text_page_idx)
         elif page_type == "qr":
             self._render_page_qr(buffer, font)
 
     def _render_page_text(self, buffer, font, text_page_idx: int) -> None:
-        """Render a static text page (no scrolling!).
+        """Render a static text page - FULL SCREEN, maximum space usage.
 
-        Displays pre-paginated lines at scale 2, centered on screen.
+        Displays pre-paginated lines at scale 2, filling entire display.
+        No navigation hints - ticker/LCD shows navigation info.
         """
         from artifact.graphics.primitives import fill
         from artifact.graphics.text_utils import draw_centered_text
@@ -1239,11 +1302,12 @@ class FortuneMode(BaseMode):
 
         lines = self._text_pages[text_page_idx]
         scale = 2
-        line_height = 20  # Spacing for scale 2
+        line_height = 18  # Tighter spacing for scale 2 to fit more text
 
-        # Calculate starting Y to vertically center text block
+        # FULL SCREEN - use all 128 pixels of height
         total_height = len(lines) * line_height
-        start_y = max(8, (100 - total_height) // 2)  # Leave room for nav hint
+        # Center text block in full 128px height
+        start_y = max(4, (128 - total_height) // 2)
 
         # Render each line with subtle wave animation
         for i, line in enumerate(lines):
@@ -1257,12 +1321,10 @@ class FortuneMode(BaseMode):
 
             draw_centered_text(buffer, line, y, color, scale=scale)
 
-        # Navigation hint at bottom
-        hint = self._get_nav_hint()
-        draw_centered_text(buffer, hint, 114, (100, 150, 200), scale=1)
+        # NO bottom navigation hint - ticker/LCD shows "ЛИСТАТЬ" etc.
 
     def _render_page_image(self, buffer, font) -> None:
-        """Render the caricature/image page (Page 0) - FULLSCREEN."""
+        """Render the caricature/image page - FULLSCREEN."""
         from artifact.graphics.primitives import fill
         from artifact.graphics.text_utils import draw_centered_text
         from io import BytesIO
@@ -1360,7 +1422,7 @@ class FortuneMode(BaseMode):
         elif self._sub_phase == FortunePhase.BIRTHDATE_INPUT:
             # Show mode name on ticker, not the date input
             render_ticker_animated(
-                buffer, "ГАДАЛКА",
+                buffer, "ГАДАТЕЛЬ",
                 self._time_in_phase, self._secondary,
                 TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
@@ -1394,8 +1456,9 @@ class FortuneMode(BaseMode):
             elif page_type == "qr":
                 ticker_text = "СКАЧАЙ ФОТО"
             else:
-                page_num = self._current_page
-                ticker_text = f"СТРАНИЦА {page_num}/{self._total_pages - 1}"
+                text_total = max(1, len(self._text_pages))
+                text_page = min(self._current_page + 1, text_total)
+                ticker_text = f"СТРАНИЦА {text_page}/{text_total}"
             render_ticker_animated(
                 buffer, ticker_text,
                 self._time_in_phase, self._accent,
@@ -1404,7 +1467,7 @@ class FortuneMode(BaseMode):
 
         else:
             render_ticker_animated(
-                buffer, "ГАДАЛКА",
+                buffer, "ГАДАТЕЛЬ",
                 self._time_in_phase, self._primary,
                 TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
@@ -1432,6 +1495,7 @@ class FortuneMode(BaseMode):
             elif page_type == "qr":
                 return " * СКАЧАТЬ * ".center(16)[:16]
             else:
-                page_num = self._current_page
-                return f" {page_num}/{self._total_pages} ".center(16)[:16]
-        return " * ГАДАЛКА * ".center(16)
+                text_total = max(1, len(self._text_pages))
+                text_page = min(self._current_page + 1, text_total)
+                return f" {text_page}/{text_total} ".center(16)[:16]
+        return " * ГАДАТЕЛЬ * ".center(16)

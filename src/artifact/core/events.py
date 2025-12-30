@@ -30,8 +30,14 @@ class EventType(Enum):
     # State events
     STATE_CHANGED = auto()
     MODE_SELECTED = auto()
+    MODE_SELECT = auto()  # Request to start a mode (from remote)
     MODE_STARTED = auto()
     MODE_ENDED = auto()
+
+    # Idle scene events (for remote control)
+    IDLE_SCENE_CHANGE = auto()  # Set specific scene
+    IDLE_SCENE_NEXT = auto()    # Next scene
+    IDLE_SCENE_PREV = auto()    # Previous scene
 
     # Display events
     ANIMATION_START = auto()

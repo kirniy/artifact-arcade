@@ -138,6 +138,63 @@ class LayoutEngine:
         self.paper_width = paper_width
         self.char_width = 12  # Approximate character width in pixels
 
+    def _size_width_multiplier(self, size: TextSize) -> int:
+        """Get width multiplier for text size."""
+        return {
+            TextSize.SMALL: 1,
+            TextSize.MEDIUM: 1,
+            TextSize.LARGE: 2,
+            TextSize.TITLE: 3,
+        }.get(size, 1)
+
+    def _max_chars(self, size: TextSize) -> int:
+        """Maximum characters per line for a given text size."""
+        base = max(1, self.paper_width // self.char_width)
+        return max(1, base // self._size_width_multiplier(size))
+
+    def _wrap_text(self, text: str, max_chars: int) -> List[str]:
+        """Wrap text to fit within the given width."""
+        if max_chars <= 0:
+            return [text] if text else [""]
+
+        lines: List[str] = []
+        raw_lines = text.splitlines() or [""]
+
+        for raw in raw_lines:
+            leading = len(raw) - len(raw.lstrip(" "))
+            prefix = " " * leading
+            content = raw.lstrip(" ")
+            words = content.split()
+            if not words:
+                lines.append(raw)
+                continue
+
+            max_width = max(1, max_chars - leading)
+            current = ""
+            for word in words:
+                if len(word) > max_width:
+                    if current:
+                        lines.append(prefix + current)
+                        current = ""
+                    while len(word) > max_width:
+                        lines.append(prefix + word[:max_width])
+                        word = word[max_width:]
+                    current = word
+                    continue
+
+                if not current:
+                    current = word
+                elif len(current) + 1 + len(word) <= max_width:
+                    current = f"{current} {word}"
+                else:
+                    lines.append(prefix + current)
+                    current = word
+
+            if current:
+                lines.append(prefix + current)
+
+        return lines
+
     def render(self, layout: ReceiptLayout) -> bytes:
         """Render a receipt layout to printer commands.
 
@@ -214,14 +271,17 @@ class LayoutEngine:
         commands.append(self._cmd_bold(block.bold))
         commands.append(self._cmd_underline(block.underline))
 
-        # Encode text as CP866 for Russian support
-        try:
-            text_bytes = block.text.encode('cp866', errors='replace')
-        except Exception:
-            text_bytes = block.text.encode('ascii', errors='replace')
+        max_chars = self._max_chars(block.size)
+        lines = self._wrap_text(block.text, max_chars) or [""]
+        for line in lines:
+            # Encode text as CP866 for Russian support
+            try:
+                text_bytes = line.encode('cp866', errors='replace')
+            except Exception:
+                text_bytes = line.encode('ascii', errors='replace')
 
-        commands.append(text_bytes)
-        commands.append(self.LF)
+            commands.append(text_bytes)
+            commands.append(self.LF)
 
         # Reset formatting
         commands.append(self._cmd_bold(False))
@@ -246,7 +306,8 @@ class LayoutEngine:
             aspect = img.height / img.width
             target_height = int(target_width * aspect)
 
-            img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+            resample = Image.Resampling.NEAREST if not block.dither else Image.Resampling.LANCZOS
+            img = img.resize((target_width, target_height), resample)
 
             # Convert to 1-bit black and white
             if block.dither:
@@ -271,6 +332,7 @@ class LayoutEngine:
 
         # Ensure width is multiple of 8
         if width % 8 != 0:
+            from PIL import Image
             new_width = (width // 8 + 1) * 8
             new_img = Image.new('1', (new_width, height), 1)  # White background
             offset = (new_width - width) // 2 if alignment == Alignment.CENTER else 0
@@ -311,17 +373,8 @@ class LayoutEngine:
 
     def _render_separator(self, block: SeparatorBlock) -> bytes:
         """Render a separator line."""
-        chars_per_line = self.paper_width // self.char_width
-
-        separators = {
-            "line": "-" * chars_per_line,
-            "dashes": "- " * (chars_per_line // 2),
-            "dots": ". " * (chars_per_line // 2),
-            "stars": "* " * (chars_per_line // 2),
-            "double": "=" * chars_per_line,
-        }
-
-        text = separators.get(block.style, separators["line"])
+        chars_per_line = self._max_chars(TextSize.SMALL)
+        text = self._separator_text(block.style, chars_per_line)
         return self._render_text(TextBlock(text=text, alignment=Alignment.CENTER))
 
     def _render_spacer(self, block: SpacerBlock) -> bytes:
@@ -338,31 +391,33 @@ class LayoutEngine:
             ASCII art representation of the receipt
         """
         lines = []
-        chars_per_line = 32  # Standard receipt width
+        chars_per_line = self._max_chars(TextSize.SMALL)
 
         lines.append("+" + "-" * chars_per_line + "+")
 
         for block in layout.blocks:
             if isinstance(block, TextBlock):
-                text = block.text[:chars_per_line]
-                if block.alignment == Alignment.CENTER:
-                    text = text.center(chars_per_line)
-                elif block.alignment == Alignment.RIGHT:
-                    text = text.rjust(chars_per_line)
-                else:
-                    text = text.ljust(chars_per_line)
+                max_chars = self._max_chars(block.size)
+                wrapped = self._wrap_text(block.text, max_chars) or [""]
+                for line in wrapped:
+                    text = line[:chars_per_line]
+                    if block.alignment == Alignment.CENTER:
+                        text = text.center(chars_per_line)
+                    elif block.alignment == Alignment.RIGHT:
+                        text = text.rjust(chars_per_line)
+                    else:
+                        text = text.ljust(chars_per_line)
 
-                if block.size in (TextSize.LARGE, TextSize.TITLE):
-                    lines.append("|" + text.upper() + "|")
-                else:
+                    if block.size in (TextSize.LARGE, TextSize.TITLE):
+                        text = text.upper()
                     lines.append("|" + text + "|")
 
             elif isinstance(block, ImageBlock):
                 lines.append("|" + "[IMAGE]".center(chars_per_line) + "|")
 
             elif isinstance(block, SeparatorBlock):
-                sep_char = "-" if block.style == "line" else block.style[0]
-                lines.append("|" + sep_char * chars_per_line + "|")
+                text = self._separator_text(block.style, chars_per_line)
+                lines.append("|" + text + "|")
 
             elif isinstance(block, SpacerBlock):
                 for _ in range(block.lines):
@@ -371,3 +426,13 @@ class LayoutEngine:
         lines.append("+" + "-" * chars_per_line + "+")
 
         return "\n".join(lines)
+
+    def _separator_text(self, style: str, chars_per_line: int) -> str:
+        separators = {
+            "line": "-" * chars_per_line,
+            "dashes": "- " * (chars_per_line // 2),
+            "dots": ". " * (chars_per_line // 2),
+            "stars": "* " * (chars_per_line // 2),
+            "double": "=" * chars_per_line,
+        }
+        return separators.get(style, separators["line"])

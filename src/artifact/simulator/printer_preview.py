@@ -5,25 +5,30 @@ the 58mm thermal receipt paper.
 """
 
 import pygame
-import math
 from typing import Optional, List, Dict, Any, Tuple
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
 from io import BytesIO
+
+from artifact.printing.receipt import ReceiptGenerator
+from artifact.printing.layout import ImageBlock
+
+
+_PREVIEW_GENERATOR = ReceiptGenerator()
+
+
+@dataclass
+class PreviewImage:
+    """Image metadata for preview rendering."""
+    data: bytes
+    width: int = 384
 
 
 @dataclass
 class PrintJob:
-    """A print job with content to render."""
+    """A print job with preview-ready content."""
     mode_name: str
-    title: str
-    main_text: str
-    secondary_text: Optional[str] = None
-    lucky_number: Optional[int] = None
-    lucky_color: Optional[str] = None
-    traits: Optional[List[str]] = None
-    caricature: Optional[bytes] = None
-    timestamp: Optional[datetime] = None
+    preview_lines: List[str]
+    images: List[PreviewImage] = field(default_factory=list)
 
 
 class ThermalPrinterPreview:
@@ -41,7 +46,6 @@ class ThermalPrinterPreview:
     PAPER_WIDTH = 384
     CHAR_WIDTH = 12  # Approximate pixels per character
     CHARS_PER_LINE = 32  # Characters that fit per line
-    CARICATURE_SIZE = 200  # Caricature display size in pixels (larger for full width)
 
     def __init__(self):
         self._surface: Optional[pygame.Surface] = None
@@ -54,8 +58,8 @@ class ThermalPrinterPreview:
         self._lines: List[str] = []
         self._line_styles: List[str] = []  # 'normal', 'bold', 'small', 'center', 'image'
 
-        # Caricature image surface (pygame)
-        self._caricature_surface: Optional[pygame.Surface] = None
+        # Image surfaces for preview rendering
+        self._image_surfaces: List[Tuple[pygame.Surface, int]] = []
 
         # Fonts (initialized on first render)
         self._font: Optional[pygame.font.Font] = None
@@ -64,6 +68,7 @@ class ThermalPrinterPreview:
 
         # Visible height for scroll calculations
         self._visible_height: int = 400
+        self._paper_width: int = self.PAPER_WIDTH
 
     def _init_fonts(self) -> None:
         """Initialize fonts for receipt rendering."""
@@ -98,20 +103,24 @@ class ThermalPrinterPreview:
     def set_print_job(self, job: PrintJob) -> None:
         """Set a new print job and generate receipt content."""
         self._current_job = job
-        self._lines = []
-        self._line_styles = []
-        self._caricature_surface = None
+        self._lines = list(job.preview_lines)
+        self._line_styles = [
+            "image" if line.strip() == "[IMAGE]" else "normal"
+            for line in self._lines
+        ]
+        self._image_surfaces = []
 
-        # Load caricature image if available
-        if job.caricature:
-            self._load_caricature(job.caricature)
+        for img in job.images:
+            surface = self._load_image(img.data)
+            if surface:
+                self._image_surfaces.append((surface, img.width))
 
-        self._generate_receipt_content()
         self._is_printing = True
         self._print_progress = 0.0
+        self._scroll_offset = 0.0
 
-    def _load_caricature(self, image_data: bytes) -> None:
-        """Load caricature image bytes into a pygame surface."""
+    def _load_image(self, image_data: bytes) -> Optional[pygame.Surface]:
+        """Load image bytes into a pygame surface."""
         try:
             from PIL import Image
 
@@ -119,124 +128,16 @@ class ThermalPrinterPreview:
             img = Image.open(BytesIO(image_data))
             img = img.convert("L")  # Convert to grayscale for thermal look
 
-            # Resize to fit receipt
-            img = img.resize((self.CARICATURE_SIZE, self.CARICATURE_SIZE), Image.Resampling.NEAREST)
-
             # Convert to pygame surface
             img_rgb = img.convert("RGB")
             raw_data = img_rgb.tobytes()
-            self._caricature_surface = pygame.image.fromstring(
+            return pygame.image.fromstring(
                 raw_data, img_rgb.size, "RGB"
             )
 
         except Exception as e:
-            print(f"Failed to load caricature: {e}")
-            self._caricature_surface = None
-
-    def _generate_receipt_content(self) -> None:
-        """Generate the receipt text content."""
-        if not self._current_job:
-            return
-
-        job = self._current_job
-
-        # Header
-        self._add_line("═" * 32, "normal")
-        self._add_line("      ★ V N V N C ★", "bold")
-        self._add_line("  МАШИНА ПРЕДСКАЗАНИЙ", "center")
-        self._add_line("═" * 32, "normal")
-        self._add_line("", "normal")
-
-        # Mode title
-        self._add_line(f"◆ {job.title.upper()} ◆", "bold")
-        self._add_line("─" * 32, "normal")
-        self._add_line("", "normal")
-
-        # Caricature image (if available)
-        if job.caricature and self._caricature_surface:
-            self._add_line("ТВОЙ ПОРТРЕТ:", "small")
-            self._add_line("", "normal")
-            # Add special marker for image rendering
-            self._add_line("__CARICATURE__", "image")
-            self._add_line("", "normal")
-
-        # Main prediction text - word wrap
-        if job.main_text:
-            self._add_line("ПРЕДСКАЗАНИЕ:", "small")
-            self._add_line("", "normal")
-            wrapped = self._word_wrap(job.main_text, 30)
-            for line in wrapped:
-                self._add_line(line, "normal")
-            self._add_line("", "normal")
-
-        # Lucky number
-        if job.lucky_number is not None:
-            self._add_line("", "normal")
-            self._add_line(f"СЧАСТЛИВОЕ ЧИСЛО: {job.lucky_number}", "bold")
-
-        # Lucky color
-        if job.lucky_color:
-            self._add_line(f"СЧАСТЛИВЫЙ ЦВЕТ: {job.lucky_color}", "normal")
-
-        # Traits
-        if job.traits:
-            self._add_line("", "normal")
-            self._add_line("ЧЕРТЫ ХАРАКТЕРА:", "small")
-            for trait in job.traits[:3]:
-                self._add_line(f"  • {trait}", "normal")
-
-        # Timestamp
-        self._add_line("", "normal")
-        self._add_line("─" * 32, "normal")
-        timestamp = job.timestamp or datetime.now()
-        self._add_line(timestamp.strftime("%d.%m.%Y  %H:%M"), "center")
-
-        # Footer
-        self._add_line("", "normal")
-        self._add_line("Спасибо за визит!", "center")
-        self._add_line("", "normal")
-        self._add_line("    ★ VNVNC.RU ★", "bold")
-        self._add_line("", "normal")
-        self._add_line("▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼", "center")  # Cut line
-
-    def _add_line(self, text: str, style: str) -> None:
-        """Add a line to the receipt."""
-        self._lines.append(text)
-        self._line_styles.append(style)
-
-    def _word_wrap(self, text: str, max_chars: int) -> List[str]:
-        """Word wrap text to fit within max characters, breaking long words."""
-        words = text.split()
-        lines = []
-        current_line = ""
-
-        for word in words:
-            # If word itself is too long, break it
-            if len(word) > max_chars:
-                # Flush current line first
-                if current_line:
-                    lines.append(current_line)
-                    current_line = ""
-                # Break the long word
-                while len(word) > max_chars:
-                    lines.append(word[:max_chars - 1] + "-")
-                    word = word[max_chars - 1:]
-                # Continue with the remainder
-                current_line = word
-            elif len(current_line) + len(word) + 1 <= max_chars:
-                if current_line:
-                    current_line += " " + word
-                else:
-                    current_line = word
-            else:
-                if current_line:
-                    lines.append(current_line)
-                current_line = word
-
-        if current_line:
-            lines.append(current_line)
-
-        return lines
+            print(f"Failed to load image: {e}")
+            return None
 
     def update(self, delta_ms: float) -> None:
         """Update printing animation."""
@@ -257,9 +158,7 @@ class ThermalPrinterPreview:
         self._scroll_offset += direction * amount
 
         # Calculate total content height
-        total_height = len(self._lines) * 18 + 40
-        if self._caricature_surface:
-            total_height += self.CARICATURE_SIZE + 30
+        total_height = self._content_height(self._paper_width)
 
         # Clamp scroll offset - use tracked visible height
         max_scroll = max(0, total_height - self._visible_height)
@@ -269,13 +168,28 @@ class ThermalPrinterPreview:
         """Set the visible height for scroll calculations."""
         self._visible_height = height
 
+    def _content_height(self, paper_w: int) -> int:
+        """Estimate total content height for scrolling."""
+        height = 40
+        image_index = 0
+        for line, style in zip(self._lines, self._line_styles):
+            if style == "image":
+                if image_index < len(self._image_surfaces):
+                    surface, target_width = self._image_surfaces[image_index]
+                    image_index += 1
+                    orig_w, orig_h = surface.get_size()
+                    img_w = min(target_width, paper_w)
+                    img_h = int(img_w * orig_h / orig_w)
+                    height += img_h + 5
+                else:
+                    height += 18
+            else:
+                height += 18
+        return height
+
     def render(self, screen: pygame.Surface, x: int, y: int, width: int, height: int) -> None:
         """Render the printer preview at the specified position."""
         self._init_fonts()
-
-        # Create paper surface
-        paper_height = len(self._lines) * 18 + 40
-        visible_height = min(paper_height, height - 40)
 
         # Background (printer housing)
         housing_rect = pygame.Rect(x, y, width, height)
@@ -297,6 +211,9 @@ class ThermalPrinterPreview:
         paper_y = y + 32
         paper_w = width - 30
         paper_visible_h = height - 45
+        self._paper_width = paper_w
+        paper_height = self._content_height(paper_w)
+        visible_height = min(paper_height, height - 40)
 
         # Track visible height for scroll calculations
         self._visible_height = paper_visible_h
@@ -317,11 +234,17 @@ class ThermalPrinterPreview:
             # Calculate how many lines to show based on print progress
             visible_lines = int(len(self._lines) * self._print_progress) if self._is_printing else len(self._lines)
 
+            image_index = 0
             for i, (line, style) in enumerate(zip(self._lines[:visible_lines], self._line_styles[:visible_lines])):
                 # Skip lines that are above the visible area
                 if line_y < -200:
-                    if style == "image" and self._caricature_surface:
-                        line_y += self.CARICATURE_SIZE + 10
+                    if style == "image" and image_index < len(self._image_surfaces):
+                        surface, target_width = self._image_surfaces[image_index]
+                        image_index += 1
+                        orig_w, orig_h = surface.get_size()
+                        img_w = min(target_width, paper_w)
+                        img_h = int(img_w * orig_h / orig_w)
+                        line_y += img_h + 5
                     else:
                         line_y += 18
                     continue
@@ -330,19 +253,18 @@ class ThermalPrinterPreview:
                 if line_y > paper_visible_h + 20:
                     break
 
-                # Handle image style (caricature) - FULL WIDTH, NO FRAME
-                if style == "image" and self._caricature_surface:
-                    # Scale caricature to FULL paper width (no margins)
-                    img_width = paper_w
-                    # Calculate height maintaining aspect ratio
-                    orig_w, orig_h = self._caricature_surface.get_size()
+                # Handle image style - full-width or QR-width depending on layout
+                if style == "image" and image_index < len(self._image_surfaces):
+                    surface, target_width = self._image_surfaces[image_index]
+                    image_index += 1
+                    img_width = min(target_width, paper_w)
+                    orig_w, orig_h = surface.get_size()
                     img_height = int(img_width * orig_h / orig_w)
                     scaled_img = pygame.transform.scale(
-                        self._caricature_surface, (img_width, img_height)
+                        surface, (img_width, img_height)
                     )
-                    # No centering - full width from edge to edge
-                    paper_surf.blit(scaled_img, (0, line_y))
-                    # NO BORDER - clean edge-to-edge image
+                    img_x = (paper_w - img_width) // 2
+                    paper_surf.blit(scaled_img, (img_x, line_y))
                     line_y += img_height + 5
                     continue
 
@@ -391,9 +313,7 @@ class ThermalPrinterPreview:
 
         # Scroll indicators if content is longer than visible area
         if self._current_job:
-            total_height = len(self._lines) * 18 + 40
-            if self._caricature_surface:
-                total_height += self.CARICATURE_SIZE + 30
+            total_height = self._content_height(paper_w)
 
             if total_height > paper_visible_h:
                 # Show scroll hint
@@ -420,47 +340,31 @@ class ThermalPrinterPreview:
 
 def create_print_job_from_result(result: Dict[str, Any]) -> PrintJob:
     """Create a PrintJob from a mode result."""
-    mode_type = result.get("type", "unknown")
-
-    # Map mode types to titles
-    title_map = {
-        "ai_prophet": "ИИ ПРОРОК",
-        "fortune": "ПРЕДСКАЗАНИЕ",
-        "zodiac": "ГОРОСКОП",
-        "roulette": "РУЛЕТКА",
-        "quiz": "ВИКТОРИНА",
-        "guess_me": "КТО Я?",
-        "squid_game": "ИГРА В КАЛЬМАРА",
-        "roast": "ПРОЖАРКА",
-        "autopsy": "ДИАГНОЗ",
-    }
-
-    # Get main text - different modes use different keys
-    main_text = (
-        result.get("prediction") or
-        result.get("display_text") or
-        result.get("roast") or  # Roast mode
-        result.get("diagnosis") or  # Autopsy mode
-        result.get("horoscope") or  # Zodiac mode
-        ""
+    mode_type = (
+        result.get("type") or
+        result.get("mode") or
+        result.get("mode_name") or
+        "generic"
     )
 
-    # Get image - different modes use different keys
-    image_data = (
-        result.get("caricature") or
-        result.get("doodle") or  # Roast mode
-        result.get("scan_image") or  # Autopsy mode
-        result.get("sketch") or  # Squid game
-        None
-    )
+    receipt = _PREVIEW_GENERATOR.generate_receipt(mode_type, result)
+    lines = receipt.preview.splitlines()
+    if lines and lines[0].startswith("+"):
+        lines = lines[1:-1]
+
+    preview_lines: List[str] = []
+    for line in lines:
+        if line.startswith("|") and line.endswith("|"):
+            line = line[1:-1]
+        preview_lines.append(line)
+
+    images: List[PreviewImage] = []
+    for block in receipt.layout.blocks:
+        if isinstance(block, ImageBlock):
+            images.append(PreviewImage(data=block.image_data, width=block.width))
 
     return PrintJob(
         mode_name=mode_type,
-        title=title_map.get(mode_type, "ARTIFACT"),
-        main_text=main_text,
-        lucky_number=result.get("lucky_number"),
-        lucky_color=result.get("lucky_color"),
-        traits=result.get("traits"),
-        caricature=image_data,
-        timestamp=datetime.fromisoformat(result.get("timestamp")) if result.get("timestamp") else None,
+        preview_lines=preview_lines,
+        images=images,
     )

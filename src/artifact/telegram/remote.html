@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>VNVNC ARCADE Remote</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 3s ease infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-section {
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.5;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            max-width: 100px;
+            aspect-ratio: 1;
+            border: none;
+            border-radius: 16px;
+            font-size: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .btn:active {
+            transform: scale(0.92);
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #4a69bd, #3c55a5);
+            box-shadow: 0 6px 20px rgba(74, 105, 189, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(145deg, #535c68, #454c55);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(145deg, #26de81, #20bf6b);
+            box-shadow: 0 6px 20px rgba(38, 222, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(145deg, #fc5c65, #eb3b5a);
+            box-shadow: 0 6px 20px rgba(252, 92, 101, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(145deg, #fed330, #f7b731);
+            box-shadow: 0 6px 20px rgba(254, 211, 48, 0.4);
+            color: #333;
+        }
+
+        .btn-large {
+            flex: 2;
+            max-width: 150px;
+        }
+
+        .btn-wide {
+            max-width: none;
+            aspect-ratio: auto;
+            padding: 20px 30px;
+        }
+
+        /* D-Pad style controls */
+        .dpad-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 200px;
+            margin: 0 auto;
+        }
+
+        .dpad-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+        }
+
+        .dpad-center {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .dpad-up { grid-column: 2; grid-row: 1; }
+        .dpad-left { grid-column: 1; grid-row: 2; }
+        .dpad-right { grid-column: 3; grid-row: 2; }
+        .dpad-down { grid-column: 2; grid-row: 3; }
+
+        /* Volume slider */
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(145deg, #4a69bd, #3c55a5);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(74, 105, 189, 0.5);
+        }
+
+        /* Mode buttons */
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .mode-btn {
+            padding: 15px 10px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 11px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .mode-btn .icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Feedback animation */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(74, 105, 189, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(74, 105, 189, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(74, 105, 189, 0); }
+        }
+
+        .btn.pressed {
+            animation: pulse 0.3s ease-out;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>VNVNC ARCADE</h1>
+    </div>
+
+    <div class="status-bar" id="status">
+        <div class="status-item">📍 <span id="mode">idle</span></div>
+        <div class="status-item">🔊 <span id="volume">100%</span></div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="control-section">
+        <div class="section-title">Управление</div>
+        <div class="dpad-container">
+            <button class="btn btn-secondary dpad-btn dpad-up" data-action="scene_prev">⬆️</button>
+            <button class="btn btn-secondary dpad-btn dpad-left" data-action="left">⬅️</button>
+            <button class="btn btn-success dpad-btn dpad-center" data-action="start">▶️</button>
+            <button class="btn btn-secondary dpad-btn dpad-right" data-action="right">➡️</button>
+            <button class="btn btn-secondary dpad-btn dpad-down" data-action="scene_next">⬇️</button>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="control-section">
+        <div class="button-row">
+            <button class="btn btn-warning btn-wide" data-action="back">↩️ Назад</button>
+            <button class="btn btn-danger btn-wide" data-action="reboot">🔄 Перезагрузка</button>
+        </div>
+    </div>
+
+    <!-- Volume Control -->
+    <div class="control-section">
+        <div class="section-title">Громкость</div>
+        <div class="volume-container">
+            <button class="btn btn-secondary" style="width:50px;height:50px;" data-action="mute">🔇</button>
+            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100">
+            <button class="btn btn-secondary" style="width:50px;height:50px;" data-action="unmute">🔊</button>
+        </div>
+    </div>
+
+    <!-- Mode Selection -->
+    <div class="control-section">
+        <div class="section-title">Режимы</div>
+        <div class="mode-grid">
+            <button class="mode-btn" data-mode="fortune"><span class="icon">🔮</span>Гадание</button>
+            <button class="mode-btn" data-mode="ai_prophet"><span class="icon">🧙</span>Пророк</button>
+            <button class="mode-btn" data-mode="photobooth"><span class="icon">📸</span>Фото</button>
+            <button class="mode-btn" data-mode="roast"><span class="icon">🔥</span>Роуст</button>
+            <button class="mode-btn" data-mode="quiz"><span class="icon">❓</span>Викторина</button>
+            <button class="mode-btn" data-mode="squid_game"><span class="icon">🦑</span>Игра</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Haptic feedback
+        function vibrate(pattern = 50) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1500);
+        }
+
+        // Send command to arcade
+        async function sendCommand(command, params = {}) {
+            try {
+                const response = await fetch('/api/control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command, ...params })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showToast(data.message || '✅');
+                    vibrate(50);
+                } else {
+                    showToast('❌ Ошибка');
+                    vibrate([100, 50, 100]);
+                }
+            } catch (e) {
+                console.error('Command error:', e);
+                showToast('❌ Нет связи');
+                vibrate([100, 50, 100]);
+            }
+        }
+
+        // Button handlers
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.currentTarget.dataset.action;
+                vibrate(30);
+
+                btn.classList.add('pressed');
+                setTimeout(() => btn.classList.remove('pressed'), 300);
+
+                switch(action) {
+                    case 'start':
+                        sendCommand('button', { button: 'start' });
+                        break;
+                    case 'left':
+                        sendCommand('button', { button: 'left' });
+                        break;
+                    case 'right':
+                        sendCommand('button', { button: 'right' });
+                        break;
+                    case 'back':
+                        sendCommand('button', { button: 'back' });
+                        break;
+                    case 'scene_next':
+                        sendCommand('idle_next');
+                        break;
+                    case 'scene_prev':
+                        sendCommand('idle_prev');
+                        break;
+                    case 'mute':
+                        sendCommand('mute');
+                        break;
+                    case 'unmute':
+                        sendCommand('unmute');
+                        break;
+                    case 'reboot':
+                        if (confirm('Перезагрузить аркаду?')) {
+                            sendCommand('reboot');
+                        }
+                        break;
+                }
+            });
+        });
+
+        // Mode buttons
+        document.querySelectorAll('[data-mode]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mode = e.currentTarget.dataset.mode;
+                vibrate(30);
+                sendCommand('start_mode', { mode });
+            });
+        });
+
+        // Volume slider
+        const volumeSlider = document.getElementById('volumeSlider');
+        let volumeTimeout;
+        volumeSlider.addEventListener('input', (e) => {
+            clearTimeout(volumeTimeout);
+            volumeTimeout = setTimeout(() => {
+                sendCommand('volume', { level: parseInt(e.target.value) / 100 });
+                vibrate(20);
+            }, 200);
+        });
+
+        // Update status periodically
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (response.ok) {
+                    const status = await response.json();
+                    document.getElementById('mode').textContent = status.mode || 'idle';
+                    document.getElementById('volume').textContent =
+                        status.muted ? '🔇' : `${Math.round((status.volume || 1) * 100)}%`;
+                    volumeSlider.value = (status.volume || 1) * 100;
+                }
+            } catch (e) {
+                console.log('Status update failed');
+            }
+        }
+
+        // Update status every 5 seconds
+        setInterval(updateStatus, 5000);
+        updateStatus();
+
+        // Telegram WebApp integration
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+
+            // Use Telegram's haptic feedback
+            window.vibrate = (pattern) => {
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
+            };
+        }
+    </script>
+</body>
+</html>

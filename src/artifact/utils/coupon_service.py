@@ -1,18 +1,30 @@
-"""Coupon service for registering arcade prizes with vnvnc-bot.
+"""Coupon service for arcade prizes.
 
-This service communicates with the vnvnc-bot API to register coupons
-that can be validated by staff using the wheel of fortune validator.
+This service creates coupons locally using the Telegram bot's coupon store.
+Coupons can be validated by staff using the bot's /check and /redeem commands.
 """
 
-import asyncio
 import logging
-import os
+import random
+import string
 from dataclasses import dataclass
-from typing import Optional, Callable
-
-import aiohttp
+from datetime import datetime, timedelta
+from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# Code format: VNVNC-XXXX-XXXX-XXXX
+# Using characters that are easy to read (no O/0, I/1/l confusion)
+CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generate_coupon_code() -> str:
+    """Generate a unique coupon code in VNVNC-XXXX-XXXX-XXXX format."""
+    parts = []
+    for _ in range(3):
+        part = "".join(random.choices(CODE_CHARS, k=4))
+        parts.append(part)
+    return f"VNVNC-{'-'.join(parts)}"
 
 
 @dataclass
@@ -27,7 +39,7 @@ class CouponResult:
 
 
 class CouponService:
-    """Service for registering coupons with vnvnc-bot.
+    """Service for creating and managing arcade prize coupons.
 
     Prize types available:
         - COCKTL: Free cocktail
@@ -37,10 +49,6 @@ class CouponService:
         - MERCHX: VNVNC merchandise
     """
 
-    # API configuration
-    DEFAULT_API_URL = "https://vnvnc-bot.fly.dev"
-    DEFAULT_API_KEY = "arcade-secret-key-2025"
-
     # Prize type constants
     PRIZE_COCKTAIL = "COCKTL"
     PRIZE_SHOT = "SHOTFR"
@@ -48,32 +56,34 @@ class CouponService:
     PRIZE_DEPOSIT_10K = "DEP10K"
     PRIZE_MERCH = "MERCHX"
 
-    def __init__(
-        self,
-        api_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-    ):
-        """Initialize coupon service.
+    # Prize labels (Russian)
+    PRIZE_LABELS = {
+        "COCKTL": "Бесплатный коктейль",
+        "SHOTFR": "Бесплатный шот",
+        "DEP5K": "Депозит 5000₽",
+        "DEP10K": "Депозит 10000₽",
+        "MERCHX": "Мерч VNVNC",
+    }
 
-        Args:
-            api_url: Base URL of vnvnc-bot API
-            api_key: API key for authentication
-        """
-        self._api_url = api_url or os.environ.get("VNVNC_API_URL", self.DEFAULT_API_URL)
-        self._api_key = api_key or os.environ.get("VNVNC_API_KEY", self.DEFAULT_API_KEY)
-        self._session: Optional[aiohttp.ClientSession] = None
+    # Prize descriptions
+    PRIZE_DESCRIPTIONS = {
+        "COCKTL": "Бесплатный коктейль на выбор",
+        "SHOTFR": "Бесплатный шот на выбор",
+        "DEP5K": "5000₽ на депозит",
+        "DEP10K": "10000₽ на депозит",
+        "MERCHX": "Мерч VNVNC на выбор",
+    }
 
-    async def _get_session(self) -> aiohttp.ClientSession:
-        """Get or create aiohttp session."""
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=30),
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                }
-            )
-        return self._session
+    def __init__(self):
+        """Initialize coupon service."""
+        self._bot = None
+
+    def _get_bot(self):
+        """Get the arcade bot instance (lazy load to avoid circular import)."""
+        if self._bot is None:
+            from artifact.telegram import get_arcade_bot
+            self._bot = get_arcade_bot()
+        return self._bot
 
     async def register_coupon(
         self,
@@ -81,7 +91,7 @@ class CouponService:
         source: str,
         guest_name: Optional[str] = None,
     ) -> CouponResult:
-        """Register a coupon with vnvnc-bot.
+        """Register a new coupon.
 
         Args:
             prize_type: Prize type ID (COCKTL, SHOTFR, etc.)
@@ -92,49 +102,40 @@ class CouponService:
             CouponResult with coupon code or error
         """
         try:
-            session = await self._get_session()
+            # Generate unique code
+            code = generate_coupon_code()
 
-            payload = {
-                "prize_type": prize_type,
-                "source": source,
-            }
-            if guest_name:
-                payload["guest_name"] = guest_name
+            # Get prize label and description
+            prize_label = self.PRIZE_LABELS.get(prize_type, prize_type)
+            prize_description = self.PRIZE_DESCRIPTIONS.get(prize_type, "")
 
-            url = f"{self._api_url}/api/arcade/register"
+            # Calculate expiration (7 days from now)
+            expires_at = (datetime.now() + timedelta(days=7)).isoformat()
 
-            async with session.post(url, json=payload) as response:
-                data = await response.json()
+            # Create coupon via bot
+            bot = self._get_bot()
+            coupon = bot.create_coupon(
+                code=code,
+                prize_type=prize_type,
+                source=source,
+            )
 
-                if response.status == 200 and data.get("success"):
-                    logger.info(
-                        f"Coupon registered: {data.get('coupon_code')} "
-                        f"for {prize_type} ({source})"
-                    )
-                    return CouponResult(
-                        success=True,
-                        coupon_code=data.get("coupon_code"),
-                        prize_label=data.get("prize_label"),
-                        prize_description=data.get("prize_description"),
-                        expires_at=data.get("expires_at"),
-                    )
-                else:
-                    error = data.get("error", f"HTTP {response.status}")
-                    logger.error(f"Failed to register coupon: {error}")
-                    return CouponResult(
-                        success=False,
-                        error=error,
-                    )
+            logger.info(f"Coupon created: {code} for {prize_type} ({source})")
 
-        except asyncio.TimeoutError:
-            logger.error("Timeout registering coupon")
-            return CouponResult(success=False, error="TIMEOUT")
-        except aiohttp.ClientError as e:
-            logger.error(f"Network error registering coupon: {e}")
-            return CouponResult(success=False, error="NETWORK_ERROR")
+            return CouponResult(
+                success=True,
+                coupon_code=code,
+                prize_label=prize_label,
+                prize_description=prize_description,
+                expires_at=expires_at,
+            )
+
         except Exception as e:
-            logger.exception(f"Unexpected error registering coupon: {e}")
-            return CouponResult(success=False, error=str(e))
+            logger.exception(f"Failed to create coupon: {e}")
+            return CouponResult(
+                success=False,
+                error=str(e),
+            )
 
     async def register_quiz_win(self, guest_name: Optional[str] = None) -> CouponResult:
         """Register a quiz mode win (free cocktail).
@@ -167,10 +168,8 @@ class CouponService:
         )
 
     async def close(self) -> None:
-        """Close the HTTP session."""
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None
+        """Cleanup (no-op for local service)."""
+        pass
 
 
 # Global instance for easy access

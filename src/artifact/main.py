@@ -54,6 +54,7 @@ async def run_hardware() -> None:
     from artifact.animation.engine import AnimationEngine
     from artifact.modes.manager import ModeManager
     from artifact.core.events import Event, EventType
+    from artifact.printing.manager import PrintManager
     from artifact.utils.camera_service import camera_service
 
     # Import ALL game modes
@@ -72,11 +73,7 @@ async def run_hardware() -> None:
     from artifact.modes.ascii_art import AsciiArtMode
     from artifact.modes.brick_breaker import BrickBreakerMode
     from artifact.modes.snake_classic import SnakeClassicMode
-    from artifact.modes.snake_tiny import SnakeTinyMode
-    from artifact.modes.lunar_lander import LunarLanderMode
-    from artifact.modes.pong import PongMode
     from artifact.modes.flappy import FlappyMode
-    from artifact.modes.game_2048 import Game2048Mode
     from artifact.modes.tower_stack import TowerStackMode
     from artifact.modes.hand_snake import HandSnakeMode
     from artifact.modes.rocketpy import RocketPyMode
@@ -85,6 +82,7 @@ async def run_hardware() -> None:
     from artifact.modes.photobooth import PhotoboothMode
     from artifact.modes.gesture_game import GestureGameMode
     from artifact.modes.rapgod import RapGodMode
+    from artifact.modes.gallery import GalleryMode, start_gallery_preloader
 
     logger = logging.getLogger(__name__)
 
@@ -114,7 +112,16 @@ async def run_hardware() -> None:
     # Register ALL game modes - KEY MODES FIRST
     # Priority 1: Main attractions
     mode_manager.register_mode(FortuneMode)       # Fortune teller - classic
+
+    # AI Prophet mode - needs API key (right after ГАДАЛКА)
+    if os.environ.get("GEMINI_API_KEY"):
+        mode_manager.register_mode(AIProphetMode)
+        logger.info("AI Prophet mode enabled (API key found)")
+    else:
+        logger.warning("AI Prophet mode disabled (no GEMINI_API_KEY)")
+
     mode_manager.register_mode(PhotoboothMode)    # Photo booth - instant gratification
+    mode_manager.register_mode(GalleryMode)       # Photo gallery slideshow
     mode_manager.register_mode(BrickBreakerMode)  # Brick breaker - addictive arcade
     mode_manager.register_mode(QuizMode)          # Quiz - engaging competition
 
@@ -124,13 +131,10 @@ async def run_hardware() -> None:
     mode_manager.register_mode(GuessMeMode)       # AI guessing game
     mode_manager.register_mode(AutopsyMode)       # X-ray analysis
 
-    # Priority 3: Classic arcade games
+    # Priority 3: Classic arcade games (removed: Pong, 2048, LunarLander, SnakeTiny)
     mode_manager.register_mode(SnakeClassicMode)
-    mode_manager.register_mode(PongMode)
     mode_manager.register_mode(FlappyMode)
-    mode_manager.register_mode(Game2048Mode)
     mode_manager.register_mode(TowerStackMode)
-    mode_manager.register_mode(LunarLanderMode)
     mode_manager.register_mode(NinjaFruitMode)
     mode_manager.register_mode(SkiiMode)
     mode_manager.register_mode(RocketPyMode)
@@ -149,14 +153,6 @@ async def run_hardware() -> None:
     # Priority 6: Other modes
     mode_manager.register_mode(RouletteMode)
     mode_manager.register_mode(BarRunnerMode)
-    mode_manager.register_mode(SnakeTinyMode)
-
-    # AI Prophet mode - needs API key
-    if os.environ.get("GEMINI_API_KEY"):
-        mode_manager.register_mode(AIProphetMode)
-        logger.info("AI Prophet mode enabled (API key found)")
-    else:
-        logger.warning("AI Prophet mode disabled (no GEMINI_API_KEY)")
 
     logger.info(f"Registered {len(mode_manager._registered_modes)} modes")
 
@@ -168,6 +164,16 @@ async def run_hardware() -> None:
     # Start shared camera service (always-on for instant frames)
     camera_service.start()
     logger.info(f"Camera service: running={camera_service.is_running}")
+
+    # Start gallery preloader for instant photo loading
+    start_gallery_preloader()
+
+    # Initialize printer manager
+    mock_printer = os.getenv("ARTIFACT_MOCK_PRINTER", "false").lower() == "true"
+    mock_printer = mock_printer or os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
+    printer_manager = PrintManager(event_bus=event_bus, mock=mock_printer)
+    event_bus.subscribe(EventType.PRINT_START, printer_manager.handle_print_start)
+    await printer_manager.start()
 
     # Wire up global sound effects for all button events
     def on_button_press(event: Event) -> None:
@@ -218,6 +224,7 @@ async def run_hardware() -> None:
     await runner.run()
 
     # Cleanup
+    await printer_manager.stop()
     camera_service.stop()
 
 

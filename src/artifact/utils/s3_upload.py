@@ -14,6 +14,8 @@ import subprocess
 import uuid
 import tempfile
 import threading
+import shutil
+import os
 from datetime import datetime
 from typing import Optional, Callable
 from dataclasses import dataclass
@@ -21,6 +23,11 @@ from dataclasses import dataclass
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Check AWS CLI availability at module load
+AWS_CLI_AVAILABLE = shutil.which('aws') is not None
+if not AWS_CLI_AVAILABLE:
+    logger.warning("AWS CLI not found - S3 uploads will be disabled. Install: sudo apt install awscli")
 
 # Selectel S3 configuration
 SELECTEL_ENDPOINT = "https://s3.ru-7.storage.selcloud.ru"
@@ -112,6 +119,19 @@ def upload_bytes_to_s3(
     Returns:
         UploadResult with success status, URL, and optional QR image
     """
+    # Check prerequisites
+    if not AWS_CLI_AVAILABLE:
+        error = "AWS CLI not installed. Run: sudo apt install awscli"
+        logger.error(error)
+        return UploadResult(success=False, error=error)
+
+    # Check for credentials file
+    aws_creds = os.path.expanduser("~/.aws/credentials")
+    if not os.path.exists(aws_creds):
+        error = "AWS credentials not configured. Run: ~/modular-arcade/scripts/setup-aws-s3.sh"
+        logger.error(error)
+        return UploadResult(success=False, error=error)
+
     try:
         # Save to temp file
         filename = generate_filename(prefix, extension)
@@ -121,7 +141,7 @@ def upload_bytes_to_s3(
             tmp.write(data)
             tmp_path = tmp.name
 
-        logger.info(f"Uploading to Selectel S3: {s3_key}")
+        logger.info(f"Uploading to Selectel S3: {s3_key} ({len(data)} bytes)")
 
         # Upload using AWS CLI
         result = subprocess.run(
@@ -137,7 +157,6 @@ def upload_bytes_to_s3(
 
         # Clean up temp file
         try:
-            import os
             os.unlink(tmp_path)
         except:
             pass
@@ -148,13 +167,26 @@ def upload_bytes_to_s3(
             logger.info(f"Upload successful: {url}")
             return UploadResult(success=True, url=url, qr_image=qr_image)
         else:
-            error = result.stderr.decode() if result.stderr else "Unknown error"
+            stderr = result.stderr.decode() if result.stderr else ""
+            # Provide helpful error messages
+            if "could not be found" in stderr or "NoCredentialProviders" in stderr:
+                error = "AWS 'selectel' profile not configured. Run: ~/modular-arcade/scripts/setup-aws-s3.sh"
+            elif "AccessDenied" in stderr:
+                error = "S3 access denied - check your Selectel credentials"
+            elif "NoSuchBucket" in stderr:
+                error = f"S3 bucket '{SELECTEL_BUCKET}' not found"
+            else:
+                error = stderr or "Unknown error"
             logger.error(f"S3 upload failed: {error}")
             return UploadResult(success=False, error=error)
 
     except subprocess.TimeoutExpired:
-        logger.error("Upload timed out after 30 seconds")
-        return UploadResult(success=False, error="Upload timeout")
+        logger.error("Upload timed out after 30 seconds - check network connection")
+        return UploadResult(success=False, error="Upload timeout - check network")
+    except FileNotFoundError:
+        error = "AWS CLI not found. Run: sudo apt install awscli"
+        logger.error(error)
+        return UploadResult(success=False, error=error)
     except Exception as e:
         logger.error(f"Upload failed: {e}", exc_info=True)
         return UploadResult(success=False, error=str(e))
@@ -177,11 +209,29 @@ def upload_file_to_s3(
     Returns:
         UploadResult with success status, URL, and optional QR image
     """
+    # Check prerequisites
+    if not AWS_CLI_AVAILABLE:
+        error = "AWS CLI not installed. Run: sudo apt install awscli"
+        logger.error(error)
+        return UploadResult(success=False, error=error)
+
+    # Check for credentials file
+    aws_creds = os.path.expanduser("~/.aws/credentials")
+    if not os.path.exists(aws_creds):
+        error = "AWS credentials not configured. Run: ~/modular-arcade/scripts/setup-aws-s3.sh"
+        logger.error(error)
+        return UploadResult(success=False, error=error)
+
     try:
         filename = generate_filename(prefix, extension)
         s3_key = f"{SELECTEL_PREFIX}/{prefix}/{filename}"
 
-        logger.info(f"Uploading file to Selectel S3: {s3_key}")
+        # Get file size for logging
+        try:
+            file_size = os.path.getsize(file_path)
+            logger.info(f"Uploading file to Selectel S3: {s3_key} ({file_size} bytes)")
+        except:
+            logger.info(f"Uploading file to Selectel S3: {s3_key}")
 
         result = subprocess.run(
             ['aws', '--endpoint-url', SELECTEL_ENDPOINT,
@@ -200,13 +250,26 @@ def upload_file_to_s3(
             logger.info(f"Upload successful: {url}")
             return UploadResult(success=True, url=url, qr_image=qr_image)
         else:
-            error = result.stderr.decode() if result.stderr else "Unknown error"
+            stderr = result.stderr.decode() if result.stderr else ""
+            # Provide helpful error messages
+            if "could not be found" in stderr or "NoCredentialProviders" in stderr:
+                error = "AWS 'selectel' profile not configured. Run: ~/modular-arcade/scripts/setup-aws-s3.sh"
+            elif "AccessDenied" in stderr:
+                error = "S3 access denied - check your Selectel credentials"
+            elif "NoSuchBucket" in stderr:
+                error = f"S3 bucket '{SELECTEL_BUCKET}' not found"
+            else:
+                error = stderr or "Unknown error"
             logger.error(f"S3 upload failed: {error}")
             return UploadResult(success=False, error=error)
 
     except subprocess.TimeoutExpired:
-        logger.error("Upload timed out after 30 seconds")
-        return UploadResult(success=False, error="Upload timeout")
+        logger.error("Upload timed out after 30 seconds - check network connection")
+        return UploadResult(success=False, error="Upload timeout - check network")
+    except FileNotFoundError:
+        error = "AWS CLI not found. Run: sudo apt install awscli"
+        logger.error(error)
+        return UploadResult(success=False, error=error)
     except Exception as e:
         logger.error(f"Upload failed: {e}", exc_info=True)
         return UploadResult(success=False, error=str(e))

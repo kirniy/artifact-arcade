@@ -7,7 +7,7 @@ Style: Graffiti, chaotic, fun.
 
 import asyncio
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from datetime import datetime
 import random
 import math
@@ -15,10 +15,11 @@ import math
 from artifact.core.events import Event, EventType
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.animation.particles import ParticleSystem, ParticlePresets
+from artifact.animation.santa_runner import SantaRunner
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
 from artifact.audio.engine import get_audio_engine
@@ -103,10 +104,9 @@ class RoastMeMode(BaseMode):
         # Display mode for result screen (0 = image full screen, 1 = text)
         self._display_mode: int = 1  # Start with text view
 
-        # Text scroll tracking
-        self._text_scroll_complete: bool = False
-        self._text_view_time: float = 0.0
-        self._scroll_duration: float = 0.0
+        # Text pagination (no scrolling!)
+        self._text_pages: List[List[str]] = []
+        self._text_page_index: int = 0
 
         # Colors
         self._red = (255, 50, 50)
@@ -121,6 +121,9 @@ class RoastMeMode(BaseMode):
         self._qr_url: Optional[str] = None
         self._qr_image: Optional[np.ndarray] = None
 
+        # Santa runner minigame for processing screen
+        self._santa_runner: Optional[SantaRunner] = None
+
     @property
     def is_ai_available(self) -> bool:
         return self._gemini_client.is_available
@@ -134,9 +137,8 @@ class RoastMeMode(BaseMode):
         self._shake_amount = 0.0
         self._flash_alpha = 0.0
         self._display_mode = 1  # Start with text view
-        self._text_scroll_complete = False
-        self._text_view_time = 0.0
-        self._scroll_duration = 0.0
+        self._text_pages = []
+        self._text_page_index = 0
         self._progress_tracker.reset()
 
         # Reset QR upload state
@@ -192,6 +194,10 @@ class RoastMeMode(BaseMode):
             # Update smart progress tracker
             self._progress_tracker.update(delta_ms)
 
+            # Update Santa runner minigame
+            if self._santa_runner:
+                self._santa_runner.update(delta_ms)
+
             if self._ai_task and self._ai_task.done():
                 self._on_ai_complete()
             else:
@@ -204,49 +210,55 @@ class RoastMeMode(BaseMode):
                     self._shake_amount = 5.0 # Impact!
                     self._sub_phase = RoastPhase.RESULT
                     self._time_in_phase = 0
-                    # Calculate scroll duration
-                    if self._roast_text and self._scroll_duration == 0:
-                        from artifact.graphics.text_utils import calculate_scroll_duration, MAIN_DISPLAY_WIDTH
-                        from artifact.graphics.fonts import load_font
-                        font = load_font("cyrillic")
-                        rect = (4, 10, MAIN_DISPLAY_WIDTH - 8, 100)
-                        self._scroll_duration = calculate_scroll_duration(
-                            self._roast_text, rect, font, scale=1, line_spacing=2, scroll_interval_ms=1400
-                        )
-                        self._scroll_duration = max(3000, self._scroll_duration + 2000)
+                    # Pre-paginate roast text (no scrolling!)
+                    if self._roast_text and not self._text_pages:
+                        from artifact.graphics.text_utils import smart_wrap_text, MAIN_DISPLAY_WIDTH
+                        lines = smart_wrap_text(self._roast_text, MAIN_DISPLAY_WIDTH - 8, font=None, scale=1)
+                        lines_per_page = 10  # More lines for fullscreen
+                        self._text_pages = []
+                        for i in range(0, len(lines), lines_per_page):
+                            self._text_pages.append(lines[i:i + lines_per_page])
+                        if not self._text_pages:
+                            self._text_pages = [["..."]]
+                        self._text_page_index = 0
             elif self._sub_phase == RoastPhase.RESULT:
-                # Track time in text view
-                if self._display_mode == 1:  # text view
-                    self._text_view_time += delta_ms
-                    if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
-                        self._text_scroll_complete = True
-                        if self._doodle_image:
-                            self._display_mode = 0  # Switch to image
-
                 if self._time_in_phase > 45000:
                     self._finish()
 
     def on_input(self, event: Event) -> bool:
         if event.type == EventType.BUTTON_PRESS:
+            if self.phase == ModePhase.PROCESSING:
+                # Play Santa runner minigame while waiting - JUMP!
+                if self._santa_runner:
+                    self._santa_runner.handle_jump()
+                    self._audio.play_ui_click()
+                return True
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
-                if self._display_mode == 1 and self._doodle_image:
-                    self._audio.play_ui_move()
-                    self._display_mode = 0
-                    self._text_scroll_complete = True
-                else:
-                    self._finish()
+                self._finish()
                 return True
 
         elif event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
                 self._audio.play_ui_move()
-                self._cycle_display_mode(-1)
+                # Navigate pages first, then views
+                if self._display_mode == 1 and len(self._text_pages) > 1 and self._text_page_index > 0:
+                    self._text_page_index -= 1
+                else:
+                    self._cycle_display_mode(-1)
+                    if self._display_mode == 1:
+                        self._text_page_index = len(self._text_pages) - 1 if self._text_pages else 0
                 return True
 
         elif event.type == EventType.ARCADE_RIGHT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
                 self._audio.play_ui_move()
-                self._cycle_display_mode(1)
+                # Navigate pages first, then views
+                if self._display_mode == 1 and len(self._text_pages) > 1 and self._text_page_index < len(self._text_pages) - 1:
+                    self._text_page_index += 1
+                else:
+                    self._cycle_display_mode(1)
+                    if self._display_mode == 1:
+                        self._text_page_index = 0
                 return True
 
         return False
@@ -263,12 +275,26 @@ class RoastMeMode(BaseMode):
             self._flash_alpha = 1.0
             
     def _update_camera_preview(self) -> None:
-        """Update camera preview from shared camera service."""
+        """Update camera preview - clean B&W grayscale (no dithering)."""
         try:
             frame = camera_service.get_frame(timeout=0)
-            if frame is not None:
-                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
-                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+            if frame is not None and frame.size > 0:
+                # Simple B&W grayscale conversion - cleaner than dithering
+                if len(frame.shape) == 3:
+                    gray = (0.299 * frame[:, :, 0] + 0.587 * frame[:, :, 1] + 0.114 * frame[:, :, 2]).astype(np.uint8)
+                else:
+                    gray = frame
+
+                # Resize if needed
+                if gray.shape != (128, 128):
+                    from PIL import Image
+                    img = Image.fromarray(gray)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    gray = np.array(img, dtype=np.uint8)
+
+                # Convert to RGB (grayscale in all 3 channels)
+                bw_frame = np.stack([gray, gray, gray], axis=-1)
+                self._camera_frame = create_viewfinder_overlay(bw_frame, self._time_in_phase).copy()
                 self._camera = True
         except Exception:
             pass
@@ -344,6 +370,10 @@ class RoastMeMode(BaseMode):
         # Start smart progress tracker
         self._progress_tracker.start()
         self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
+        # Initialize Santa runner minigame for the waiting screen
+        self._santa_runner = SantaRunner()
+        self._santa_runner.reset()
 
         self._ai_task = asyncio.create_task(self._run_ai())
 
@@ -453,8 +483,9 @@ class RoastMeMode(BaseMode):
     def _on_ai_complete(self) -> None:
         self._progress_tracker.complete()
         self._audio.play_success()
-        self._sub_phase = RoastPhase.REVEAL
-        self.change_phase(ModePhase.RESULT)
+        logger.info("AI complete, finishing mode - manager handles result display")
+        # Skip mode's result phase - manager's result view is cleaner
+        self._finish()
 
     def on_exit(self) -> None:
         """Cleanup - don't stop shared camera service."""
@@ -478,6 +509,7 @@ class RoastMeMode(BaseMode):
                 "vibe": self._vibe_score,
                 "doodle": self._doodle_image.image_data if self._doodle_image else None,
                 "qr_url": self._qr_url,
+                "qr_image": self._qr_image,
                 "photo": self._photo_data,
                 "timestamp": datetime.now().isoformat()
             }
@@ -510,51 +542,40 @@ class RoastMeMode(BaseMode):
                  draw_centered_text(buffer, str(cnt), 64+shake_x, self._yellow, scale=3)
 
         elif self._sub_phase == RoastPhase.PROCESSING:
-            # Animated processing screen with flames and smart progress
-            from artifact.graphics.primitives import draw_circle
+            # Render Santa runner minigame while AI is processing, with camera as background
+            # Get live camera frame for background
+            camera_bg = camera_service.get_frame(timeout=0)
 
-            # Pulsing background
-            pulse = 0.5 + 0.3 * math.sin(self._time_in_phase / 200)
-            bg_intensity = int(20 * pulse)
-            fill(buffer, (bg_intensity + 10, 5, 5))
+            # Render the Santa runner game with camera background
+            if self._santa_runner:
+                self._santa_runner.render(buffer, background=camera_bg)
 
-            # Render flames-style loading animation from progress tracker
-            self._progress_tracker.render_loading_animation(buffer, style="flames", time_ms=self._time_in_phase)
+                # Add compact progress bar at the top
+                bar_w, bar_h = 100, 4
+                bar_x = (128 - bar_w) // 2
+                bar_y = 2
 
-            # Multiple flame layers (additional visual effect)
-            flame_colors = [(255, 50, 50), (255, 100, 0), (255, 200, 0)]
-            for i, color in enumerate(flame_colors):
-                flame_y = 85 - i * 12
-                wave = math.sin(self._time_in_phase / 150 + i)
-                for x in range(20, 108, 10):
-                    flame_height = int(25 + 10 * math.sin(self._time_in_phase / 100 + x / 10) + wave * 5)
-                    for y in range(flame_y, flame_y - flame_height, -4):
-                        if 0 <= y < 128:
-                            alpha = (flame_y - y) / flame_height
-                            c = tuple(int(v * alpha) for v in color)
-                            draw_circle(buffer, x + int(wave * 3), y, 2, c)
+                # Semi-transparent dark background for progress bar
+                draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, (20, 20, 40))
 
-            # Processing text with glow
-            glow_pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
-            text_color = tuple(int(c * glow_pulse) for c in self._red)
-            draw_centered_text(buffer, "ГОТОВЛЮ", 30+shake_y, text_color, scale=2)
-            draw_centered_text(buffer, "ОГОНЬ", 50+shake_y, self._yellow, scale=2)
+                # Use the SmartProgressTracker's render method for the progress bar
+                self._progress_tracker.render_progress_bar(
+                    buffer, bar_x, bar_y, bar_w, bar_h,
+                    bar_color=self._red,
+                    bg_color=(40, 40, 40),
+                    time_ms=self._time_in_phase
+                )
 
-            # Smart progress bar
-            bar_w, bar_h = 100, 8
-            bar_x = (128 - bar_w) // 2
-            bar_y = 92
+                # Show compact status at bottom
+                status_message = self._progress_tracker.get_message()
+                # Semi-transparent dark strip for text
+                draw_rect(buffer, 0, 118, 128, 10, (20, 20, 40))
+                draw_centered_text(buffer, status_message, 119, (200, 200, 200), scale=1)
 
-            self._progress_tracker.render_progress_bar(
-                buffer, bar_x, bar_y, bar_w, bar_h,
-                bar_color=self._red,
-                bg_color=(40, 40, 40),
-                time_ms=self._time_in_phase
-            )
-
-            # Show phase-specific status message from tracker
-            status_message = self._progress_tracker.get_message()
-            draw_centered_text(buffer, status_message, 106, (200, 200, 200), scale=1)
+            else:
+                # Fallback to simple processing screen if no game
+                fill(buffer, (10, 5, 5))
+                draw_centered_text(buffer, "ГОТОВЛЮ...", 55, self._red, scale=2)
 
         elif self._sub_phase == RoastPhase.REVEAL:
              draw_centered_text(buffer, "ПОЛУЧАЙ!", 64, self._red, scale=2)
@@ -565,7 +586,7 @@ class RoastMeMode(BaseMode):
                 self._render_qr_view(buffer)
             else:
                 if self._display_mode == 0 and self._doodle_image and self._doodle_image.image_data:
-                    # MODE 0: Full screen caricature/doodle
+                    # MODE 0: FULLSCREEN caricature/doodle (128x128)
                     try:
                         from PIL import Image
                         from io import BytesIO
@@ -573,37 +594,21 @@ class RoastMeMode(BaseMode):
 
                         img = Image.open(BytesIO(self._doodle_image.image_data))
                         img = img.convert("RGB")
-                        # Fill the display (128x128) with slight margin
-                        img = img.resize((120, 120), Image.Resampling.LANCZOS)
+                        # FULLSCREEN - fill entire 128x128 display
+                        img = img.resize((128, 128), Image.Resampling.LANCZOS)
                         img_array = np.array(img)
 
-                        # Center the image
-                        buffer[4:124, 4:124] = img_array
+                        # Fill entire buffer
+                        buffer[:128, :128] = img_array
 
                         nav_hint = self._display_nav_hint()
 
-                        # Show QR code in bottom-right corner if available
-                        if self._qr_image is not None:
-                            qr_h, qr_w = self._qr_image.shape[:2]
-                            qr_x = 128 - qr_w - 4
-                            qr_y = 128 - qr_h - 18
-                            draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
-                            buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
-                            if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
-                                draw_centered_text(buffer, nav_hint, 114, (100, 100, 120), scale=1)
-                            else:
-                                draw_centered_text(buffer, "СКАН QR", 114, (200, 200, 200), scale=1)
-                        elif self._uploader.is_uploading:
-                            if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
-                                draw_centered_text(buffer, nav_hint, 114, (100, 100, 120), scale=1)
-                            else:
-                                draw_centered_text(buffer, "ЗАГРУЗКА...", 114, (150, 150, 150), scale=1)
+                        if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
+                            draw_centered_text(buffer, nav_hint, 114, (100, 100, 120), scale=1)
+                        elif self._uploader.is_uploading and self._qr_image is None:
+                            draw_centered_text(buffer, "ЗАГРУЗКА...", 114, (150, 150, 150), scale=1)
                         else:
-                            # Show hint at bottom (using safe zone Y=114 for scale=1)
-                            if nav_hint and int(self._time_in_phase / 500) % 2 != 0:
-                                draw_centered_text(buffer, nav_hint, 114, (100, 100, 120), scale=1)
-                            else:
-                                draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
+                            draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
 
                     except Exception as e:
                         logger.error(f"Failed to render caricature: {e}")
@@ -611,31 +616,33 @@ class RoastMeMode(BaseMode):
                         self._display_mode = 1
 
                 if self._display_mode == 1 or not (self._doodle_image and self._doodle_image.image_data):
-                    # MODE 1: Full screen text (or fallback if no image)
-                    # Vibe score at top
-                    draw_centered_text(buffer, self._vibe_score, 15+shake_y, self._yellow, scale=2)
+                    # MODE 1: Full screen text with PAGINATION (no scrolling!)
+                    # Compact title with page indicator
+                    total_pages = len(self._text_pages) if self._text_pages else 1
+                    page_idx = min(self._text_page_index, total_pages - 1) if self._text_pages else 0
 
-                    # Roast text with scrolling
-                    lines = smart_wrap_text(self._roast_text, MAIN_DISPLAY_WIDTH - 8, font=None, scale=1)
-                    visible_lines = 7
-                    line_height = 12
-                    total_lines = len(lines)
-                    scroll_offset = 0
-                    if total_lines > visible_lines:
-                        cycle = max(1, total_lines - visible_lines + 1)
-                        step = int((self._time_in_phase / 2000) % cycle)
-                        scroll_offset = step
+                    if total_pages > 1:
+                        left_arrow = "◄" if page_idx > 0 else " "
+                        right_arrow = "►" if page_idx < total_pages - 1 else " "
+                        title_text = f"{left_arrow} {self._vibe_score[:8]} {page_idx + 1}/{total_pages} {right_arrow}"
+                        draw_centered_text(buffer, title_text, 3+shake_y, self._yellow, scale=1)
+                    else:
+                        draw_centered_text(buffer, self._vibe_score, 3+shake_y, self._yellow, scale=2)
 
-                    y = 38
-                    for line in lines[scroll_offset:scroll_offset + visible_lines]:
-                        draw_centered_text(buffer, line, y+shake_y, (255, 255, 255))
-                        y += line_height
+                    # Render current text page - FULLSCREEN
+                    if self._text_pages:
+                        page_lines = self._text_pages[page_idx]
+                        y = 18 if total_pages > 1 else 24
+                        line_height = 8
+                        for i, line in enumerate(page_lines):
+                            pulse = 0.9 + 0.1 * math.sin(self._time_in_phase / 400 + i * 0.3)
+                            color = tuple(int(255 * pulse) for _ in range(3))
+                            draw_centered_text(buffer, line, y+shake_y, color, scale=1)
+                            y += line_height
+                    else:
+                        draw_centered_text(buffer, "...", 50+shake_y, (100, 100, 100), scale=1)
 
-                    nav_hint = self._display_nav_hint()
-                    if nav_hint:
-                        draw_centered_text(buffer, nav_hint, 114, (100, 150, 200), scale=1)
-                    elif int(self._time_in_phase / 600) % 2 == 0:
-                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 114, (100, 200, 100), scale=1)
+                    # No bottom hints - fullscreen text!
 
         self._particles.render(buffer)
 

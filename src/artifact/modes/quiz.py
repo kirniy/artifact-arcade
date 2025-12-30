@@ -19,7 +19,7 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.coupon_service import get_coupon_service, CouponResult
 from artifact.audio.engine import get_audio_engine
@@ -390,6 +390,25 @@ class QuizMode(BaseMode):
         self._audio = get_audio_engine()
         self._last_countdown_tick: int = 0
 
+    def _shuffle_question_options(self, question: Tuple[str, List[str], int], rng: random.Random) -> Tuple[str, List[str], int]:
+        """Shuffle answer options and update correct index.
+
+        This ensures the correct answer isn't always in the same position!
+        """
+        q_text, options, correct_idx = question
+
+        # Create list of (option, is_correct) pairs
+        option_pairs = [(opt, i == correct_idx) for i, opt in enumerate(options)]
+
+        # Shuffle the pairs
+        rng.shuffle(option_pairs)
+
+        # Reconstruct options and find new correct index
+        shuffled_options = [opt for opt, _ in option_pairs]
+        new_correct_idx = next(i for i, (_, is_correct) in enumerate(option_pairs) if is_correct)
+
+        return (q_text, shuffled_options, new_correct_idx)
+
     def on_enter(self) -> None:
         """Initialize millionaire quiz."""
         # Use isolated RNG for true randomness
@@ -398,8 +417,9 @@ class QuizMode(BaseMode):
         seed = int(time.time() * 1_000_000) ^ int.from_bytes(os.urandom(4), 'big')
         rng.seed(seed)
 
-        # Select random questions
-        self._questions = rng.sample(QUIZ_QUESTIONS, min(self.QUESTIONS_PER_GAME, len(QUIZ_QUESTIONS)))
+        # Select random questions and SHUFFLE their options!
+        raw_questions = rng.sample(QUIZ_QUESTIONS, min(self.QUESTIONS_PER_GAME, len(QUIZ_QUESTIONS)))
+        self._questions = [self._shuffle_question_options(q, rng) for q in raw_questions]
 
         # Reset game state
         self._current_question = 0
@@ -661,12 +681,24 @@ class QuizMode(BaseMode):
             logger.warning("Quiz photo capture failed")
 
     def _update_camera_preview(self) -> None:
-        """Update live camera preview."""
+        """Update live camera preview - clean B&W grayscale (no dithering)."""
         try:
             frame = camera_service.get_frame(timeout=0)
             if frame is not None and frame.size > 0:
-                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
-                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                # Simple B&W grayscale conversion - cleaner than dithering
+                if len(frame.shape) == 3:
+                    gray = (0.299 * frame[:, :, 0] + 0.587 * frame[:, :, 1] + 0.114 * frame[:, :, 2]).astype(np.uint8)
+                else:
+                    gray = frame
+                # Resize if needed
+                if gray.shape != (128, 128):
+                    from PIL import Image
+                    img = Image.fromarray(gray)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    gray = np.array(img, dtype=np.uint8)
+                # Convert to RGB (grayscale in all 3 channels)
+                bw_frame = np.stack([gray, gray, gray], axis=-1)
+                self._camera_frame = create_viewfinder_overlay(bw_frame, self._time_in_phase).copy()
                 self._camera = True
         except Exception as e:
             logger.warning(f"Quiz camera preview error: {e}")
@@ -886,7 +918,7 @@ class QuizMode(BaseMode):
     def _render_game(self, buffer) -> None:
         """Render active game with live camera background."""
         from artifact.graphics.primitives import draw_rect
-        from artifact.graphics.text_utils import draw_centered_text, wrap_text, fit_text_in_rect
+        from artifact.graphics.text_utils import draw_centered_text, wrap_text, fit_text_in_rect, draw_text
         import numpy as np
 
         # LIVE CAMERA BACKGROUND - dimmed and tinted
@@ -967,13 +999,17 @@ class QuizMode(BaseMode):
             draw_centered_text(buffer, line, text_y, (255, 255, 255), scale=1)
             text_y += 11
 
-        # Answer options in 2x2 grid with improved visuals
+        # Answer options in 2x2 grid - improved layout with number badges
+        # Layout: number badge (12px) + answer box (50px) = 62px per option
+        # Two columns: left starts at x=2, right at x=66
+        # Two rows: y=48 and y=78 with 30px height each
         option_labels = ["1", "2", "3", "4"]
-        positions = [(2, 50), (66, 50), (2, 80), (66, 80)]  # x, y for each option
+        positions = [(2, 48), (66, 48), (2, 78), (66, 78)]  # x, y for each option
+        badge_w, badge_h = 12, 28  # Number badge dimensions
+        box_w, box_h = 48, 28      # Answer box dimensions (after badge)
 
         for i, (opt, label) in enumerate(zip(options, option_labels)):
             opt_x, opt_y = positions[i]
-            w, h = 60, 26
 
             # Determine color and effects based on state
             glow = False
@@ -996,26 +1032,36 @@ class QuizMode(BaseMode):
             else:
                 color = self._option_blue
 
-            # Draw option box with optional glow
-            box_x = opt_x + shake
+            # Apply shake
+            base_x = opt_x + shake
+
+            # Draw number badge on the left
+            badge_color = self._gold if glow else (60, 80, 120)
+            draw_rect(buffer, base_x, opt_y, badge_w, badge_h, badge_color)
+            # Draw number centered in badge
+            num_x = base_x + (badge_w - 5) // 2
+            num_y = opt_y + (badge_h - 8) // 2
+            draw_text(buffer, label, num_x, num_y, (255, 255, 255), scale=1)
+
+            # Draw answer box next to badge
+            box_x = base_x + badge_w + 1
             if glow:
                 # Outer glow
                 glow_color = tuple(min(255, c + 40) for c in color)
-                draw_rect(buffer, box_x - 1, opt_y - 1, w + 2, h + 2, glow_color)
+                draw_rect(buffer, box_x - 1, opt_y - 1, box_w + 2, box_h + 2, glow_color)
 
-            # Main box with gradient effect (darker at top)
-            draw_rect(buffer, box_x, opt_y, w, h, color)
+            # Main box with gradient effect
+            draw_rect(buffer, box_x, opt_y, box_w, box_h, color)
             # Highlight at top
             highlight = tuple(min(255, c + 30) for c in color)
-            draw_rect(buffer, box_x, opt_y, w, 2, highlight)
+            draw_rect(buffer, box_x, opt_y, box_w, 2, highlight)
             # Shadow at bottom
             shadow = tuple(max(0, c - 30) for c in color)
-            draw_rect(buffer, box_x, opt_y + h - 2, w, 2, shadow)
+            draw_rect(buffer, box_x, opt_y + box_h - 2, box_w, 2, shadow)
 
-            # Option text - fit within the option box
-            display_text = f"{label}:{opt.upper()}"
+            # Option text - fit within the answer box (no number prefix)
             text_color = (255, 255, 255) if color != (20, 40, 80) else (100, 100, 120)
-            fit_text_in_rect(buffer, display_text, (box_x, opt_y, w, h), text_color, max_scale=1)
+            fit_text_in_rect(buffer, opt.upper(), (box_x, opt_y, box_w, box_h), text_color, max_scale=1)
 
         # Instructions at bottom
         if self._sub_phase == QuizPhase.QUESTION and not self._answer_locked:

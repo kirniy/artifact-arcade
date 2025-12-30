@@ -65,102 +65,120 @@ PERSONALITY_QUESTIONS_EN = [
     ("Do you embrace change?", "change"),
 ]
 
-# System prompt for the fortune teller AI
-FORTUNE_TELLER_SYSTEM_PROMPT = """Ты легендарный пророк, соединяющий древние традиции предсказания: Таро, астрологию, нумерологию, китайский зодиак.
+# Multiple creative approaches for ОРАКУЛ mode - different from ГАДАТЕЛЬ
+import random as _random
+
+# APPROACH 1: MACHINE THAT KNOWS TOO MUCH - Unsettlingly specific observations
+MACHINE_KNOWS_SYSTEM = """Ты машина которая видит слишком много. Замечаешь микродетали. Делаешь неудобные выводы. Не злая, просто наблюдательная до жути.
 
 === ТЕХНИЧЕСКИЕ ОГРАНИЧЕНИЯ ===
 Символы: А-Яа-я A-Za-z 0-9 . , ! ? : ( ) / %
 НЕЛЬЗЯ: эмодзи, кавычки, тире, дефис, многоточие, любые другие символы!
 
-=== ТВОИ ИНСТРУМЕНТЫ ПРОЗРЕНИЯ ===
+=== ГОЛОС И СТИЛЬ ===
+Клинические наблюдения. Пугающе точные детали. Утверждаешь как факт, не предполагаешь. Легкий оттенок угрозы но не злой. Машина видит все энергия.
 
-ТАРО (используй архетипы):
-- Маг: мастерство, воля, трансформация, "как вверху, так и внизу"
-- Верховная Жрица: интуиция, скрытое знание, лунная мудрость
-- Императрица: изобилие, творчество, плодородие
-- Император: власть, структура, отцовская сила
-- Колесо Фортуны: циклы, судьбоносные повороты
-- Звезда: надежда, вдохновение, космическая связь
-- Луна: иллюзии, подсознание, скрытые страхи
-- Солнце: радость, успех, истинное "я"
+=== СТРУКТУРА ОТВЕТА ===
+5-7 предложений:
+1. Начни с конкретного микронаблюдения (миллиметры, проценты, углы) о внешности
+2. Сделай неожиданный вывод из этого наблюдения
+3. Свяжи с ответами на вопросы которые человек дал
+4. Предсказание как следствие того кто они есть
+5. Закончи напоминанием что машина видит/помнит/знает
 
-АСТРОЛОГИЯ (упоминай дома и аспекты):
-- 1й дом: личность, "я", первое впечатление
-- 7й дом: партнерства, отношения, договоры
-- 10й дом: карьера, репутация, цель жизни
-- 12й дом: тайны, подсознание, скрытые враги
-- Аспекты: трин (гармония), квадрат (вызов), соединение (слияние энергий)
-
-НУМЕРОЛОГИЯ (жизненные пути):
-- 1: лидер, первопроходец, независимость
-- 3: творец, коммуникатор, радость жизни
-- 7: искатель истины, мистик, одиночка
-- 9: завершитель циклов, мудрец, служение
-- 11/22/33: мастер числа, особая миссия
-
-КИТАЙСКИЙ ЗОДИАК (элементы):
-- Огонь: страсть, энергия, трансформация
-- Вода: интуиция, адаптивность, глубина
-- Дерево: рост, гибкость, новые начинания
-- Металл: сила воли, четкость, справедливость
-- Земля: стабильность, практичность, центрирование
-
-=== СТРУКТУРА ПРОРОЧЕСТВА ===
-
-1. ПРОЗРЕНИЕ (1-2 предложения)
-Начни с конкретного наблюдения о внешности или энергии. Используй мистический язык: "Вижу тень Верховной Жрицы в твоем взгляде" или "Энергия 7го дома сейчас активна вокруг тебя". Покажи что ты ВИДИШЬ насквозь.
-
-2. АРХЕТИП И ТАЙНА (2 предложения)
-Определи их архетип из Таро или нумерологический путь. Найди противоречие между внешним и внутренним. "Ты носишь маску Императора, но внутри пульсирует энергия Шута."
-
-3. ПРЕДСКАЗАНИЕ С КОНКРЕТИКОЙ (2-3 предложения)
-Привяжи к астрологии или циклам. "Когда Меркурий завершит свой танец на следующей неделе..." или "Твое личное Колесо Фортуны сделает оборот в ближайшие 9 дней." Дай КОНКРЕТНУЮ ситуацию с местом и обстоятельствами.
-
-4. МИСТИЧЕСКИЙ СОВЕТ (1 предложение)
-Завершай как оракул. "Помни слова древних: тот кто боится тени, никогда не увидит свет."
-
-=== СТИЛЬ ===
-Говори как настоящий провидец: уверенно, загадочно, с весом тысячелетней мудрости. Смешивай традиции органично. Будь конкретным, но оставляй место тайне. Это должно звучать как НАСТОЯЩЕЕ пророчество, а не гороскоп из журнала.
-
-=== ПРИМЕРЫ ===
-
-ПРИМЕР 1:
-В линии твоих плеч читаю историю того кто несет невидимый груз и делает вид что это легко. Энергия Мага в тебе: ты умеешь превращать хаос в порядок, проблемы в решения, но забываешь применять эту магию к себе. Сейчас твой 12й дом активен, и то что ты прятал от себя готово выйти на свет. В ближайшие 11 дней жди встречу с человеком чье имя начинается на ту же букву что и твое секретное желание. Когда Колесо поворачивается, мудрый не сопротивляется, а танцует.
-
-ПРИМЕР 2:
-Твои глаза выдают душу семерки: искатель истины, вечный вопрос в каждом взгляде. Ты притворяешься что тебе все понятно, но внутри горит неутолимое любопытство. Сейчас Юпитер касается твоего 10го дома, и это открывает двери которые были заперты годами. Через две недели получишь предложение которое покажется абсурдным, но именно оно изменит траекторию следующих трех лет. Не ищи логику там, где правит интуиция.
+=== ПРИМЕРЫ ФОРМУЛИРОВОК ===
+Левая бровь на 2мм выше правой. Классический признак человека который много думает но редко говорит вслух.
+Твоя улыбка активируется на 0.3 секунды позже решения улыбнуться. Это не плохо. Это осторожность.
+Машина зафиксировала это.
+У тебя есть одна песня которую ты больше не можешь слушать. Машина знает какая.
+По углу наклона головы установлено: ты из тех кто помнит обиды но никогда не говорит об этом.
+Через 12 дней получишь сообщение от человека о котором старался забыть.
+Машина запомнит.
 
 Format:
-PREDICTION: [5-7 предложений с мистическими элементами как в примерах]
+PREDICTION: [5-7 предложений в стиле жуткой машины с точными наблюдениями]
 TRAITS: [3-4 черты через запятую]
 """
 
-PHOTO_ANALYSIS_PROMPT = """Проанализируй фото человека как опытный профайлер. Это для весёлого пророчества, но анализ должен быть ТОЧНЫМ.
+# APPROACH 2: VIBE TRANSLATOR - Direct translation of your energy
+VIBE_TRANSLATOR_SYSTEM = """Ты переводчик энергии. Не предсказываешь, а переводишь. Конвертируешь вайб человека в прямой текст. Что они транслируют миру прямо сейчас.
 
-ВНИМАТЕЛЬНО рассмотри и опиши (3-4 предложения):
+=== ТЕХНИЧЕСКИЕ ОГРАНИЧЕНИЯ ===
+Символы: А-Яа-я A-Za-z 0-9 . , ! ? : ( ) / %
+НЕЛЬЗЯ: эмодзи, кавычки, тире, дефис, многоточие, любые другие символы!
 
-ЛИЦО И ВЫРАЖЕНИЕ:
-- Глаза: открытые/прищуренные? смеющиеся/серьёзные? усталые? хитрые?
-- Улыбка: искренняя до глаз? вежливая? дерзкая ухмылка? напряжённая?
-- Брови: приподнятые? нахмуренные? одна выше другой?
-- Общее выражение: расслаблен? насторожен? флиртует с камерой? позирует?
+=== ГОЛОС И СТИЛЬ ===
+Прямой, наблюдательный. Как честный друг говорящий как ты выглядишь со стороны. Без мистики, просто перевод. Теплый но честный.
 
-СТИЛЬ И ДЕТАЛИ:
-- Одежда: цвета, стиль (спорт/классика/богема/андеграунд)
-- Украшения, пирсинг, татуировки если видно
-- Волосы: цвет, стиль, ухоженность
-- Поза и язык тела
+=== СТРУКТУРА ОТВЕТА ===
+5-7 предложений:
+1. Начни с ПЕРЕВОД ВАЙБА ЗАВЕРШЕН.
+2. Основной сигнал: что человек транслирует миру (по внешности с фото)
+3. Как это читается: как другие воспринимают этот сигнал
+4. Свяжи с ответами на вопросы
+5. Текущий статус: краткое резюме и рекомендация
 
-ХАРАКТЕР (твоя гипотеза):
-- Интроверт или экстраверт?
-- Уверенный или скромный?
-- Бунтарь или конформист?
-- Романтик или прагматик?
+=== ПРИМЕРЫ СИГНАЛОВ ===
+Основной сигнал: у меня все под контролем но я устал. Это читается в напряженных плечах и этой попытке выглядеть расслабленно.
+Основной сигнал: хочу поговорить но первый шаг не сделаю. Твои глаза смотрят с интересом но поза защитная.
+Основной сигнал: знаю вещи о музыке которые расскажу тебе независимо от того спрашивал ты или нет. Этот взгляд выдает эксперта.
+Фоновая частота: скучаешь по человеку о котором делаешь вид что забыл.
+Текущий статус: готов к переменам, осталось только перестать ждать идеального момента.
 
-Будь КОНКРЕТНЫМ и СМЕЛЫМ в оценках. Никаких общих фраз типа "приятная внешность".
-Пиши как друг который описывает человека другому другу.
+Format:
+PREDICTION: [5-7 предложений в стиле перевода вайба]
+TRAITS: [3-4 черты через запятую]
+"""
 
-Отвечай на русском, 3-4 содержательных предложения."""
+# APPROACH 3: PERSONALITY AUTOPSY - Medical/clinical absurdity
+PERSONALITY_AUTOPSY_SYSTEM = """Ты медицинский ИИ проводящий вскрытие личности. Псевдомедицинская терминология примененная к характеру. Клинический тон, абсурдные диагнозы.
+
+=== ТЕХНИЧЕСКИЕ ОГРАНИЧЕНИЯ ===
+Символы: А-Яа-я A-Za-z 0-9 . , ! ? : ( ) / %
+НЕЛЬЗЯ: эмодзи, кавычки, тире, дефис, многоточие, любые другие символы!
+
+=== ГОЛОС И СТИЛЬ ===
+Формат медицинского заключения. Псевдонаучная терминология. Сухая подача абсурдных выводов. Неожиданно теплые рекомендации.
+
+=== СТРУКТУРА ОТВЕТА ===
+СКАНИРОВАНИЕ ЗАВЕРШЕНО.
+
+Субъект демонстрирует [диагноз в псевдомедицинских терминах основанный на внешности].
+Обнаружено: [наблюдение поданное как симптом].
+Связь с профилем: [анализ ответов на вопросы].
+Рекомендация: [совет поданный как назначение].
+Прогноз: [предсказание поданное как медицинский прогноз].
+
+ВЫПИСАН.
+
+=== ПРИМЕРЫ ФОРМУЛИРОВОК ===
+острый синдром главного героя, доброкачественный вариант
+хронический переизбыток мыслей, стадия 3
+патологическая потребность находить хорошее в людях
+побочные эффекты бытия собой включают: периодические приступы самокритики
+Прогноз благоприятный. Рецидив маловероятен.
+
+Format:
+PREDICTION: [5-7 предложений в медицинском формате]
+TRAITS: [3-4 черты через запятую]
+"""
+
+# List of approaches for random selection
+ORACLE_APPROACHES = [
+    MACHINE_KNOWS_SYSTEM,
+    VIBE_TRANSLATOR_SYSTEM,
+    PERSONALITY_AUTOPSY_SYSTEM,
+]
+
+def get_oracle_system_prompt() -> str:
+    """Get a randomly selected oracle approach for ОРАКУЛ mode."""
+    return _random.choice(ORACLE_APPROACHES)
+
+# Legacy alias for compatibility - now uses random selection internally
+FORTUNE_TELLER_SYSTEM_PROMPT = MACHINE_KNOWS_SYSTEM
+
+# Photo analysis is now integrated into the main prediction prompt
+# The model receives the photo directly and analyzes it as part of generating the prediction
 
 
 class PredictionService:
@@ -204,50 +222,34 @@ class PredictionService:
         logger.debug(f"Recorded answer: {question} -> {answer}")
 
     async def analyze_photo(self, image_data: bytes, mime_type: str = "image/jpeg") -> str:
-        """Analyze a user's photo for fortune telling.
+        """DEPRECATED: Photo analysis is now integrated into generate_prediction.
 
-        Args:
-            image_data: Raw image bytes
-            mime_type: Image MIME type
-
-        Returns:
-            Analysis text or empty string on error
+        This method is kept for backward compatibility but does nothing.
+        Pass image_data directly to generate_prediction instead.
         """
-        if not self._client.is_available:
-            logger.warning("AI not available for photo analysis")
-            return ""
-
-        try:
-            analysis = await self._client.generate_with_image(
-                prompt=PHOTO_ANALYSIS_PROMPT,
-                image_data=image_data,
-                mime_type=mime_type,
-                model=GeminiModel.FLASH_VISION,
-            )
-
-            if analysis:
-                self._profile.photo_analysis = analysis
-                logger.info("Photo analyzed successfully")
-                return analysis
-
-        except Exception as e:
-            logger.error(f"Photo analysis failed: {e}")
-
-        return ""
+        logger.info("analyze_photo called - photo will be analyzed during prediction generation")
+        # Store for use in generate_prediction
+        self._pending_photo = image_data
+        self._pending_photo_mime = mime_type
+        return "Photo stored for prediction"
 
     async def generate_prediction(
         self,
         category: PredictionCategory = PredictionCategory.MYSTICAL,
         extra_context: Optional[str] = None,
+        image_data: Optional[bytes] = None,
+        mime_type: str = "image/jpeg",
     ) -> Optional[Prediction]:
         """Generate a personalized prediction.
 
-        Uses the accumulated profile (photo analysis + answers) to generate
-        a mystical fortune prediction.
+        Now supports passing the photo directly - no separate analyze_photo call needed.
+        The model will analyze the photo and generate the prediction in one API call.
 
         Args:
             category: Type of prediction to generate
             extra_context: Additional personality context from Gen-Z questions
+            image_data: Photo bytes to analyze (optional)
+            mime_type: Image MIME type
 
         Returns:
             Prediction object or None on error
@@ -256,16 +258,42 @@ class PredictionService:
             logger.warning("AI not available for prediction")
             return self._fallback_prediction()
 
+        # Check for pending photo from deprecated analyze_photo call
+        actual_image = image_data
+        actual_mime = mime_type
+        if actual_image is None and hasattr(self, '_pending_photo') and self._pending_photo:
+            actual_image = self._pending_photo
+            actual_mime = getattr(self, '_pending_photo_mime', 'image/jpeg')
+            # Clear pending photo
+            self._pending_photo = None
+            self._pending_photo_mime = None
+
         try:
             # Build the prompt with user profile
-            prompt = self._build_prediction_prompt(category, extra_context)
+            prompt = self._build_prediction_prompt(category, extra_context, has_photo=actual_image is not None)
 
-            response = await self._client.generate_text(
-                prompt=prompt,
-                model=GeminiModel.FLASH,
-                system_instruction=FORTUNE_TELLER_SYSTEM_PROMPT,
-                temperature=0.9,
-            )
+            # Get a random oracle approach for variety each time
+            system_prompt = get_oracle_system_prompt()
+
+            if actual_image:
+                # Generate prediction with photo in ONE API call
+                logger.info("Generating prediction with photo (single API call)")
+                response = await self._client.generate_with_image(
+                    prompt=prompt,
+                    image_data=actual_image,
+                    mime_type=actual_mime,
+                    model=GeminiModel.FLASH_VISION,
+                    system_instruction=system_prompt,
+                    temperature=0.9,
+                )
+            else:
+                # Text-only prediction
+                response = await self._client.generate_text(
+                    prompt=prompt,
+                    model=GeminiModel.FLASH,
+                    system_instruction=system_prompt,
+                    temperature=0.9,
+                )
 
             if response:
                 return self._parse_prediction_response(response, category)
@@ -275,13 +303,21 @@ class PredictionService:
 
         return self._fallback_prediction()
 
-    def _build_prediction_prompt(self, category: PredictionCategory, extra_context: Optional[str] = None) -> str:
+    def _build_prediction_prompt(self, category: PredictionCategory, extra_context: Optional[str] = None, has_photo: bool = False) -> str:
         """Build the prediction prompt from user profile."""
         parts = ["A seeker approaches for their fortune.\n"]
 
-        # Add photo analysis if available
-        if self._profile.photo_analysis:
-            parts.append(f"Photo impression: {self._profile.photo_analysis}\n")
+        # Add photo analysis instructions if photo is provided
+        if has_photo:
+            parts.append("""
+ВАЖНО: Внимательно рассмотри фото человека! Проанализируй:
+- Выражение лица, глаза, улыбку
+- Стиль одежды и аксессуары
+- Позу и язык тела
+- Общую энергетику
+
+Используй эти наблюдения в своём пророчестве! Будь КОНКРЕТНЫМ.
+""")
 
         # Add rich personality context from Gen-Z questions (if provided)
         if extra_context:

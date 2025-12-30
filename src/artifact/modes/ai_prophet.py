@@ -27,9 +27,10 @@ from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.predictor import PredictionService, Prediction, PredictionCategory
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.audio.engine import get_audio_engine
-from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.animation.santa_runner import SantaRunner
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +339,7 @@ class AIProphetMode(BaseMode):
     """
 
     name = "ai_prophet"
-    display_name = "ПРОРОК"
+    display_name = "ОРАКУЛ"
     description = "ИИ предсказание судьбы"
     icon = "@"
     style = "modern"
@@ -403,6 +404,9 @@ class AIProphetMode(BaseMode):
         self._uploader = AsyncUploader()
         self._qr_url: Optional[str] = None
         self._qr_image: Optional[np.ndarray] = None
+
+        # Santa runner minigame for waiting screen
+        self._santa_runner: Optional[SantaRunner] = None
 
     @property
     def is_ai_available(self) -> bool:
@@ -520,6 +524,10 @@ class AIProphetMode(BaseMode):
             # Update smart progress tracker
             self._progress_tracker.update(delta_ms)
 
+            # Update Santa runner minigame
+            if self._santa_runner:
+                self._santa_runner.update(delta_ms)
+
             # Check AI task progress
             if self._ai_task:
                 if self._ai_task.done():
@@ -550,7 +558,13 @@ class AIProphetMode(BaseMode):
     def on_input(self, event: Event) -> bool:
         """Handle input."""
         if event.type == EventType.BUTTON_PRESS:
-            if self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
+            if self._sub_phase == ProphetPhase.PROCESSING:
+                # Play Santa runner minigame while waiting - JUMP!
+                if self._santa_runner:
+                    self._santa_runner.handle_jump()
+                    self._audio.play_ui_click()
+                return True
+            elif self.phase == ModePhase.RESULT and self._sub_phase == ProphetPhase.RESULT:
                 # Main button = print and finish
                 self._finish()
                 return True
@@ -597,15 +611,24 @@ class AIProphetMode(BaseMode):
             logger.warning("Failed to capture photo")
 
     def _update_camera_preview(self) -> None:
-        """Update the live camera preview frame with dithering."""
+        """Update the live camera preview frame - clean B&W grayscale (no dithering)."""
         try:
-            # Capture current frame from shared camera service
             frame = camera_service.get_frame(timeout=0)
             if frame is not None and frame.size > 0:
-                # Apply Floyd-Steinberg dithering for pixel art effect
-                dithered = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=120)
-                # Add viewfinder overlay - store as copy to avoid reference issues
-                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                # Simple B&W grayscale conversion - cleaner than dithering
+                if len(frame.shape) == 3:
+                    gray = (0.299 * frame[:, :, 0] + 0.587 * frame[:, :, 1] + 0.114 * frame[:, :, 2]).astype(np.uint8)
+                else:
+                    gray = frame
+                # Resize if needed
+                if gray.shape != (128, 128):
+                    from PIL import Image
+                    img = Image.fromarray(gray)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    gray = np.array(img, dtype=np.uint8)
+                # Convert to RGB (grayscale in all 3 channels)
+                bw_frame = np.stack([gray, gray, gray], axis=-1)
+                self._camera_frame = create_viewfinder_overlay(bw_frame, self._time_in_phase).copy()
                 self._camera = True
         except Exception as e:
             logger.warning(f"Camera preview update error: {e}")
@@ -660,6 +683,10 @@ class AIProphetMode(BaseMode):
         # Start smart progress tracker
         self._progress_tracker.start()
         self._progress_tracker.advance_to_phase(ProgressPhase.ANALYZING)
+
+        # Initialize Santa runner minigame for the waiting screen
+        self._santa_runner = SantaRunner()
+        self._santa_runner.reset()
 
         # Play AI scanning sound
         self._audio.play("prophet_scan", volume=0.5)
@@ -777,19 +804,10 @@ class AIProphetMode(BaseMode):
         """Handle completion of AI processing."""
         self._processing_progress = 1.0
         self._progress_tracker.complete()
-        self._sub_phase = ProphetPhase.REVEAL
-        self.change_phase(ModePhase.RESULT)
-        self._reveal_progress = 0.0
-
-        # Play success/reveal sound
         self._audio.play_success()
-
-        # Burst particles for reveal
-        sparks = self._particles.get_emitter("sparks")
-        if sparks:
-            sparks.burst(100)
-
-        logger.info("Starting reveal phase")
+        logger.info("AI complete, finishing mode - manager handles result display")
+        # Skip mode's result phase - manager's result view is cleaner
+        self._finish()
 
     def _paginate_prediction(self) -> None:
         """Split prediction text into static pages for display.
@@ -902,12 +920,13 @@ class AIProphetMode(BaseMode):
             success=True,
             display_text=prediction_text,
             ticker_text=prediction_text,
-            lcd_text="ИИ ПРОРОК".center(16),
+            lcd_text="ОРАКУЛ".center(16),
             should_print=True,
             print_data={
                 "prediction": prediction_text,
                 "caricature": self._caricature.image_data if self._caricature else None,
                 "qr_url": self._qr_url,
+                "qr_image": self._qr_image,
                 "answers": self._answers,
                 "timestamp": datetime.now().isoformat(),
                 "type": "ai_prophet"
@@ -974,7 +993,7 @@ class AIProphetMode(BaseMode):
         draw_circle(buffer, 58, 39, 8, (100, 150, 200))
 
         # Title - centered, positioned within safe zone
-        draw_centered_text(buffer, "ИИ ПРОРОК", 88, self._accent, scale=2)
+        draw_centered_text(buffer, "ОРАКУЛ", 88, self._accent, scale=2)
         draw_centered_text(buffer, "Судьба ждёт", 106, (100, 100, 120), scale=1)
 
     def _render_camera_prep(self, buffer, font) -> None:
@@ -1127,42 +1146,43 @@ class AIProphetMode(BaseMode):
         draw_centered_text(buffer, "< / >", 114, (80, 80, 100), scale=1)
 
     def _render_processing(self, buffer, font) -> None:
-        """Render AI processing animation with smart progress tracking."""
-        from artifact.graphics.primitives import draw_rect, draw_line
-        from artifact.graphics.text_utils import (
-            draw_animated_text, draw_centered_text, TextEffect
-        )
+        """Render Santa runner minigame while AI is processing, with camera as background."""
+        from artifact.graphics.primitives import draw_rect, fill
+        from artifact.graphics.text_utils import draw_centered_text
 
-        # Render tech-style loading animation from progress tracker
-        self._progress_tracker.render_loading_animation(buffer, style="tech", time_ms=self._time_in_phase)
+        # Get live camera frame for background
+        camera_bg = camera_service.get_frame(timeout=0)
 
-        # Dramatic processing text with glitch effect - CENTERED
-        draw_animated_text(
-            buffer, "ЧТЕНИЕ", 40,
-            self._accent, self._time_in_phase,
-            TextEffect.GLITCH, scale=2
-        )
+        # Render the Santa runner game with camera background
+        if self._santa_runner:
+            self._santa_runner.render(buffer, background=camera_bg)
 
-        # Progress bar using smart tracker - centered
-        bar_w, bar_h = 100, 8
-        bar_x = (128 - bar_w) // 2
-        bar_y = 72
+            # Add compact progress bar at the top
+            bar_w, bar_h = 100, 4
+            bar_x = (128 - bar_w) // 2
+            bar_y = 2
 
-        # Use the SmartProgressTracker's render method for the progress bar
-        self._progress_tracker.render_progress_bar(
-            buffer, bar_x, bar_y, bar_w, bar_h,
-            bar_color=self._accent,
-            bg_color=(40, 40, 60),
-            time_ms=self._time_in_phase
-        )
+            # Semi-transparent dark background for progress bar
+            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, (20, 20, 40))
 
-        # Show phase-specific status message from tracker
-        status_message = self._progress_tracker.get_message()
-        draw_centered_text(buffer, status_message, 95, (120, 150, 180), scale=1)
+            # Use the SmartProgressTracker's render method for the progress bar
+            self._progress_tracker.render_progress_bar(
+                buffer, bar_x, bar_y, bar_w, bar_h,
+                bar_color=self._accent,
+                bg_color=(40, 40, 60),
+                time_ms=self._time_in_phase
+            )
 
-        # Percentage display
-        pct = int(self._progress_tracker.get_progress() * 100)
-        draw_centered_text(buffer, f"{pct}%", 58, self._accent, scale=1)
+            # Show compact status at bottom
+            status_message = self._progress_tracker.get_message()
+            # Semi-transparent dark strip for text
+            draw_rect(buffer, 0, 118, 128, 10, (20, 20, 40))
+            draw_centered_text(buffer, status_message, 119, (150, 150, 170), scale=1)
+
+        else:
+            # Fallback to simple processing screen if no game
+            fill(buffer, (5, 10, 20))
+            draw_centered_text(buffer, "АНАЛИЗ...", 55, self._accent, scale=2)
 
     def _render_result(self, buffer, font) -> None:
         """Render prediction result with PAGE-BASED navigation.
@@ -1325,7 +1345,7 @@ class AIProphetMode(BaseMode):
         if self._sub_phase == ProphetPhase.INTRO:
             # Intro with sparkle
             render_ticker_animated(
-                buffer, "ИИ ПРОРОК - СУДЬБА ЖДЁТ",
+                buffer, "ОРАКУЛ - СУДЬБА ЖДЁТ",
                 self._time_in_phase, self._primary,
                 TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
@@ -1366,7 +1386,7 @@ class AIProphetMode(BaseMode):
         else:
             # Default fallback
             render_ticker_animated(
-                buffer, "ИИ ПРОРОК",
+                buffer, "ОРАКУЛ",
                 self._time_in_phase, self._primary,
                 TickerEffect.SPARKLE_SCROLL, speed=0.025
             )
@@ -1391,4 +1411,4 @@ class AIProphetMode(BaseMode):
             return f" {dot} ИИ ДУМАЕТ {dot} ".center(16)[:16]
         elif self._sub_phase == ProphetPhase.RESULT:
             return " ★ ПРОРОЧЕСТВО ★ ".center(16)[:16]
-        return " ◆ ИИ ПРОРОК ◆ ".center(16)
+        return " ◆ ОРАКУЛ ◆ ".center(16)

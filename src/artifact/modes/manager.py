@@ -207,6 +207,18 @@ MODE_ICONS = {
         "    ████    ",
         "   ██████   ",
     ],
+    "gallery": [  # Camera/photo frame
+        "  ████████  ",
+        " ██░░░░░░██ ",
+        "██░░████░░██",
+        "██░█    █░██",
+        "██░█    █░██",
+        "██░█    █░██",
+        "██░░████░░██",
+        " ██░░░░░░██ ",
+        "  ████████  ",
+        "    ████    ",
+    ],
 }
 
 # Mode colors for visual identity - unique vibrant color per mode
@@ -245,6 +257,7 @@ MODE_COLORS = {
     "rap_god": (255, 50, 200),      # Hot pink/magenta
     "zodiac": (200, 180, 255),      # Cosmic lavender
     "gesture_game": (255, 180, 100),# Warm amber
+    "gallery": (100, 180, 255),     # Sky blue
 }
 
 
@@ -303,6 +316,36 @@ MODE_LABELS_RU = {
     "glitch_mirror": "ГЛИТЧ",
     "dither_art": "ДИТЕР",
     "ascii_art": "АСКИ",
+    "fortune": "ГАДАТЕЛЬ",
+    "quiz": "КВИЗ",
+    "ai_prophet": "ОРАКУЛ",
+    "roast": "ROAST",
+    "zodiac": "ЗОДИАК",
+    "roulette": "РУЛЕТКА",
+    "squid_game": "ИГРА В КАЛЬМАРА",
+    "photobooth": "ФОТОБУДКА",
+}
+
+# Brief mode descriptions for ticker display (short, fun, informal)
+MODE_DESCRIPTIONS_RU = {
+    "fortune": "Гадаем по звездам!",
+    "ai_prophet": "ИИ читает тебя как книгу",
+    "photobooth": "Фоткайся на память!",
+    "roast": "Робот тебя сожжет!",
+    "zodiac": "Что говорят звезды?",
+    "quiz": "Проверь себя!",
+    "squid_game": "Выживи если сможешь",
+    "roulette": "Крути колесо!",
+    "tower_stack": "Строй башню!",
+    "brick_breaker": "Ломай кирпичи!",
+    "video": "Смотри видео",
+    "rap_god": "Запиши свой трек!",
+    "guess_me": "ИИ угадает кто ты",
+    "autopsy": "Вскрытие личности",
+    "pong": "Олдскул пинг понг",
+    "snake_classic": "Ешь и расти!",
+    "flappy": "Лети и не падай!",
+    "gallery": "Галерея фоток",
 }
 
 
@@ -690,11 +733,14 @@ class ModeManager:
             self._result_last_advance = 0.0
             self._result_first_advance_time = self._result_first_default
             self._result_next_advance_time = self._result_next_default
-            # Determine number of views: 0=text, 1=caricature (optional)
+            # Determine number of views: 0=text, 1=caricature (optional), 2=QR (optional)
             if self._last_result:
                 has_caricature = (self._last_result.print_data and
                                   self._last_result.print_data.get("caricature"))
-                self._result_num_views = 2 if has_caricature else 1
+                has_qr = (self._last_result.print_data and
+                          self._last_result.print_data.get("qr_image") is not None)
+                # Views: text + caricature (if any) + QR (if any)
+                self._result_num_views = 1 + (1 if has_caricature else 0) + (1 if has_qr else 0)
                 if self._last_result.display_text:
                     try:
                         from artifact.graphics.fonts import load_font
@@ -1210,6 +1256,9 @@ class ModeManager:
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.render_ticker(buffer)
 
+        elif self._state in (ManagerState.RESULT, ManagerState.PRINTING):
+            self._render_result_ticker(buffer)
+
         # Apply cross-display effects overlay
         self._display_coordinator.render_ticker_overlay(buffer)
 
@@ -1308,7 +1357,23 @@ class ModeManager:
         darkened = (panel_slice * 0.4).astype(np.uint8)
         panel_slice[:] = np.where(inside_mask[:, :, np.newaxis], darkened, panel_slice)
 
-        # === STEP 3: MODE NAME - FIT, WRAP, CENTER ===
+        # === STEP 3: NAVIGATION ARROWS (behind text) ===
+        font = load_font("cyrillic")
+        if len(self._mode_order) > 1:
+            bounce = int(math.sin(t * 6) * 3)
+            arrow_y = 55
+
+            # Left arrow with outline
+            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                draw_text_bitmap(buffer, "<", 4 - bounce + ox, arrow_y + oy, (0, 0, 0), font, scale=2)
+            draw_text_bitmap(buffer, "<", 4 - bounce, arrow_y, (255, 255, 255), font, scale=2)
+
+            # Right arrow with outline
+            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                draw_text_bitmap(buffer, ">", 112 + bounce + ox, arrow_y + oy, (0, 0, 0), font, scale=2)
+            draw_text_bitmap(buffer, ">", 112 + bounce, arrow_y, (255, 255, 255), font, scale=2)
+
+        # === STEP 4: MODE NAME - FIT, WRAP, CENTER ===
         from artifact.graphics.text_utils import smart_wrap_text, CHAR_HEIGHT
 
         label = (mode.display_name or mode.name).strip().upper()
@@ -1342,21 +1407,6 @@ class ModeManager:
                 draw_text_bitmap(buffer, line, text_x + ox, text_y + oy, (0, 0, 0), font, scale)
             draw_text_bitmap(buffer, line, text_x, text_y, glow_color, font, scale)
             text_y += line_height
-
-        # === STEP 4: NAVIGATION ARROWS ===
-        if len(self._mode_order) > 1:
-            bounce = int(math.sin(t * 6) * 3)
-            arrow_y = 55
-
-            # Left arrow with outline
-            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                draw_text_bitmap(buffer, "<", 4 - bounce + ox, arrow_y + oy, (0, 0, 0), font, scale=2)
-            draw_text_bitmap(buffer, "<", 4 - bounce, arrow_y, (255, 255, 255), font, scale=2)
-
-            # Right arrow with outline
-            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                draw_text_bitmap(buffer, ">", 112 + bounce + ox, arrow_y + oy, (0, 0, 0), font, scale=2)
-            draw_text_bitmap(buffer, ">", 112 + bounce, arrow_y, (255, 255, 255), font, scale=2)
 
         # === STEP 5: PROGRESS DOTS (no counter!) ===
         num_modes = len(self._mode_order)
@@ -1707,7 +1757,7 @@ class ModeManager:
                     draw_rect(buffer, x, y, scale, scale, (255, 255, 100))
 
     def _render_mode_select_ticker(self, buffer) -> None:
-        """Render ticker during mode select with smooth scrolling."""
+        """Render ticker during mode select with smooth scrolling description."""
         from artifact.graphics.primitives import clear
         from artifact.graphics.text_utils import render_ticker_animated, TickerEffect
 
@@ -1715,12 +1765,53 @@ class ModeManager:
 
         mode = self.get_selected_mode()
         if mode:
-            # Explicit nav hint + mode name - using ASCII-safe characters
-            text = f"VNVNC ARCADE: {mode.display_name} VNVNC ARCADE: {mode.display_name} VNVNC ARCADE: {mode.display_name} VNVNC ARCADE: {mode.display_name}"
+            # Get mode description (fallback to name if no description)
+            description = MODE_DESCRIPTIONS_RU.get(mode.name, mode.display_name)
+            # Scrolling text: mode name + description, repeated for seamless loop
+            text = f"{mode.display_name}: {description}   {mode.display_name}: {description}   "
             render_ticker_animated(
                 buffer, text,
                 self._time_in_state, (255, 200, 0),
                 TickerEffect.SPARKLE_SCROLL, speed=0.025
+            )
+
+    def _render_result_ticker(self, buffer) -> None:
+        """Render ticker during result/printing states."""
+        from artifact.graphics.primitives import clear
+        from artifact.graphics.text_utils import render_ticker_animated, TickerEffect
+
+        clear(buffer)
+
+        if self._last_result:
+            # Get mode display name
+            mode_name = self._last_result.mode_name
+            mode_title = MODE_LABELS_RU.get(mode_name, mode_name.upper())
+
+            # Show mode name and navigation hint
+            if self._state == ManagerState.PRINTING:
+                text = f"ПЕЧАТАЮ {mode_title}"
+                color = (100, 200, 100)  # Green for printing
+            else:
+                # Show pagination info if multiple pages
+                if self._result_text_pages and len(self._result_text_pages) > 1:
+                    page_num = self._result_text_page_index + 1
+                    total_pages = len(self._result_text_pages)
+                    text = f"{mode_title} СТРАНИЦА {page_num}/{total_pages} ЛИСТАТЬ"
+                else:
+                    text = f"{mode_title} ГОТОВО КНОПКА ПЕЧАТЬ"
+                color = (255, 200, 100)  # Gold for result
+
+            render_ticker_animated(
+                buffer, text,
+                self._time_in_state, color,
+                TickerEffect.WAVE_SCROLL, speed=0.022
+            )
+        else:
+            # Fallback
+            render_ticker_animated(
+                buffer, "ГОТОВО",
+                self._time_in_state, (255, 255, 200),
+                TickerEffect.SCROLL, speed=0.025
             )
 
     def _render_result(self, buffer) -> None:
@@ -1758,18 +1849,22 @@ class ModeManager:
 
         if view == 0:
             # Prediction text view with PAGINATION (no scrolling!)
+            # Get mode display name for title (not hardcoded!)
+            mode_name = self._last_result.mode_name if self._last_result else "РЕЗУЛЬТАТ"
+            mode_title = MODE_LABELS_RU.get(mode_name, mode_name.upper())
+
             # Compact title line with page arrows (saves vertical space)
             total_pages = len(self._result_text_pages) if self._result_text_pages else 1
             page_idx = min(self._result_text_page_index, total_pages - 1) if self._result_text_pages else 0
 
             if total_pages > 1:
-                # Arrows on sides of title: "◄ ПРОРОЧЕСТВО 1/11 ►"
+                # Arrows on sides of title with page numbers
                 left_arrow = "◄" if page_idx > 0 else " "
                 right_arrow = "►" if page_idx < total_pages - 1 else " "
                 title_text = f"{left_arrow} {page_idx + 1}/{total_pages} {right_arrow}"
                 draw_centered_text(buffer, title_text, 3, (100, 150, 200), scale=1)
             else:
-                draw_centered_text(buffer, "ПРОРОЧЕСТВО", 3, (255, 200, 100), scale=1)
+                draw_centered_text(buffer, mode_title, 3, (255, 200, 100), scale=1)
 
             # Render current text page - FULLSCREEN (text goes to bottom)
             if self._result_text_pages:
@@ -1814,6 +1909,40 @@ class ModeManager:
             # Printing status hint
             if self._state == ManagerState.PRINTING:
                 draw_centered_text(buffer, "ПЕЧАТАЮ...", MAIN_HINT_ZONE_Y, (100, 200, 100), scale=1)
+
+        else:
+            # QR view - check if QR is available (could be view 1 or 2)
+            has_qr = (self._last_result.print_data and
+                      self._last_result.print_data.get("qr_image") is not None)
+            if has_qr:
+                from PIL import Image
+                import numpy as np
+
+                fill(buffer, (255, 255, 255))  # White background for QR
+
+                qr_image = self._last_result.print_data.get("qr_image")
+                if qr_image is not None:
+                    try:
+                        qr_h, qr_w = qr_image.shape[:2]
+                        target_size = 120
+                        if qr_h != target_size or qr_w != target_size:
+                            qr_pil = Image.fromarray(qr_image)
+                            qr_pil = qr_pil.resize((target_size, target_size), Image.Resampling.NEAREST)
+                            qr_scaled = np.array(qr_pil, dtype=np.uint8)
+                        else:
+                            qr_scaled = qr_image
+
+                        qr_h, qr_w = qr_scaled.shape[:2]
+                        x_offset = (128 - qr_w) // 2
+                        y_offset = (128 - qr_h) // 2
+                        buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
+                    except Exception:
+                        fill(buffer, (20, 20, 30))
+                        draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
+            else:
+                # No QR available, show placeholder
+                fill(buffer, (20, 20, 30))
+                draw_centered_text(buffer, "ГОТОВО", 50, (100, 200, 100), scale=2)
 
     def _render_view_dots(self, buffer, current_view: int, total_views: int) -> None:
         """Render view indicator dots at top of screen."""

@@ -1,0 +1,32 @@
+[Unit]
+Description=VNVNC Arcade Telegram Bot
+After=network-online.target artifact.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kirniy
+Group=kirniy
+WorkingDirectory=/home/kirniy/modular-arcade
+Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+Environment=ARCADE_DATA_DIR=/home/kirniy/modular-arcade/data
+Environment=ARCADE_CONTROL_FILE=/home/kirniy/modular-arcade/data/control.json
+
+ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.telegram.bot
+
+Restart=always
+RestartSec=5
+
+# Logging - integrate with artifact logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=arcade-bot
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/kirniy/modular-arcade/data
+
+[Install]
+WantedBy=multi-user.target

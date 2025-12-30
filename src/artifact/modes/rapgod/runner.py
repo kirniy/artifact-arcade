@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from artifact.graphics.primitives import fill, draw_rect
 from artifact.graphics.text_utils import draw_centered_text, draw_text
-from artifact.utils.camera import floyd_steinberg_dither
+# Camera utils not needed - sprite creation done locally
 
 
 @dataclass

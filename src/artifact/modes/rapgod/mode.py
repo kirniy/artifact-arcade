@@ -41,7 +41,7 @@ from artifact.modes.rapgod.audio import (
 )
 from artifact.modes.rapgod.runner import RunnerGame
 from artifact.utils.s3_upload import generate_qr_image as generate_qr_numpy
-from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
@@ -533,12 +533,24 @@ class RapGodMode(BaseMode):
         return False
 
     def _update_camera_preview(self) -> None:
-        """Update camera preview from shared camera service."""
+        """Update camera preview - clean B&W grayscale (no dithering)."""
         try:
             frame = camera_service.get_frame(timeout=0)
-            if frame is not None:
-                dithered = floyd_steinberg_dither(frame, target_size=(128, 128))
-                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+            if frame is not None and frame.size > 0:
+                # Simple B&W grayscale conversion - cleaner than dithering
+                if len(frame.shape) == 3:
+                    gray = (0.299 * frame[:, :, 0] + 0.587 * frame[:, :, 1] + 0.114 * frame[:, :, 2]).astype(np.uint8)
+                else:
+                    gray = frame
+                # Resize if needed
+                if gray.shape != (128, 128):
+                    from PIL import Image
+                    img = Image.fromarray(gray)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    gray = np.array(img, dtype=np.uint8)
+                # Convert to RGB (grayscale in all 3 channels)
+                bw_frame = np.stack([gray, gray, gray], axis=-1)
+                self._camera_frame = create_viewfinder_overlay(bw_frame, self._time_in_phase).copy()
         except Exception:
             pass
 

@@ -6,10 +6,13 @@ I2C LCD, GPIO inputs, camera, and thermal printer.
 """
 
 import asyncio
+import json
 import logging
 import os
+import time
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Dict, Any
 
 from ..core.state import StateMachine
 from ..core.events import EventBus, EventType, Event
@@ -17,6 +20,16 @@ from ..audio.engine import get_audio_engine
 from ..utils.usb_button import turn_on_button_led
 
 logger = logging.getLogger(__name__)
+
+# Control file paths (shared with Telegram bot)
+CONTROL_FILE = Path(os.environ.get(
+    "ARCADE_CONTROL_FILE",
+    "/home/kirniy/modular-arcade/data/control.json"
+))
+STATUS_FILE = Path(os.environ.get(
+    "ARCADE_STATUS_FILE",
+    "/home/kirniy/modular-arcade/data/status.json"
+))
 
 # Pygame is used for HDMI output and event handling
 _pygame = None
@@ -96,6 +109,14 @@ class HardwareRunner:
 
         # Use mock displays if hardware unavailable
         self._use_mocks = os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
+
+        # Control file tracking
+        self._last_control_check = 0.0
+        self._control_check_interval = 0.1  # Check every 100ms
+        self._last_status_write = 0.0
+        self._status_write_interval = 1.0  # Write status every 1s
+        self._current_mode = "idle"
+        self._current_scene = 0
 
         logger.info("HardwareRunner created")
 
@@ -230,6 +251,145 @@ class HardwareRunner:
             self._audio_enabled = False
             self._audio_engine = None
             return False
+
+    def _read_control_commands(self) -> None:
+        """Read and process control commands from Telegram bot."""
+        now = time.time()
+        if now - self._last_control_check < self._control_check_interval:
+            return
+        self._last_control_check = now
+
+        if not CONTROL_FILE.exists():
+            return
+
+        try:
+            with open(CONTROL_FILE, 'r') as f:
+                data = json.load(f)
+
+            # Remove file after reading (one-shot commands)
+            CONTROL_FILE.unlink()
+
+            command = data.get("command")
+            timestamp = data.get("timestamp", 0)
+
+            # Ignore stale commands (older than 5 seconds)
+            if now - timestamp > 5:
+                logger.debug(f"Ignoring stale command: {command}")
+                return
+
+            logger.info(f"Processing control command: {command}")
+
+            if command == "volume":
+                level = data.get("level", 1.0)
+                if self._audio_engine:
+                    self._audio_engine.set_volume(level)
+                    logger.info(f"Volume set to {level}")
+
+            elif command == "mute":
+                if self._audio_engine:
+                    self._audio_engine.mute()
+                    logger.info("Audio muted")
+
+            elif command == "unmute":
+                if self._audio_engine:
+                    self._audio_engine.unmute()
+                    logger.info("Audio unmuted")
+
+            elif command == "idle_scene":
+                scene = data.get("scene", 0)
+                self._current_scene = scene
+                self.event_bus.emit(Event(
+                    EventType.IDLE_SCENE_CHANGE,
+                    data={"scene": scene},
+                    source="remote"
+                ))
+                logger.info(f"Idle scene set to {scene}")
+
+            elif command == "idle_next":
+                self.event_bus.emit(Event(
+                    EventType.IDLE_SCENE_NEXT,
+                    source="remote"
+                ))
+                logger.info("Next idle scene")
+
+            elif command == "idle_prev":
+                self.event_bus.emit(Event(
+                    EventType.IDLE_SCENE_PREV,
+                    source="remote"
+                ))
+                logger.info("Previous idle scene")
+
+            elif command == "start_mode":
+                mode = data.get("mode", "fortune")
+                self._current_mode = mode
+                self.event_bus.emit(Event(
+                    EventType.MODE_SELECT,
+                    data={"mode": mode},
+                    source="remote"
+                ))
+                logger.info(f"Starting mode: {mode}")
+
+            elif command == "button":
+                button = data.get("button", "start")
+                # Map button names to events
+                button_map = {
+                    "start": (EventType.BUTTON_PRESS, {"button": "enter"}),
+                    "left": (EventType.ARCADE_LEFT, {}),
+                    "right": (EventType.ARCADE_RIGHT, {}),
+                    "up": (EventType.ARCADE_UP, {}),
+                    "down": (EventType.ARCADE_DOWN, {}),
+                    "back": (EventType.BACK, {}),
+                }
+                if button in button_map:
+                    event_type, event_data = button_map[button]
+                    self.play_sound('click')
+                    self.event_bus.emit(Event(event_type, data=event_data, source="remote"))
+                    logger.info(f"Button press: {button}")
+
+            elif command == "reboot":
+                logger.info("Reboot requested via remote")
+                self.play_sound('error')
+                self.event_bus.emit(Event(EventType.REBOOT, source="remote"))
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Invalid control file JSON: {e}")
+        except Exception as e:
+            logger.warning(f"Error reading control file: {e}")
+
+    def _write_status(self) -> None:
+        """Write current status for Telegram bot to read."""
+        now = time.time()
+        if now - self._last_status_write < self._status_write_interval:
+            return
+        self._last_status_write = now
+
+        try:
+            # Ensure data directory exists
+            STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+            status = {
+                "mode": self._current_mode,
+                "scene": self._current_scene,
+                "volume": self._audio_engine.get_volume() if self._audio_engine else 1.0,
+                "muted": self._audio_engine.is_muted() if self._audio_engine else False,
+                "running": self._running,
+                "frame": self._frame_count,
+                "timestamp": now,
+            }
+
+            with open(STATUS_FILE, 'w') as f:
+                json.dump(status, f)
+
+        except Exception as e:
+            logger.debug(f"Error writing status file: {e}")
+
+    def set_current_mode(self, mode: str) -> None:
+        """Update current mode (called by ModeManager)."""
+        self._current_mode = mode
+
+    def set_current_scene(self, scene: int) -> None:
+        """Update current idle scene index."""
+        self._current_scene = scene
 
     def play_sound(self, name: str) -> None:
         """Play a UI sound effect using the full AudioEngine."""
@@ -548,8 +708,14 @@ class HardwareRunner:
             self.start_idle_ambient()
 
         while self._running:
-            # Handle events
+            # Handle events from hardware
             self._handle_events()
+
+            # Handle remote control commands from Telegram bot
+            self._read_control_commands()
+
+            # Write status for Telegram bot
+            self._write_status()
 
             # Emit tick event
             if self._clock:

@@ -16,7 +16,7 @@ from artifact.animation.particles import ParticleSystem, ParticlePresets
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
-from artifact.utils.camera import floyd_steinberg_dither, create_viewfinder_overlay
+from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult
 from artifact.audio.engine import get_audio_engine
@@ -643,12 +643,24 @@ class ZodiacMode(BaseMode):
         self.stop_animations()
 
     def _update_camera_preview(self) -> None:
-        """Update the live camera preview frame with dithering."""
+        """Update the live camera preview frame - clean B&W grayscale (no dithering)."""
         try:
             frame = camera_service.get_frame(timeout=0)
             if frame is not None and frame.size > 0:
-                dithered = floyd_steinberg_dither(frame, target_size=(128, 128), threshold=120)
-                self._camera_frame = create_viewfinder_overlay(dithered, self._time_in_phase).copy()
+                # Simple B&W grayscale conversion - cleaner than dithering
+                if len(frame.shape) == 3:
+                    gray = (0.299 * frame[:, :, 0] + 0.587 * frame[:, :, 1] + 0.114 * frame[:, :, 2]).astype(np.uint8)
+                else:
+                    gray = frame
+                # Resize if needed
+                if gray.shape != (128, 128):
+                    from PIL import Image
+                    img = Image.fromarray(gray)
+                    img = img.resize((128, 128), Image.Resampling.BILINEAR)
+                    gray = np.array(img, dtype=np.uint8)
+                # Convert to RGB (grayscale in all 3 channels)
+                bw_frame = np.stack([gray, gray, gray], axis=-1)
+                self._camera_frame = create_viewfinder_overlay(bw_frame, self._time_in_phase).copy()
                 self._camera = True
         except Exception as e:
             logger.warning(f"Camera preview update error: {e}")
@@ -792,22 +804,10 @@ class ZodiacMode(BaseMode):
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
         self._progress_tracker.complete()
-        self._reveal_progress = 1.0
-        self._sub_phase = ZodiacPhase.RESULT
-        self.change_phase(ModePhase.RESULT)
-
-        # Start with text view, will auto-switch to image after scroll
-        self._result_view = "text"
-        self._text_scroll_complete = False
-        self._text_view_time = 0.0
-        self._scroll_duration = 0.0
-
-        # Burst particles for reveal
-        stars = self._particles.get_emitter("stars")
-        if stars:
-            stars.burst(100)
-
-        logger.info("Zodiac AI complete, entering result phase")
+        self._audio.play_success()
+        logger.info("AI complete, finishing mode - manager handles result display")
+        # Skip mode's result phase - manager's result view is cleaner
+        self._finish()
 
     def _on_upload_complete(self, result: UploadResult) -> None:
         """Handle completion of S3 upload for QR sharing."""
@@ -858,15 +858,6 @@ class ZodiacMode(BaseMode):
 
             # Border with zodiac color
             draw_rect(buffer, x_offset - 2, y_offset - 2, display_size + 4, display_size + 4, self._secondary, filled=False)
-
-            # Display QR code if available (bottom-right corner)
-            if self._qr_image is not None:
-                qr_h, qr_w = self._qr_image.shape[:2]
-                qr_x = 128 - qr_w - 4
-                qr_y = 128 - qr_h - 18  # Leave room for hint text
-                # Black background for QR visibility
-                draw_rect(buffer, qr_x - 2, qr_y - 2, qr_w + 4, qr_h + 4, (0, 0, 0), filled=True)
-                buffer[qr_y:qr_y + qr_h, qr_x:qr_x + qr_w] = self._qr_image
 
             # Label
             draw_centered_text(buffer, f"{self._zodiac_symbol} {self._zodiac_ru}", 112, self._accent, scale=1)

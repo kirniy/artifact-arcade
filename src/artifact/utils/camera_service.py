@@ -97,7 +97,21 @@ class CameraService:
         self._hand_landmarks_norm: Optional[List[Tuple[float, float]]] = None
         self._hand_bbox_time: float = 0.0
 
+        # Black and white mode - Pi Camera Module 3 NoIR has purple tint
+        self._grayscale_enabled = True
+
         logger.info("CameraService initialized")
+
+    def _convert_to_grayscale(self, frame: NDArray[np.uint8]) -> NDArray[np.uint8]:
+        """Convert frame to grayscale (removes purple tint from NoIR camera)."""
+        if frame is None or not self._grayscale_enabled:
+            return frame
+
+        # Convert to grayscale using luminance formula
+        gray = np.dot(frame[..., :3], [0.299, 0.587, 0.114])
+        # Stack back to 3 channels for compatibility
+        gray_3ch = np.stack([gray, gray, gray], axis=-1).astype(np.uint8)
+        return gray_3ch
 
     @property
     def is_running(self) -> bool:
@@ -252,16 +266,17 @@ class CameraService:
         """Get latest preview frame (128x128).
 
         Returns instantly if frame available, otherwise waits up to timeout.
+        Frame is converted to grayscale to remove purple tint from NoIR camera.
 
         Args:
             timeout: Max time to wait for frame (seconds)
 
         Returns:
-            RGB image (128, 128, 3) or None if no camera
+            Grayscale image as RGB (128, 128, 3) or None if no camera
         """
         with self._frame_lock:
             if self._latest_frame is not None:
-                return self._latest_frame.copy()
+                return self._convert_to_grayscale(self._latest_frame.copy())
 
         # No frame yet - wait briefly
         if timeout > 0:
@@ -269,7 +284,7 @@ class CameraService:
             while time.time() < deadline:
                 with self._frame_lock:
                     if self._latest_frame is not None:
-                        return self._latest_frame.copy()
+                        return self._convert_to_grayscale(self._latest_frame.copy())
                 time.sleep(0.01)
 
         # Return placeholder
@@ -279,14 +294,15 @@ class CameraService:
         """Get latest full-resolution frame (640x480).
 
         Use this for AI analysis, face detection, etc.
+        Frame is converted to grayscale to remove purple tint from NoIR camera.
 
         Returns:
-            RGB image (480, 640, 3) or None if no camera
+            Grayscale image as RGB (480, 640, 3) or None if no camera
         """
         now = time.time()
         with self._frame_lock:
             if self._latest_full_frame is not None and (now - self._full_frame_time) < max_age:
-                return self._latest_full_frame.copy()
+                return self._convert_to_grayscale(self._latest_full_frame.copy())
 
         if not self._camera or not self._camera.is_open:
             return None
@@ -302,7 +318,7 @@ class CameraService:
             with self._frame_lock:
                 self._latest_full_frame = frame
                 self._full_frame_time = time.time()
-            return frame.copy()
+            return self._convert_to_grayscale(frame.copy())
         except Exception as e:
             logger.debug(f"Full frame capture error: {e}")
             return None
@@ -311,6 +327,7 @@ class CameraService:
         """Capture full-res frame as JPEG.
 
         Use this for AI API calls and printing.
+        Frame is converted to grayscale to remove purple tint from NoIR camera.
 
         Args:
             quality: JPEG quality (1-100)
@@ -318,23 +335,11 @@ class CameraService:
         Returns:
             JPEG bytes or None
         """
-        if not self._camera or not self._camera.is_open:
-            return None
-
-        try:
-            with self._camera_lock:
-                if hasattr(self._camera, "capture_jpeg"):
-                    jpeg = self._camera.capture_jpeg(quality=quality)
-                else:
-                    jpeg = None
-            if jpeg is not None:
-                return jpeg
-        except Exception as e:
-            logger.debug(f"JPEG capture error: {e}")
-
+        # Always use get_full_frame to ensure grayscale conversion is applied
         frame = self.get_full_frame()
         if frame is None:
             return None
+
         try:
             import cv2
             frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)

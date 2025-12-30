@@ -8,6 +8,7 @@ Neon arcade visuals with chiptune energy.
 import math
 import random
 import logging
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
@@ -514,27 +515,39 @@ class BrickBreakerMode(BaseMode):
                 "lives_remaining": self.lives
             },
             display_text=f"СЧЁТ: {self.score}",
-            ticker_text=f"КОМБО x{self.max_combo}" if self.max_combo > 1 else "ОТЛИЧНАЯ ИГРА!"
+            ticker_text=f"КОМБО x{self.max_combo}" if self.max_combo > 1 else "ОТЛИЧНАЯ ИГРА!",
+            should_print=True,
+            print_data={
+                "score": self.score,
+                "max_combo": self.max_combo,
+                "level": self.level,
+                "lives_remaining": self.lives,
+                "win": self._win,
+                "timestamp": datetime.now().isoformat(),
+                "type": "brick_breaker",
+            },
         )
         self.complete(result)
 
     def on_input(self, event: Event) -> bool:
         """Handle input events."""
         # Arrow keys + keypad 4/6 for paddle control
+        # Note: Signs are inverted because target_x = (1.0 - _motion_x) * SCREEN_W
+        # So increasing _motion_x moves paddle LEFT, decreasing moves RIGHT
         if event.type == EventType.ARCADE_LEFT:
-            self._manual_nudge(-0.08)
+            self._manual_nudge(0.08)  # Increase motion_x → paddle LEFT
             return True
         elif event.type == EventType.ARCADE_RIGHT:
-            self._manual_nudge(0.08)
+            self._manual_nudge(-0.08)  # Decrease motion_x → paddle RIGHT
             return True
         # Keypad 4 = left, 6 = right
         elif event.type == EventType.KEYPAD_INPUT:
             key = event.data.get("key", "")
             if key == "4":
-                self._manual_nudge(-0.08)
+                self._manual_nudge(0.08)  # Increase motion_x → paddle LEFT
                 return True
             elif key == "6":
-                self._manual_nudge(0.08)
+                self._manual_nudge(-0.08)  # Decrease motion_x → paddle RIGHT
                 return True
         elif event.type == EventType.BUTTON_PRESS:
             if self.phase == ModePhase.INTRO:

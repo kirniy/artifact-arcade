@@ -1,8 +1,9 @@
 """Artistic portrait generation service using Gemini/Imagen.
 
 Generates stylized artistic portraits based on user photos.
-Images are displayed in FULL COLOR on the LED matrix,
-then converted to B&W only when printing on thermal paper.
+All images are generated in BLACK AND WHITE to match the grayscale
+camera input (NoIR camera has purple tint in color mode) and for
+optimal thermal printer output.
 
 Based on patterns from nano-banana-pro with adaptations for
 arcade fortune-telling use case.
@@ -36,6 +37,7 @@ class CaricatureStyle(Enum):
     QUIZ_WINNER = "quiz_winner"  # Victory celebration doodle for quiz winners
     ZODIAC = "zodiac"          # Constellation/zodiac sign portrait
     ROULETTE = "roulette"      # Casino/wheel winner style
+    PHOTOBOOTH = "photobooth"  # Christmas 2x2 photo booth grid
 
 
 @dataclass
@@ -51,135 +53,240 @@ class Caricature:
 
 # =============================================================================
 # STYLE PROMPTS - Each VISUALLY DISTINCT for different modes
-# FULL COLOR for LED display (square aspect ratio)
-# Will be converted to B&W only when printing on thermal paper
+# BLACK AND WHITE for both LED display and thermal printer
+# (Camera captures grayscale to avoid NoIR purple tint)
 # TEXT RULES: Russian language, ALL CAPS, VERY LARGE readable
 # NO example labels - model copies them literally
 # VARIETY: Each prompt has multiple variations to avoid repetition
 # =============================================================================
 
-# ROAST VARIATIONS - Adult humor with real bite (18+) - NOW IN COLOR
+# ROAST VARIATIONS - Adult humor with real bite (18+) - BLACK AND WHITE
 ROAST_VARIATIONS = [
-    """NEON COMEDY ROAST PORTRAIT. Draw this person being hilariously roasted:
+    """BLACK AND WHITE ROAST SKETCH. Draw this person being hilariously roasted:
 - EXAGGERATE what makes them unique: forehead, eyebrows, cheekbones, lips, ears, jawline, hairline
 - NOT just the nose! Pick 2-3 features that are ACTUALLY distinctive about THIS person
 - Add 3-4 arrows with SAVAGE but FUNNY labels in RUSSIAN
-- NEON COLORS: hot pink, electric blue, toxic green arrows and labels
-- Dark purple or black background with neon glow effects
-- Graffiti street art style, bold and vibrant
-- RUSSIAN text, ALL CAPS, chunky neon-outlined letters
-Square aspect ratio. Vibrant colors, high contrast.""",
+- PURE BLACK AND WHITE - thick black lines on white background
+- Hand-drawn sketch style, bold strokes, high contrast
+- RUSSIAN text, ALL CAPS, chunky hand-drawn letters
+Square aspect ratio. Black ink on white paper aesthetic.""",
 
-    """SAVAGE MEME LORD PORTRAIT. Draw this person getting ROASTED meme-style:
+    """SAVAGE NOTEBOOK DOODLE. Draw this person getting ROASTED like a mean high school drawing:
 - Find their DISTINCTIVE features: chin, eye spacing, smile lines, hair, face shape
 - Exaggerate 2-3 unique features BESIDES the nose
 - 3-4 arrows with SAVAGE Russian labels like standup comedy roasts
-- BOLD COLORS: fire orange, electric yellow, hot magenta
-- Deep blue or purple gradient background
-- Comic book pop art style with halftone dots
-- RUSSIAN labels, ALL CAPS, bold comic font style
-Square aspect ratio. Colorful and punchy.""",
+- BLACK AND WHITE ONLY - pen on paper style
+- Messy notebook margin doodle aesthetic
+- RUSSIAN labels, ALL CAPS, scratchy handwriting
+Square aspect ratio. Pure black ink, white background.""",
 
     """DRUNK ARTIST ROAST. Someone drew this person at 2am being brutally honest:
 - CARICATURE their real features: ears, eyebrows, chin, forehead
 - Pick what's ACTUALLY distinctive about THIS person
 - Drunk friend energy with arrows and labels in RUSSIAN
-- WATERCOLOR SPLASH STYLE: messy color bleeds, artistic chaos
-- Warm colors (coral, amber, crimson) with teal accents
+- SKETCHY BLACK AND WHITE - wobbly lines, cross-hatching
 - Labels in wobbly hand-drawn style
 - RUSSIAN text, ALL CAPS, sketchy letters
-Square aspect ratio. Artistic and colorful chaos.""",
+Square aspect ratio. Black marker on napkin aesthetic.""",
 
-    """CYBER ROAST PORTRAIT. Futuristic roast of this person:
+    """COURTROOM SKETCH ROAST. Draw this person like a savage court artist:
 - EXAGGERATE their unique facial geometry: asymmetry, proportions, expression
-- What would a brutal AI notice first? Draw THAT exaggerated
-- 3-4 holographic arrows with NO MERCY labels in RUSSIAN
-- CYBERPUNK PALETTE: cyan, magenta, yellow on dark grid background
-- Digital glitch effects, scan lines, data corruption aesthetic
-- RUSSIAN text, ALL CAPS, pixelated or glitched font style
-Square aspect ratio. Neon cyberpunk vibes.""",
+- What would a brutal observer notice first? Draw THAT exaggerated
+- 3-4 arrows with NO MERCY labels in RUSSIAN
+- BLACK AND WHITE charcoal/pencil sketch style
+- Quick expressive strokes, dramatic shading
+- RUSSIAN text, ALL CAPS, bold blocky letters
+Square aspect ratio. Black and white courtroom drama.""",
 ]
 
-# TAROT VARIATIONS - Evocative concepts, let the AI interpret artistically
+# VNVNC 2026 STICKER VARIATIONS - Festive portrait stickers with Christmas vibes
 TAROT_VARIATIONS = [
-    """Transform this person into THE STAR archetype - hope, renewal, cosmic connection.
-Art Nouveau meets celestial illustration. Luminous. Serene. Infinite possibility.
-Think Alphonse Mucha painting the night sky. Starlight emanating from within.
-Natural beauty, no exaggeration. Rich jewel tones. Square aspect ratio.""",
+    """BLACK AND WHITE portrait STICKER of this person celebrating NEW YEAR!
+Slight caricature - emphasize their festive joy.
+Big decorative "VNVNC 2026" text prominently displayed in Christmas/holiday lettering style.
+NOTE: Text must be exactly "VNVNC 2026" 
+Snowflakes, party hats, champagne bubbles as decoration.
+Sticker die-cut style with white border.
+Fun celebration energy, holiday party vibes. Square aspect ratio.""",
 
-    """Transform this person into THE MAGICIAN archetype - manifestation, willpower, mastery.
-Renaissance mysticism meets modern occult aesthetic. Commanding presence.
-"As above, so below" energy. Alchemical transformation. Power radiating outward.
-Natural proportions, dignified. Rich purples and golds. Square aspect ratio.""",
+    """BLACK AND WHITE NEW YEAR portrait STICKER!
+Slight caricature - capture their party spirit.
+Ornate Christmas-style "VNVNC 2026" as the main text element.
+NOTE: Text must read "VNVNC 2026" exactly - the club/brand name plus year.
+Confetti, stars, holiday decorations around the portrait.
+Bold sticker outline, festive hand-lettered text.
+Joyful celebration mood. Square aspect ratio.""",
 
-    """Transform this person into THE EMPRESS archetype - abundance, fertility, nurturing power.
-Pre-Raphaelite sensuality meets Art Nouveau nature goddess.
-Surrounded by life, creation, beauty. Maternal cosmic energy.
-Lush, verdant, sensual but not explicit. Earth tones and greens. Square aspect ratio.""",
+    """BLACK AND WHITE festive STICKER portrait!
+Slight caricature - bring out their cheerful features.
+Decorative vintage Christmas lettering showing "VNVNC 2026" prominently.
+NOTE: Include full text "VNVNC 2026" - not just the year!
+Winter holiday motifs: snowflakes, bells, ribbons.
+Classic sticker format with clean die-cut edge.
+New Year's Eve party energy. Square aspect ratio.""",
 
-    """Transform this person into THE EMPEROR archetype - authority, structure, power.
-Byzantine iconography meets royal portraiture. Stern but just.
-Mountain-solid stability. Leadership without tyranny. Ancient wisdom.
-Noble bearing, natural proportions. Crimson and gold. Square aspect ratio.""",
+    """BLACK AND WHITE NEW YEAR STICKER of this person!
+Slight caricature - emphasize what makes them look happy.
+Big bold "VNVNC 2026" in fancy holiday/Christmas font style.
+NOTE: Text is "VNVNC 2026" - the brand name followed by the year.
+Fireworks, sparkles, celebration elements.
+Sticker aesthetic with thick outline border.
+Champagne toast vibes, midnight countdown energy. Square aspect ratio.""",
 
-    """Transform this person into THE FOOL archetype - new beginnings, innocence, leap of faith.
-Whimsical illustration meets spiritual journey. Joy without naivety.
-Standing at the edge of everything possible. Fearless adventure.
-Youthful energy, bright and hopeful. Sunny colors. Square aspect ratio.""",
+    """BLACK AND WHITE portrait STICKER - Happy New Year!
+Slight caricature - capture their festive personality.
+Ornamental "VNVNC 2026" text in decorative Christmas calligraphy.
+NOTE: Write "VNVNC 2026" as the main branding element.
+Holiday party decorations: balloons, streamers, snow.
+Die-cut sticker style, bold graphic look.
+New Year celebration, winter wonderland vibes. Square aspect ratio.""",
 
-    """Transform this person into THE HIGH PRIESTESS archetype - intuition, mystery, hidden knowledge.
-Symbolist painting meets lunar mysticism. What she knows, she doesn't tell.
-Keeper of secrets between worlds. Serene knowing. Veiled truths.
-Enigmatic beauty. Midnight blues and silvers. Square aspect ratio.""",
+    """BLACK AND WHITE NEW YEAR celebration STICKER!
+Slight caricature - play up their joyful expression.
+Retro Christmas card style "VNVNC 2026" lettering.
+NOTE: Include exact text "VNVNC 2026" - brand plus year together.
+Vintage holiday illustrations: Santa hats, tinsel, ornaments.
+Classic sticker format with decorative border.
+Nostalgic holiday cheer, party time energy. Square aspect ratio.""",
 ]
 
-# PROPHET VARIATIONS - Evocative mystic concepts, let AI interpret
+# PROPHET VARIATIONS - Fun, stylish AI prophet portraits - NOT mystical
 PROPHET_VARIATIONS = [
-    """Transform this person into a COSMIC ORACLE - one who reads fate in the stars.
-Hubble telescope photography meets Russian icon painting. Infinite depth.
-They contain galaxies. Nebulae bloom in their presence. Ancient beyond time.
-Serene transcendence. Deep space colors with golden divine light. Square aspect ratio.""",
+    """BLACK AND WHITE portrait of this person as a TECH VISIONARY.
+Slight caricature - emphasize their distinctive facial features.
+Steve Jobs keynote energy, confident genius, changing the world attitude.
+Clean graphic style, bold lines, Silicon Valley prophet vibes.
+Think Apple ad meets comic book hero. Square aspect ratio.""",
 
-    """Transform this person into a LUNAR ORACLE - keeper of night wisdom.
-Art Deco elegance meets celestial mysticism. Silver light illuminates truth.
-The moon speaks through them. Tide-like intuition. Dreams made visible.
-Ethereal beauty, silver and midnight blue. Square aspect ratio.""",
+    """BLACK AND WHITE portrait of this person as a PUNK ORACLE.
+Slight caricature - bring out what makes them unique.
+Mohawk optional, safety pins and attitude. Knows the future, doesn't care.
+DIY zine aesthetic, photocopied rebellion, underground wisdom.
+Bold scratchy lines, raw energy. Square aspect ratio.""",
 
-    """Transform this person into a CRYSTAL SEER - gazer into other realms.
-Victorian spiritualism meets psychedelic visions. Refracted light reveals futures.
-Reality bends around them. What the crystal shows, only they can interpret.
-Mystical intensity, prismatic colors, focused power. Square aspect ratio.""",
+    """BLACK AND WHITE portrait of this person as a JAZZ SAGE.
+Slight caricature - capture their distinctive vibe.
+Blue Note album cover energy, cool and knowing, improvised prophecy.
+Smoky club atmosphere, sophisticated swagger, beatnik philosopher.
+Ink wash style, moody shadows. Square aspect ratio.""",
 
-    """Transform this person into a FIRE PROPHET - bearer of transformative visions.
-Phoenix mythology meets Zoroastrian flame worship. Destruction births creation.
-They burn but are not consumed. Truth spoken through flames.
-Fierce passionate energy, ember reds and phoenix golds. Square aspect ratio.""",
+    """BLACK AND WHITE portrait of this person as a COMIC BOOK ORACLE.
+Slight caricature - play up what makes their face interesting.
+Superhero origin story energy, dramatic panels, destiny awaits.
+Bold comic book style, dynamic poses, dramatic lighting.
+Thick inks, halftone dots, pow energy. Square aspect ratio.""",
 
-    """Transform this person into a MYSTIC FORTUNE TELLER - reader of hidden fates.
-Romani mysticism meets Belle Époque Parisian occultism. Intimate secrets revealed.
-Cards speak, tea leaves whisper, palms tell stories only they can read.
-Candlelit intimacy, velvet purples and antique gold. Square aspect ratio.""",
+    """BLACK AND WHITE portrait of this person as a RETRO FUTURIST.
+Slight caricature - emphasize their unique characteristics.
+1960s space age optimism, ray guns and rocket ships, atomic age prophet.
+Googie architecture vibes, optimistic tomorrow, stylized cool.
+Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
+]
+
+# PHOTOBOOTH VARIATIONS - Christmas 2x2 photo booth grid with VNVNC 2026
+# NOTE: These prompts handle both single person AND groups - include ALL people from the photo!
+PHOTOBOOTH_VARIATIONS = [
+    """Create a FUN CHRISTMAS PHOTO BOOTH 2x2 GRID image!
+
+IMPORTANT: Look at the reference photo carefully!
+- If there is ONE person: show that person in 4 different playful poses
+- If there are MULTIPLE people: show the WHOLE GROUP together in all 4 frames!
+ALL people from the reference MUST appear in each frame!
+
+LAYOUT: A 2x2 grid of 4 photo booth frames:
+- Frame 1: Big smiles, looking happy together
+- Frame 2: Silly faces, tongues out, funny expressions
+- Frame 3: Peace signs, celebration poses, thumbs up
+- Frame 4: Surprised / excited expressions, party energy
+
+CRITICAL: Preserve EVERY person's likeness!
+Each person's face, hair, and distinctive features must be recognizable in ALL 4 frames.
+
+CHRISTMAS DECORATIONS: Festive frame with snowflakes, stars, holly, Christmas lights.
+Colors: red, green, gold, silver, white - vibrant holiday energy!
+
+BRANDING LAYOUT - 3D layered effect:
+- "VNVNC" in LARGE letters BEHIND the people (partially obscured by them for 3D depth effect)
+- "2026" displayed BELOW/UNDER the people at the bottom
+This creates a cool 3D perspective where people appear in front of the VNVNC text!
+Use festive Christmas-style lettering with snow caps for both texts.
+
+High quality, joyful, professional photo booth aesthetic. Square aspect ratio.""",
+
+    """CHRISTMAS PHOTO BOOTH STRIP - 2x2 grid of fun poses!
+
+FIRST: Count how many people are in the reference photo.
+- ONE person? Show them solo in 4 different poses
+- TWO or MORE people? Include the ENTIRE GROUP in each frame!
+Never leave anyone out!
+
+Create a classic photo booth layout:
+- 4 frames arranged in a 2x2 grid
+- Each frame shows THE SAME PEOPLE from the reference photo
+- Poses: happy, silly, excited, peace signs
+
+ESSENTIAL: EVERY person in the reference must appear in ALL 4 frames!
+Same faces, same hair, same clothing - just different expressions.
+
+FESTIVE FRAME: Christmas decorations, sparkles, holly, candy canes.
+BRIGHT COLORS: Red, green, gold holiday palette!
+
+3D BRANDING EFFECT:
+- Large "VNVNC" text positioned BEHIND the people (they partially cover it - creates depth!)
+- "2026" text placed UNDERNEATH/BELOW the people
+This layering creates a cool 3D pop-out effect where people appear in the foreground!
+Festive holiday font with decorative elements.
+
+Fun party atmosphere, professional photo booth quality. Square aspect ratio.""",
+
+    """NEW YEAR PHOTO BOOTH GRID - 4 fun poses!
+
+CHECK THE REFERENCE: How many people are there?
+- Single person: 4 different solo poses
+- Group photo: ALL people together in each of the 4 frames!
+
+2x2 photo booth layout:
+- Top left: Genuine smiles, looking happy
+- Top right: Funny faces, playful expressions
+- Bottom left: Victory poses, celebration
+- Bottom right: Surprised, excited energy
+
+CRITICAL REQUIREMENT: EVERYONE from the reference appears in ALL 4 frames!
+Same facial features, hairstyles, and outfits - just different expressions.
+Do NOT omit anyone from the group!
+
+HOLIDAY DECORATIONS: Snowflakes, confetti, stars, Christmas lights border.
+COLORS: Festive red, green, gold, silver.
+
+LAYERED 3D BRANDING:
+- "VNVNC" in BIG letters as BACKGROUND (behind the people, they stand in front)
+- "2026" at the BOTTOM, below the people
+Creates depth and dimension - people pop forward in front of VNVNC!
+Christmas calligraphy style for both texts.
+
+Joyful holiday photo booth energy! Square aspect ratio.""",
 ]
 
 STYLE_PROMPTS = {
     # =========================================================================
     # GUESS MODE - "Кто Я?" - Detective investigation board
     # =========================================================================
-    CaricatureStyle.GUESS: """Transform this person into a MYSTERY to be solved.
-True crime podcast aesthetic meets noir detective fiction. Red string conspiracy board energy.
-Who are they really? What secrets hide behind those eyes? The investigation begins.
-Polaroid snapshots, evidence markers, magnifying glasses, question marks floating.
-Film noir lighting, amber and shadow, forensic blue accents. Square aspect ratio.""",
+    CaricatureStyle.GUESS: """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
+Slight caricature - emphasize their distinctive facial features.
+True crime documentary aesthetic, case file photo energy.
+Polaroid snapshot with evidence markers, question marks, magnifying glass.
+Film noir shadows, detective board conspiracy vibes.
+RUSSIAN labels, ALL CAPS. High contrast black ink. Square aspect ratio.""",
 
     # =========================================================================
     # MEDICAL MODE - "Диагноз" - X-ray scan diagnostic
     # =========================================================================
-    CaricatureStyle.MEDICAL: """Transform this person into a HUMOROUS MEDICAL SCAN.
-Vintage medical illustration meets cyberpunk biometrics. What makes them tick?
+    CaricatureStyle.MEDICAL: """BLACK AND WHITE portrait as a HUMOROUS MEDICAL SCAN.
+Slight caricature - play up their unique features.
+Vintage anatomy illustration style, diagnostic overlay.
 Their brain: gears? chaos? coffee? Their heart: fire? ice? butterflies?
-Playful diagnostic overlay revealing funny truths about their inner workings.
-X-ray cyan and lime greens, medical scan aesthetic. RUSSIAN diagnostic labels.
-Square aspect ratio.""",
+Arrow labels pointing to funny observations in RUSSIAN.
+Medical textbook woodcut style, high contrast. Square aspect ratio.""",
 
     # =========================================================================
     # ROAST MODE - "Прожарка" - Adult roast doodle (uses ROAST_VARIATIONS)
@@ -187,73 +294,90 @@ Square aspect ratio.""",
     CaricatureStyle.ROAST: "ROAST_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # PROPHET MODE - "ИИ Пророк" - Mystical oracle (uses PROPHET_VARIATIONS)
+    # PROPHET MODE - "ИИ Пророк" - Fun AI prophet (uses PROPHET_VARIATIONS)
     # =========================================================================
     CaricatureStyle.PROPHET: "PROPHET_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # TAROT MODE - "Гадалка" - Tarot card (uses TAROT_VARIATIONS)
+    # TAROT MODE - "Гадалка" - New Year 2026 sticker (uses TAROT_VARIATIONS)
     # =========================================================================
     CaricatureStyle.TAROT: "TAROT_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
     # QUIZ WINNER - "Викторина" - Game show champion
     # =========================================================================
-    CaricatureStyle.QUIZ_WINNER: """Transform this person into a GAME SHOW CHAMPION moment!
-Who Wants to Be a Millionaire meets anime victory pose. Pure triumph energy.
-Confetti explosion, spotlight glory, champion's aura radiating.
-They just proved they're the smartest person in the room. Celebrate it!
-Golden victory light, celebratory colors, sparkle effects. Square aspect ratio.""",
+    CaricatureStyle.QUIZ_WINNER: """BLACK AND WHITE portrait as a GAME SHOW CHAMPION!
+Slight caricature - emphasize what makes them look like a winner.
+Triumphant pose, championship energy, they just won it all!
+Confetti and trophy vibes, spotlight moment, victory celebration.
+Bold comic book style, action lines, champion's glow.
+High contrast ink drawing. Square aspect ratio.""",
 
     # =========================================================================
-    # MYSTICAL & FORTUNE - Classic fortune teller aesthetics
+    # MYSTICAL - Now fun/stylish, not esoteric
     # =========================================================================
-    CaricatureStyle.MYSTICAL: """Transform this person into a CRYSTAL BALL VISION.
-Art Nouveau mystic illustration meets ethereal photography.
-They appear within swirling cosmic mists, fate crystallizing around them.
-The boundary between seer and seen dissolves.
-Iridescent purples, mystic blues, crystal refractions. Square aspect ratio.""",
+    CaricatureStyle.MYSTICAL: """BLACK AND WHITE portrait as a VINTAGE MAGICIAN.
+Slight caricature - bring out their charismatic features.
+Old school stage magic vibes, top hat and cape energy.
+Houdini-era showmanship, dramatic theatrical flair.
+Vintage playbill illustration style, bold lines.
+Fun entertainer energy, NOT spooky. Square aspect ratio.""",
 
-    CaricatureStyle.FORTUNE: """Transform this person into a VINTAGE FORTUNE MACHINE portrait.
-Zoltar meets Art Deco carnival poster. Old world mysticism in ornate frame.
-They ARE the fortune telling machine come to life.
-Antique brass and copper tones, carnival atmosphere. Square aspect ratio.""",
+    # =========================================================================
+    # FORTUNE - Now fun/stylish carnival, not mystical
+    # =========================================================================
+    CaricatureStyle.FORTUNE: """BLACK AND WHITE portrait as a CARNIVAL SHOWMAN.
+Slight caricature - emphasize their distinctive features.
+Vintage carnival poster aesthetic, ringmaster energy.
+Step right up! See the amazing! Barnum and Bailey vibes.
+Art deco circus poster style, bold graphic lines.
+Fun theatrical energy, NOT mystical. Square aspect ratio.""",
 
-    CaricatureStyle.SKETCH: """Transform this person into elegant PORTRAIT ART.
-Egon Schiele's expressiveness meets modern fashion illustration.
-Bold confident lines that capture essence, not just likeness.
-Artistic minimalism with maximum impact.
-Rich earth tones and sophisticated palette. Square aspect ratio.""",
+    CaricatureStyle.SKETCH: """BLACK AND WHITE portrait in elegant FASHION SKETCH style.
+Slight caricature - capture what makes their face distinctive.
+Fashion illustration meets editorial portrait.
+Bold confident ink strokes, high contrast.
+Vogue-worthy composition, effortless cool.
+Clean lines, artistic minimalism. Square aspect ratio.""",
 
-    CaricatureStyle.CARTOON: """Transform this person into playful CARTOON ENERGY.
-Pixar character design meets anime expressiveness. Fun exaggeration.
+    CaricatureStyle.CARTOON: """BLACK AND WHITE portrait in playful CARTOON style.
+Moderate caricature - exaggerate their fun features.
+Pixar meets manga character design, friendly exaggeration.
 Capture their personality in bigger-than-life form.
 Joyful, friendly, inviting. Not mean, just playful.
-Bright saturated colors, dynamic pose. Square aspect ratio.""",
+Bold ink lines, dynamic pose. Square aspect ratio.""",
 
-    CaricatureStyle.VINTAGE: """Transform this person into a VINTAGE CIRCUS POSTER star.
+    CaricatureStyle.VINTAGE: """BLACK AND WHITE portrait as a CIRCUS POSTER STAR.
+Slight caricature - emphasize their showman qualities.
 P.T. Barnum era showmanship meets Art Nouveau elegance.
 They are the main attraction, the star of the show!
 Victorian theatrical drama with decorative flourishes.
-Aged warm tones, gold accents, theatrical flair. Square aspect ratio.""",
+Woodcut poster style, high contrast. Square aspect ratio.""",
 
     # =========================================================================
-    # ZODIAC MODE - "Гороскоп" - Constellation portrait
+    # ZODIAC MODE - Now fun/stylish space theme
     # =========================================================================
-    CaricatureStyle.ZODIAC: """Transform this person into a LIVING CONSTELLATION.
-NASA deep space imagery meets classical star chart illustration.
-Their essence mapped in starlight, face emerging from cosmic dust.
-They are written in the stars, their destiny spelled in celestial bodies.
-Deep space blues, stellar golds, nebula purples. Square aspect ratio.""",
+    CaricatureStyle.ZODIAC: """BLACK AND WHITE portrait as a SPACE EXPLORER.
+Slight caricature - capture their adventurous spirit.
+Retro sci-fi pulp magazine cover energy, astronaut helmet optional.
+Star maps and constellations as decorative background.
+1950s space age optimism, rocket ship vibes.
+Bold ink illustration, adventure awaits. Square aspect ratio.""",
 
     # =========================================================================
-    # ROULETTE MODE - "Рулетка" - Casino winner style
+    # ROULETTE MODE - Casino winner style
     # =========================================================================
-    CaricatureStyle.ROULETTE: """Transform this person into a CASINO ROYALE winner moment!
-James Bond glamour meets Las Vegas jackpot energy.
-Fortune favors the bold, and tonight fortune favors THEM.
-Chips flying, dice tumbling, lady luck herself smiling.
-Gold and emerald casino colors, dramatic spotlight. Square aspect ratio.""",
+    CaricatureStyle.ROULETTE: """BLACK AND WHITE portrait as a HIGH ROLLER.
+Slight caricature - play up their lucky charm vibe.
+Casino royale winner moment, James Bond swagger.
+Poker chips flying, dice tumbling, jackpot energy.
+Retro Las Vegas lounge style, suave and sophisticated.
+Bold ink drawing, dramatic spotlight. Square aspect ratio.""",
+
+    # =========================================================================
+    # PHOTOBOOTH MODE - Christmas 2x2 photo booth grid (uses PHOTOBOOTH_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH: "PHOTOBOOTH_VARIATION",  # Will be replaced with random variation
 }
 
 NEGATIVE_PROMPT = """
@@ -316,6 +440,8 @@ class CaricatureService:
                 style_prompt = random.choice(PROPHET_VARIATIONS)
             elif style_prompt == "TAROT_VARIATION":
                 style_prompt = random.choice(TAROT_VARIATIONS)
+            elif style_prompt == "PHOTOBOOTH_VARIATION":
+                style_prompt = random.choice(PHOTOBOOTH_VARIATIONS)
 
             # Build personality-aware prompt
             personality_hint = ""
@@ -333,7 +459,8 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
 CRITICAL REQUIREMENTS:
 - This must capture THE PERSON IN THE PHOTO - their likeness is essential
 - Recognize their distinctive features and incorporate them naturally
-- FULL COLOR - rich, vibrant, artistic colors
+- BLACK AND WHITE ONLY - pure black ink on white background, high contrast
+- NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic
 {personality_hint}
 {style_prompt}
@@ -350,11 +477,11 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 photo_mime_type="image/jpeg",
                 aspect_ratio="1:1",
                 image_size="1K",  # Use 1K resolution
-                style="Artistic illustration, rich colors, high quality, professional art",
+                style="Black and white illustration, high contrast ink drawing, thermal printer style",
             )
 
             if image_data:
-                # Keep image in COLOR for display - B&W conversion happens only when printing
+                # Process and ensure B&W output
                 processed = await self._process_for_display(image_data, size)
                 return Caricature(
                     image_data=processed,
@@ -396,16 +523,17 @@ Output should be optimized for thermal printer (pure black and white, high contr
         image_data: bytes,
         target_size: Tuple[int, int],
     ) -> bytes:
-        """Process the generated image for LED display (keep colors).
+        """Process the generated image for display (convert to grayscale).
 
-        Resizes while maintaining aspect ratio. Colors are preserved.
+        Converts to grayscale and resizes while maintaining aspect ratio.
+        This ensures consistent B&W output even if Gemini returns color.
 
         Args:
             image_data: Original image bytes
             target_size: Target dimensions
 
         Returns:
-            Processed image bytes (full color)
+            Processed image bytes (grayscale as RGB for compatibility)
         """
         try:
             from PIL import Image
@@ -413,14 +541,17 @@ Output should be optimized for thermal printer (pure black and white, high contr
             # Load image
             img = Image.open(BytesIO(image_data))
 
-            # Ensure RGB mode (keep colors!)
-            if img.mode != "RGB":
-                img = img.convert("RGB")
+            # Convert to grayscale first
+            img = img.convert("L")
+
+            # Convert back to RGB (grayscale values in all 3 channels)
+            # This ensures compatibility with displays expecting RGB
+            img = img.convert("RGB")
 
             # Resize maintaining aspect ratio
             img.thumbnail(target_size, Image.Resampling.LANCZOS)
 
-            # Save to bytes - keep as color PNG
+            # Save to bytes
             output = BytesIO()
             img.save(output, format="PNG", optimize=True)
             return output.getvalue()

@@ -32,6 +32,7 @@ from artifact.modes.quiz import QuizMode                 # 6. КВИЗ
 from artifact.modes.tower_stack import TowerStackMode    # 7. БАШНЯ
 from artifact.modes.brick_breaker import BrickBreakerMode  # 8. КИРПИЧИ
 from artifact.modes.video import VideoMode               # 9. ВИДЕО
+from artifact.modes.gallery import GalleryMode, start_gallery_preloader           # 10. ГАЛЕРЕЯ
 from artifact.audio.engine import AudioEngine, get_audio_engine
 from artifact.utils.camera_service import camera_service
 
@@ -117,6 +118,9 @@ class ArtifactSimulator:
         # Register available modes (excluding AI Prophet for now - needs camera)
         self._register_modes()
 
+        # Start gallery preloader for instant photo loading
+        start_gallery_preloader()
+
         # Wire up event handlers
         self._setup_event_handlers()
 
@@ -156,6 +160,9 @@ class ArtifactSimulator:
 
         # 9. ВИДЕО - Video player
         self.mode_manager.register_mode(VideoMode)
+
+        # 10. ГАЛЕРЕЯ - Photo gallery slideshow
+        self.mode_manager.register_mode(GalleryMode)
 
         logger.info(f"Registered {len(self.mode_manager._registered_modes)} modes")
 

@@ -309,6 +309,20 @@ class SimulatorWindow:
             self.event_bus.emit(Event(
                 EventType.KEYPAD_INPUT, data={"key": "2"}, source="keypad"
             ))
+        elif key == pygame.K_KP4:
+            # Numpad 4 → left navigation + digit
+            self.keypad._press("4")
+            self.event_bus.emit(Event(EventType.ARCADE_LEFT, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT, data={"key": "4"}, source="keypad"
+            ))
+        elif key == pygame.K_KP6:
+            # Numpad 6 → right navigation + digit
+            self.keypad._press("6")
+            self.event_bus.emit(Event(EventType.ARCADE_RIGHT, source="numpad"))
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT, data={"key": "6"}, source="keypad"
+            ))
         elif key in range(pygame.K_KP1, pygame.K_KP9 + 1):
             char = str(key - pygame.K_KP1 + 1)
             self.keypad._press(char)

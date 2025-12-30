@@ -41,8 +41,8 @@ arp -a | grep -i "raspberry\|artifact"
 ### Configured WiFi Networks
 | Network | Location | Priority |
 |---------|----------|----------|
-| Renaissance | Home | Default |
-| office_64 | Club | Auto-connect |
+| Renaissance | Home | 5 |
+| office_64 | Club | 10 (prefers when both available) |
 
 ### Pre-configured Services
 
