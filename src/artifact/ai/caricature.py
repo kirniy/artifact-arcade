@@ -671,8 +671,11 @@ CRITICAL REQUIREMENTS:
 - BLACK AND WHITE ONLY - pure black ink on white background, high contrast
 - NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic
-- ALL TEXT IN THE IMAGE MUST BE IN RUSSIAN! Except for the word "VNVNC" which stays in English
-- Any labels, annotations, or decorative text: WRITE IN RUSSIAN, ALL CAPS
+- TEXT LANGUAGE RULES (CRITICAL!!!):
+  * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C
+  * NEVER translate or transliterate VNVNC to Russian (НЕ писать ВНВНЦ или что-то подобное!)
+  * All OTHER text (labels, annotations, decorations) must be in RUSSIAN, ALL CAPS
+  * Example: "VNVNC 2026" is correct, "ВНВНЦ 2026" is WRONG!
 {personality_hint}
 {style_prompt}
 

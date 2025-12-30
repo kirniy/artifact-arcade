@@ -568,16 +568,16 @@ class SantaRunner:
                         buffer[py, px] = cloud_color
 
     def _render_score(self, buffer: NDArray) -> None:
-        """Render score at top of screen."""
+        """Render score at top of screen (below progress bar area)."""
         from artifact.graphics.text_utils import draw_text
 
-        # Score in top-right
+        # Score in top-right, positioned below progress bar (y=10 to avoid overlap)
         score_text = f"{self._state.score:04d}"
-        draw_text(buffer, score_text, 95, 4, (255, 255, 255), scale=1)
+        draw_text(buffer, score_text, 95, 10, (255, 255, 255), scale=1)
 
         # High score indicator if beaten
         if self._state.score > 0 and self._state.score >= self._state.high_score:
-            draw_text(buffer, "HI", 80, 4, (255, 200, 0), scale=1)
+            draw_text(buffer, "HI", 80, 10, (255, 200, 0), scale=1)
 
     def _render_game_over(self, buffer: NDArray) -> None:
         """Render game over overlay."""

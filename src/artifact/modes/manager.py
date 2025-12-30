@@ -858,7 +858,29 @@ class ModeManager:
                 self._current_mode.handle_input(event)
 
         elif self._state == ManagerState.RESULT:
-            # AUTO-PRINT already triggered, just return to idle
+            # Navigate through views: text pages → image → QR → exit
+            self._result_auto_advance = False  # User took control, disable auto
+            self._result_last_advance = self._time_in_state
+
+            if self._result_view_index == 0 and len(self._result_text_pages) > 1:
+                # On text view with multiple pages - navigate pages first
+                if self._result_text_page_index < len(self._result_text_pages) - 1:
+                    self._result_text_page_index += 1
+                    self._audio.play_ui_move()
+                    return  # Stay in result view
+                else:
+                    # At last text page - go to next view if available
+                    if self._result_num_views > 1:
+                        self._result_view_index = 1
+                        self._audio.play_ui_move()
+                        return  # Stay in result view
+            elif self._result_view_index < self._result_num_views - 1:
+                # Not on last view - advance to next view
+                self._result_view_index += 1
+                self._audio.play_ui_move()
+                return  # Stay in result view
+
+            # On last view (or only view) - exit
             self._return_to_idle()
 
         elif self._state == ManagerState.PRINTING:
