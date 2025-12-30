@@ -162,6 +162,14 @@ STAR = [
     [TRANS, TREE_STAR, TRANS, TREE_STAR, TRANS],
 ]
 
+# Gift projectile (4x4) - small wrapped present
+GIFT_PROJECTILE = [
+    [PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD],
+    [PRESENT_GREEN, PRESENT_GOLD, PRESENT_GREEN, PRESENT_GREEN],
+    [PRESENT_GREEN, PRESENT_GOLD, PRESENT_GREEN, PRESENT_GREEN],
+    [PRESENT_GREEN, PRESENT_GOLD, PRESENT_GREEN, PRESENT_GREEN],
+]
+
 
 class ObstacleType(Enum):
     """Types of obstacles."""
@@ -222,12 +230,21 @@ class Cloud:
 
 
 @dataclass
+class Projectile:
+    """A gift projectile shot by Santa."""
+    x: float
+    y: float
+    active: bool = True
+
+
+@dataclass
 class GameState:
     """State of the Santa runner game."""
     # Santa position and physics
     santa_y: float = 0.0
     santa_vy: float = 0.0
     is_jumping: bool = False
+    jump_count: int = 0  # For double jump (0, 1, or 2)
     run_frame: int = 0
     run_timer: float = 0.0
 
@@ -243,12 +260,14 @@ class GameState:
     collectibles: List[Collectible] = field(default_factory=list)
     snowflakes: List[Snowflake] = field(default_factory=list)
     clouds: List[Cloud] = field(default_factory=list)
+    projectiles: List[Projectile] = field(default_factory=list)
 
     # Timing
     spawn_timer: float = 0.0
     spawn_interval: float = 1500.0  # ms between obstacles
     distance: float = 0.0
     time_played: float = 0.0
+    shoot_cooldown: float = 0.0  # Cooldown between shots
 
 
 class SantaRunner:
@@ -320,18 +339,45 @@ class SantaRunner:
         return self._state.high_score
 
     def handle_jump(self) -> bool:
-        """Handle jump input. Returns True if jump was triggered."""
-        if self._state.game_over:
-            # Restart after brief delay
-            if self._state.game_over_timer > 500:
-                self.reset()
-            return False
+        """Handle jump input. Returns True if jump was triggered.
 
-        if not self._state.is_jumping:
+        Supports double jump - can jump once from ground, once more in air.
+        """
+        if self._state.game_over:
+            # Auto-restart immediately on any input (it's a waiting game)
+            self.reset()
+            return True
+
+        # Double jump: can jump from ground (count=0) or once in air (count=1)
+        if self._state.jump_count < 2:
             self._state.is_jumping = True
             self._state.santa_vy = self.JUMP_VELOCITY
+            self._state.jump_count += 1
             return True
         return False
+
+    def handle_shoot(self) -> bool:
+        """Handle shoot input. Returns True if shot was fired.
+
+        Shoots a gift projectile that destroys obstacles on contact.
+        """
+        if self._state.game_over:
+            # Auto-restart on any input
+            self.reset()
+            return True
+
+        # Check cooldown (300ms between shots)
+        if self._state.shoot_cooldown > 0:
+            return False
+
+        # Fire a projectile from Santa's position
+        santa_y = self.GROUND_Y - 6 + int(self._state.santa_y)
+        self._state.projectiles.append(Projectile(
+            x=float(self.SANTA_X + 12),  # Start ahead of Santa
+            y=float(santa_y)
+        ))
+        self._state.shoot_cooldown = 300.0  # 300ms cooldown
+        return True
 
     def update(self, delta_ms: float) -> None:
         """Update game state."""
@@ -358,6 +404,37 @@ class SantaRunner:
                 self._state.santa_y = 0
                 self._state.santa_vy = 0
                 self._state.is_jumping = False
+                self._state.jump_count = 0  # Reset double jump on landing
+
+        # Update shoot cooldown
+        if self._state.shoot_cooldown > 0:
+            self._state.shoot_cooldown -= delta_ms
+
+        # Update projectiles
+        projectile_speed = 200.0  # Pixels per second
+        for proj in self._state.projectiles:
+            proj.x += projectile_speed * dt
+
+        # Remove off-screen projectiles
+        self._state.projectiles = [p for p in self._state.projectiles if p.x < 140 and p.active]
+
+        # Check projectile-obstacle collisions (projectiles destroy obstacles!)
+        for proj in self._state.projectiles:
+            if not proj.active:
+                continue
+            for obs in self._state.obstacles[:]:  # Copy list to allow removal
+                obs_left = obs.x
+                obs_right = obs.x + obs.width
+                obs_top = self.GROUND_Y - obs.height
+                obs_bottom = self.GROUND_Y
+
+                # Check if projectile hits obstacle
+                if (obs_left < proj.x < obs_right and
+                    obs_top < proj.y < obs_bottom):
+                    proj.active = False
+                    self._state.obstacles.remove(obs)
+                    self._state.score += 5  # Bonus for destroying obstacle
+                    break
 
         # Update run animation
         self._state.run_timer += delta_ms
@@ -525,6 +602,11 @@ class SantaRunner:
             if not col.collected:
                 self._render_sprite(buffer, STAR, int(col.x), int(col.y))
 
+        # Render projectiles (gifts)
+        for proj in self._state.projectiles:
+            if proj.active:
+                self._render_sprite(buffer, GIFT_PROJECTILE, int(proj.x), int(proj.y) - 2)
+
         # Render Santa
         santa_y = self.GROUND_Y - 12 + int(self._state.santa_y)
         if self._state.is_jumping:
@@ -580,22 +662,51 @@ class SantaRunner:
             draw_text(buffer, "HI", 80, 10, (255, 200, 0), scale=1)
 
     def _render_game_over(self, buffer: NDArray) -> None:
-        """Render game over overlay."""
+        """Render game over overlay - brief flash then auto-restart."""
         from artifact.graphics.text_utils import draw_centered_text
 
         # Semi-transparent overlay
         buffer[:, :, :] = (buffer[:, :, :] * 0.5).astype(np.uint8)
 
-        # Game over text
-        draw_centered_text(buffer, "GAME OVER", 45, (255, 100, 100), scale=2)
-        draw_centered_text(buffer, f"SCORE: {self._state.score}", 70, (255, 255, 255), scale=1)
+        # Quick game over flash - auto restarts on any input
+        draw_centered_text(buffer, "GAME OVER", 50, (255, 100, 100), scale=2)
 
-        if self._state.score >= self._state.high_score and self._state.score > 0:
-            draw_centered_text(buffer, "NEW HIGH SCORE!", 82, (255, 220, 0), scale=1)
+        if self._state.score > 0:
+            draw_centered_text(buffer, f"ОЧКИ: {self._state.score}", 75, (255, 255, 255), scale=1)
 
-        # Blink "press to restart"
-        if int(self._state.game_over_timer / 400) % 2 == 0:
-            draw_centered_text(buffer, "PRESS TO PLAY", 100, (200, 200, 200), scale=1)
+        # Auto-restart after brief delay (200ms) - it's just a waiting game
+        if self._state.game_over_timer > 200:
+            self.reset()
+
+    def render_ticker(self, buffer: NDArray, progress: float = 0.0) -> None:
+        """Render animated progress bar on ticker display (48x8).
+
+        Args:
+            buffer: The 48x8 RGB ticker buffer
+            progress: Progress value from 0.0 to 1.0
+        """
+        from artifact.graphics.primitives import fill, draw_rect
+
+        # Clear ticker
+        fill(buffer, (0, 0, 0))
+
+        # Animated progress bar with smooth gradient
+        bar_w = int(44 * progress)  # 44 pixels max width (2px margins each side)
+
+        # Background bar
+        draw_rect(buffer, 2, 2, 44, 4, (30, 30, 40))
+
+        # Filled progress bar - smooth gradient from green to gold
+        if bar_w > 0:
+            for x in range(bar_w):
+                # Gradient color: green -> gold as it fills
+                ratio = x / 44
+                r = int(100 + 155 * ratio)   # 100 -> 255
+                g = int(255 - 55 * ratio)    # 255 -> 200
+                b = int(100 - 100 * ratio)   # 100 -> 0
+                buffer[2:6, 2 + x, 0] = r
+                buffer[2:6, 2 + x, 1] = g
+                buffer[2:6, 2 + x, 2] = b
 
 
 # Singleton instance for easy access across modes

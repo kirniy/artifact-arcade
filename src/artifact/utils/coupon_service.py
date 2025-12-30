@@ -167,6 +167,24 @@ class CouponService:
             guest_name=guest_name,
         )
 
+    async def register_shot_win(
+        self, source: str = "ARCADE", guest_name: Optional[str] = None
+    ) -> CouponResult:
+        """Register a free shot prize.
+
+        Args:
+            source: Source identifier (e.g., ARCADE_SQUID)
+            guest_name: Optional name of the winner
+
+        Returns:
+            CouponResult with coupon code or error
+        """
+        return await self.register_coupon(
+            prize_type=self.PRIZE_SHOT,
+            source=source,
+            guest_name=guest_name,
+        )
+
     async def close(self) -> None:
         """Cleanup (no-op for local service)."""
         pass

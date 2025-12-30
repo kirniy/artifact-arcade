@@ -1301,20 +1301,22 @@ class GalleryMode(BaseMode):
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render ticker display."""
         from artifact.graphics.primitives import clear
+        from artifact.graphics.text_utils import render_ticker_animated, render_ticker_static, TickerEffect, TextEffect
 
         clear(buffer)
 
         if self._state.phase == GalleryPhase.LOADING:
             text = "ЗАГРУЗКА..."
             color = (255, 200, 100)
+            render_ticker_static(buffer, text, self._time_in_phase, color, TextEffect.PULSE)
         elif self._state.phase == GalleryPhase.ERROR:
             text = "ОШИБКА"
             color = (255, 100, 100)
+            render_ticker_static(buffer, text, self._time_in_phase, color, TextEffect.GLOW)
         else:
             text = "ФОТО С ВЕЧЕРИНОК VNVNC"
             color = (100, 200, 255)
-
-        draw_centered_text(buffer, text, 0, color, scale=1)
+            render_ticker_animated(buffer, text, self._time_in_phase, color, TickerEffect.SCROLL, speed=0.02)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""

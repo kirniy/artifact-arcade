@@ -569,7 +569,15 @@ class AIProphetMode(BaseMode):
                 self._finish()
                 return True
 
-        elif event.type == EventType.ARCADE_LEFT:
+        elif event.type in (EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT):
+            if self._sub_phase == ProphetPhase.PROCESSING:
+                # Shoot in Santa runner during processing
+                if self._santa_runner:
+                    if self._santa_runner.handle_shoot():
+                        self._audio.play_ui_click()
+                return True
+
+        if event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.ACTIVE and self._sub_phase == ProphetPhase.QUESTIONS:
                 self._answer_question(False)  # No
                 self._audio.play_ui_click()
@@ -1368,12 +1376,11 @@ class AIProphetMode(BaseMode):
             )
 
         elif self._sub_phase == ProphetPhase.PROCESSING:
-            # Processing with glitch effect
-            render_ticker_animated(
-                buffer, "ИИ АНАЛИЗИРУЕТ СУДЬБУ",
-                self._time_in_phase, self._secondary,
-                TickerEffect.GLITCH_SCROLL, speed=0.03
-            )
+            # Use Santa Runner's ticker progress bar
+            if self._santa_runner:
+                progress = self._progress_tracker.get_progress()
+                self._santa_runner.render_ticker(buffer, progress)
+                return  # Skip other rendering
 
         elif self._sub_phase == ProphetPhase.RESULT and self._prediction:
             # Result prediction with wave

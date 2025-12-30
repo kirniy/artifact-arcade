@@ -468,6 +468,10 @@ class ModeManager:
         self._menu_mode_count = 0
         self._menu_render_failures = 0
 
+        # VNVNC logo for mode selector
+        self._vnvnc_logo = None
+        self._load_vnvnc_logo()
+
         logger.info("ModeManager initialized")
 
     def _create_bayer_matrix(self, size: int) -> list:
@@ -486,6 +490,52 @@ class ModeManager:
                     result[y + n][x] = val + 3
                     result[y + n][x + n] = val + 1
             return result
+
+    def _load_vnvnc_logo(self) -> None:
+        """Load VNVNC logo for mode selector display."""
+        try:
+            from PIL import Image, ImageOps
+            import numpy as np
+
+            # Find logo file
+            base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            logo_path = os.path.join(base_path, "assets", "images", "vnvnc-logo.png")
+
+            if os.path.exists(logo_path):
+                img = Image.open(logo_path).convert("RGBA")
+
+                # Resize to fit in the top area - small logo above mode name
+                # Target: ~60px wide, ~16px tall for a compact header
+                max_width, max_height = 60, 16
+                ratio = min(max_width / img.width, max_height / img.height)
+                new_size = (int(img.width * ratio), int(img.height * ratio))
+                img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+                # Check if image is mostly dark (black background)
+                arr = np.array(img)
+                avg_brightness = np.mean(arr[:, :, :3])
+                if avg_brightness < 128:
+                    # Invert colors for visibility on dark backgrounds
+                    # but preserve alpha channel
+                    r, g, b, a = img.split()
+                    rgb = Image.merge("RGB", (r, g, b))
+                    rgb = ImageOps.invert(rgb)
+                    r, g, b = rgb.split()
+                    img = Image.merge("RGBA", (r, g, b, a))
+                    # Make black pixels transparent
+                    arr = np.array(img)
+                    # Black or near-black pixels become transparent
+                    mask = np.all(arr[:, :, :3] < 30, axis=2)
+                    arr[mask, 3] = 0  # Set alpha to 0 for dark pixels
+                    img = Image.fromarray(arr)
+                    logger.info(f"VNVNC logo inverted for dark background")
+
+                self._vnvnc_logo = np.array(img)
+                logger.info(f"Loaded VNVNC logo: {new_size}")
+            else:
+                logger.debug(f"VNVNC logo not found at {logo_path}")
+        except Exception as e:
+            logger.warning(f"Failed to load VNVNC logo: {e}")
 
     def _open_selector_camera(self) -> None:
         """Ensure shared camera service is running for selector background."""
@@ -708,6 +758,30 @@ class ModeManager:
         name = self._mode_order[self._selected_index % len(self._mode_order)]
         return self._registered_modes.get(name)
 
+    def _get_result_image(self) -> Optional[bytes]:
+        """Get image data from result, checking all known image keys.
+
+        Different modes use different keys for their images:
+        - fortune, guess_me, ai_prophet: 'caricature'
+        - roast: 'doodle'
+        - zodiac: 'portrait'
+        - autopsy: 'scan_image'
+        """
+        if not self._last_result or not self._last_result.print_data:
+            return None
+
+        # Check all known image keys in priority order
+        image_keys = ["caricature", "doodle", "portrait", "scan_image"]
+        for key in image_keys:
+            image_data = self._last_result.print_data.get(key)
+            if image_data:
+                return image_data
+        return None
+
+    def _has_result_image(self) -> bool:
+        """Check if result has any image (caricature, doodle, portrait, etc.)."""
+        return self._get_result_image() is not None
+
     # State management
     @property
     def state(self) -> ManagerState:
@@ -733,10 +807,9 @@ class ModeManager:
             self._result_last_advance = 0.0
             self._result_first_advance_time = self._result_first_default
             self._result_next_advance_time = self._result_next_default
-            # Determine number of views: 0=text, 1=caricature (optional), 2=QR (optional)
+            # Determine number of views: 0=text, 1=image (optional), 2=QR (optional)
             if self._last_result:
-                has_caricature = (self._last_result.print_data and
-                                  self._last_result.print_data.get("caricature"))
+                has_caricature = self._has_result_image()
                 has_qr = (self._last_result.print_data and
                           self._last_result.print_data.get("qr_image") is not None)
                 # Views: text + caricature (if any) + QR (if any)
@@ -815,6 +888,10 @@ class ModeManager:
                 elif mode_name in ("autopsy", "guess_me"):
                     reveal_style = RevealStyle.SCANLINE
             self._reveal_animator.start_reveal(reveal_style, duration=1200.0)
+        elif new_state == ManagerState.MODE_ACTIVE:
+            # Stop menu music when entering a mode - let mode control its own audio
+            self._audio.stop_music(fade_out_ms=200)
+            self._display_coordinator.clear_effect()
         elif new_state == ManagerState.PRINTING:
             self._audio.stop_music(fade_out_ms=200)
             self._audio.play_print()
@@ -1379,6 +1456,14 @@ class ModeManager:
         darkened = (panel_slice * 0.4).astype(np.uint8)
         panel_slice[:] = np.where(inside_mask[:, :, np.newaxis], darkened, panel_slice)
 
+        # === STEP 2.5: VNVNC TEXT LOGO (above mode name) ===
+        # Simple text rendering - more reliable than image logo on 128x128 screen
+        from artifact.graphics.text_utils import draw_centered_text
+        # Pulsing red color matching the VNVNC brand
+        logo_pulse = 0.8 + 0.2 * math.sin(t * 2)
+        logo_color = (int(200 * logo_pulse), int(40 * logo_pulse), int(50 * logo_pulse))
+        draw_centered_text(buffer, "VNVNC", 12, logo_color, scale=1)
+
         # === STEP 3: NAVIGATION ARROWS (behind text) ===
         font = load_font("cyrillic")
         if len(self._mode_order) > 1:
@@ -1814,11 +1899,22 @@ class ModeManager:
                 text = f"ПЕЧАТАЮ {mode_title}"
                 color = (100, 200, 100)  # Green for printing
             else:
-                # Show pagination info if multiple pages
-                if self._result_text_pages and len(self._result_text_pages) > 1:
+                # Show pagination info with UNIFIED page count (text pages + photo + QR)
+                text_page_count = len(self._result_text_pages) if self._result_text_pages else 1
+                extra_views = self._result_num_views - 1  # Views after text (photo, QR)
+                unified_total = text_page_count + extra_views
+
+                if unified_total > 1 and self._result_view_index == 0:
+                    # On text view - show current text page / unified total
                     page_num = self._result_text_page_index + 1
-                    total_pages = len(self._result_text_pages)
-                    text = f"{mode_title} СТРАНИЦА {page_num}/{total_pages} ЛИСТАТЬ"
+                    text = f"{mode_title} {page_num}/{unified_total} ЛИСТАТЬ"
+                elif self._result_view_index > 0:
+                    # On photo/QR view - show which view
+                    has_caricature = self._has_result_image()
+                    if self._result_view_index == 1 and has_caricature:
+                        text = f"{mode_title} ШАРЖ ЛИСТАТЬ"
+                    else:
+                        text = f"{mode_title} QR КОД ЛИСТАТЬ"
                 else:
                     text = f"{mode_title} ГОТОВО КНОПКА ПЕЧАТЬ"
                 color = (255, 200, 100)  # Gold for result
@@ -1862,12 +1958,26 @@ class ModeManager:
 
         # Use the tracked view index (user-controlled)
         view = self._result_view_index
-        has_caricature = (self._last_result.print_data and
-                         self._last_result.print_data.get("caricature"))
+        has_caricature = self._has_result_image()
+        has_qr = (self._last_result.print_data and
+                  self._last_result.print_data.get("qr_image") is not None)
 
-        # View indicator dots at top (only if multiple views)
-        if self._result_num_views > 1:
-            self._render_view_dots(buffer, view, self._result_num_views)
+        # Calculate UNIFIED total and current position for dots
+        text_page_count = len(self._result_text_pages) if self._result_text_pages else 1
+        extra_views = self._result_num_views - 1  # Views after text (photo, QR)
+        unified_total = text_page_count + extra_views
+
+        # Calculate unified current position
+        if view == 0:
+            # On text view - position is text page index
+            unified_current = self._result_text_page_index
+        else:
+            # On photo/QR view - position is text_page_count + view offset
+            unified_current = text_page_count + (view - 1)
+
+        # View indicator dots at top (only if multiple pages/views)
+        if unified_total > 1:
+            self._render_view_dots(buffer, unified_current, unified_total)
 
         if view == 0:
             # Prediction text view with PAGINATION (no scrolling!)
@@ -1875,15 +1985,20 @@ class ModeManager:
             mode_name = self._last_result.mode_name if self._last_result else "РЕЗУЛЬТАТ"
             mode_title = MODE_LABELS_RU.get(mode_name, mode_name.upper())
 
-            # Compact title line with page arrows (saves vertical space)
-            total_pages = len(self._result_text_pages) if self._result_text_pages else 1
-            page_idx = min(self._result_text_page_index, total_pages - 1) if self._result_text_pages else 0
+            # Calculate UNIFIED total pages: text pages + extra views (photo, QR)
+            text_page_count = len(self._result_text_pages) if self._result_text_pages else 1
+            page_idx = min(self._result_text_page_index, text_page_count - 1) if self._result_text_pages else 0
+            extra_views = self._result_num_views - 1  # Views after text (photo, QR)
+            unified_total = text_page_count + extra_views  # Total scrollable items
 
-            if total_pages > 1:
+            if unified_total > 1:
                 # Arrows on sides of title with page numbers
+                # Current page is text page index + 1, total includes all views
                 left_arrow = "◄" if page_idx > 0 else " "
-                right_arrow = "►" if page_idx < total_pages - 1 else " "
-                title_text = f"{left_arrow} {page_idx + 1}/{total_pages} {right_arrow}"
+                # Right arrow shows if more text pages OR extra views available
+                has_more = (page_idx < text_page_count - 1) or (extra_views > 0)
+                right_arrow = "►" if has_more else " "
+                title_text = f"{left_arrow} {page_idx + 1}/{unified_total} {right_arrow}"
                 draw_centered_text(buffer, title_text, 3, (100, 150, 200), scale=1)
             else:
                 draw_centered_text(buffer, mode_title, 3, (255, 200, 100), scale=1)
@@ -1916,7 +2031,7 @@ class ModeManager:
                 from PIL import Image
                 import numpy as np
 
-                caricature_data = self._last_result.print_data.get("caricature")
+                caricature_data = self._get_result_image()
                 img = Image.open(BytesIO(caricature_data))
                 img = img.convert("RGB")
                 # FULLSCREEN - fill entire 128x128 display

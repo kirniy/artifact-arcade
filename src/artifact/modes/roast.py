@@ -237,7 +237,15 @@ class RoastMeMode(BaseMode):
                 self._finish()
                 return True
 
-        elif event.type == EventType.ARCADE_LEFT:
+        elif event.type in (EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT):
+            if self.phase == ModePhase.PROCESSING:
+                # Shoot in Santa runner during processing
+                if self._santa_runner:
+                    if self._santa_runner.handle_shoot():
+                        self._audio.play_ui_click()
+                return True
+
+        if event.type == EventType.ARCADE_LEFT:
             if self.phase == ModePhase.RESULT and self._sub_phase == RoastPhase.RESULT:
                 self._audio.play_ui_move()
                 # Navigate pages first, then views
@@ -662,7 +670,7 @@ class RoastMeMode(BaseMode):
             render_ticker_animated(
                 buffer, "ПРОЖАРКА",
                 self._time_in_phase, self._red,
-                TickerEffect.PULSE, speed=0.03
+                TickerEffect.PULSE_SCROLL, speed=0.03
             )
 
         elif self._sub_phase == RoastPhase.CAMERA_PREP:
@@ -673,15 +681,17 @@ class RoastMeMode(BaseMode):
             render_ticker_static(buffer, f"ФОТО: {cnt}", self._time_in_phase, self._yellow, TextEffect.GLOW)
 
         elif self._sub_phase == RoastPhase.PROCESSING:
-            # Animated processing indicator
-            dots = "." * (int(self._time_in_phase / 300) % 4)
-            render_ticker_static(buffer, f"ГОТОВЛЮ{dots}", self._time_in_phase, self._red, TextEffect.GLOW)
+            # Use Santa Runner's ticker progress bar
+            if self._santa_runner:
+                progress = self._progress_tracker.get_progress()
+                self._santa_runner.render_ticker(buffer, progress)
+                return  # Skip other rendering
 
         elif self._sub_phase == RoastPhase.REVEAL:
             render_ticker_animated(
                 buffer, "ПОЛУЧАЙ!",
                 self._time_in_phase, self._red,
-                TickerEffect.PULSE, speed=0.05
+                TickerEffect.PULSE_SCROLL, speed=0.05
             )
 
         elif self._sub_phase == RoastPhase.RESULT:

@@ -173,6 +173,9 @@ class AudioEngine:
         # === ICONIC MUSIC TRACKS ===
         self._gen_all_music()
 
+        # === LOAD EXTERNAL SOUND FILES ===
+        self._load_external_sounds()
+
         self._generated = True
         logger.info(f"Generated {len(self._sounds)} sounds")
 
@@ -984,6 +987,93 @@ class AudioEngine:
             self._sounds["music_idle"] = self._sounds.get("music_nightcall")
         if "music_menu" not in self._sounds:
             self._sounds["music_menu"] = self._sounds.get("music_nightcall")
+
+    # ===== EXTERNAL SOUND LOADING =====
+
+    def _load_external_sounds(self) -> None:
+        """Load external sound files from assets/sounds directory."""
+        import os
+
+        # Try multiple base paths for flexibility
+        possible_bases = [
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            os.getcwd(),
+            os.path.expanduser("~/dev/modular-arcade"),
+        ]
+
+        sounds_dir = None
+        for base in possible_bases:
+            candidate = os.path.join(base, "assets", "sounds")
+            if os.path.isdir(candidate):
+                sounds_dir = candidate
+                logger.info(f"Found assets/sounds at: {sounds_dir}")
+                break
+
+        if not sounds_dir:
+            logger.warning("Could not find assets/sounds directory")
+            return
+
+        # External sound files to load (try WAV first, then MP3)
+        external_files = {
+            "squidgame_menu": ["squidgame-menu.wav", "squidgame-menu.mp3"],
+            "squidgame_run": ["squidgame-runsound.wav", "squidgame-runsound.mp3"],
+        }
+
+        for sound_name, filenames in external_files.items():
+            loaded = False
+            for filename in filenames:
+                filepath = os.path.join(sounds_dir, filename)
+                if os.path.exists(filepath):
+                    try:
+                        sound = pygame.mixer.Sound(filepath)
+                        self._sounds[sound_name] = sound
+                        logger.info(f"Loaded external sound: {sound_name} from {filename}")
+                        loaded = True
+                        break
+                    except Exception as e:
+                        logger.warning(f"Failed to load {filename}: {e}")
+            if not loaded:
+                logger.warning(f"Could not load any file for {sound_name}: tried {filenames}")
+
+    def play_squidgame_menu(self) -> Optional[pygame.mixer.Channel]:
+        """Play Squid Game menu/ambient music (looping)."""
+        return self._play_squidgame_track("squidgame_menu")
+
+    def play_squidgame_run(self) -> Optional[pygame.mixer.Channel]:
+        """Play Squid Game run sound (looping during green light)."""
+        return self._play_squidgame_track("squidgame_run")
+
+    def _play_squidgame_track(self, track_name: str) -> Optional[pygame.mixer.Channel]:
+        """Play a Squid Game track with looping."""
+        if not self._initialized or self._muted:
+            return None
+
+        # Don't restart if already playing this track
+        if self._current_music == track_name and self._music_channel:
+            if self._music_channel.get_busy():
+                return self._music_channel
+
+        self.stop_music(fade_out_ms=100)
+
+        sound = self._sounds.get(track_name)
+        if not sound:
+            logger.warning(f"Squid Game track not found: {track_name}")
+            return None
+
+        volume = self._volume_music * self._volume_master
+        sound.set_volume(volume)
+
+        try:
+            self._music_channel = pygame.mixer.Channel(0)
+            self._music_channel.set_volume(volume)
+            self._music_channel.play(sound, loops=-1, fade_ms=200)
+            self._current_music = track_name
+            self._music_playing = True
+            logger.info(f"Playing Squid Game track: {track_name}")
+            return self._music_channel
+        except Exception as e:
+            logger.error(f"Failed to play Squid Game track: {e}")
+            return None
 
     # ===== PLAYBACK API =====
 

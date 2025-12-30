@@ -118,12 +118,20 @@ class PhotoboothMode(BaseMode):
                 self._state.countdown_timer = self.RESULT_DURATION
                 return True
 
-        # Handle jump input for Santa runner during AI generation
-        if self._state.is_generating and event.type == EventType.BUTTON_PRESS:
-            if self._santa_runner:
-                self._santa_runner.handle_jump()
-                self._audio.play_ui_click()
-            return True
+        # Handle input for Santa runner during AI generation
+        if self._state.is_generating:
+            if event.type == EventType.BUTTON_PRESS:
+                # Jump on button press
+                if self._santa_runner:
+                    self._santa_runner.handle_jump()
+                    self._audio.play_ui_click()
+                return True
+            elif event.type in (EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT):
+                # Shoot on left/right arrows
+                if self._santa_runner:
+                    if self._santa_runner.handle_shoot():
+                        self._audio.play_ui_click()
+                return True
 
         if event.type not in (EventType.BUTTON_PRESS, EventType.KEYPAD_INPUT):
             return False
@@ -351,7 +359,7 @@ class PhotoboothMode(BaseMode):
                 "qr_url": self._state.qr_url,
             },
             display_text="ФОТО ГОТОВО!",
-            ticker_text="ФОТОБУДКА",
+            ticker_text="СКАЧАЙ ПО QR!",
             should_print=image_for_print is not None,
             print_data={
                 "type": "photobooth",
@@ -445,8 +453,7 @@ class PhotoboothMode(BaseMode):
         buffer[:20, :, :] = (overlay[:20, :, :].astype(np.float32) * 0.5).astype(np.uint8)
         buffer[-20:, :, :] = (overlay[-20:, :, :].astype(np.float32) * 0.5).astype(np.uint8)
 
-        # Title and instruction
-        draw_centered_text(buffer, "ФОТОБУДКА", 4, (255, 200, 100), scale=1)
+        # Instruction text only - no mode title
         draw_centered_text(buffer, "НАЖМИ", 110, (200, 200, 200), scale=1)
         draw_centered_text(buffer, "КНОПКУ", 120, (200, 200, 200), scale=1)
 
@@ -505,9 +512,9 @@ class PhotoboothMode(BaseMode):
             text = f"   {self._state.countdown}   "
             draw_centered_text(buffer, text, 1, (255, 255, 0), scale=1)
         elif self._state.is_generating:
-            # Show generation progress on ticker
-            pct = int(self._state.generation_progress * 100)
-            draw_centered_text(buffer, f"AI {pct}%", 1, (255, 100, 100), scale=1)
+            # Use Santa Runner's ticker progress bar
+            if self._santa_runner:
+                self._santa_runner.render_ticker(buffer, self._state.generation_progress)
         elif self._state.show_result:
             if self._state.result_view == "qr":
                 draw_centered_text(buffer, "QR", 1, (100, 255, 100), scale=1)
@@ -523,4 +530,4 @@ class PhotoboothMode(BaseMode):
         elif self._state.show_result:
             return "    ГОТОВО    "[:16]
         else:
-            return "   ФОТОБУДКА   "[:16]
+            return " НАЖМИ КНОПКУ  "[:16]

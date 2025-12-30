@@ -576,9 +576,6 @@ class ReceiptGenerator:
         """
         layout = ReceiptLayout()
         self._create_header(layout)
-
-        layout.add_text("ФОТОБУДКА", size=TextSize.LARGE, bold=True)
-        layout.add_separator("double")
         layout.add_space(1)
 
         # Photo image - FULL WIDTH, adapted from raspi-photo-booth printPhoto()

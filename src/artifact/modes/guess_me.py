@@ -41,9 +41,6 @@ class GuessPhase:
     MORE_QUESTIONS = "more_questions"  # Follow-up questions
     FINAL_ANALYZING = "final_analyzing"
     PROCESSING_IMAGE = "processing_image"  # Generate caricature
-    REVEAL = "reveal"
-    SHOW_IMAGE = "show_image"
-    RESULT = "result"
 
 
 # =============================================================================
@@ -142,7 +139,7 @@ ANALYSIS_PROMPT_TEMPLATE = """{approach}
 ФОРМАТ ОТВЕТА:
 CONFIDENCE: [число 1-10]
 [если уверен:]
-GUESS: [СТРОГО 65-70 слов! Твоя догадка кто этот человек. ОБЯЗАТЕЛЬНО упомяни детали ВНЕШНОСТИ с фото и что значили ОТВЕТЫ на вопросы!]
+GUESS: [60-80 слов! Твоя догадка кто этот человек. ОБЯЗАТЕЛЬНО упомяни детали ВНЕШНОСТИ с фото и что значили ОТВЕТЫ на вопросы!]
 TITLE: [короткий титул 2-4 слова, например Король Дедлайнов или Душа Вечеринки]
 [если не уверен:]
 QUESTIONS:
@@ -182,7 +179,7 @@ FINAL_GUESS_PROMPT_TEMPLATE = """Ты выносишь финальный вер
 === ТЕХНИЧЕСКИЕ ОГРАНИЧЕНИЯ ===
 Символы: А-Яа-я A-Za-z 0-9 . , ! ? : ( ) / %
 НЕЛЬЗЯ: эмодзи, кавычки, тире, дефис, многоточие, любые другие символы!
-ДЛИНА ТЕКСТА: СТРОГО 65-70 слов. Не меньше, не больше!
+ДЛИНА ТЕКСТА: 60-80 слов. Убедись что текст ПОЛНЫЙ и законченный!
 
 === ОБЯЗАТЕЛЬНО ВКЛЮЧИ ===
 1. КОНКРЕТНЫЕ детали ВНЕШНОСТИ с фото: глаза, выражение, поза, одежда
@@ -200,7 +197,7 @@ FINAL_GUESS_PROMPT_TEMPLATE = """Ты выносишь финальный вер
 {approach}
 
 ФОРМАТ:
-GUESS: [СТРОГО 65-70 слов! Упомяни ВНЕШНОСТЬ с фото и что значили ОТВЕТЫ. Креативно, весело!]
+GUESS: [60-80 слов! Упомяни ВНЕШНОСТЬ с фото и что значили ОТВЕТЫ. Креативно, весело!]
 TITLE: [короткий титул 2-4 слова]
 """
 
@@ -298,12 +295,6 @@ class GuessMeMode(BaseMode):
         self._yes_color = (0, 255, 100)  # Green
         self._no_color = (255, 100, 0)   # Orange
 
-        # Result view state
-        self._result_view: str = "text"  # "text" or "image"
-        self._text_scroll_complete: bool = False
-        self._text_view_time: float = 0.0
-        self._scroll_duration: float = 0.0
-
     @property
     def is_ai_available(self) -> bool:
         return self._gemini_client.is_available
@@ -318,12 +309,6 @@ class GuessMeMode(BaseMode):
         self._reveal_progress = 0.0
         self._flash_alpha = 0.0
         self._confidence = 0
-
-        # Reset result view state
-        self._result_view = "text"
-        self._text_scroll_complete = False
-        self._text_view_time = 0.0
-        self._scroll_duration = 0.0
 
         # Reset progress tracker
         self._progress_tracker.reset()
@@ -402,30 +387,6 @@ class GuessMeMode(BaseMode):
             else:
                 self._processing_progress = min(0.95, self._processing_progress + delta_ms / 8000)
 
-        elif self.phase == ModePhase.RESULT:
-            # Calculate scroll duration on first entry
-            if self._guess_text and self._scroll_duration == 0:
-                from artifact.graphics.text_utils import calculate_scroll_duration, MAIN_DISPLAY_WIDTH
-                from artifact.graphics.fonts import load_font
-                font = load_font("cyrillic")
-                rect = (4, 45, 120, 70)
-                self._scroll_duration = calculate_scroll_duration(
-                    self._guess_text, rect, font, scale=1, line_spacing=2, scroll_interval_ms=1500
-                )
-                self._scroll_duration = max(3000, self._scroll_duration + 2000)
-
-            # Track time in text view
-            if self._result_view == "text":
-                self._text_view_time += delta_ms
-                if not self._text_scroll_complete and self._text_view_time >= self._scroll_duration:
-                    self._text_scroll_complete = True
-                    if self._illustration:
-                        self._result_view = "image"
-
-            # Auto-complete after 45 seconds
-            if self._time_in_phase > 45000:
-                self._finish()
-
     def on_input(self, event: Event) -> bool:
         # Handle question answering
         if self._sub_phase in (GuessPhase.QUESTIONS, GuessPhase.MORE_QUESTIONS):
@@ -438,32 +399,6 @@ class GuessMeMode(BaseMode):
                     # YES answer
                     self._record_answer(True)
                     return True
-
-        if event.type == EventType.BUTTON_PRESS:
-            if self.phase == ModePhase.RESULT:
-                # On image view = print, on text view = switch to image or print
-                if self._result_view == "image" or not self._illustration:
-                    self._finish()
-                    return True
-                else:
-                    if self._illustration:
-                        self._result_view = "image"
-                        self._text_scroll_complete = True
-                    else:
-                        self._finish()
-                    return True
-
-        elif event.type == EventType.ARCADE_LEFT:
-            if self.phase == ModePhase.RESULT:
-                # Toggle to text view
-                self._result_view = "text"
-                return True
-
-        elif event.type == EventType.ARCADE_RIGHT:
-            if self.phase == ModePhase.RESULT and self._illustration:
-                # Toggle to image view
-                self._result_view = "image"
-                return True
 
         return False
 
@@ -715,13 +650,8 @@ class GuessMeMode(BaseMode):
             self._start_image_generation()
 
         elif self._sub_phase == GuessPhase.PROCESSING_IMAGE:
-            self._sub_phase = GuessPhase.RESULT
-            self.change_phase(ModePhase.RESULT)
-            # Start with text view, will auto-switch to image after scroll
-            self._result_view = "text"
-            self._text_scroll_complete = False
-            self._text_view_time = 0.0
-            self._scroll_duration = 0.0
+            # Done - let manager handle result display
+            self._finish()
 
     def _start_image_generation(self) -> None:
         """Start generating the caricature."""
@@ -816,51 +746,6 @@ class GuessMeMode(BaseMode):
         elif self._sub_phase in (GuessPhase.ANALYZING, GuessPhase.FINAL_ANALYZING, GuessPhase.PROCESSING_IMAGE):
             self._render_processing(buffer)
 
-        elif self._sub_phase == GuessPhase.RESULT:
-            if self._result_view == "image" and self._illustration and self._illustration.image_data:
-                # Image view - show illustration
-                try:
-                    from PIL import Image
-                    from io import BytesIO
-
-                    img = Image.open(BytesIO(self._illustration.image_data))
-                    img = img.convert("RGB")
-                    img = img.resize((120, 100), Image.Resampling.LANCZOS)
-                    img_array = np.array(img)
-                    buffer[5:105, 4:124] = img_array
-
-                    # Hint at bottom
-                    if int(self._time_in_phase / 500) % 2 == 0:
-                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
-                    else:
-                        draw_centered_text(buffer, "◄ ТЕКСТ", 112, (100, 100, 120), scale=1)
-                except Exception as e:
-                    logger.warning(f"Failed to render guess illustration: {e}")
-                    self._result_view = "text"
-            else:
-                # Text view - show guess
-                draw_centered_text(buffer, self._guess_title, 15, self._primary, scale=1)
-                render_scrolling_text_area(
-                    buffer,
-                    self._guess_text or "",
-                    (4, 32, 120, 70),
-                    (255, 255, 255),
-                    self._text_view_time,  # Use text_view_time for scrolling
-                    scale=1,
-                    line_spacing=2,
-                    scroll_interval_ms=1500,
-                )
-
-                # Hint at bottom
-                if self._illustration:
-                    if int(self._time_in_phase / 600) % 2 == 0:
-                        draw_centered_text(buffer, "ФОТО ►", 112, (100, 150, 200), scale=1)
-                    else:
-                        draw_centered_text(buffer, "НАЖМИ", 112, (100, 100, 120), scale=1)
-                else:
-                    if int(self._time_in_phase / 500) % 2 == 0:
-                        draw_centered_text(buffer, "НАЖМИ = ПЕЧАТЬ", 112, (100, 200, 100), scale=1)
-
         self._particles.render(buffer)
 
         if self._flash_alpha > 0:
@@ -913,15 +798,13 @@ class GuessMeMode(BaseMode):
                 draw_centered_text(buffer, "НЕТ!", 80, self._no_color, scale=2)
         else:
             # Show buttons
-            # Left button (NO)
-            draw_rect(buffer, 8, 85, 50, 35, self._no_color)
-            draw_centered_text(buffer, "←", 92, (0, 0, 0), scale=1)
-            draw_centered_text(buffer, "НЕТ", 105, (0, 0, 0), scale=1)
+            # Left button (NO) - orange
+            draw_rect(buffer, 8, 75, 50, 45, self._no_color)
+            draw_centered_text(buffer, "НЕТ", 95, (0, 0, 0), scale=2)
 
-            # Right button (YES)
-            draw_rect(buffer, 70, 85, 50, 35, self._yes_color)
-            draw_centered_text(buffer, "→", 92, (0, 0, 0), scale=1)
-            draw_centered_text(buffer, "ДА", 105, (0, 0, 0), scale=1)
+            # Right button (YES) - green
+            draw_rect(buffer, 70, 75, 50, 45, self._yes_color)
+            draw_centered_text(buffer, "ДА", 95, (0, 0, 0), scale=2)
 
     def _render_processing(self, buffer) -> None:
         """Render processing animation with progress tracker."""
@@ -953,36 +836,28 @@ class GuessMeMode(BaseMode):
     def render_ticker(self, buffer) -> None:
         """Render ticker display with phase-specific messages."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.text_utils import draw_centered_text
+        from artifact.graphics.text_utils import render_ticker_static, render_ticker_animated, TextEffect, TickerEffect
 
         clear(buffer)
 
         if self._sub_phase == GuessPhase.INTRO:
-            draw_centered_text(buffer, "КТО Я?", 2, self._primary)
+            render_ticker_animated(buffer, "КТО Я?", self._time_in_phase, self._primary, TickerEffect.SPARKLE_SCROLL, speed=0.02)
         elif self._sub_phase == GuessPhase.CAMERA_PREP:
-            draw_centered_text(buffer, "КАМЕРА", 2, self._secondary)
+            render_ticker_animated(buffer, "КАМЕРА", self._time_in_phase, self._secondary, TickerEffect.WAVE_SCROLL, speed=0.02)
         elif self._sub_phase == GuessPhase.CAMERA_CAPTURE:
             cnt = int(self._camera_countdown) + 1
-            draw_centered_text(buffer, f"ФОТО: {cnt}", 2, self._secondary)
+            render_ticker_static(buffer, f"ФОТО {cnt}", self._time_in_phase, self._secondary, TextEffect.PULSE)
         elif self._sub_phase == GuessPhase.QUESTIONS:
             idx = self._current_question_idx + 1
-            total = len(self._base_questions)
-            draw_centered_text(buffer, f"ВОПРОС {idx}/{total}", 2, self._primary)
+            render_ticker_static(buffer, f"В {idx}/10", self._time_in_phase, self._primary, TextEffect.GLOW)
         elif self._sub_phase == GuessPhase.MORE_QUESTIONS:
             idx = self._current_question_idx + 1
             total = len(self._follow_up_questions)
-            draw_centered_text(buffer, f"ЕЩЁ {idx}/{total}", 2, self._secondary)
+            render_ticker_static(buffer, f"+ {idx}/{total}", self._time_in_phase, self._secondary, TextEffect.GLOW)
         elif self._sub_phase in (GuessPhase.ANALYZING, GuessPhase.FINAL_ANALYZING):
-            pct = int(self._processing_progress * 100)
-            draw_centered_text(buffer, f"ДУМАЮ {pct}%", 2, self._primary)
+            render_ticker_animated(buffer, "АНАЛИЗИРУЮ ОТВЕТЫ", self._time_in_phase, self._primary, TickerEffect.SPARKLE_SCROLL, speed=0.03)
         elif self._sub_phase == GuessPhase.PROCESSING_IMAGE:
-            draw_centered_text(buffer, "РИСУЮ...", 2, self._secondary)
-        elif self._sub_phase == GuessPhase.RESULT:
-            if self._result_view == "image":
-                draw_centered_text(buffer, "ПОРТРЕТ", 2, self._secondary)
-            else:
-                title = self._guess_title[:12] if self._guess_title else "КТО Я?"
-                draw_centered_text(buffer, title, 2, self._primary)
+            render_ticker_animated(buffer, "РИСУЮ ПОРТРЕТ", self._time_in_phase, self._secondary, TickerEffect.RAINBOW_SCROLL, speed=0.025)
 
     def get_lcd_text(self) -> str:
         """Return LCD text based on current phase."""
@@ -1007,9 +882,4 @@ class GuessMeMode(BaseMode):
         elif self._sub_phase == GuessPhase.PROCESSING_IMAGE:
             pct = int(self._processing_progress * 100)
             return f" DRAWING {pct:3d}%  ".center(16)
-        elif self._sub_phase == GuessPhase.RESULT:
-            if self._result_view == "image":
-                return " PRESS TO PRINT "
-            else:
-                return "   MY GUESS...  "
         return "    GUESS ME    "

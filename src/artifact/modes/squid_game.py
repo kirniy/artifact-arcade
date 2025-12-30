@@ -109,20 +109,20 @@ class SquidGameMode(BaseMode):
         self._phase_time: float = 0       # Time in current green/red phase
         self._elimination_reason: str = ""
 
-        # Motion detection - TUNED FOR FUN & CHALLENGE
+        # Motion detection - TUNED FOR FUN (easier settings)
         self._camera: bool = False
         self._reference_frame: Optional[np.ndarray] = None
         self._current_frame: Optional[np.ndarray] = None
         self._camera_preview: Optional[np.ndarray] = None
         self._previous_frame: Optional[np.ndarray] = None
         self._motion_level: float = 0.0            # Red light check (vs reference)
-        self._motion_threshold: float = 0.08       # Sensitivity - lower = more sensitive = HARDER
+        self._motion_threshold: float = 0.12       # Sensitivity - higher = less sensitive = EASIER (was 0.08)
         self._motion_history: List[float] = []     # Red light history smoothing
         self._live_motion_level: float = 0.0       # Continuous motion estimate
         self._live_motion_history: List[float] = []  # Rolling motion for green light
-        self._green_motion_threshold: float = 0.03  # How much to move on green - lower = easier to trigger
+        self._green_motion_threshold: float = 0.02  # How much to move on green - lower = easier (was 0.03)
         self._green_idle_time: float = 0.0
-        self._green_idle_limit: float = 2500.0     # How long can be idle on green - shorter = must keep moving
+        self._green_idle_limit: float = 3500.0     # How long can be idle on green - longer = more forgiving (was 2500)
         self._moved_this_green: bool = False
 
         # Doll animation
@@ -208,6 +208,14 @@ class SquidGameMode(BaseMode):
         self._particles.add_emitter("confetti", confetti_config)
 
         self.change_phase(ModePhase.INTRO)
+
+        # Start menu music for intro/rules
+        if self._audio:
+            try:
+                self._audio.play_squidgame_menu()
+            except Exception as e:
+                logger.debug(f"Could not play squidgame menu: {e}")
+
         logger.info("Squid Game mode entered")
 
     def on_update(self, delta_ms: float) -> None:
@@ -417,25 +425,37 @@ class SquidGameMode(BaseMode):
 
     def _start_sketch_generation(self, eliminated: bool = False) -> None:
         """Kick off async Gemini sketch generation."""
-        if not self._player_photo or not self._caricature_service.is_available:
+        if not self._player_photo:
+            logger.warning("Cannot generate sketch: no player photo captured")
+            return
+        if not self._caricature_service.is_available:
+            logger.warning("Cannot generate sketch: caricature service not available")
             return
 
         if self._sketch_task and not self._sketch_task.done():
+            logger.debug("Sketch task already running, skipping")
             return
 
         self._sketch_variant = "eliminated" if eliminated else "neutral"
+        logger.info(f"Starting sketch generation (eliminated={eliminated})")
         self._sketch_task = asyncio.create_task(self._generate_sketch_async(eliminated))
 
     async def _generate_sketch_async(self, eliminated: bool = False) -> Optional[bytes]:
         """Generate the Squid Game sketch using Gemini 3."""
         try:
-            return await self._caricature_service.generate_squid_sketch(
+            logger.info("Calling caricature service for squid sketch...")
+            result = await self._caricature_service.generate_squid_sketch(
                 reference_photo=self._player_photo,
                 eliminated=eliminated,
                 size=(384, 384),
             )
+            if result:
+                logger.info(f"Squid sketch generated successfully: {len(result)} bytes")
+            else:
+                logger.warning("Squid sketch generation returned None")
+            return result
         except Exception as e:
-            logger.warning(f"Sketch generation task failed: {e}")
+            logger.error(f"Sketch generation task failed: {e}", exc_info=True)
             return None
 
     def _poll_sketch_task(self) -> None:
@@ -444,10 +464,15 @@ class SquidGameMode(BaseMode):
             try:
                 data = self._sketch_task.result()
                 if data:
+                    logger.info(f"Sketch task completed with {len(data)} bytes (variant={self._sketch_variant})")
                     if self._sketch_variant == "eliminated":
                         data = self._apply_elimination_overlay(data)
                     self._sketch_image = data
                     self._sketch_cache = {}
+                else:
+                    logger.warning("Sketch task completed but returned no data")
+            except asyncio.CancelledError:
+                logger.info("Sketch task was cancelled")
             except Exception as e:
                 logger.warning(f"Failed to get sketch result: {e}")
             finally:
@@ -567,9 +592,10 @@ class SquidGameMode(BaseMode):
         # Capture reference frame at end of green light
         self._reference_frame = None
 
+        # Play run sound during green light
         if self._audio:
             try:
-                self._audio.play_transition()
+                self._audio.play_squidgame_run()
             except Exception:
                 pass
 
@@ -597,9 +623,10 @@ class SquidGameMode(BaseMode):
         # Flash effect
         self._flash_alpha = 0.8
 
+        # Play menu sound during red light (stop/freeze)
         if self._audio:
             try:
-                self._audio.play_ui_error()
+                self._audio.play_squidgame_menu()
             except Exception:
                 pass
 
@@ -624,6 +651,8 @@ class SquidGameMode(BaseMode):
         if self._audio:
             try:
                 self._audio.play_failure()
+                # Play menu music for result screen
+                self._audio.play_squidgame_menu()
             except Exception:
                 pass
 
@@ -644,7 +673,7 @@ class SquidGameMode(BaseMode):
         if not self._sketch_image and self._player_photo:
             self._start_sketch_generation(eliminated=False)
 
-        # Start async coupon registration
+        # Start async coupon registration (free shot for Squid Game winners)
         self._coupon_task = asyncio.create_task(self._register_victory_coupon())
 
         # Celebration effects
@@ -652,6 +681,8 @@ class SquidGameMode(BaseMode):
         if self._audio:
             try:
                 self._audio.play_success()
+                # Play menu music for result screen
+                self._audio.play_squidgame_menu()
             except Exception:
                 pass
 
@@ -663,13 +694,13 @@ class SquidGameMode(BaseMode):
         logger.info("VICTORY! Registering coupon...")
 
     async def _register_victory_coupon(self) -> None:
-        """Register coupon with vnvnc-bot API."""
+        """Register free shot coupon with Telegram bot."""
         try:
-            result = await self._coupon_service.register_squid_win()
+            result = await self._coupon_service.register_shot_win(source="ARCADE_SQUID")
             if result.success and result.coupon_code:
                 self._coupon_code = result.coupon_code
                 self._coupon_result = result
-                logger.info(f"Coupon registered: {self._coupon_code}")
+                logger.info(f"Shot coupon registered: {self._coupon_code}")
             else:
                 # Fallback to local code if API fails
                 self._coupon_code = generate_coupon_code()
@@ -702,6 +733,13 @@ class SquidGameMode(BaseMode):
 
     def on_exit(self) -> None:
         """Cleanup."""
+        # Stop Squid Game music
+        if self._audio:
+            try:
+                self._audio.stop_music(fade_out_ms=200)
+            except Exception:
+                pass
+
         # Clear camera reference (shared service, don't close)
         self._camera = False
         if self._sketch_task and not self._sketch_task.done():
@@ -848,15 +886,14 @@ class SquidGameMode(BaseMode):
         fill(buffer, SQUID_BLACK)
 
         # Draw small doll at top
-        self._draw_doll(buffer, 64, 30, 0.4, facing_player=True)
+        self._draw_doll(buffer, 64, 24, 0.3, facing_player=True)
 
-        # Rules text
-        draw_centered_text(buffer, "ПРАВИЛА", 60, SQUID_PINK, scale=2)
-        draw_centered_text(buffer, "ЗЕЛЁНЫЙ: ДВИГАЙСЯ", 80, SQUID_TEAL, scale=1)
-        draw_centered_text(buffer, "КРАСНЫЙ: ЗАМРИ!", 92, SQUID_RED, scale=1)
-        draw_centered_text(buffer, "НЕ ШЕВЕЛИСЬ!", 104, SQUID_WHITE, scale=1)
-        from artifact.graphics.text_utils import fit_text_in_rect
-        fit_text_in_rect(buffer, "Беги без пауз на зелёный!", (6, 110, 116, 16), SQUID_WHITE, font, max_scale=1)
+        # Rules text - very compact layout for 128px height
+        draw_centered_text(buffer, "ПРАВИЛА", 48, SQUID_PINK, scale=1)
+        draw_centered_text(buffer, "ЗЕЛЁНЫЙ=БЕГИ", 62, SQUID_TEAL, scale=1)
+        draw_centered_text(buffer, "КРАСНЫЙ=ЗАМРИ", 76, SQUID_RED, scale=1)
+        draw_centered_text(buffer, "ДВИГАЙСЯ", 94, SQUID_WHITE, scale=1)
+        draw_centered_text(buffer, "НА ЗЕЛЁНЫЙ!", 108, SQUID_TEAL, scale=1)
 
     def _render_photo_prompt(self, buffer, font) -> None:
         """Render camera prompt before the round."""
@@ -1026,80 +1063,125 @@ class SquidGameMode(BaseMode):
 
     def _render_eliminated(self, buffer, font, shake_x: int, shake_y: int) -> None:
         """Render elimination screen."""
-        from artifact.graphics.primitives import fill, draw_line
+        from artifact.graphics.primitives import fill, draw_line, draw_rect
         from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
 
         # Red background fade in
         red_intensity = int(40 * self._elimination_progress)
         fill(buffer, (red_intensity, 5, 5))
 
-        # Crosshair/target effect
-        cx, cy = 64, 50
-        target_size = int(40 * (1 - self._elimination_progress * 0.5))
+        # Try to show sketch, fallback to camera preview or player photo
+        sketch = self._get_sketch_preview(64)
+        preview_shown = False
+        img_x, img_y = 32, 8  # Center the 64x64 image
 
-        # Draw targeting lines
-        line_color = SQUID_RED
-        draw_line(buffer, cx - target_size, cy, cx + target_size, cy, line_color)
-        draw_line(buffer, cx, cy - target_size, cx, cy + target_size, line_color)
-
-        # X marks
-        if self._elimination_progress > 0.5:
-            x_size = int(20 * (self._elimination_progress - 0.5) * 2)
-            draw_line(buffer, cx - x_size, cy - x_size, cx + x_size, cy + x_size, SQUID_RED)
-            draw_line(buffer, cx + x_size, cy - x_size, cx - x_size, cy + x_size, SQUID_RED)
-
-        # Sketch preview tinted red
-        sketch = self._get_sketch_preview(72)
         if sketch is not None:
-            buffer[8:80, 8:80] = sketch
-            draw_line(buffer, 8, 8, 79, 8, SQUID_RED)
-            draw_line(buffer, 8, 8, 8, 79, SQUID_RED)
-            draw_line(buffer, 79, 8, 79, 79, SQUID_RED)
-            draw_line(buffer, 8, 79, 79, 79, SQUID_RED)
+            # Show the AI-generated sketch
+            buffer[img_y:img_y+64, img_x:img_x+64] = sketch
+            preview_shown = True
+            logger.debug("Showing sketch on elimination screen")
+        elif self._camera_preview is not None:
+            # Fallback: show camera preview with red tint
+            from PIL import Image
+            try:
+                img = Image.fromarray(self._camera_preview)
+                img = img.resize((64, 64), Image.Resampling.NEAREST)
+                preview = np.array(img)
+                # Add red tint
+                preview[:, :, 0] = np.minimum(255, preview[:, :, 0].astype(np.int32) + 50)
+                preview[:, :, 1] = preview[:, :, 1] // 2
+                preview[:, :, 2] = preview[:, :, 2] // 2
+                buffer[img_y:img_y+64, img_x:img_x+64] = preview
+                preview_shown = True
+                logger.debug("Showing camera preview on elimination screen (no sketch)")
+            except Exception as e:
+                logger.debug(f"Failed to show camera preview: {e}")
+
+        if preview_shown:
+            # Red X overlay on the image
+            draw_line(buffer, img_x, img_y, img_x+63, img_y+63, SQUID_RED)
+            draw_line(buffer, img_x+63, img_y, img_x, img_y+63, SQUID_RED)
+            # Border
+            draw_rect(buffer, img_x-1, img_y-1, 66, 66, SQUID_RED, filled=False)
+        else:
+            # No image - show crosshair/target effect instead
+            cx, cy = 64, 40
+            target_size = int(30 * (1 - self._elimination_progress * 0.5))
+            draw_line(buffer, cx - target_size, cy, cx + target_size, cy, SQUID_RED)
+            draw_line(buffer, cx, cy - target_size, cx, cy + target_size, SQUID_RED)
+            if self._elimination_progress > 0.5:
+                x_size = int(15 * (self._elimination_progress - 0.5) * 2)
+                draw_line(buffer, cx - x_size, cy - x_size, cx + x_size, cy + x_size, SQUID_RED)
+                draw_line(buffer, cx + x_size, cy - x_size, cx - x_size, cy + x_size, SQUID_RED)
 
         # ELIMINATED text with glitch
-        draw_animated_text(buffer, RUSSIAN_ELIMINATED, 84, SQUID_RED, self._time_in_phase, TextEffect.GLITCH, scale=2)
+        draw_animated_text(buffer, RUSSIAN_ELIMINATED, 78, SQUID_RED, self._time_in_phase, TextEffect.GLITCH, scale=2)
 
-        # Survival time (moved up to avoid overlap)
+        # Survival time
         time_str = f"{self._survived_time/1000:.1f} СЕК"
-        draw_centered_text(buffer, time_str, 100, SQUID_WHITE, scale=1)
+        draw_centered_text(buffer, time_str, 96, SQUID_WHITE, scale=1)
 
-        # Reason text framed (uppercase for font compatibility, positioned below time)
+        # Reason text (compact)
         if self._elimination_reason:
             from artifact.graphics.text_utils import fit_text_in_rect
-            fit_text_in_rect(buffer, self._elimination_reason.upper(), (10, 110, 108, 16), SQUID_WHITE, font, max_scale=1)
+            fit_text_in_rect(buffer, self._elimination_reason.upper(), (8, 108, 112, 18), SQUID_WHITE, font, max_scale=1)
 
     def _render_victory(self, buffer, font) -> None:
-        """Render victory screen with coupon code."""
+        """Render victory screen with fullscreen image background."""
         from artifact.graphics.primitives import fill, draw_rect
-        from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect
+        from artifact.graphics.text_utils import draw_centered_text, draw_animated_text, TextEffect, fit_text_in_rect
 
-        # Gold/teal celebration background
-        fill(buffer, (10, 30, 30))
+        # Try to render fullscreen image as background
+        bg_rendered = False
+        sketch = self._get_sketch_preview(128)  # Full size
 
-        from artifact.graphics.text_utils import fit_text_in_rect
-
-        # Sketch preview if available
-        sketch = self._get_sketch_preview(80)
         if sketch is not None:
-            buffer[22:102, 8:88] = sketch
-            draw_rect(buffer, 6, 20, 84, 84, SQUID_GOLD, filled=False)
+            buffer[:128, :128] = sketch
+            bg_rendered = True
+        elif self._camera_preview is not None:
+            from PIL import Image
+            try:
+                img = Image.fromarray(self._camera_preview)
+                img = img.resize((128, 128), Image.Resampling.LANCZOS)
+                preview = np.array(img)
+                # Add golden tint
+                preview[:, :, 0] = np.minimum(255, preview[:, :, 0].astype(np.int32) + 20)
+                preview[:, :, 1] = np.minimum(255, preview[:, :, 1].astype(np.int32) + 15)
+                buffer[:128, :128] = preview
+                bg_rendered = True
+            except Exception:
+                pass
 
-        # Victory text with pulse effect
-        draw_animated_text(buffer, RUSSIAN_VICTORY, 15, SQUID_GOLD, self._time_in_phase, TextEffect.PULSE, scale=2)
+        # Fallback background if no image
+        if not bg_rendered:
+            fill(buffer, (10, 30, 30))
+
+        # Semi-transparent overlay at top for victory text
+        for y in range(24):
+            alpha = 0.7 - (y / 24) * 0.4
+            for x in range(128):
+                buffer[y, x] = tuple(int(buffer[y, x][c] * (1 - alpha) + 10 * alpha) for c in range(3))
+
+        # Victory text with pulse effect at top
+        draw_animated_text(buffer, RUSSIAN_VICTORY, 4, SQUID_GOLD, self._time_in_phase, TextEffect.PULSE, scale=2)
+
+        # Semi-transparent overlay at bottom for coupon info
+        for y in range(78, 128):
+            alpha = 0.8
+            for x in range(128):
+                buffer[y, x] = tuple(int(buffer[y, x][c] * (1 - alpha) + 10 * alpha) for c in range(3))
+
+        # Coupon info centered at bottom
+        draw_centered_text(buffer, "БЕСПЛАТНЫЙ ШОТ!", 80, SQUID_TEAL, scale=1)
 
         # Coupon code box
-        box_y = 100
-        draw_rect(buffer, 6, box_y, 116, 24, SQUID_BLACK)
-        draw_rect(buffer, 6, box_y, 116, 24, SQUID_GOLD, filled=False)
+        box_y = 92
+        draw_rect(buffer, 4, box_y, 120, 18, SQUID_BLACK)
+        draw_rect(buffer, 4, box_y, 120, 18, SQUID_GOLD, filled=False)
+        fit_text_in_rect(buffer, self._coupon_code or "ГЕНЕРИРУЕМ...", (6, box_y + 3, 116, 12), SQUID_GOLD, font, max_scale=1)
 
-        # "FREE SHOT" label + code
-        fit_text_in_rect(buffer, "БЕСПЛАТНЫЙ ШОТ", (8, box_y + 2, 112, 10), SQUID_TEAL, font, max_scale=1)
-        fit_text_in_rect(buffer, self._coupon_code or "ГЕНЕРИРУЕМ...", (8, box_y + 12, 112, 10), SQUID_GOLD, font, max_scale=1)
-
-        # Instructions
-        draw_centered_text(buffer, "ПОКАЖИ БАРМЕНУ", 86, SQUID_WHITE, scale=1)
-        draw_centered_text(buffer, "НАЖМИ ДЛЯ ПЕЧАТИ", 94, SQUID_PINK, scale=1)
+        # Press to print
+        draw_centered_text(buffer, "ПОКАЖИ БАРМЕНУ", 114, SQUID_PINK, scale=1)
 
     def _draw_doll(self, buffer, cx: int, cy: int, scale: float, facing_player: bool) -> None:
         """Draw the iconic Squid Game doll."""

@@ -24,10 +24,30 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Check AWS CLI availability at module load
-AWS_CLI_AVAILABLE = shutil.which('aws') is not None
+# Check AWS CLI availability - include common macOS paths
+def _find_aws_cli() -> Optional[str]:
+    """Find AWS CLI binary, checking common paths on macOS."""
+    # First try standard PATH lookup
+    aws_path = shutil.which('aws')
+    if aws_path:
+        return aws_path
+
+    # Check common macOS paths not always in PATH when launched from GUI
+    common_paths = [
+        '/opt/homebrew/bin/aws',  # Apple Silicon Homebrew
+        '/usr/local/bin/aws',      # Intel Homebrew
+        '/usr/bin/aws',            # System
+    ]
+    for path in common_paths:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+
+    return None
+
+AWS_CLI_PATH = _find_aws_cli()
+AWS_CLI_AVAILABLE = AWS_CLI_PATH is not None
 if not AWS_CLI_AVAILABLE:
-    logger.warning("AWS CLI not found - S3 uploads will be disabled. Install: sudo apt install awscli")
+    logger.warning("AWS CLI not found - S3 uploads will be disabled. Install: brew install awscli")
 
 # Selectel S3 configuration
 SELECTEL_ENDPOINT = "https://s3.ru-7.storage.selcloud.ru"
@@ -143,9 +163,9 @@ def upload_bytes_to_s3(
 
         logger.info(f"Uploading to Selectel S3: {s3_key} ({len(data)} bytes)")
 
-        # Upload using AWS CLI
+        # Upload using AWS CLI (using found path for macOS compatibility)
         result = subprocess.run(
-            ['aws', '--endpoint-url', SELECTEL_ENDPOINT,
+            [AWS_CLI_PATH, '--endpoint-url', SELECTEL_ENDPOINT,
              '--profile', 'selectel',
              's3', 'cp', tmp_path,
              f's3://{SELECTEL_BUCKET}/{s3_key}',
@@ -234,7 +254,7 @@ def upload_file_to_s3(
             logger.info(f"Uploading file to Selectel S3: {s3_key}")
 
         result = subprocess.run(
-            ['aws', '--endpoint-url', SELECTEL_ENDPOINT,
+            [AWS_CLI_PATH, '--endpoint-url', SELECTEL_ENDPOINT,
              '--profile', 'selectel',
              's3', 'cp', file_path,
              f's3://{SELECTEL_BUCKET}/{s3_key}',
