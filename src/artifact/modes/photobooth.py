@@ -341,18 +341,22 @@ class PhotoboothMode(BaseMode):
 
     def _complete_session(self) -> None:
         """Complete the session."""
+        # Prefer AI-generated grid, fall back to original photo
+        image_for_print = self._state.ai_result_bytes or self._state.photo_bytes
+
         result = ModeResult(
             mode_name=self.name,
             success=True,
             data={
-                "photo_path": self._state.photo_path,
                 "qr_url": self._state.qr_url,
             },
             display_text="ФОТО ГОТОВО!",
             ticker_text="ФОТОБУДКА",
-            should_print=self._state.photo_path is not None,
+            should_print=image_for_print is not None,
             print_data={
-                "caricature": self._state.photo_bytes,
+                "type": "photobooth",
+                "caricature": image_for_print,  # AI grid or original photo
+                "photo": self._state.photo_bytes,  # Original photo for reference
                 "qr_url": self._state.qr_url,
                 "qr_image": self._state.qr_image,
             }

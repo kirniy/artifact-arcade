@@ -185,6 +185,7 @@ Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
 
 # PHOTOBOOTH VARIATIONS - Christmas 2x2 photo booth grid with VNVNC 2026
 # NOTE: These prompts handle both single person AND groups - include ALL people from the photo!
+# BRANDING: "VNVNC 2026" appears ONCE as a banner at the bottom, NOT in each frame!
 PHOTOBOOTH_VARIATIONS = [
     """Create a FUN CHRISTMAS PHOTO BOOTH 2x2 GRID image!
 
@@ -202,14 +203,12 @@ LAYOUT: A 2x2 grid of 4 photo booth frames:
 CRITICAL: Preserve EVERY person's likeness!
 Each person's face, hair, and distinctive features must be recognizable in ALL 4 frames.
 
-CHRISTMAS DECORATIONS: Festive frame with snowflakes, stars, holly, Christmas lights.
+CHRISTMAS DECORATIONS: Festive frame border with snowflakes, stars, holly, Christmas lights.
 Colors: red, green, gold, silver, white - vibrant holiday energy!
 
-BRANDING LAYOUT - 3D layered effect:
-- "VNVNC" in LARGE letters BEHIND the people (partially obscured by them for 3D depth effect)
-- "2026" displayed BELOW/UNDER the people at the bottom
-This creates a cool 3D perspective where people appear in front of the VNVNC text!
-Use festive Christmas-style lettering with snow caps for both texts.
+BRANDING: Add "VNVNC 2026" as a SINGLE BANNER at the very bottom of the entire grid.
+NOT in each photo frame - just ONE text banner below all 4 frames!
+Festive Christmas-style lettering with snow caps.
 
 High quality, joyful, professional photo booth aesthetic. Square aspect ratio.""",
 
@@ -228,14 +227,12 @@ Create a classic photo booth layout:
 ESSENTIAL: EVERY person in the reference must appear in ALL 4 frames!
 Same faces, same hair, same clothing - just different expressions.
 
-FESTIVE FRAME: Christmas decorations, sparkles, holly, candy canes.
+FESTIVE FRAME: Christmas decorations border, sparkles, holly, candy canes.
 BRIGHT COLORS: Red, green, gold holiday palette!
 
-3D BRANDING EFFECT:
-- Large "VNVNC" text positioned BEHIND the people (they partially cover it - creates depth!)
-- "2026" text placed UNDERNEATH/BELOW the people
-This layering creates a cool 3D pop-out effect where people appear in the foreground!
-Festive holiday font with decorative elements.
+BRANDING: "VNVNC 2026" text appears ONCE as a decorative banner BELOW the 4-frame grid.
+Do NOT put text inside each photo frame - only ONE banner at the bottom!
+Festive holiday font with decorative snowflake elements.
 
 Fun party atmosphere, professional photo booth quality. Square aspect ratio.""",
 
@@ -255,14 +252,12 @@ CRITICAL REQUIREMENT: EVERYONE from the reference appears in ALL 4 frames!
 Same facial features, hairstyles, and outfits - just different expressions.
 Do NOT omit anyone from the group!
 
-HOLIDAY DECORATIONS: Snowflakes, confetti, stars, Christmas lights border.
+HOLIDAY DECORATIONS: Snowflakes, confetti, stars, Christmas lights border around the grid.
 COLORS: Festive red, green, gold, silver.
 
-LAYERED 3D BRANDING:
-- "VNVNC" in BIG letters as BACKGROUND (behind the people, they stand in front)
-- "2026" at the BOTTOM, below the people
-Creates depth and dimension - people pop forward in front of VNVNC!
-Christmas calligraphy style for both texts.
+BRANDING: Add "VNVNC 2026" as a SINGLE banner text at the bottom of the entire image.
+This text should appear ONLY ONCE, below all 4 photo frames - NOT inside each frame!
+Christmas calligraphy style, decorative holiday font.
 
 Joyful holiday photo booth energy! Square aspect ratio.""",
 ]
