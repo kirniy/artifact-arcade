@@ -901,12 +901,12 @@ class RotatingIdleAnimation:
                     r = int(255 * intensity)
                     g = int(200 * intensity)
                     b = int(100 * intensity * 0.5)
-                    # Blend with existing
+                    # Blend with existing (cast to int to avoid uint8 overflow)
                     existing = buffer[y, x]
                     buffer[y, x] = (
-                        min(255, existing[0] + r),
-                        min(255, existing[1] + g),
-                        min(255, existing[2] + b)
+                        min(255, int(existing[0]) + r),
+                        min(255, int(existing[1]) + g),
+                        min(255, int(existing[2]) + b)
                     )
 
         # === WROUGHT IRON GATE (open) ===
