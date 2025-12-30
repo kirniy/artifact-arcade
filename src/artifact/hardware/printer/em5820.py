@@ -230,6 +230,51 @@ class EM5820Printer(Printer):
         await self._send_command(b'\x1d\x56' + cut_mode)
         return True
 
+    # Abstract method implementations required by Printer base class
+    def feed(self, lines: int = 1) -> None:
+        """Feed paper by specified lines (sync wrapper for async feed_paper)."""
+        # Run async version in sync context if needed
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(self.feed_paper(lines))
+            else:
+                loop.run_until_complete(self.feed_paper(lines))
+        except RuntimeError:
+            # No event loop, just log
+            logger.debug(f"Feed {lines} lines (no event loop)")
+
+    def cut(self) -> None:
+        """Cut paper (sync wrapper for async cut_paper)."""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(self.cut_paper())
+            else:
+                loop.run_until_complete(self.cut_paper())
+        except RuntimeError:
+            logger.debug("Cut paper (no event loop)")
+
+    def is_ready(self) -> bool:
+        """Check if printer is ready."""
+        return self._connected and not self._busy
+
+    def print_image(self, image_data: bytes) -> None:
+        """Print image data (will be dithered for thermal printing)."""
+        if not self._connected:
+            logger.warning("Printer not connected, cannot print image")
+            return
+        
+        if self._mock:
+            logger.info(f"Mock print image: {len(image_data)} bytes")
+            return
+        
+        # For now, log that image printing is not yet implemented
+        # Full implementation would convert image to ESC/POS raster format
+        logger.warning("Image printing not yet implemented for EM5820")
+
     async def self_test(self) -> bool:
         """Run printer self-test.
 
