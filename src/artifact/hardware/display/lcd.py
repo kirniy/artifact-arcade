@@ -209,6 +209,28 @@ class I2CLCDDisplay(TextDisplay):
         except Exception as e:
             logger.error(f"LCD create_char error: {e}")
 
+    def set_text(self, text: str) -> None:
+        """
+        Set full display text (convenience method).
+
+        Clears display and writes text to first row.
+        Args:
+            text: Text to display (truncated to 16 chars)
+        """
+        if not self._initialized or self._lcd is None:
+            return
+
+        try:
+            self._lcd.clear()
+            self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
+            text = text[:self._cols].ljust(self._cols)
+            self._lcd.cursor_pos = (0, 0)
+            self._lcd.write_string(text)
+            for i, char in enumerate(text):
+                self._buffer[0][i] = char
+        except Exception as e:
+            logger.error(f"LCD set_text error: {e}")
+
     def get_buffer(self) -> list[list[str]]:
         """Get copy of current display buffer."""
         return [row[:] for row in self._buffer]
@@ -276,6 +298,13 @@ class I2CLCDDisplayMock(TextDisplay):
 
     def set_backlight(self, on: bool) -> None:
         self._backlight = on
+
+    def set_text(self, text: str) -> None:
+        """Set full display text (convenience method)."""
+        self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
+        text = text[:self._cols].ljust(self._cols)
+        for i, char in enumerate(text):
+            self._buffer[0][i] = char
 
     def get_buffer(self) -> list[list[str]]:
         return [row[:] for row in self._buffer]
