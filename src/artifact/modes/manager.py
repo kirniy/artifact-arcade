@@ -312,7 +312,7 @@ MODE_LABELS_RU = {
     "ninja_fruit": "НИНДЗЯ",
     "skii": "ЛЫЖИ",
     "rocketpy": "РАКЕТА",
-    "hand_snake": "РУЧНАЯ ЗМЕЙКА",
+    "hand_snake": "HAND SNAKE",
     "glitch_mirror": "ГЛИТЧ",
     "dither_art": "ДИТЕР",
     "ascii_art": "АСКИ",
@@ -322,7 +322,7 @@ MODE_LABELS_RU = {
     "roast": "ROAST",
     "zodiac": "ЗОДИАК",
     "roulette": "РУЛЕТКА",
-    "squid_game": "ИГРА В КАЛЬМАРА",
+    "squid_game": "SQUID GAME",
     "photobooth": "ФОТОБУДКА",
 }
 
@@ -1369,26 +1369,27 @@ class ModeManager:
         elif self._state == ManagerState.MODE_SELECT:
             mode = self.get_selected_mode()
             if mode:
-                # Fun LCD with arrows for navigation
-                return f"◄ {mode.display_name[:10]} ►".center(16)[:16]
-            return "◄► РЕЖИМ ◄►".center(16)
+                # Use mode.display_name, truncate to fit with arrows (16 - 4 chars for "< " and " >")
+                name = mode.display_name[:12]
+                return f"<{name}>".center(16)[:16]
+            return "<< РЕЖИМ >>".center(16)
 
         elif self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             return self._current_mode.get_lcd_text()
 
         elif self._state == ManagerState.RESULT:
             # Show navigation hint (auto-print already started)
-            return "◄► ЛИСТАТЬ".center(16)[:16]
+            return "<< ЛИСТАТЬ >>".center(16)[:16]
 
         elif self._state == ManagerState.PRINTING:
-            # Fun animated printing
-            dots = "●" * (int(self._time_in_state / 300) % 4)
-            return f" ПЕЧАТЬ{dots} ".center(16)[:16]
+            # Fun animated printing with dots
+            dots = "." * (int(self._time_in_state / 300) % 4)
+            return f"ПЕЧАТЬ{dots}".center(16)[:16]
 
         elif self._state == ManagerState.ADMIN_MENU:
-            return "★ ADMIN ★".center(16)
+            return "* ADMIN *".center(16)
 
-        return "★ VNVNC ★".center(16)
+        return "* VNVNC *".center(16)
 
     def _render_start_prompt(self, buffer) -> None:
         """Render 'press start' prompt with arrow."""
