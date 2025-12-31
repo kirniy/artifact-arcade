@@ -153,13 +153,14 @@ class I2CLCDDisplay(TextDisplay):
         try:
             self._bus = smbus2.SMBus(self._i2c_bus)
 
-            # Arduino LiquidCrystal_I2C init sequence
-            time.sleep(0.05)  # Wait 50ms after power up
+            # HD44780 requires 40ms+ after Vcc rises to 4.5V
+            # On cold boot, LCD may need extra time to stabilize
+            time.sleep(0.1)  # Wait 100ms after power up
 
             # Reset expander with backlight OFF initially
             self._backlight = 0
             self._expander_write(0)
-            time.sleep(0.5)  # Shorter than Arduino's 1s but still substantial
+            time.sleep(1.0)  # Full 1s delay like Arduino library for reliable init
 
             # Put into 4-bit mode (HD44780 datasheet figure 24)
             self._write_4bits(0x03 << 4)
