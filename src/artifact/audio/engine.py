@@ -127,10 +127,11 @@ class AudioEngine:
             return False
 
     def _set_system_volume_max(self) -> None:
-        """Set system ALSA volume to absolute maximum.
+        """Set system ALSA volume to absolute maximum (+4dB).
 
-        Uses amixer to set Headphone volume to 100% on Raspberry Pi.
-        This ensures the 3.5mm jack output is at maximum level.
+        Uses amixer to set PCM volume to max (400) on Raspberry Pi card 2.
+        Card 2 is the bcm2835 Headphones (3.5mm jack) on Pi 4.
+        Max value is 400 which is +4dB - louder than 100%!
         """
         import subprocess
         import os
@@ -140,12 +141,15 @@ class AudioEngine:
             return
 
         try:
-            # Try to set Headphone volume on card 2 (bcm2835 Headphones)
-            # Card 2 is typically the 3.5mm audio jack on Raspberry Pi 4
+            # Card 2 (bcm2835 Headphones) uses numid=1 for volume, numid=2 for switch
+            # Max value is 400 (+4dB), min is -10239 (-102.39dB)
             commands = [
-                ['amixer', '-c', '2', 'sset', 'Headphone', '100%', 'unmute'],
-                ['amixer', '-c', '2', 'sset', 'Headphone', '0dB', 'unmute'],
-                ['amixer', 'sset', 'Headphone', '100%', 'unmute'],
+                # Set PCM volume to absolute max (+4dB) on card 2
+                ['amixer', '-c', '2', 'cset', 'numid=1', '400'],
+                # Ensure PCM is unmuted
+                ['amixer', '-c', '2', 'cset', 'numid=2', 'on'],
+                # Fallback: try named controls
+                ['amixer', '-c', '2', 'sset', 'PCM', '100%', 'unmute'],
                 ['amixer', 'sset', 'PCM', '100%', 'unmute'],
                 ['amixer', 'sset', 'Master', '100%', 'unmute'],
             ]

@@ -59,6 +59,11 @@ class HardwareConfig:
     ws2812b_gpio: int = 21  # Not 18 to avoid audio conflict
     ws2812b_brightness: int = 128
 
+    # Arcade button GPIO pins (directly wired, active LOW with pull-up)
+    # Buttons connect GPIO to GND when pressed
+    gpio_button_left: int = 17   # Pin 11 - LEFT arcade button
+    gpio_button_right: int = 27  # Pin 13 - RIGHT arcade button
+
     # I2C settings
     lcd_i2c_address: int = 0x27
     lcd_i2c_bus: int = 1
@@ -96,6 +101,13 @@ class HardwareRunner:
         self._ticker_display = None
         self._lcd_display = None
         self._audio_engine = None
+
+        # GPIO button state
+        self._gpio_initialized = False
+        self._gpio_left_button = None
+        self._gpio_right_button = None
+        self._left_button_was_pressed = False
+        self._right_button_was_pressed = False
 
         # State
         self._running = False
@@ -251,6 +263,74 @@ class HardwareRunner:
             self._audio_enabled = False
             self._audio_engine = None
             return False
+
+    def _init_gpio_buttons(self) -> bool:
+        """Initialize GPIO arcade buttons using gpiozero.
+
+        LEFT button on GPIO 17 (Pin 11)
+        RIGHT button on GPIO 27 (Pin 13)
+
+        Buttons are wired active LOW: GPIO to button to GND.
+        Internal pull-up resistors are enabled.
+        """
+        try:
+            from gpiozero import Button
+
+            # LEFT button - GPIO 17 with internal pull-up
+            self._gpio_left_button = Button(
+                self.config.gpio_button_left,
+                pull_up=True,  # Enable internal pull-up resistor
+                bounce_time=0.05  # 50ms debounce
+            )
+
+            # RIGHT button - GPIO 27 with internal pull-up
+            self._gpio_right_button = Button(
+                self.config.gpio_button_right,
+                pull_up=True,
+                bounce_time=0.05
+            )
+
+            self._gpio_initialized = True
+            logger.info(
+                f"GPIO buttons initialized: LEFT=GPIO{self.config.gpio_button_left}, "
+                f"RIGHT=GPIO{self.config.gpio_button_right}"
+            )
+            return True
+
+        except ImportError:
+            logger.warning("gpiozero not available - GPIO buttons disabled")
+            return False
+        except Exception as e:
+            logger.warning(f"GPIO button init failed: {e}")
+            return False
+
+    def _poll_gpio_buttons(self) -> None:
+        """Poll GPIO buttons and emit events on state change.
+
+        Uses edge detection to emit events only on press (not continuous).
+        """
+        if not self._gpio_initialized:
+            return
+
+        # Check LEFT button
+        if self._gpio_left_button:
+            is_pressed = self._gpio_left_button.is_pressed
+            if is_pressed and not self._left_button_was_pressed:
+                # Button just pressed
+                self.play_sound('click')
+                self.event_bus.emit(Event(EventType.ARCADE_LEFT, source="gpio"))
+                logger.debug("GPIO LEFT button pressed")
+            self._left_button_was_pressed = is_pressed
+
+        # Check RIGHT button
+        if self._gpio_right_button:
+            is_pressed = self._gpio_right_button.is_pressed
+            if is_pressed and not self._right_button_was_pressed:
+                # Button just pressed
+                self.play_sound('click')
+                self.event_bus.emit(Event(EventType.ARCADE_RIGHT, source="gpio"))
+                logger.debug("GPIO RIGHT button pressed")
+            self._right_button_was_pressed = is_pressed
 
     def _read_control_commands(self) -> None:
         """Read and process control commands from Telegram bot."""
@@ -492,6 +572,9 @@ class HardwareRunner:
         # Initialize audio (non-fatal if fails)
         self._init_audio()
 
+        # Initialize GPIO arcade buttons (non-fatal if fails)
+        self._init_gpio_buttons()
+
         self._initialized = True
         logger.info("Hardware initialized successfully")
         return True
@@ -710,6 +793,9 @@ class HardwareRunner:
         while self._running:
             # Handle events from hardware
             self._handle_events()
+
+            # Poll GPIO arcade buttons
+            self._poll_gpio_buttons()
 
             # Handle remote control commands from Telegram bot
             self._read_control_commands()
