@@ -1,8 +1,11 @@
 """
 I2C LCD display driver for ARTIFACT.
 
-Controls a 16x2 character LCD via I2C (PCF8574 expander).
+Controls a 16x1 character LCD via I2C using direct smbus2 commands.
 Uses GPIO 2 (SDA) and GPIO 3 (SCL) on the Raspberry Pi.
+
+Uses Arduino LiquidCrystal_I2C compatible initialization sequence
+for compatibility with STM32-based I2C adapters.
 """
 
 import logging
@@ -11,39 +14,63 @@ from ..base import TextDisplay
 
 logger = logging.getLogger(__name__)
 
-# RPLCD import is deferred
-_RPLCD = None
+# smbus2 import is deferred
+_smbus2 = None
 
 
-def _get_rplcd():
-    """Lazy import RPLCD."""
-    global _RPLCD
-    if _RPLCD is None:
+def _get_smbus2():
+    """Lazy import smbus2."""
+    global _smbus2
+    if _smbus2 is None:
         try:
-            from RPLCD.i2c import CharLCD
-            _RPLCD = CharLCD
+            import smbus2
+            _smbus2 = smbus2
         except ImportError:
-            logger.warning("RPLCD not available - using mock")
-            _RPLCD = None
-    return _RPLCD
+            logger.warning("smbus2 not available - using mock")
+            _smbus2 = None
+    return _smbus2
+
+
+# LCD Commands
+LCD_CLEARDISPLAY = 0x01
+LCD_RETURNHOME = 0x02
+LCD_ENTRYMODESET = 0x04
+LCD_DISPLAYCONTROL = 0x08
+LCD_FUNCTIONSET = 0x20
+LCD_SETDDRAMADDR = 0x80
+
+# Flags for display entry mode
+LCD_ENTRYLEFT = 0x02
+LCD_ENTRYSHIFTDECREMENT = 0x00
+
+# Flags for display on/off control
+LCD_DISPLAYON = 0x04
+LCD_CURSOROFF = 0x00
+LCD_BLINKOFF = 0x00
+
+# Flags for function set
+LCD_4BITMODE = 0x00
+LCD_1LINE = 0x00
+LCD_5x8DOTS = 0x00
+
+# PCF8574 pin mappings
+EN = 0x04  # Enable bit
+RS = 0x01  # Register select bit
+LCD_BACKLIGHT = 0x08
 
 
 class I2CLCDDisplay(TextDisplay):
     """
-    I2C LCD display driver for 16x2 character display.
+    I2C LCD display driver for 16x1 character display.
+
+    Uses direct smbus2 I2C commands with Arduino LiquidCrystal_I2C
+    compatible initialization for STM32-based adapters.
 
     Hardware configuration:
-    - Interface: I2C via PCF8574 expander
-    - Address: 0x27 (common default) or 0x3F
+    - Interface: I2C via PCF8574/STM32 expander
+    - Address: 0x27 (default)
     - Bus: /dev/i2c-1 (GPIO 2=SDA, GPIO 3=SCL)
-    - Size: 16 columns x 2 rows
-
-    Usage:
-        lcd = I2CLCDDisplay()
-        lcd.init()
-
-        lcd.write("Hello World!", row=0, col=0)
-        lcd.write("ARTIFACT", row=1, col=4)
+    - Size: 16 columns x 1 row
     """
 
     def __init__(
@@ -57,8 +84,9 @@ class I2CLCDDisplay(TextDisplay):
         self._rows = rows
         self._i2c_address = i2c_address
         self._i2c_bus = i2c_bus
-        self._lcd = None
+        self._bus = None
         self._initialized = False
+        self._backlight = LCD_BACKLIGHT
         # Buffer for tracking displayed content
         self._buffer = [[' ' for _ in range(cols)] for _ in range(rows)]
         # Track last displayed text to avoid redundant updates
@@ -72,9 +100,44 @@ class I2CLCDDisplay(TextDisplay):
     def rows(self) -> int:
         return self._rows
 
+    def _expander_write(self, data: int) -> None:
+        """Write byte to I2C expander."""
+        if self._bus:
+            try:
+                self._bus.write_byte(self._i2c_address, data | self._backlight)
+            except Exception:
+                pass
+
+    def _pulse_enable(self, data: int) -> None:
+        """Pulse the enable pin."""
+        self._expander_write(data | EN)
+        time.sleep(0.000001)  # 1us
+        self._expander_write(data & ~EN)
+        time.sleep(0.00005)  # 50us
+
+    def _write_4bits(self, value: int) -> None:
+        """Write 4 bits to LCD."""
+        self._expander_write(value)
+        self._pulse_enable(value)
+
+    def _send(self, value: int, mode: int) -> None:
+        """Send byte to LCD (command or data)."""
+        high_nib = value & 0xF0
+        low_nib = (value << 4) & 0xF0
+        self._write_4bits(high_nib | mode)
+        self._write_4bits(low_nib | mode)
+
+    def _command(self, value: int) -> None:
+        """Send command to LCD."""
+        self._send(value, 0)
+
+    def _write_char(self, value: int) -> None:
+        """Write character to LCD."""
+        self._send(value, RS)
+
     def init(self) -> bool:
         """
-        Initialize the I2C LCD.
+        Initialize the I2C LCD using Arduino-compatible sequence.
 
         Returns:
             True if initialization succeeded
@@ -82,32 +145,59 @@ class I2CLCDDisplay(TextDisplay):
         if self._initialized:
             return True
 
-        CharLCD = _get_rplcd()
-        if CharLCD is None:
-            logger.error("RPLCD library not available")
+        smbus2 = _get_smbus2()
+        if smbus2 is None:
+            logger.error("smbus2 library not available")
             return False
 
         try:
-            # Initialize LCD with PCF8574 I2C expander
-            self._lcd = CharLCD(
-                i2c_expander='PCF8574',
-                address=self._i2c_address,
-                port=self._i2c_bus,
-                cols=self._cols,
-                rows=self._rows,
-                dotsize=8,
-                charmap='A02',  # Standard character map
-                auto_linebreaks=False
-            )
+            self._bus = smbus2.SMBus(self._i2c_bus)
 
-            # Clear and set up - write initial message to verify it works
-            self._lcd.clear()
-            time.sleep(0.1)  # Give LCD time to process clear
-            self._lcd.cursor_pos = (0, 0)
-            self._lcd.write_string("ARTIFACT")
+            # Arduino LiquidCrystal_I2C init sequence
+            time.sleep(0.05)  # Wait 50ms after power up
+
+            # Reset expander with backlight OFF initially
+            self._backlight = 0
+            self._expander_write(0)
+            time.sleep(0.5)  # Shorter than Arduino's 1s but still substantial
+
+            # Put into 4-bit mode (HD44780 datasheet figure 24)
+            self._write_4bits(0x03 << 4)
+            time.sleep(0.0045)  # 4.5ms
+            self._write_4bits(0x03 << 4)
+            time.sleep(0.0045)  # 4.5ms
+            self._write_4bits(0x03 << 4)
+            time.sleep(0.00015)  # 150us
+            self._write_4bits(0x02 << 4)  # Set 4-bit mode
+
+            # Function set: 4-bit, 1-line, 5x8 dots
+            display_function = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS
+            self._command(LCD_FUNCTIONSET | display_function)
+
+            # Display on, cursor off, blink off
+            display_control = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF
+            self._command(LCD_DISPLAYCONTROL | display_control)
+
+            # Clear display
+            self._command(LCD_CLEARDISPLAY)
+            time.sleep(0.002)
+
+            # Entry mode set
+            display_mode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT
+            self._command(LCD_ENTRYMODESET | display_mode)
+
+            # Home
+            self._command(LCD_RETURNHOME)
+            time.sleep(0.002)
+
+            # Turn backlight ON
+            self._backlight = LCD_BACKLIGHT
+            self._expander_write(0)
+
+            # Write initial text
+            for c in "ARTIFACT":
+                self._write_char(ord(c))
             self._last_text = "ARTIFACT".ljust(self._cols)
-            for i, char in enumerate(self._last_text):
-                self._buffer[0][i] = char
 
             self._initialized = True
             logger.info(
@@ -118,11 +208,6 @@ class I2CLCDDisplay(TextDisplay):
 
         except Exception as e:
             logger.error(f"Failed to initialize I2C LCD: {e}")
-            # Try alternate address
-            if self._i2c_address == 0x27:
-                logger.info("Trying alternate address 0x3F...")
-                self._i2c_address = 0x3F
-                return self.init()
             return False
 
     def write(self, text: str, row: int = 0, col: int = 0) -> None:
@@ -131,10 +216,10 @@ class I2CLCDDisplay(TextDisplay):
 
         Args:
             text: Text to display (will be truncated to fit)
-            row: Row number (0 or 1)
+            row: Row number (0 for 16x1)
             col: Column number (0-15)
         """
-        if not self._initialized or self._lcd is None:
+        if not self._initialized or self._bus is None:
             return
 
         # Clamp position
@@ -146,8 +231,12 @@ class I2CLCDDisplay(TextDisplay):
         text = text[:max_len]
 
         try:
-            self._lcd.cursor_pos = (row, col)
-            self._lcd.write_string(text)
+            # Set cursor position
+            self._command(LCD_SETDDRAMADDR | col)
+
+            # Write characters
+            for c in text:
+                self._write_char(ord(c))
 
             # Update buffer
             for i, char in enumerate(text):
@@ -159,11 +248,12 @@ class I2CLCDDisplay(TextDisplay):
 
     def clear(self) -> None:
         """Clear the display."""
-        if not self._initialized or self._lcd is None:
+        if not self._initialized or self._bus is None:
             return
 
         try:
-            self._lcd.clear()
+            self._command(LCD_CLEARDISPLAY)
+            time.sleep(0.002)
             # Clear buffer
             self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
         except Exception as e:
@@ -171,14 +261,14 @@ class I2CLCDDisplay(TextDisplay):
 
     def set_cursor(self, col: int, row: int) -> None:
         """Set cursor position."""
-        if not self._initialized or self._lcd is None:
+        if not self._initialized or self._bus is None:
             return
 
         row = max(0, min(row, self._rows - 1))
         col = max(0, min(col, self._cols - 1))
 
         try:
-            self._lcd.cursor_pos = (row, col)
+            self._command(LCD_SETDDRAMADDR | col)
         except Exception as e:
             logger.error(f"LCD cursor error: {e}")
 
@@ -189,11 +279,12 @@ class I2CLCDDisplay(TextDisplay):
         Args:
             on: True to enable backlight, False to disable
         """
-        if not self._initialized or self._lcd is None:
+        if not self._initialized or self._bus is None:
             return
 
         try:
-            self._lcd.backlight_enabled = on
+            self._backlight = LCD_BACKLIGHT if on else 0
+            self._expander_write(0)
         except Exception as e:
             logger.error(f"LCD backlight error: {e}")
 
@@ -205,7 +296,7 @@ class I2CLCDDisplay(TextDisplay):
             location: Character slot (0-7)
             pattern: 8-byte pattern defining the character
         """
-        if not self._initialized or self._lcd is None:
+        if not self._initialized or self._bus is None:
             return
 
         if not 0 <= location <= 7:
@@ -214,7 +305,11 @@ class I2CLCDDisplay(TextDisplay):
             return
 
         try:
-            self._lcd.create_char(location, pattern)
+            # Set CGRAM address
+            self._command(0x40 | (location << 3))
+            # Write pattern
+            for byte in pattern:
+                self._write_char(byte)
         except Exception as e:
             logger.error(f"LCD create_char error: {e}")
 
@@ -228,7 +323,7 @@ class I2CLCDDisplay(TextDisplay):
         Args:
             text: Text to display (truncated to 16 chars)
         """
-        if not self._initialized or self._lcd is None:
+        if not self._initialized or self._bus is None:
             return
 
         # Normalize text (truncate and pad to 16 chars)
@@ -239,10 +334,19 @@ class I2CLCDDisplay(TextDisplay):
             return
 
         try:
-            self._lcd.clear()
+            # Clear display
+            self._command(LCD_CLEARDISPLAY)
+            time.sleep(0.002)
             self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
-            self._lcd.cursor_pos = (0, 0)
-            self._lcd.write_string(text)
+
+            # Home position
+            self._command(LCD_RETURNHOME)
+            time.sleep(0.002)
+
+            # Write characters
+            for c in text:
+                self._write_char(ord(c))
+
             for i, char in enumerate(text):
                 self._buffer[0][i] = char
             self._last_text = text
@@ -255,13 +359,14 @@ class I2CLCDDisplay(TextDisplay):
 
     def cleanup(self) -> None:
         """Clean up LCD resources."""
-        if self._initialized and self._lcd:
+        if self._initialized and self._bus:
             try:
-                self._lcd.clear()
-                self._lcd.close()
+                self._command(LCD_CLEARDISPLAY)
+                self._bus.close()
             except Exception:
                 pass
             self._initialized = False
+            self._bus = None
             logger.info("I2C LCD cleaned up")
 
     def __del__(self):
