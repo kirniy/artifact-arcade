@@ -6,6 +6,7 @@ Uses GPIO 2 (SDA) and GPIO 3 (SCL) on the Raspberry Pi.
 """
 
 import logging
+import time
 from ..base import TextDisplay
 
 logger = logging.getLogger(__name__)
@@ -99,8 +100,14 @@ class I2CLCDDisplay(TextDisplay):
                 auto_linebreaks=False
             )
 
-            # Clear and set up
+            # Clear and set up - write initial message to verify it works
             self._lcd.clear()
+            time.sleep(0.1)  # Give LCD time to process clear
+            self._lcd.cursor_pos = (0, 0)
+            self._lcd.write_string("ARTIFACT")
+            self._last_text = "ARTIFACT".ljust(self._cols)
+            for i, char in enumerate(self._last_text):
+                self._buffer[0][i] = char
 
             self._initialized = True
             logger.info(
