@@ -6,6 +6,10 @@ Uses GPIO 2 (SDA) and GPIO 3 (SCL) on the Raspberry Pi.
 
 Uses Arduino LiquidCrystal_I2C compatible initialization sequence
 for compatibility with STM32-based I2C adapters.
+
+Supports Cyrillic characters via:
+1. Latin lookalikes (А→A, В→B, Е→E, etc.) - no CGRAM slots needed
+2. Dynamic CGRAM allocation for unique Cyrillic letters (max 8 at a time)
 """
 
 import logging
@@ -37,6 +41,7 @@ LCD_RETURNHOME = 0x02
 LCD_ENTRYMODESET = 0x04
 LCD_DISPLAYCONTROL = 0x08
 LCD_FUNCTIONSET = 0x20
+LCD_SETCGRAMADDR = 0x40
 LCD_SETDDRAMADDR = 0x80
 
 # Flags for display entry mode
@@ -58,6 +63,77 @@ EN = 0x04  # Enable bit
 RS = 0x01  # Register select bit
 LCD_BACKLIGHT = 0x08
 
+# Cyrillic characters that look like Latin letters (map directly)
+# These don't need CGRAM slots
+CYRILLIC_TO_LATIN: dict[str, str] = {
+    'А': 'A', 'а': 'a',
+    'В': 'B',  # в needs custom (looks different lowercase)
+    'Е': 'E', 'е': 'e',
+    'Ё': 'E',  # ё needs custom if dots matter
+    'К': 'K', 'к': 'k',
+    'М': 'M', 'м': 'm',
+    'Н': 'H', 'н': 'h',  # Russian Н looks like Latin H
+    'О': 'O', 'о': 'o',
+    'Р': 'P', 'р': 'p',
+    'С': 'C', 'с': 'c',
+    'Т': 'T', 'т': 't',
+    'Х': 'X', 'х': 'x',
+    'У': 'Y',  # uppercase У looks like Y
+    'у': 'y',
+}
+
+# 5x8 pixel patterns for Cyrillic letters that need custom CGRAM
+# Each list is 8 bytes, each byte represents one row (5 bits used)
+CYRILLIC_PATTERNS: dict[str, list[int]] = {
+    # Uppercase Cyrillic
+    'Б': [0b11111, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b11110, 0b00000],
+    'Г': [0b11111, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b00000],
+    'Д': [0b00110, 0b01010, 0b01010, 0b01010, 0b01010, 0b11111, 0b10001, 0b00000],
+    'Ж': [0b10101, 0b10101, 0b01110, 0b00100, 0b01110, 0b10101, 0b10101, 0b00000],
+    'З': [0b01110, 0b10001, 0b00001, 0b00110, 0b00001, 0b10001, 0b01110, 0b00000],
+    'И': [0b10001, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b10001, 0b00000],
+    'Й': [0b01010, 0b00100, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b00000],
+    'Л': [0b00111, 0b01001, 0b01001, 0b01001, 0b01001, 0b01001, 0b10001, 0b00000],
+    'П': [0b11111, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b00000],
+    'У': [0b10001, 0b10001, 0b10001, 0b01111, 0b00001, 0b10001, 0b01110, 0b00000],
+    'Ф': [0b00100, 0b01110, 0b10101, 0b10101, 0b10101, 0b01110, 0b00100, 0b00000],
+    'Ц': [0b10010, 0b10010, 0b10010, 0b10010, 0b10010, 0b11111, 0b00001, 0b00000],
+    'Ч': [0b10001, 0b10001, 0b10001, 0b01111, 0b00001, 0b00001, 0b00001, 0b00000],
+    'Ш': [0b10101, 0b10101, 0b10101, 0b10101, 0b10101, 0b10101, 0b11111, 0b00000],
+    'Щ': [0b10101, 0b10101, 0b10101, 0b10101, 0b10101, 0b11111, 0b00001, 0b00000],
+    'Ъ': [0b11000, 0b01000, 0b01000, 0b01110, 0b01001, 0b01001, 0b01110, 0b00000],
+    'Ы': [0b10001, 0b10001, 0b10001, 0b11101, 0b10011, 0b10011, 0b11101, 0b00000],
+    'Ь': [0b10000, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b11110, 0b00000],
+    'Э': [0b01110, 0b10001, 0b00001, 0b00111, 0b00001, 0b10001, 0b01110, 0b00000],
+    'Ю': [0b10010, 0b10101, 0b10101, 0b11101, 0b10101, 0b10101, 0b10010, 0b00000],
+    'Я': [0b01111, 0b10001, 0b10001, 0b01111, 0b00101, 0b01001, 0b10001, 0b00000],
+    # Lowercase Cyrillic (many similar to uppercase at 5x8)
+    'б': [0b00011, 0b01100, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110, 0b00000],
+    'в': [0b00000, 0b00000, 0b11110, 0b10001, 0b11110, 0b10001, 0b11110, 0b00000],
+    'г': [0b00000, 0b00000, 0b11111, 0b10000, 0b10000, 0b10000, 0b10000, 0b00000],
+    'д': [0b00000, 0b00000, 0b00110, 0b01010, 0b01010, 0b11111, 0b10001, 0b00000],
+    'ж': [0b00000, 0b00000, 0b10101, 0b01110, 0b00100, 0b01110, 0b10101, 0b00000],
+    'з': [0b00000, 0b00000, 0b01110, 0b00001, 0b00110, 0b00001, 0b01110, 0b00000],
+    'и': [0b00000, 0b00000, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b00000],
+    'й': [0b01010, 0b00100, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b00000],
+    'л': [0b00000, 0b00000, 0b00111, 0b01001, 0b01001, 0b01001, 0b10001, 0b00000],
+    'п': [0b00000, 0b00000, 0b11111, 0b10001, 0b10001, 0b10001, 0b10001, 0b00000],
+    'ф': [0b00000, 0b00100, 0b01110, 0b10101, 0b10101, 0b01110, 0b00100, 0b00000],
+    'ц': [0b00000, 0b00000, 0b10010, 0b10010, 0b10010, 0b11111, 0b00001, 0b00000],
+    'ч': [0b00000, 0b00000, 0b10001, 0b10001, 0b01111, 0b00001, 0b00001, 0b00000],
+    'ш': [0b00000, 0b00000, 0b10101, 0b10101, 0b10101, 0b10101, 0b11111, 0b00000],
+    'щ': [0b00000, 0b00000, 0b10101, 0b10101, 0b10101, 0b11111, 0b00001, 0b00000],
+    'ъ': [0b00000, 0b00000, 0b11000, 0b01000, 0b01110, 0b01001, 0b01110, 0b00000],
+    'ы': [0b00000, 0b00000, 0b10001, 0b10001, 0b11101, 0b10011, 0b11101, 0b00000],
+    'ь': [0b00000, 0b00000, 0b10000, 0b10000, 0b11110, 0b10001, 0b11110, 0b00000],
+    'э': [0b00000, 0b00000, 0b01110, 0b00001, 0b00111, 0b00001, 0b01110, 0b00000],
+    'ю': [0b00000, 0b00000, 0b10010, 0b10101, 0b11101, 0b10101, 0b10010, 0b00000],
+    'я': [0b00000, 0b00000, 0b01111, 0b10001, 0b01111, 0b00101, 0b10001, 0b00000],
+    'ё': [0b01010, 0b00000, 0b01110, 0b10001, 0b11111, 0b10000, 0b01110, 0b00000],
+    # Special symbols
+    '№': [0b10001, 0b11001, 0b10101, 0b10011, 0b00000, 0b01110, 0b01010, 0b01110],
+}
+
 
 class I2CLCDDisplay(TextDisplay):
     """
@@ -71,6 +147,11 @@ class I2CLCDDisplay(TextDisplay):
     - Address: 0x27 (default)
     - Bus: /dev/i2c-1 (GPIO 2=SDA, GPIO 3=SCL)
     - Size: 16 columns x 1 row
+
+    Cyrillic support:
+    - Latin lookalikes (А, В, Е, К, М, Н, О, Р, С, Т, Х, У) map to ASCII
+    - Unique letters (Б, Г, Д, Ж, З, И, Й, Л, П, Ф, Ц, Ч, Ш, Щ, Ъ, Ы, Ь, Э, Ю, Я)
+      use dynamic CGRAM allocation (max 8 per text)
     """
 
     def __init__(
@@ -91,6 +172,8 @@ class I2CLCDDisplay(TextDisplay):
         self._buffer = [[' ' for _ in range(cols)] for _ in range(rows)]
         # Track last displayed text to avoid redundant updates
         self._last_text: str = ""
+        # CGRAM slot tracking: maps Cyrillic char -> CGRAM slot (0-7)
+        self._cgram_chars: dict[str, int] = {}
 
     @property
     def cols(self) -> int:
@@ -215,8 +298,10 @@ class I2CLCDDisplay(TextDisplay):
         """
         Write text at specified position.
 
+        Supports Cyrillic text via dynamic CGRAM allocation.
+
         Args:
-            text: Text to display (will be truncated to fit)
+            text: Text to display (will be truncated to fit, supports Cyrillic)
             row: Row number (0 for 16x1)
             col: Column number (0-15)
         """
@@ -232,12 +317,15 @@ class I2CLCDDisplay(TextDisplay):
         text = text[:max_len]
 
         try:
+            # Convert Cyrillic text to LCD byte codes
+            byte_codes = self._prepare_cyrillic_text(text)
+
             # Set cursor position
             self._command(LCD_SETDDRAMADDR | col)
 
             # Write characters
-            for c in text:
-                self._write_char(ord(c))
+            for code in byte_codes:
+                self._write_char(code)
 
             # Update buffer
             for i, char in enumerate(text):
@@ -307,12 +395,62 @@ class I2CLCDDisplay(TextDisplay):
 
         try:
             # Set CGRAM address
-            self._command(0x40 | (location << 3))
+            self._command(LCD_SETCGRAMADDR | (location << 3))
             # Write pattern
             for byte in pattern:
                 self._write_char(byte)
         except Exception as e:
             logger.error(f"LCD create_char error: {e}")
+
+    def _prepare_cyrillic_text(self, text: str) -> list[int]:
+        """
+        Convert text with Cyrillic characters to LCD byte codes.
+
+        Strategy:
+        1. Latin lookalikes (А→A, В→B, etc.) map to ASCII codes
+        2. Unique Cyrillic letters get dynamic CGRAM slots (0-7)
+        3. If more than 8 unique Cyrillic letters, extras become '?'
+
+        Returns:
+            List of byte codes to send to LCD
+        """
+        # Find all unique Cyrillic letters that need CGRAM
+        needed_cgram: list[str] = []
+        for char in text:
+            if char in CYRILLIC_PATTERNS and char not in needed_cgram:
+                if char not in self._cgram_chars:
+                    needed_cgram.append(char)
+
+        # Allocate CGRAM slots for new characters (reuse existing if possible)
+        slot = len(self._cgram_chars)
+        for char in needed_cgram:
+            if slot >= 8:
+                # No more slots - clear cache and start over
+                self._cgram_chars.clear()
+                slot = 0
+            self._cgram_chars[char] = slot
+            # Load the character pattern into CGRAM
+            pattern = CYRILLIC_PATTERNS[char]
+            self.create_char(slot, pattern)
+            slot += 1
+
+        # Convert text to LCD byte codes
+        result: list[int] = []
+        for char in text:
+            if char in CYRILLIC_TO_LATIN:
+                # Latin lookalike - use ASCII
+                result.append(ord(CYRILLIC_TO_LATIN[char]))
+            elif char in self._cgram_chars:
+                # Custom character in CGRAM (slots 0-7)
+                result.append(self._cgram_chars[char])
+            elif char in CYRILLIC_PATTERNS:
+                # Needed CGRAM but no slot - use '?'
+                result.append(ord('?'))
+            else:
+                # Regular ASCII or other character
+                result.append(ord(char) if ord(char) < 256 else ord('?'))
+
+        return result
 
     def set_text(self, text: str) -> None:
         """
@@ -321,12 +459,16 @@ class I2CLCDDisplay(TextDisplay):
         Only updates the display if text has changed to avoid
         I2C bus flooding (LCD is slow and can't keep up with 60fps).
 
+        Supports Cyrillic text:
+        - Latin lookalikes (А, В, Е, etc.) map to ASCII automatically
+        - Unique Cyrillic letters use CGRAM custom characters (max 8 unique per text)
+
         Note: 16x1 LCD uses 8x2 memory layout:
         - Address 0x00-0x07 = left 8 characters
         - Address 0x40-0x47 = right 8 characters
 
         Args:
-            text: Text to display (truncated to 16 chars)
+            text: Text to display (truncated to 16 chars, supports Cyrillic)
         """
         if not self._initialized or self._bus is None:
             return
@@ -339,6 +481,9 @@ class I2CLCDDisplay(TextDisplay):
             return
 
         try:
+            # Convert Cyrillic text to LCD byte codes (loads CGRAM as needed)
+            byte_codes = self._prepare_cyrillic_text(text)
+
             # Clear display
             self._command(LCD_CLEARDISPLAY)
             time.sleep(0.002)
@@ -346,13 +491,13 @@ class I2CLCDDisplay(TextDisplay):
 
             # Write first 8 characters to address 0x00
             self._command(LCD_SETDDRAMADDR | 0x00)
-            for c in text[:8]:
-                self._write_char(ord(c))
+            for code in byte_codes[:8]:
+                self._write_char(code)
 
             # Write next 8 characters to address 0x40
             self._command(LCD_SETDDRAMADDR | 0x40)
-            for c in text[8:16]:
-                self._write_char(ord(c))
+            for code in byte_codes[8:16]:
+                self._write_char(code)
 
             for i, char in enumerate(text):
                 self._buffer[0][i] = char
