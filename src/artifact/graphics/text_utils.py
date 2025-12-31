@@ -1160,7 +1160,7 @@ def render_ticker_animated(
     time_ms: float,
     color: Tuple[int, int, int],
     effect: TickerEffect = TickerEffect.SCROLL,
-    speed: float = 0.025,
+    speed: float = 0.015,
     font: Optional[PixelFont] = None,
 ) -> None:
     """Render dramatically animated ticker text with SEAMLESS endless looping.
