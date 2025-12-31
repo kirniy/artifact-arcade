@@ -50,7 +50,7 @@ LCD_BLINKOFF = 0x00
 
 # Flags for function set
 LCD_4BITMODE = 0x00
-LCD_1LINE = 0x00
+LCD_2LINE = 0x08  # 16x1 LCDs use 2-line mode (8x2 memory layout)
 LCD_5x8DOTS = 0x00
 
 # PCF8574 pin mappings
@@ -170,8 +170,8 @@ class I2CLCDDisplay(TextDisplay):
             time.sleep(0.00015)  # 150us
             self._write_4bits(0x02 << 4)  # Set 4-bit mode
 
-            # Function set: 4-bit, 1-line, 5x8 dots
-            display_function = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS
+            # Function set: 4-bit, 2-line mode (16x1 LCD uses 8x2 memory layout)
+            display_function = LCD_4BITMODE | LCD_2LINE | LCD_5x8DOTS
             self._command(LCD_FUNCTIONSET | display_function)
 
             # Display on, cursor off, blink off
@@ -320,6 +320,10 @@ class I2CLCDDisplay(TextDisplay):
         Only updates the display if text has changed to avoid
         I2C bus flooding (LCD is slow and can't keep up with 60fps).
 
+        Note: 16x1 LCD uses 8x2 memory layout:
+        - Address 0x00-0x07 = left 8 characters
+        - Address 0x40-0x47 = right 8 characters
+
         Args:
             text: Text to display (truncated to 16 chars)
         """
@@ -339,12 +343,14 @@ class I2CLCDDisplay(TextDisplay):
             time.sleep(0.002)
             self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
 
-            # Home position
-            self._command(LCD_RETURNHOME)
-            time.sleep(0.002)
+            # Write first 8 characters to address 0x00
+            self._command(LCD_SETDDRAMADDR | 0x00)
+            for c in text[:8]:
+                self._write_char(ord(c))
 
-            # Write characters
-            for c in text:
+            # Write next 8 characters to address 0x40
+            self._command(LCD_SETDDRAMADDR | 0x40)
+            for c in text[8:16]:
                 self._write_char(ord(c))
 
             for i, char in enumerate(text):
