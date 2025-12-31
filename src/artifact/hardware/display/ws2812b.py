@@ -150,13 +150,14 @@ class WS2812BDisplay(Display):
         """
         Convert (x, y) coordinates to LED index.
 
-        Physical layout - pixels go RIGHT to LEFT, COLUMN-MAJOR:
+        Physical layout - SERPENTINE, COLUMN-MAJOR, RIGHT to LEFT:
         - Pixels 0-63: rightmost 8x8 (x=40-47 visually)
         - Pixels 64-319: middle 32x8 (x=8-39 visually)
         - Pixels 320-383: leftmost 8x8 (x=0-7 visually)
 
-        Within each matrix, pixels go column by column from RIGHT to LEFT,
-        each column goes top to bottom (y=0 to y=7).
+        Within each matrix, columns go right to left.
+        Even columns (0,2,4...): top to bottom (y=0 at top)
+        Odd columns (1,3,5...): bottom to top (y=0 at bottom)
         """
         # Map visual x coordinate to physical matrix and local position
         # Visual: x=0 is LEFT, x=47 is RIGHT
@@ -178,8 +179,15 @@ class WS2812BDisplay(Display):
             local_col = 7 - x
             matrix_offset = 320
 
-        # Each column is 8 pixels (y=0 to y=7), top to bottom
-        return matrix_offset + local_col * 8 + y
+        # Serpentine: even columns top-to-bottom, odd columns bottom-to-top
+        if local_col % 2 == 0:
+            # Even column: y=0 is first pixel
+            pixel_in_col = y
+        else:
+            # Odd column: y=7 is first pixel (reversed)
+            pixel_in_col = 7 - y
+
+        return matrix_offset + local_col * 8 + pixel_in_col
 
     def _rgb_to_color(self, r: int, g: int, b: int) -> int:
         """Convert RGB to 24-bit color value (RGB order for this strip)."""
