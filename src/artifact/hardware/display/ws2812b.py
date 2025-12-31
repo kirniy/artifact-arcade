@@ -150,38 +150,36 @@ class WS2812BDisplay(Display):
         """
         Convert (x, y) coordinates to LED index.
 
-        Physical layout (daisy chain order):
-        - Matrix 1: 8x8 (pixels 0-63) - displays x=0-7
-        - Matrix 2: 32x8 (pixels 64-319) - displays x=8-39
-        - Matrix 3: 8x8 (pixels 320-383) - displays x=40-47
+        Physical layout - pixels go RIGHT to LEFT, COLUMN-MAJOR:
+        - Pixels 0-63: rightmost 8x8 (x=40-47 visually)
+        - Pixels 64-319: middle 32x8 (x=8-39 visually)
+        - Pixels 320-383: leftmost 8x8 (x=0-7 visually)
 
-        Each matrix has serpentine wiring:
-        - Even rows: left to right within matrix
-        - Odd rows: right to left within matrix
+        Within each matrix, pixels go column by column from right to left,
+        each column goes top to bottom (y=0 to y=7).
         """
-        if x < 8:
-            # Matrix 1 (8x8, left) - LED indices 0-63
-            local_x = x
-            matrix_offset = 0
-            matrix_width = 8
-        elif x < 40:
-            # Matrix 2 (32x8, middle) - LED indices 64-319
-            local_x = x - 8
-            matrix_offset = 64
-            matrix_width = 32
-        else:
-            # Matrix 3 (8x8, right) - LED indices 320-383
-            local_x = x - 40
-            matrix_offset = 320
-            matrix_width = 8
+        # Map visual x coordinate to physical matrix and local position
+        # Visual: x=0 is LEFT, x=47 is RIGHT
+        # Physical: pixels start from RIGHT
 
-        # Serpentine pattern within each matrix
-        if y % 2 == 0:
-            # Even row: left to right
-            return matrix_offset + y * matrix_width + local_x
+        if x >= 40:
+            # Rightmost 8x8 (pixels 0-63)
+            # x=47 -> local_col=0, x=40 -> local_col=7
+            local_col = 47 - x
+            matrix_offset = 0
+        elif x >= 8:
+            # Middle 32x8 (pixels 64-319)
+            # x=39 -> local_col=0, x=8 -> local_col=31
+            local_col = 39 - x
+            matrix_offset = 64
         else:
-            # Odd row: right to left
-            return matrix_offset + y * matrix_width + (matrix_width - 1 - local_x)
+            # Leftmost 8x8 (pixels 320-383)
+            # x=7 -> local_col=0, x=0 -> local_col=7
+            local_col = 7 - x
+            matrix_offset = 320
+
+        # Each column is 8 pixels (y=0 to y=7), top to bottom
+        return matrix_offset + local_col * 8 + y
 
     def _rgb_to_color(self, r: int, g: int, b: int) -> int:
         """Convert RGB to 24-bit color value (GRB order for WS2812B)."""

@@ -53,7 +53,7 @@ class HardwareConfig:
     ticker_width: int = 48
     ticker_height: int = 8
     lcd_cols: int = 16
-    lcd_rows: int = 1
+    lcd_rows: int = 2
 
     # GPIO settings
     ws2812b_gpio: int = 21  # Not 18 to avoid audio conflict
