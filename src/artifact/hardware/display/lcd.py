@@ -418,6 +418,10 @@ class I2CLCDDisplay(TextDisplay):
         2. Unique Cyrillic letters get dynamic CGRAM slots (0-7)
         3. If more than 8 unique Cyrillic letters, extras become '?'
 
+        IMPORTANT: Always reload CGRAM for each new text to ensure
+        the patterns match what's displayed. The LCD CGRAM persists
+        but our slot mapping must stay in sync.
+
         Returns:
             List of byte codes to send to LCD
         """
@@ -427,25 +431,24 @@ class I2CLCDDisplay(TextDisplay):
             if char in CYRILLIC_PATTERNS and char not in needed_cgram:
                 needed_cgram.append(char)
 
-        # Check if we need to reload CGRAM (new chars or too many)
-        new_chars = [c for c in needed_cgram if c not in self._cgram_chars]
-        total_slots_needed = len(self._cgram_chars) + len(new_chars)
+        # Check if any needed chars are missing from current cache
+        missing_chars = [c for c in needed_cgram if c not in self._cgram_chars]
 
-        if total_slots_needed > 8 or len(needed_cgram) > 8:
-            # Too many chars - clear and reload just what this text needs
-            self._cgram_chars.clear()
-            new_chars = needed_cgram[:8]  # Take first 8 unique chars
+        # If we have missing chars and not enough slots, clear and reload
+        if missing_chars:
+            available_slots = 8 - len(self._cgram_chars)
+            if len(missing_chars) > available_slots:
+                # Not enough slots - clear everything and reload fresh
+                self._cgram_chars.clear()
 
-        # Load new characters into CGRAM
-        slot = len(self._cgram_chars)
-        for char in new_chars:
-            if slot >= 8:
-                break  # No more slots
-            if char not in self._cgram_chars:
-                self._cgram_chars[char] = slot
-                pattern = CYRILLIC_PATTERNS[char]
-                self.create_char(slot, pattern)
-                slot += 1
+            # Load all needed characters (up to 8)
+            slot = len(self._cgram_chars)
+            for char in needed_cgram[:8]:
+                if char not in self._cgram_chars and slot < 8:
+                    self._cgram_chars[char] = slot
+                    pattern = CYRILLIC_PATTERNS[char]
+                    self.create_char(slot, pattern)
+                    slot += 1
 
         # Convert text to LCD byte codes
         result: list[int] = []
