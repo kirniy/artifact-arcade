@@ -1195,7 +1195,8 @@ def render_ticker_animated(
         font = get_ticker_font()  # Use 8px font for ticker
 
     # Create seamless looping text with visual separator
-    separator = "   ★   "
+    # Using ASCII * instead of ★ since ★ may not be in all fonts
+    separator = "   *   "
     loop_text = text.rstrip() + separator
 
     # Measure the single loop unit width
