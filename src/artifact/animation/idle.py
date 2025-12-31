@@ -12,7 +12,7 @@ from artifact.animation.timeline import Timeline
 from artifact.animation.easing import Easing
 from artifact.animation.particles import ParticleSystem, EmitterConfig, ParticlePresets
 from artifact.graphics.primitives import clear, draw_circle, draw_rect, fill
-from artifact.graphics.fonts import load_font, draw_text_bitmap
+from artifact.graphics.fonts import load_font, get_ticker_font, draw_text_bitmap
 
 
 @dataclass
@@ -212,8 +212,8 @@ class MysticalIdleAnimation(IdleAnimation):
         scroll_offset = int(self._time / 50) % (len(message) * 6 + self.config.ticker_width)
         x_pos = self.config.ticker_width - scroll_offset
 
-        font = load_font("cyrillic")
-        draw_text_bitmap(buffer, message, x_pos, 1, self.secondary, font, scale=1)
+        font = get_ticker_font()  # Use 8px ticker font for full height
+        draw_text_bitmap(buffer, message, x_pos, 0, self.secondary, font, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD text."""

@@ -176,8 +176,8 @@ Pin 6 (GND) → Black wire
 | Interface | Device | GPIO/Connection |
 |-----------|--------|-----------------|
 | HDMI | Main RGB Matrix (via T50) | HDMI port → NovaStar T50 |
-| GPIO 21 | WS2812B Ticker LEDs | PWM (384 LEDs) |
-| I2C | LCD 16x2 | /dev/i2c-1 (GPIO 2,3) |
+| GPIO 21 | WS2812B Ticker LEDs | PWM (384 LEDs, 48×8 pixels) |
+| I2C | LCD 16x1 | /dev/i2c-1 (GPIO 2,3), Address 0x27 |
 | UART | Thermal Printer | /dev/ttyAMA0 (GPIO 14,15) |
 
 #### Camera
@@ -387,23 +387,22 @@ NovaStar receiving cards (DH418) have native firmware support for ICN2153 panels
 | Component | Specification |
 |-----------|---------------|
 | **LED Type** | WS2812B (Neopixel-compatible) |
-| **Layout** | 1× 32×8 matrix + 2× 8×8 matrices = 48×8 total |
-| **Total LEDs** | 384 (256 + 64 + 64) |
+| **Layout** | 8×8 (right) → 32×8 (middle) → 8×8 (left) = 48×8 total |
+| **Total LEDs** | 384 (64 + 256 + 64) |
 | **GPIO Pin** | GPIO 21 (PWM) |
 | **Data Protocol** | Single-wire 800kHz serial |
+| **Color Order** | RGB (not GRB like standard WS2812B) |
 
 **Note**: Using GPIO 21 instead of GPIO 18 to avoid conflict with 3.5mm audio (which uses GPIO 18 for PWM).
 
-### Wiring
+### Physical Wiring Order
 
 ```
-Raspberry Pi GPIO 21 ──────▶ DIN (first matrix)
-                             ↓
-                      32×8 Matrix (256 LEDs)
+Raspberry Pi GPIO 21 ──────▶ DIN (rightmost 8×8 matrix, pixels 0-63)
                              ↓ DOUT → DIN
-                      8×8 Matrix L (64 LEDs)
+                      32×8 Matrix (pixels 64-319, middle)
                              ↓ DOUT → DIN
-                      8×8 Matrix R (64 LEDs)
+                      8×8 Matrix (pixels 320-383, leftmost)
                              ↓ DOUT
                            (end)
 
@@ -412,21 +411,20 @@ Power:
   GND → GND on all matrices + Pi GND (common ground!)
 ```
 
-### Software
+### Serpentine Pixel Mapping
 
-Using `rpi_ws281x` / `adafruit-circuitpython-neopixel`:
+Each matrix uses **column-major serpentine** pattern (within each matrix, columns go right-to-left):
+- **Even columns (0, 2, 4...)**: bottom-to-top (y=7 first, pixel_in_col = 7-y)
+- **Odd columns (1, 3, 5...)**: top-to-bottom (y=0 first, pixel_in_col = y)
 
-```python
-import board
-import neopixel
+Visual x=0 is leftmost, x=47 is rightmost. The `_xy_to_index()` function in `ws2812b.py` handles the mapping.
 
-# 384 LEDs on GPIO 21 (not GPIO 18 - that conflicts with audio)
-pixels = neopixel.NeoPixel(board.D21, 384, brightness=0.5, auto_write=False)
+### 8-Pixel Ticker Font
 
-# Set pixel colors
-pixels[0] = (255, 0, 0)  # Red
-pixels.show()
-```
+The ticker uses an **8-pixel tall font** (`get_ticker_font()`) to fill all 8 rows:
+- Full Latin A-Z, numbers 0-9, punctuation
+- Full Cyrillic А-Я, а-я with proper 8px glyphs
+- Speed: 0.015-0.050 pixels/ms (slowed to 0.015 for readability)
 
 ### Important Notes
 
@@ -435,6 +433,52 @@ pixels.show()
 2. **Level Shifting**: WS2812B expects 5V logic but Pi outputs 3.3V. Most WS2812B LEDs work reliably with 3.3V signals, but for long runs or reliability, add a 74AHCT125 level shifter.
 
 3. **Power**: 384 LEDs at full white = ~23A (60mA/LED). Use a beefy 5V supply and inject power at multiple points for even brightness.
+
+---
+
+## I2C LCD Display (16x1)
+
+### Configuration
+
+| Component | Specification |
+|-----------|---------------|
+| **Type** | HD44780-compatible character LCD |
+| **Size** | 16 characters × 1 row |
+| **Interface** | I2C via PCF8574/STM32 expander |
+| **Address** | 0x27 |
+| **Bus** | /dev/i2c-1 (GPIO 2=SDA, GPIO 3=SCL) |
+| **Memory Layout** | 8×2 (0x00-0x07 + 0x40-0x47) |
+
+### Cyrillic Support
+
+The LCD driver (`lcd.py`) supports Russian text via dynamic CGRAM allocation:
+
+1. **Latin Lookalikes** (no CGRAM needed):
+   - А→A, В→B, Е→E, К→K, М→M, Н→H, О→O, Р→P, С→C, Т→T, Х→X, У→Y
+   - These map directly to ASCII characters
+
+2. **Custom CGRAM Characters** (max 8 per text):
+   - Б, Г, Д, Ж, З, И, Й, Л, П, Ф, Ц, Ч, Ш, Щ, Ъ, Ы, Ь, Э, Ю, Я
+   - Each uses 5×8 pixel pattern stored in CGRAM slots 0-7
+   - If >8 unique Cyrillic letters needed, driver cycles CGRAM
+
+### Cold Boot Initialization
+
+LCD requires extended delays on cold boot:
+- 100ms after power-up
+- 1000ms expander reset delay
+- HD44780 4-bit init sequence per datasheet Figure 24
+
+### Usage
+
+```python
+from artifact.hardware.display.lcd import I2CLCDDisplay
+
+lcd = I2CLCDDisplay()
+lcd.init()
+lcd.set_text("Привет мир!")  # Cyrillic works!
+lcd.set_text("АРТЕФАКТ")     # Mix of lookalikes + custom chars
+```
 
 ---
 

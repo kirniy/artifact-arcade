@@ -759,7 +759,7 @@ class VideoMode(BaseMode):
         if text_width <= ticker_width:
             # Short text - center it
             x = (ticker_width - text_width) // 2
-            draw_text(buffer, text, x, 1, color, scale=1)
+            draw_text(buffer, text, x, 0, color, scale=1)
         else:
             # Long text - smooth scroll back and forth
             t = self._selection_pulse * 1000  # Convert to ms-like value
@@ -777,7 +777,7 @@ class VideoMode(BaseMode):
 
             max_offset = text_width - ticker_width
             x_offset = int(eased * max_offset)
-            draw_text(buffer, text, -x_offset, 1, color, scale=1)
+            draw_text(buffer, text, -x_offset, 0, color, scale=1)
 
     def _render_countdown_bar(self, buffer: NDArray[np.uint8]) -> None:
         """Render animated countdown bar in cyan/teal blue style."""
