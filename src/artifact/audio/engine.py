@@ -90,7 +90,7 @@ class AudioEngine:
         self._music_playing = False
         self._volume_master = 1.0
         self._volume_sfx = 1.0
-        self._volume_music = 0.6
+        self._volume_music = 1.0  # Maximum volume - speakers need it loud!
         self._muted = False
         self._current_music: Optional[str] = None
         self._music_channel: Optional[pygame.mixer.Channel] = None
@@ -107,6 +107,9 @@ class AudioEngine:
     def init(self, skip_generation: bool = False) -> bool:
         """Initialize the audio system."""
         try:
+            # Set system ALSA volume to maximum BEFORE initializing pygame
+            self._set_system_volume_max()
+
             pygame.mixer.pre_init(SAMPLE_RATE, -16, 2, 4096)
             pygame.mixer.init()
             pygame.mixer.set_num_channels(16)
@@ -122,6 +125,46 @@ class AudioEngine:
         except Exception as e:
             logger.error(f"Failed to initialize audio: {e}")
             return False
+
+    def _set_system_volume_max(self) -> None:
+        """Set system ALSA volume to absolute maximum.
+
+        Uses amixer to set Headphone volume to 100% on Raspberry Pi.
+        This ensures the 3.5mm jack output is at maximum level.
+        """
+        import subprocess
+        import os
+
+        # Only run on Linux (Raspberry Pi)
+        if os.name != 'posix' or not os.path.exists('/usr/bin/amixer'):
+            return
+
+        try:
+            # Try to set Headphone volume on card 2 (bcm2835 Headphones)
+            # Card 2 is typically the 3.5mm audio jack on Raspberry Pi 4
+            commands = [
+                ['amixer', '-c', '2', 'sset', 'Headphone', '100%', 'unmute'],
+                ['amixer', '-c', '2', 'sset', 'Headphone', '0dB', 'unmute'],
+                ['amixer', 'sset', 'Headphone', '100%', 'unmute'],
+                ['amixer', 'sset', 'PCM', '100%', 'unmute'],
+                ['amixer', 'sset', 'Master', '100%', 'unmute'],
+            ]
+
+            for cmd in commands:
+                try:
+                    result = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    if result.returncode == 0:
+                        logger.info(f"System volume set: {' '.join(cmd)}")
+                except Exception:
+                    continue
+
+        except Exception as e:
+            logger.warning(f"Could not set system volume: {e}")
 
     def _create_sound(self, samples: array.array) -> pygame.mixer.Sound:
         """Create a pygame Sound from mono samples (auto-converted to stereo)."""
