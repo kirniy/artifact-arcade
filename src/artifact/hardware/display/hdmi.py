@@ -63,11 +63,15 @@ class HDMIDisplay(Display):
         buffer[:, :] = [0, 255, 0]  # Green
         display.set_buffer(buffer)
         display.show()
+
+        # Flip display 180° if mounted upside down
+        display = HDMIDisplay(rotate_180=True)
     """
 
-    def __init__(self, width: int = 128, height: int = 128):
+    def __init__(self, width: int = 128, height: int = 128, rotate_180: bool = True):
         self._width = width
         self._height = height
+        self._rotate_180 = rotate_180
         self._buffer = np.zeros((height, width, 3), dtype=np.uint8)
         self._screen = None
         self._led_surface = None  # The 128x128 surface for LED content
@@ -165,6 +169,10 @@ class HDMIDisplay(Display):
             self._buffer.swapaxes(0, 1)
         )
 
+        # Rotate 180° if display is mounted upside down
+        if self._rotate_180:
+            surface = pygame.transform.rotate(surface, 180)
+
         # Clear screen to black first
         self._screen.fill((0, 0, 0))
 
@@ -202,9 +210,10 @@ class HDMIDisplayScaled(HDMIDisplay):
         self,
         width: int = 128,
         height: int = 128,
-        scale: int = 4
+        scale: int = 4,
+        rotate_180: bool = True
     ):
-        super().__init__(width, height)
+        super().__init__(width, height, rotate_180=rotate_180)
         self._scale = scale
         self._output_width = width * scale
         self._output_height = height * scale
@@ -253,6 +262,10 @@ class HDMIDisplayScaled(HDMIDisplay):
         surface = pygame.surfarray.make_surface(
             self._buffer.swapaxes(0, 1)
         )
+
+        # Rotate 180° if display is mounted upside down
+        if self._rotate_180:
+            surface = pygame.transform.rotate(surface, 180)
 
         # Scale up with nearest-neighbor (preserves pixel-art look)
         scaled = pygame.transform.scale(
