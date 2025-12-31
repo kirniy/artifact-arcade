@@ -155,28 +155,32 @@ class WS2812BDisplay(Display):
         - Pixels 64-319: middle 32x8 (x=8-39 visually)
         - Pixels 320-383: leftmost 8x8 (x=0-7 visually)
 
-        Within each matrix, pixels go column by column from right to left,
-        each column goes top to bottom (y=0 to y=7).
+        Within each matrix, pixels go column by column from LEFT to RIGHT
+        (within that matrix), each column goes top to bottom (y=0 to y=7).
         """
         # Map visual x coordinate to physical matrix and local position
         # Visual: x=0 is LEFT, x=47 is RIGHT
-        # Physical: pixels start from RIGHT
+        # Physical: matrices are ordered right to left, but columns within
+        # each matrix go left to right
 
         if x >= 40:
             # Rightmost 8x8 (pixels 0-63)
-            # x=47 -> local_col=0, x=40 -> local_col=7
-            local_col = 47 - x
+            # x=40 -> local_col=0, x=47 -> local_col=7
+            local_col = x - 40
             matrix_offset = 0
+            matrix_width = 8
         elif x >= 8:
             # Middle 32x8 (pixels 64-319)
-            # x=39 -> local_col=0, x=8 -> local_col=31
-            local_col = 39 - x
+            # x=8 -> local_col=0, x=39 -> local_col=31
+            local_col = x - 8
             matrix_offset = 64
+            matrix_width = 32
         else:
             # Leftmost 8x8 (pixels 320-383)
-            # x=7 -> local_col=0, x=0 -> local_col=7
-            local_col = 7 - x
+            # x=0 -> local_col=0, x=7 -> local_col=7
+            local_col = x
             matrix_offset = 320
+            matrix_width = 8
 
         # Each column is 8 pixels (y=0 to y=7), top to bottom
         return matrix_offset + local_col * 8 + y
