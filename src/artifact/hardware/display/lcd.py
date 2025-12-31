@@ -49,7 +49,7 @@ class I2CLCDDisplay(TextDisplay):
     def __init__(
         self,
         cols: int = 16,
-        rows: int = 2,
+        rows: int = 1,
         i2c_address: int = 0x27,
         i2c_bus: int = 1
     ):
