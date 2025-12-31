@@ -60,6 +60,8 @@ class I2CLCDDisplay(TextDisplay):
         self._initialized = False
         # Buffer for tracking displayed content
         self._buffer = [[' ' for _ in range(cols)] for _ in range(rows)]
+        # Track last displayed text to avoid redundant updates
+        self._last_text: str = ""
 
     @property
     def cols(self) -> int:
@@ -213,21 +215,30 @@ class I2CLCDDisplay(TextDisplay):
         """
         Set full display text (convenience method).
 
-        Clears display and writes text to first row.
+        Only updates the display if text has changed to avoid
+        I2C bus flooding (LCD is slow and can't keep up with 60fps).
+
         Args:
             text: Text to display (truncated to 16 chars)
         """
         if not self._initialized or self._lcd is None:
             return
 
+        # Normalize text (truncate and pad to 16 chars)
+        text = text[:self._cols].ljust(self._cols)
+
+        # Skip update if text hasn't changed
+        if text == self._last_text:
+            return
+
         try:
             self._lcd.clear()
             self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
-            text = text[:self._cols].ljust(self._cols)
             self._lcd.cursor_pos = (0, 0)
             self._lcd.write_string(text)
             for i, char in enumerate(text):
                 self._buffer[0][i] = char
+            self._last_text = text
         except Exception as e:
             logger.error(f"LCD set_text error: {e}")
 
@@ -264,6 +275,7 @@ class I2CLCDDisplayMock(TextDisplay):
         self._cursor_row = 0
         self._cursor_col = 0
         self._backlight = True
+        self._last_text: str = ""
         logger.info(f"I2C LCD mock initialized: {cols}x{rows}")
 
     @property
@@ -301,10 +313,14 @@ class I2CLCDDisplayMock(TextDisplay):
 
     def set_text(self, text: str) -> None:
         """Set full display text (convenience method)."""
-        self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
         text = text[:self._cols].ljust(self._cols)
+        # Skip update if text hasn't changed (matches real LCD behavior)
+        if text == self._last_text:
+            return
+        self._buffer = [[' ' for _ in range(self._cols)] for _ in range(self._rows)]
         for i, char in enumerate(text):
             self._buffer[0][i] = char
+        self._last_text = text
 
     def get_buffer(self) -> list[list[str]]:
         return [row[:] for row in self._buffer]
