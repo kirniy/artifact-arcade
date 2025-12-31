@@ -182,10 +182,10 @@ class WS2812BDisplay(Display):
         return matrix_offset + local_col * 8 + y
 
     def _rgb_to_color(self, r: int, g: int, b: int) -> int:
-        """Convert RGB to 24-bit color value (GRB order for WS2812B)."""
-        # WS2812B uses GRB order
+        """Convert RGB to 24-bit color value (RGB order for this strip)."""
+        # This strip uses RGB order (not GRB like standard WS2812B)
         # Cast to int to avoid numpy type issues with C extension
-        return (int(g) << 16) | (int(r) << 8) | int(b)
+        return (int(r) << 16) | (int(g) << 8) | int(b)
 
     def set_pixel(self, x: int, y: int, r: int, g: int, b: int) -> None:
         """Set a single pixel color."""
