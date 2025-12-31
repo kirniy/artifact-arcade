@@ -3818,7 +3818,7 @@ class RotatingIdleAnimation:
 
         if text_width <= ticker_width:
             # Short text - just center it
-            draw_centered_text(buffer, text, 1, color, scale=1)
+            draw_centered_text(buffer, text, 0, color, scale=1)
         else:
             # Long text - horizontal scroll
             # Scroll speed: complete scroll in ~2.5 seconds (fits within 3s display time)
@@ -3847,7 +3847,7 @@ class RotatingIdleAnimation:
                 x_offset = int(eased * (text_width - ticker_width))
 
             # Draw text at offset position
-            draw_text(buffer, text, -x_offset, 1, color, scale=1)
+            draw_text(buffer, text, -x_offset, 0, color, scale=1)
 
         # Add winter sparkles - random twinkling pixels
         t_sec = t / 1000
@@ -3877,7 +3877,7 @@ class RotatingIdleAnimation:
             offset = int(eased * 2 * h)  # 0 to h
             # Draw old text sliding up
             temp = np.zeros_like(buffer)
-            draw_centered_text(temp, old_text, 1, old_color, scale=1)
+            draw_centered_text(temp, old_text, 0, old_color, scale=1)
             # Shift up
             if offset < h:
                 buffer[0:h-offset, :, :] = temp[offset:h, :, :]
@@ -3889,7 +3889,7 @@ class RotatingIdleAnimation:
             offset = int((1 - (eased - 0.5) * 2) * h)  # h to 0
             # Draw new text
             temp = np.zeros_like(buffer)
-            draw_centered_text(temp, new_text, 1, new_color, scale=1)
+            draw_centered_text(temp, new_text, 0, new_color, scale=1)
             # Shift down (slide in from bottom)
             if offset > 0 and offset < h:
                 buffer[offset:h, :, :] = temp[0:h-offset, :, :]
@@ -3914,7 +3914,7 @@ class RotatingIdleAnimation:
             date_text = self.poster_dates[idx] if self.poster_dates[idx] else "АФИШИ"
             color = (255, 200, 100)  # Gold/amber
             from artifact.graphics.text_utils import draw_centered_text
-            draw_centered_text(buffer, date_text, 1, color, scale=1)
+            draw_centered_text(buffer, date_text, 0, color, scale=1)
             return
 
         # Unified rotating texts for all idle modes (horizontal scroll for longer ones)
