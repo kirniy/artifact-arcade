@@ -421,25 +421,31 @@ class I2CLCDDisplay(TextDisplay):
         Returns:
             List of byte codes to send to LCD
         """
-        # Find all unique Cyrillic letters that need CGRAM
+        # Find all unique Cyrillic letters that need CGRAM in this text
         needed_cgram: list[str] = []
         for char in text:
             if char in CYRILLIC_PATTERNS and char not in needed_cgram:
-                if char not in self._cgram_chars:
-                    needed_cgram.append(char)
+                needed_cgram.append(char)
 
-        # Allocate CGRAM slots for new characters (reuse existing if possible)
+        # Check if we need to reload CGRAM (new chars or too many)
+        new_chars = [c for c in needed_cgram if c not in self._cgram_chars]
+        total_slots_needed = len(self._cgram_chars) + len(new_chars)
+
+        if total_slots_needed > 8 or len(needed_cgram) > 8:
+            # Too many chars - clear and reload just what this text needs
+            self._cgram_chars.clear()
+            new_chars = needed_cgram[:8]  # Take first 8 unique chars
+
+        # Load new characters into CGRAM
         slot = len(self._cgram_chars)
-        for char in needed_cgram:
+        for char in new_chars:
             if slot >= 8:
-                # No more slots - clear cache and start over
-                self._cgram_chars.clear()
-                slot = 0
-            self._cgram_chars[char] = slot
-            # Load the character pattern into CGRAM
-            pattern = CYRILLIC_PATTERNS[char]
-            self.create_char(slot, pattern)
-            slot += 1
+                break  # No more slots
+            if char not in self._cgram_chars:
+                self._cgram_chars[char] = slot
+                pattern = CYRILLIC_PATTERNS[char]
+                self.create_char(slot, pattern)
+                slot += 1
 
         # Convert text to LCD byte codes
         result: list[int] = []
