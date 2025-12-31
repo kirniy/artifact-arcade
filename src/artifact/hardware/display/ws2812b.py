@@ -2,9 +2,13 @@
 WS2812B LED strip driver for the ticker display.
 
 Controls 384 WS2812B LEDs arranged as:
-- 1x 32x8 matrix (256 LEDs)
-- 2x 8x8 matrices (64 LEDs each)
+- 1x 8x8 matrix (64 LEDs) - LEFT
+- 1x 32x8 matrix (256 LEDs) - MIDDLE
+- 1x 8x8 matrix (64 LEDs) - RIGHT
 Total: 48x8 = 384 LEDs
+
+Physical daisy chain order: 8x8 → 32x8 → 8x8
+Each matrix has its own serpentine pattern.
 
 Uses GPIO 21 (not GPIO 18) to avoid conflict with audio PWM.
 """
@@ -146,16 +150,38 @@ class WS2812BDisplay(Display):
         """
         Convert (x, y) coordinates to LED index.
 
-        Accounts for serpentine wiring pattern:
-        - Even rows: left to right
-        - Odd rows: right to left
+        Physical layout (daisy chain order):
+        - Matrix 1: 8x8 (pixels 0-63) - displays x=0-7
+        - Matrix 2: 32x8 (pixels 64-319) - displays x=8-39
+        - Matrix 3: 8x8 (pixels 320-383) - displays x=40-47
+
+        Each matrix has serpentine wiring:
+        - Even rows: left to right within matrix
+        - Odd rows: right to left within matrix
         """
+        if x < 8:
+            # Matrix 1 (8x8, left) - LED indices 0-63
+            local_x = x
+            matrix_offset = 0
+            matrix_width = 8
+        elif x < 40:
+            # Matrix 2 (32x8, middle) - LED indices 64-319
+            local_x = x - 8
+            matrix_offset = 64
+            matrix_width = 32
+        else:
+            # Matrix 3 (8x8, right) - LED indices 320-383
+            local_x = x - 40
+            matrix_offset = 320
+            matrix_width = 8
+
+        # Serpentine pattern within each matrix
         if y % 2 == 0:
             # Even row: left to right
-            return y * self._width + x
+            return matrix_offset + y * matrix_width + local_x
         else:
-            # Odd row: right to left (serpentine)
-            return y * self._width + (self._width - 1 - x)
+            # Odd row: right to left
+            return matrix_offset + y * matrix_width + (matrix_width - 1 - local_x)
 
     def _rgb_to_color(self, r: int, g: int, b: int) -> int:
         """Convert RGB to 24-bit color value (GRB order for WS2812B)."""
