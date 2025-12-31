@@ -28,7 +28,7 @@ import math
 import numpy as np
 from numpy.typing import NDArray
 
-from artifact.graphics.fonts import PixelFont, load_font, draw_text_bitmap
+from artifact.graphics.fonts import PixelFont, load_font, draw_text_bitmap, get_ticker_font
 
 
 # Display constants
@@ -1192,7 +1192,7 @@ def render_ticker_animated(
         font: Font (defaults to cyrillic)
     """
     if font is None:
-        font = load_font("cyrillic")
+        font = get_ticker_font()  # Use 8px font for ticker
 
     # Create seamless looping text with visual separator
     separator = "   ★   "
@@ -1335,7 +1335,7 @@ def render_ticker_static(
     For short text that fits on the ticker without scrolling.
     """
     if font is None:
-        font = load_font("cyrillic")
+        font = get_ticker_font()  # Use 8px font for ticker
 
     text_w, _ = font.measure_text(text)
     x = (TICKER_WIDTH - text_w) // 2  # Center
