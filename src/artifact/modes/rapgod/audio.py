@@ -160,8 +160,9 @@ async def upload_to_selectel(
         )
 
         if result.success:
-            logger.info(f"Uploaded to Selectel S3: {result.url}")
-            return result.url
+            url = result.short_url or result.url  # Prefer short URL for QR/printing
+            logger.info(f"Uploaded to Selectel S3: {url}")
+            return url
         else:
             logger.error(f"Selectel S3 upload failed: {result.error}")
             return None

@@ -330,7 +330,7 @@ class PhotoboothMode(BaseMode):
         """Handle upload completion callback."""
         self._state.is_uploading = False
         if result.success:
-            self._state.qr_url = result.url
+            self._state.qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
             self._state.qr_image = result.qr_image
             logger.info(f"Photo uploaded successfully: {self._state.qr_url}")
         else:

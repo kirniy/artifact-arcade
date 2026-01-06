@@ -974,7 +974,7 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
     def _on_upload_complete(self, result: UploadResult) -> None:
         """Handle S3 upload completion."""
         if result.success:
-            self._qr_url = result.url
+            self._qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
             self._qr_image = result.qr_image
             self._short_url = result.short_url
             logger.info(f"Portrait uploaded: {self._qr_url} (short: {self._short_url})")

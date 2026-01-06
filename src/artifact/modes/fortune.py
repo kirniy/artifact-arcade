@@ -981,7 +981,7 @@ class FortuneMode(BaseMode):
     def _on_upload_complete(self, result: UploadResult) -> None:
         """Handle completion of S3 upload for QR sharing."""
         if result.success:
-            self._qr_url = result.url
+            self._qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
             self._qr_image = result.qr_image
             # Recalculate total pages to include QR
             self._recalculate_total_pages()
