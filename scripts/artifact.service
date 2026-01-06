@@ -9,6 +9,8 @@ User=root
 WorkingDirectory=/home/kirniy/modular-arcade
 Environment=ARTIFACT_ENV=hardware
 Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+# Printer: USB connection
+Environment=ARTIFACT_PRINTER_PORT=/dev/usb/lp0
 # Audio: Use ALSA driver with card 2 (3.5mm headphones)
 Environment=SDL_AUDIODRIVER=alsa
 Environment=AUDIODEV=hw:2,0
