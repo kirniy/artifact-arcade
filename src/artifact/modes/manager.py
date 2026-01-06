@@ -427,7 +427,7 @@ class ModeManager:
 
         # Timing
         self._time_in_state: float = 0.0
-        self._idle_timeout: float = 30000  # Return to idle after 30s of inactivity
+        self._idle_timeout: float = 18000000  # Return to idle after 5 hours of inactivity (basically never)
         self._last_input_time: float = 0.0
 
         # Result view control - user navigates with LEFT/RIGHT

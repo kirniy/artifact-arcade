@@ -790,6 +790,10 @@ class HardwareRunner:
             time.sleep(0.5)  # Let startup fanfare play briefly
             self.start_idle_ambient()
 
+        # Watchdog heartbeat for systemd (every 10 seconds)
+        watchdog_interval = 10.0
+        last_watchdog = 0.0
+
         while self._running:
             # Handle events from hardware
             self._handle_events()
@@ -822,6 +826,19 @@ class HardwareRunner:
                 self._clock.tick(self.config.fps)
 
             self._frame_count += 1
+
+            # Send watchdog heartbeat to systemd (prevents auto-restart if alive)
+            import time
+            now = time.time()
+            if now - last_watchdog >= watchdog_interval:
+                try:
+                    import sdnotify
+                    sdnotify.SystemdNotifier().notify("WATCHDOG=1")
+                except ImportError:
+                    pass  # sdnotify not installed
+                except Exception:
+                    pass
+                last_watchdog = now
 
             # Yield to other tasks
             await asyncio.sleep(0)

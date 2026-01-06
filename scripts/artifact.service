@@ -4,7 +4,7 @@ After=network.target graphical.target artifact-audio.service
 Wants=graphical.target artifact-audio.service
 
 [Service]
-Type=simple
+Type=notify
 User=root
 WorkingDirectory=/home/kirniy/modular-arcade
 Environment=ARTIFACT_ENV=hardware
@@ -20,7 +20,10 @@ ExecStartPre=/bin/bash -c 'killall -9 labwc wf-panel-pi 2>/dev/null || true'
 # Give time for display to be released
 ExecStartPre=/bin/sleep 2
 ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.main
-Restart=on-failure
+# Watchdog: auto-restart if frozen for 30 seconds
+WatchdogSec=30
+# Always restart on any failure/freeze
+Restart=always
 RestartSec=5
 
 [Install]
