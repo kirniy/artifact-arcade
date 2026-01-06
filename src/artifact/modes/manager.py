@@ -410,8 +410,8 @@ class ModeManager:
         self.animation_engine = animation_engine
         self.theme = theme
 
-        # Manager state
-        self._state = ManagerState.IDLE
+        # Manager state - START IN MODE SELECT (skip idle)
+        self._state = ManagerState.MODE_SELECT
         self._registered_modes: Dict[str, ModeInfo] = {}
         self._mode_order: List[str] = []
         self._selected_index: int = 0
