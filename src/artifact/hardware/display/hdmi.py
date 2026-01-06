@@ -182,11 +182,9 @@ class HDMIDisplay(Display):
         self._screen.blit(surface, (0, 0))
 
         # DEBUG: Log every 60 frames (1 second at 60fps)
-        HDMIRGB128x128Display._show_count += 1
-        if HDMIRGB128x128Display._show_count % 60 == 0:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"pygame.display.flip() called (frame {HDMIRGB128x128Display._show_count})")
+        HDMIDisplay._show_count += 1
+        if HDMIDisplay._show_count % 60 == 0:
+            logger.info(f"pygame.display.flip() called (frame {HDMIDisplay._show_count})")
 
         pygame.display.flip()
 
