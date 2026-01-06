@@ -514,6 +514,9 @@ class SortingHatMode(BaseMode):
         # Snitch catcher minigame
         self._snitch_game: Optional[SnitchCatcher] = None
 
+        # Mode lock feature (for events - asterisk key toggles)
+        self._mode_locked: bool = False
+
     @property
     def is_ai_available(self) -> bool:
         """Check if AI services are available."""
@@ -721,6 +724,19 @@ class SortingHatMode(BaseMode):
                 if self._current_page < self._total_pages - 1:
                     self._current_page += 1
                     self._audio.play_ui_move()
+                return True
+
+        elif event.type == EventType.KEYPAD_INPUT:
+            key = event.data.get("key")
+            if key == "*":
+                # Toggle mode lock (for events - stays in mode after result)
+                self._mode_locked = not self._mode_locked
+                if self._mode_locked:
+                    logger.info("Sorting Hat mode LOCKED - will restart after result")
+                    self._audio.play_success()
+                else:
+                    logger.info("Sorting Hat mode UNLOCKED - will return to menu")
+                    self._audio.play_ui_click()
                 return True
 
         return False
@@ -1016,7 +1032,7 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
         self.stop_animations()
 
     def _finish(self) -> None:
-        """Complete the mode."""
+        """Complete the mode or restart if locked."""
         house = HOUSES.get(self._sorted_house, HOUSES[HogwartsHouse.GRYFFINDOR])
 
         result = ModeResult(
@@ -1042,7 +1058,29 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
                 "type": "sorting_hat",
             },
         )
-        self.complete(result)
+
+        if self._mode_locked:
+            # Mode is locked for events - print receipt then restart
+            logger.info("Mode locked - printing and restarting")
+
+            # Emit print event manually so receipt gets printed
+            from artifact.core.events import event_bus, Event, EventType
+            event_bus.emit(Event(
+                EventType.PRINT_REQUEST,
+                data={"result": result},
+                source="sorting_hat_locked"
+            ))
+
+            # Short delay then restart
+            self._audio.play_ui_click()
+
+            # Preserve lock state and restart
+            was_locked = self._mode_locked
+            self.on_enter()
+            self._mode_locked = was_locked  # Restore lock state
+        else:
+            # Normal completion - return to mode selector
+            self.complete(result)
 
     # =========================================================================
     # RENDERING
@@ -1809,6 +1847,17 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
             # Default - golden magic
             render_golden_magic(buffer, t)
 
+        # Lock indicator (right corner) - shows when mode is locked for events
+        if self._mode_locked:
+            # Small padlock icon in bottom-right (3x5 pixels)
+            lock_color = (255, 100, 100)  # Red/pink for visibility
+            lock_x = w - 4
+            # Draw simple lock shape
+            buffer[1, lock_x:lock_x+3] = lock_color  # Top of shackle
+            buffer[2, lock_x] = lock_color            # Left shackle
+            buffer[2, lock_x+2] = lock_color          # Right shackle
+            buffer[3:7, lock_x:lock_x+3] = lock_color # Lock body
+
     def get_lcd_text(self) -> str:
         """Get LCD text.
 
@@ -1816,23 +1865,26 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
         The LCD has only 8 CGRAM slots which are needed for
         custom symbols, not Cyrillic letters.
         """
+        # Lock indicator suffix
+        lock_suffix = "@" if self._mode_locked else ""
+
         if self._sub_phase == SortingPhase.CAMERA_PREP:
             # Blinking eye effect
             frame = int(self._time_in_phase / 300) % 2
             eye = "O" if frame == 0 else "o"
-            return f" {eye} LOOK HERE {eye} ".center(16)[:16]
+            text = f" {eye} LOOK HERE {eye} "
         elif self._sub_phase == SortingPhase.CAMERA_CAPTURE:
             countdown = int(self._camera_countdown) + 1
-            return f"  * PHOTO: {countdown} *  ".center(16)[:16]
+            text = f"  * PHOTO: {countdown} *  "
         elif self._sub_phase == SortingPhase.QUESTIONS:
-            return "< / > CHOOSE".center(16)[:16]
+            text = "< / > CHOOSE"
         elif self._sub_phase == SortingPhase.PROCESSING:
             # Rotating ASCII animation
             dots = "-\\|/"
             dot = dots[int(self._time_in_phase / 150) % 4]
-            return f" {dot} SORTING {dot} ".center(16)[:16]
+            text = f" {dot} SORTING {dot} "
         elif self._sub_phase == SortingPhase.REVEAL:
-            return "* DECIDING... *".center(16)[:16]
+            text = "* DECIDING... *"
         elif self._sub_phase == SortingPhase.RESULT and self._sorted_house:
             # House names in English for LCD
             house_names_en = {
@@ -1841,5 +1893,14 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
                 HogwartsHouse.RAVENCLAW: "RAVENCLAW",
                 HogwartsHouse.HUFFLEPUFF: "HUFFLEPUFF",
             }
-            return house_names_en[self._sorted_house].center(16)[:16]
-        return "# SORTING HAT #".center(16)[:16]
+            text = house_names_en[self._sorted_house]
+        else:
+            text = "# SORTING HAT #"
+
+        # Add lock indicator and center
+        if self._mode_locked:
+            # Put @ at end to indicate locked mode
+            text = text.strip()[:14].center(15) + "@"
+        else:
+            text = text.center(16)
+        return text[:16]

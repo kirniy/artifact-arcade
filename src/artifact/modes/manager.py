@@ -1285,6 +1285,9 @@ class ModeManager:
             self._audio.update_idle_music(delta_ms, motion_detected)
 
         elif self._state == ManagerState.MODE_SELECT:
+            # Keep music cycling during selection (assume motion since user is interacting)
+            self._audio.update_idle_music(delta_ms, motion_detected=True)
+
             if self._use_pygame_menu:
                 self._ensure_pygame_menu()
                 if self._menu and not self._menu_failed:
