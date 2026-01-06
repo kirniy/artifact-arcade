@@ -100,16 +100,17 @@ SNITCH_FRAMES = [
     ],
 ]
 
-# Bludger (8x8) - menace
+# Bludger (8x8) - menace with white outline for visibility
+BLUDGER_OUTLINE = (180, 180, 200)  # Light outline color
 BLUDGER = [
-    [TRANS, TRANS, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, TRANS, TRANS],
-    [TRANS, BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, TRANS],
-    [BLUDGER_DARK, BLUDGER_MID, BLUDGER_LIGHT, BLUDGER_LIGHT, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK],
-    [BLUDGER_DARK, BLUDGER_MID, BLUDGER_LIGHT, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, BLUDGER_MID, BLUDGER_DARK],
-    [BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK],
-    [BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK],
-    [TRANS, BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, TRANS],
-    [TRANS, TRANS, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, TRANS, TRANS],
+    [TRANS, TRANS, BLUDGER_OUTLINE, BLUDGER_OUTLINE, BLUDGER_OUTLINE, BLUDGER_OUTLINE, TRANS, TRANS],
+    [TRANS, BLUDGER_OUTLINE, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_OUTLINE, TRANS],
+    [BLUDGER_OUTLINE, BLUDGER_MID, BLUDGER_LIGHT, BLUDGER_LIGHT, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_OUTLINE],
+    [BLUDGER_OUTLINE, BLUDGER_MID, BLUDGER_LIGHT, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, BLUDGER_MID, BLUDGER_OUTLINE],
+    [BLUDGER_OUTLINE, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_OUTLINE],
+    [BLUDGER_OUTLINE, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_OUTLINE],
+    [TRANS, BLUDGER_OUTLINE, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_OUTLINE, TRANS],
+    [TRANS, TRANS, BLUDGER_OUTLINE, BLUDGER_OUTLINE, BLUDGER_OUTLINE, BLUDGER_OUTLINE, TRANS, TRANS],
 ]
 
 # Seeker Frames (12x10) - player sprite with robe animation
@@ -597,7 +598,10 @@ class SnitchCatcher:
                         ))
                 else:
                     self._state.bludger_hits += 1
-                    # Create dark sparkles
+                    # Penalty: lose a snitch!
+                    if self._state.snitches_caught > 0:
+                        self._state.snitches_caught -= 1
+                    # Create red sparkles (danger!)
                     for _ in range(8):
                         self._state.sparkles.append(Sparkle(
                             x=entity.x,
@@ -605,7 +609,7 @@ class SnitchCatcher:
                             life=random.uniform(200, 400),
                             vx=random.uniform(-60, 60),
                             vy=random.uniform(-80, 0),
-                            color=random.choice([BLUDGER_LIGHT, BLUDGER_MID, (150, 50, 50)]),
+                            color=random.choice([(255, 80, 80), (200, 50, 50), (150, 30, 30)]),
                             size=2
                         ))
 
