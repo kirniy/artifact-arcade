@@ -125,6 +125,7 @@ class EM5820Printer(Printer):
                 # Initialize printer
                 self._file_backend.write(b'\x1b\x40')  # ESC @ - Initialize
                 self._file_backend.write(b'\x1b\x7b\x01')  # ESC { 1 - Upside-down mode
+                self._file_backend.write(b'\x1b\x74\x11')  # ESC t 17 - Select CP866 (Russian)
                 self._file_backend.flush()
             else:
                 # Serial device (UART or USB-serial)
@@ -145,6 +146,7 @@ class EM5820Printer(Printer):
                 # Initialize printer
                 await self._send_command(b'\x1b\x40')  # ESC @ - Initialize
                 await self._send_command(b'\x1b\x7b\x01')  # ESC { 1 - Upside-down mode
+                await self._send_command(b'\x1b\x74\x11')  # ESC t 17 - Select CP866 (Russian)
 
             return True
 
