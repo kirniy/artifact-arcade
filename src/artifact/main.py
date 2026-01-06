@@ -153,7 +153,8 @@ async def run_hardware() -> None:
     logger.info(f"Camera service: running={camera_service.is_running}")
 
     # Start gallery preloader for instant photo loading
-    start_gallery_preloader()
+    # DISABLED: Blocks startup with network requests
+    # start_gallery_preloader()
 
     # Initialize printer manager
     mock_printer = os.getenv("ARTIFACT_MOCK_PRINTER", "false").lower() == "true"
