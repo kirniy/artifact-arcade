@@ -18,6 +18,9 @@ ARTIFACT_SERVICE="$SCRIPT_DIR/artifact.service"
 AUDIO_SERVICE="$SCRIPT_DIR/artifact-audio.service"
 AUDIO_SETUP="$SCRIPT_DIR/setup-audio.sh"
 BOT_SERVICE="$SCRIPT_DIR/arcade-bot.service"
+AUTOPULL_SERVICE="$SCRIPT_DIR/arcade-autopull.service"
+AUTOPULL_TIMER="$SCRIPT_DIR/arcade-autopull.timer"
+AUTOPULL_SCRIPT="$SCRIPT_DIR/autopull.sh"
 
 if [ ! -f "$ARTIFACT_SERVICE" ]; then
     echo "Error: artifact.service not found in $SCRIPT_DIR"
@@ -77,6 +80,28 @@ systemctl enable artifact
 if [ -f /etc/systemd/system/arcade-bot.service ]; then
     echo "Enabling arcade-bot auto-start on boot..."
     systemctl enable arcade-bot
+fi
+
+# Install and enable auto-pull timer (checks every 5 min)
+if [ -f "$AUTOPULL_SERVICE" ] && [ -f "$AUTOPULL_TIMER" ] && [ -f "$AUTOPULL_SCRIPT" ]; then
+    echo "Installing arcade-autopull service and timer..."
+    cp "$AUTOPULL_SERVICE" /etc/systemd/system/arcade-autopull.service
+    cp "$AUTOPULL_TIMER" /etc/systemd/system/arcade-autopull.timer
+    chmod +x "$AUTOPULL_SCRIPT"
+    
+    # Create logs directory
+    mkdir -p /home/kirniy/modular-arcade/logs
+    chown kirniy:kirniy /home/kirniy/modular-arcade/logs
+    
+    # Add sudoers entry for kirniy to restart services without password
+    SUDOERS_FILE="/etc/sudoers.d/arcade-autopull"
+    echo "kirniy ALL=(ALL) NOPASSWD: /bin/systemctl restart artifact, /bin/systemctl restart arcade-bot" > "$SUDOERS_FILE"
+    chmod 440 "$SUDOERS_FILE"
+    
+    systemctl daemon-reload
+    systemctl enable arcade-autopull.timer
+    systemctl start arcade-autopull.timer
+    echo "Auto-pull timer enabled (checks every 5 minutes)!"
 fi
 
 # Disable desktop compositor (labwc) to free DRM for pygame

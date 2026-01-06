@@ -1,0 +1,14 @@
+[Unit]
+Description=ARTIFACT Auto-Pull from Git
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=kirniy
+Group=kirniy
+WorkingDirectory=/home/kirniy/modular-arcade
+ExecStart=/home/kirniy/modular-arcade/scripts/autopull.sh
+
+# Allow restart of other services
+# kirniy needs sudo NOPASSWD for systemctl restart
