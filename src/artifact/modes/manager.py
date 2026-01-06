@@ -1890,6 +1890,7 @@ class ModeManager:
         """Render ticker during mode select with smooth scrolling description."""
         from artifact.graphics.primitives import clear
         from artifact.graphics.text_utils import render_ticker_animated, TickerEffect, draw_centered_ticker
+        from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
 
