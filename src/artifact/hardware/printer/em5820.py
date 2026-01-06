@@ -1,18 +1,27 @@
 """EM5820 thermal printer driver for ARTIFACT.
 
-Communicates with the EM5820 58mm thermal printer via UART (serial).
+Communicates with the EM5820 58mm thermal printer via UART (serial) or USB.
 Supports ESC/POS commands for text and raster image printing.
 
 Hardware specifications:
 - Paper width: 58mm (~384 dots at 203 DPI)
-- Interface: UART (9600 baud default, can be configured)
-- Voltage: 5-9V DC
+- Interface: UART (9600 baud default) or USB-serial
+- Voltage: 5-9V DC (9V recommended for best quality)
 - Commands: ESC/POS compatible
+
+Supported connections:
+- UART: /dev/serial0 (Raspberry Pi GPIO pins 14/15)
+- USB-Serial: /dev/ttyUSB0, /dev/ttyACM0 (auto-detected)
+- USB Printer: /dev/usb/lp0 (File/raw backend)
+
+Override with env var: ARTIFACT_PRINTER_PORT=/dev/ttyUSB0
 """
 
 import logging
 import asyncio
-from typing import Optional
+import os
+import glob
+from typing import Optional, List
 
 from artifact.hardware.base import Printer
 from artifact.printing.receipt import Receipt
@@ -20,10 +29,51 @@ from artifact.printing.receipt import Receipt
 logger = logging.getLogger(__name__)
 
 
+def auto_detect_printer_port() -> Optional[str]:
+    """Auto-detect printer serial port.
+    
+    Checks in order:
+    1. Environment variable ARTIFACT_PRINTER_PORT
+    2. USB-serial devices (/dev/ttyUSB*, /dev/ttyACM*)
+    3. Default UART (/dev/serial0)
+    4. USB printer class (/dev/usb/lp*)
+    
+    Returns:
+        Detected port path, or None if not found
+    """
+    # 1. Check environment override first
+    env_port = os.environ.get("ARTIFACT_PRINTER_PORT")
+    if env_port and os.path.exists(env_port):
+        logger.info(f"Using printer port from env: {env_port}")
+        return env_port
+    
+    # 2. Check USB-serial devices (most common for USB connection)
+    usb_serial_ports = glob.glob("/dev/ttyUSB*") + glob.glob("/dev/ttyACM*")
+    if usb_serial_ports:
+        port = sorted(usb_serial_ports)[0]  # Use first one
+        logger.info(f"Auto-detected USB-serial printer: {port}")
+        return port
+    
+    # 3. Check default UART
+    if os.path.exists("/dev/serial0"):
+        logger.info("Using default UART: /dev/serial0")
+        return "/dev/serial0"
+    
+    # 4. Check USB printer class device
+    usb_printers = glob.glob("/dev/usb/lp*")
+    if usb_printers:
+        port = sorted(usb_printers)[0]
+        logger.info(f"Auto-detected USB printer class: {port}")
+        return port
+    
+    logger.warning("No printer port detected")
+    return None
+
+
 class EM5820Printer(Printer):
     """Driver for EM5820 thermal receipt printer.
 
-    Uses UART serial communication on Raspberry Pi GPIO pins 14/15.
+    Uses UART serial or USB-serial communication.
     Falls back to mock mode if hardware is unavailable.
     """
 
@@ -33,24 +83,26 @@ class EM5820Printer(Printer):
 
     def __init__(
         self,
-        port: str = DEFAULT_PORT,
+        port: Optional[str] = None,
         baud: int = DEFAULT_BAUD,
         mock: bool = False,
     ):
         """Initialize the printer driver.
 
         Args:
-            port: Serial port path
+            port: Serial port path (auto-detected if None)
             baud: Baud rate
             mock: If True, simulate printing without hardware
         """
         super().__init__()
-        self._port = port
+        self._port = port or auto_detect_printer_port() or self.DEFAULT_PORT
         self._baud = baud
         self._mock = mock
         self._serial = None
+        self._file_backend = None  # For /dev/usb/lp* devices
         self._connected = False
         self._busy = False
+        self._is_usb_printer_class = self._port.startswith("/dev/usb/lp") if self._port else False
 
     async def connect(self) -> bool:
         """Connect to the printer.
@@ -64,22 +116,33 @@ class EM5820Printer(Printer):
             return True
 
         try:
-            import serial
+            if self._is_usb_printer_class:
+                # USB printer class device - use file backend
+                self._file_backend = open(self._port, "wb")
+                self._connected = True
+                logger.info(f"EM5820 printer connected (USB printer class) on {self._port}")
+                
+                # Initialize printer
+                self._file_backend.write(b'\x1b\x40')  # ESC @ - Initialize
+                self._file_backend.flush()
+            else:
+                # Serial device (UART or USB-serial)
+                import serial
 
-            self._serial = serial.Serial(
-                port=self._port,
-                baudrate=self._baud,
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
-                timeout=2.0,
-            )
+                self._serial = serial.Serial(
+                    port=self._port,
+                    baudrate=self._baud,
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    timeout=2.0,
+                )
 
-            self._connected = True
-            logger.info(f"EM5820 printer connected on {self._port}")
+                self._connected = True
+                logger.info(f"EM5820 printer connected (serial) on {self._port}")
 
-            # Initialize printer
-            await self._send_command(b'\x1b\x40')  # ESC @ - Initialize
+                # Initialize printer
+                await self._send_command(b'\x1b\x40')  # ESC @ - Initialize
 
             return True
 
@@ -90,7 +153,7 @@ class EM5820Printer(Printer):
             return True
 
         except Exception as e:
-            logger.error(f"Failed to connect to printer: {e}")
+            logger.error(f"Failed to connect to printer on {self._port}: {e}")
             self._connected = False
             return False
 
@@ -99,6 +162,10 @@ class EM5820Printer(Printer):
         if self._serial:
             self._serial.close()
             self._serial = None
+        
+        if self._file_backend:
+            self._file_backend.close()
+            self._file_backend = None
 
         self._connected = False
         logger.info("EM5820 printer disconnected")
@@ -312,7 +379,12 @@ class EM5820Printer(Printer):
             logger.debug(f"Mock send: {len(data)} bytes")
             return
 
-        if self._serial:
+        if self._file_backend:
+            # USB printer class - write directly
+            self._file_backend.write(data)
+            self._file_backend.flush()
+            await asyncio.sleep(0.01)
+        elif self._serial:
             # Send in chunks to avoid buffer overflow
             chunk_size = 256
             for i in range(0, len(data), chunk_size):
