@@ -211,11 +211,21 @@ class EM5820Printer(Printer):
                 logger.info("==================")
                 await asyncio.sleep(2.0)  # Simulate print time
             else:
-                # Send raw commands to printer
-                await self._send_command(receipt.raw_commands)
-
-                # Wait for printing to complete
-                await self._wait_for_ready()
+                # Send raw commands to printer with timeout (10s max)
+                # This prevents blocking the entire machine if printer hangs (no paper, jam, etc.)
+                try:
+                    await asyncio.wait_for(
+                        self._send_command(receipt.raw_commands),
+                        timeout=10.0
+                    )
+                    # Wait for printing to complete
+                    await asyncio.wait_for(
+                        self._wait_for_ready(),
+                        timeout=5.0
+                    )
+                except asyncio.TimeoutError:
+                    logger.error("Printer timeout - check paper/status")
+                    return False
 
             logger.info(f"Receipt printed: {receipt.mode_name}")
             return True
