@@ -404,6 +404,10 @@ class LayoutEngine:
             else:
                 img = img.convert('1', dither=Image.Dither.NONE)
 
+            # Rotate 180° for upside-down mounted printer
+            if self.ROTATE_180:
+                img = img.rotate(180)
+
             # Convert to raster data
             return self._image_to_raster(img, block.alignment)
 
