@@ -857,7 +857,7 @@ class ArcadeBot:
             return
 
         # Get the Pi's hostname/IP for the remote URL
-        remote_url = "http://artifact.local:8080/remote"
+        remote_url = "http://artifact.local:8081/remote"
 
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
@@ -1117,7 +1117,7 @@ class ArcadeBot:
 class RemoteServer:
     """HTTP server for remote control web app."""
 
-    def __init__(self, control: ArcadeControl, port: int = 8080):
+    def __init__(self, control: ArcadeControl, port: int = 8081):
         self.control = control
         self.port = port
         self.app = web.Application()
