@@ -15,11 +15,13 @@ Environment=ARTIFACT_PRINTER_PORT=/dev/usb/lp0
 Environment=SDL_AUDIODRIVER=alsa
 Environment=AUDIODEV=hw:2,0
 # Let pygame auto-detect kmsdrm - do NOT set SDL_VIDEODRIVER explicitly!
+# Kill desktop compositor FIRST so pygame can access DRM
+ExecStartPre=/bin/bash -c 'killall -9 labwc wf-panel-pi 2>/dev/null || true'
+# Give time for display to be released
+ExecStartPre=/bin/sleep 2
 ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.main
 Restart=on-failure
 RestartSec=5
-# Give time for display and audio to be available
-ExecStartPre=/bin/sleep 3
 
 [Install]
 WantedBy=multi-user.target

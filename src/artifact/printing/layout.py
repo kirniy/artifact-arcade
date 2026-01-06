@@ -123,7 +123,7 @@ class LayoutEngine:
     """Engine for rendering receipt layouts to printer commands.
 
     Converts ReceiptLayout to ESC/POS commands for thermal printer,
-    with support for Russian text (CP866 encoding).
+    with support for Russian text via image rendering (for Chinese printers).
     """
 
     # ESC/POS command constants
@@ -134,9 +134,14 @@ class LayoutEngine:
     # Character sets
     CHARSET_CP866 = b'\x1b\x74\x11'  # Russian CP866
 
+    # Render text as images for Chinese printers (fixes Russian + upside-down)
+    RENDER_TEXT_AS_IMAGE = True
+    ROTATE_180 = True  # For upside-down mounted printers
+
     def __init__(self, paper_width: int = 384):
         self.paper_width = paper_width
         self.char_width = 12  # Approximate character width in pixels
+        self._font = None  # Cached font for text rendering
 
     def _size_width_multiplier(self, size: TextSize) -> int:
         """Get width multiplier for text size."""
@@ -261,11 +266,92 @@ class LayoutEngine:
         """Set underline mode."""
         return self.ESC + b'-' + (b'\x01' if enabled else b'\x00')
 
-    def _render_text(self, block: TextBlock) -> bytes:
-        """Render a text block to commands."""
-        commands = []
+    def _get_font(self, size: int = 20):
+        """Get a font for text rendering, with fallback."""
+        try:
+            from PIL import ImageFont
+            # Try common system fonts that support Cyrillic
+            font_paths = [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/System/Library/Fonts/Helvetica.ttc",  # macOS
+            ]
+            for path in font_paths:
+                try:
+                    return ImageFont.truetype(path, size)
+                except (OSError, IOError):
+                    continue
+            # Fallback to default
+            return ImageFont.load_default()
+        except Exception:
+            return None
 
-        # Set formatting
+    def _render_text_as_image(self, block: TextBlock) -> bytes:
+        """Render text as an image for printers that don't support CP866."""
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+
+            # Font size based on text size
+            font_sizes = {
+                TextSize.SMALL: 20,
+                TextSize.MEDIUM: 28,
+                TextSize.LARGE: 36,
+                TextSize.TITLE: 44,
+            }
+            font_size = font_sizes.get(block.size, 20)
+            font = self._get_font(font_size)
+
+            # Calculate text dimensions
+            max_chars = self._max_chars(block.size)
+            lines = self._wrap_text(block.text, max_chars) or [""]
+
+            # Create temporary image to measure text
+            temp_img = Image.new('1', (1, 1), 1)
+            draw = ImageDraw.Draw(temp_img)
+
+            line_height = font_size + 4
+            total_height = len(lines) * line_height
+            img_width = self.paper_width
+
+            # Create actual image
+            img = Image.new('1', (img_width, total_height), 1)  # White background
+            draw = ImageDraw.Draw(img)
+
+            y = 0
+            for line in lines:
+                # Get text width for alignment
+                bbox = draw.textbbox((0, 0), line, font=font) if font else (0, 0, len(line) * 10, font_size)
+                text_width = bbox[2] - bbox[0]
+
+                if block.alignment == Alignment.CENTER:
+                    x = (img_width - text_width) // 2
+                elif block.alignment == Alignment.RIGHT:
+                    x = img_width - text_width - 8
+                else:
+                    x = 8
+
+                draw.text((x, y), line, font=font, fill=0)  # Black text
+                y += line_height
+
+            # Rotate 180° if printer is mounted upside-down
+            if self.ROTATE_180:
+                img = img.rotate(180)
+
+            # Convert to raster commands
+            return self._image_to_raster(img, Alignment.LEFT)
+
+        except ImportError:
+            logger.warning("PIL not available, falling back to text mode")
+            return self._render_text_native(block)
+        except Exception as e:
+            logger.error(f"Text-as-image rendering failed: {e}")
+            return self._render_text_native(block)
+
+    def _render_text_native(self, block: TextBlock) -> bytes:
+        """Render text using native printer commands (fallback)."""
+        commands = []
         commands.append(self._cmd_align(block.alignment))
         commands.append(self._cmd_text_size(block.size))
         commands.append(self._cmd_bold(block.bold))
@@ -274,21 +360,23 @@ class LayoutEngine:
         max_chars = self._max_chars(block.size)
         lines = self._wrap_text(block.text, max_chars) or [""]
         for line in lines:
-            # Encode text as CP866 for Russian support
             try:
                 text_bytes = line.encode('cp866', errors='replace')
             except Exception:
                 text_bytes = line.encode('ascii', errors='replace')
-
             commands.append(text_bytes)
             commands.append(self.LF)
 
-        # Reset formatting
         commands.append(self._cmd_bold(False))
         commands.append(self._cmd_underline(False))
         commands.append(self._cmd_text_size(TextSize.SMALL))
-
         return b''.join(commands)
+
+    def _render_text(self, block: TextBlock) -> bytes:
+        """Render a text block to commands."""
+        if self.RENDER_TEXT_AS_IMAGE:
+            return self._render_text_as_image(block)
+        return self._render_text_native(block)
 
     def _render_image(self, block: ImageBlock) -> bytes:
         """Render an image block to commands.
