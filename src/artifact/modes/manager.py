@@ -1906,7 +1906,7 @@ class ModeManager:
             word_duration = 1500  # ms per word
             cycle_pos = int(self._time_in_state) % (len(words) * word_duration)
             idx = cycle_pos // word_duration
-            word = words[idx]
+            word = words[idx].upper() # Force UPPERCASE to avoid missing glyphs
 
             # Vertical slide animation for transition
             progress = (cycle_pos % word_duration) / word_duration
@@ -1930,32 +1930,25 @@ class ModeManager:
                 # Fits normally
                 draw_centered_ticker(buffer, word, color, font=font, y_offset=y_offset)
             else:
-                # Too wide! Try condensed (0 spacing)
-                # Calculate condensed width
-                condensed_w = sum(font.get_char_width(c) for c in word)
+                # Too wide! Condensed (0 spacing)
+                # Calculate condensed width explicitly
+                condensed_w = 0
+                for char in word:
+                     condensed_w += font.get_char_width(char)
                 
-                if condensed_w <= 48:
-                    # Fits condensed!
-                    x = (48 - condensed_w) // 2
-                    curr_x = x
-                    y = y_offset + 1 # Centered vertically in 8px (font is 7px)
-                    
-                    for char in word:
+                # Center it
+                x = (48 - condensed_w) // 2
+                
+                # Draw char by char
+                curr_x = x
+                y = y_offset + 1 # Centered vertically
+                
+                for char in word:
+                    # Only draw if visible (skip off-screen)
+                    char_w = font.get_char_width(char)
+                    if curr_x + char_w > 0 and curr_x < 48:
                         draw_text_bitmap(buffer, char, curr_x, y, color, font)
-                        curr_x += font.get_char_width(char) 
-                else:
-                    # Still too wide even condensed. 
-                    # Last resort: marquee scroll VERY slowly? 
-                    # User hate scroll. Let's just fit what we can or marquee vertical?
-                    # For now, default to centered normal (will clip edges) 
-                    # or better, use condensed anyway centered so we see maximum center
-                    x = (48 - condensed_w) // 2
-                    curr_x = x
-                    y = y_offset + 1
-                    for char in word:
-                        if 0 <= curr_x < 48: # Simple clipping
-                           draw_text_bitmap(buffer, char, curr_x, y, color, font)
-                        curr_x += font.get_char_width(char)
+                    curr_x += char_w
 
     def _render_result_ticker(self, buffer) -> None:
         """Render ticker during result/printing states."""
