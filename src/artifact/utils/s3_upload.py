@@ -154,8 +154,11 @@ def _create_redirect_html(target_url: str, title: str = "VNVNC Arcade") -> str:
 def _upload_redirect_html(short_id: str, target_url: str) -> bool:
     """Upload a redirect HTML file to S3.
 
-    Creates artifact/p/{short_id}/index.html that redirects to target_url.
-    This enables short URLs like vnvnc.ru/p/{short_id}/
+    Creates p/{short_id} (a file, not directory) that redirects to target_url.
+    This enables short URLs like vnvnc.ru/p/{short_id}
+
+    Note: We upload as a file (not index.html in a directory) because S3 doesn't
+    auto-serve index.html for directory requests.
 
     Args:
         short_id: The short identifier (8 hex chars)
@@ -169,7 +172,8 @@ def _upload_redirect_html(short_id: str, target_url: str) -> bool:
 
     try:
         html_content = _create_redirect_html(target_url)
-        s3_key = f"{SELECTEL_PREFIX}/p/{short_id}/index.html"
+        # Upload as a file directly (not index.html) so S3 serves it without directory handling
+        s3_key = f"p/{short_id}"
 
         with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as tmp:
             tmp.write(html_content)
@@ -192,7 +196,7 @@ def _upload_redirect_html(short_id: str, target_url: str) -> bool:
             pass
 
         if result.returncode == 0:
-            logger.info(f"Redirect HTML uploaded: vnvnc.ru/p/{short_id}/")
+            logger.info(f"Redirect HTML uploaded: vnvnc.ru/p/{short_id}")
             return True
         else:
             logger.warning(f"Failed to upload redirect HTML: {result.stderr.decode()}")
@@ -305,7 +309,7 @@ def upload_bytes_to_s3(
 
             # Upload redirect HTML for short URL
             if _upload_redirect_html(short_id, url):
-                short_url = f"https://vnvnc.ru/p/{short_id}/"
+                short_url = f"https://vnvnc.ru/p/{short_id}"
 
             # Generate QR code for the short URL if available, otherwise full URL
             qr_image = generate_qr_image(short_url or url)
@@ -399,7 +403,7 @@ def upload_file_to_s3(
 
             # Upload redirect HTML for short URL
             if _upload_redirect_html(short_id, url):
-                short_url = f"https://vnvnc.ru/p/{short_id}/"
+                short_url = f"https://vnvnc.ru/p/{short_id}"
 
             # Generate QR code for the short URL if available, otherwise full URL
             qr_image = generate_qr_image(short_url or url)

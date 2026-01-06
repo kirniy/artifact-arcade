@@ -60,27 +60,47 @@ TRANS = None  # Transparent
 # Pixel Art Sprites
 # =============================================================================
 
-# Golden Snitch (10x6) - compact flying ball with wings
-SNITCH = [
-    [TRANS, TRANS, WING_SILVER, WING_WHITE, TRANS, TRANS, TRANS, TRANS, WING_WHITE, WING_SILVER],
-    [TRANS, WING_WHITE, WING_WHITE, GOLD_SHINE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_SHINE, WING_WHITE, WING_WHITE],
-    [WING_SILVER, WING_WHITE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, WING_WHITE, WING_SILVER],
-    [TRANS, WING_WHITE, WING_WHITE, GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK, WING_WHITE, WING_WHITE, TRANS],
-    [TRANS, TRANS, WING_SILVER, WING_WHITE, GOLD_DARK, GOLD_DARK, WING_WHITE, WING_SILVER, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, WING_SILVER, TRANS, TRANS, WING_SILVER, TRANS, TRANS, TRANS],
+# Golden Snitch Animation Frames (10x6)
+SNITCH_FRAMES = [
+    # Frame 1: Mid
+    [
+        [TRANS, TRANS, WING_SILVER, WING_WHITE, TRANS, TRANS, TRANS, TRANS, WING_WHITE, WING_SILVER],
+        [TRANS, WING_WHITE, WING_WHITE, GOLD_SHINE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_SHINE, WING_WHITE, WING_WHITE],
+        [WING_SILVER, WING_WHITE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, WING_WHITE, WING_SILVER],
+        [TRANS, WING_WHITE, WING_WHITE, GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK, WING_WHITE, WING_WHITE, TRANS],
+        [TRANS, TRANS, WING_SILVER, WING_WHITE, GOLD_DARK, GOLD_DARK, WING_WHITE, WING_SILVER, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, WING_SILVER, TRANS, TRANS, WING_SILVER, TRANS, TRANS, TRANS],
+    ],
+    # Frame 2: Up
+    [
+        [WING_SILVER, WING_WHITE, WING_WHITE, TRANS, TRANS, TRANS, TRANS, WING_WHITE, WING_WHITE, WING_SILVER],
+        [TRANS, WING_WHITE, GOLD_SHINE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_SHINE, WING_WHITE, TRANS],
+        [TRANS, TRANS, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, TRANS, TRANS],
+        [TRANS, TRANS, GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, GOLD_DARK, GOLD_DARK, GOLD_DARK, GOLD_DARK, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, TRANS, GOLD_DARK, GOLD_DARK, TRANS, TRANS, TRANS, TRANS],
+    ],
+    # Frame 3: Mid (Same as 1)
+    [
+        [TRANS, TRANS, WING_SILVER, WING_WHITE, TRANS, TRANS, TRANS, TRANS, WING_WHITE, WING_SILVER],
+        [TRANS, WING_WHITE, WING_WHITE, GOLD_SHINE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_SHINE, WING_WHITE, WING_WHITE],
+        [WING_SILVER, WING_WHITE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, WING_WHITE, WING_SILVER],
+        [TRANS, WING_WHITE, WING_WHITE, GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK, WING_WHITE, WING_WHITE, TRANS],
+        [TRANS, TRANS, WING_SILVER, WING_WHITE, GOLD_DARK, GOLD_DARK, WING_WHITE, WING_SILVER, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, WING_SILVER, TRANS, TRANS, WING_SILVER, TRANS, TRANS, TRANS],
+    ],
+    # Frame 4: Down
+    [
+        [TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, GOLD_SHINE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_SHINE, TRANS, TRANS],
+        [TRANS, TRANS, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, TRANS, TRANS],
+        [TRANS, WING_WHITE, GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK, WING_WHITE, TRANS],
+        [WING_WHITE, WING_WHITE, WING_SILVER, GOLD_DARK, GOLD_DARK, GOLD_DARK, GOLD_DARK, WING_SILVER, WING_WHITE, WING_WHITE],
+        [WING_SILVER, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, WING_SILVER],
+    ],
 ]
 
-# Snitch with wings up (10x6) - animation frame 2
-SNITCH_UP = [
-    [WING_SILVER, WING_WHITE, WING_WHITE, TRANS, TRANS, TRANS, TRANS, WING_WHITE, WING_WHITE, WING_SILVER],
-    [TRANS, WING_WHITE, GOLD_SHINE, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_SHINE, WING_WHITE, TRANS],
-    [TRANS, TRANS, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, TRANS, TRANS],
-    [TRANS, TRANS, GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, GOLD_DARK, GOLD_DARK, GOLD_DARK, GOLD_DARK, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, TRANS, GOLD_DARK, GOLD_DARK, TRANS, TRANS, TRANS, TRANS],
-]
-
-# Bludger (8x8) - menacing iron ball
+# Bludger (8x8) - menace
 BLUDGER = [
     [TRANS, TRANS, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, TRANS, TRANS],
     [TRANS, BLUDGER_DARK, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_MID, BLUDGER_DARK, TRANS],
@@ -92,18 +112,34 @@ BLUDGER = [
     [TRANS, TRANS, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, BLUDGER_DARK, TRANS, TRANS],
 ]
 
-# Seeker on broom (12x10) - player sprite
-SEEKER = [
-    [TRANS, TRANS, TRANS, TRANS, HAIR_DARK, HAIR_DARK, HAIR_DARK, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, HAIR_DARK, HAIR_DARK, HAIR_DARK, HAIR_DARK, HAIR_DARK, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SKIN, SKIN, SKIN, SKIN, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, ROBE_MID, SKIN, SKIN, SKIN, ROBE_MID, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, ROBE_MID, ROBE_MID, ROBE_DARK, ROBE_MID, ROBE_MID, ROBE_MID, ROBE_MID, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, ROBE_MID, ROBE_DARK, ROBE_DARK, ROBE_DARK, ROBE_DARK, ROBE_MID, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_STRAW, BROOM_STRAW, BROOM_STRAW],
-    [TRANS, TRANS, TRANS, TRANS, ROBE_DARK, ROBE_DARK, TRANS, TRANS, TRANS, BROOM_STRAW, BROOM_STRAW, TRANS],
-    [TRANS, TRANS, TRANS, TRANS, ROBE_DARK, TRANS, ROBE_DARK, TRANS, TRANS, TRANS, BROOM_STRAW, TRANS],
-    [TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+# Seeker Frames (12x10) - player sprite with robe animation
+SEEKER_FRAMES = [
+    # Frame 1: Normal
+    [
+        [TRANS, TRANS, TRANS, TRANS, HAIR_DARK, HAIR_DARK, HAIR_DARK, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, HAIR_DARK, HAIR_DARK, HAIR_DARK, HAIR_DARK, HAIR_DARK, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, SKIN, SKIN, SKIN, SKIN, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, ROBE_MID, SKIN, SKIN, SKIN, ROBE_MID, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, ROBE_MID, ROBE_MID, ROBE_DARK, ROBE_MID, ROBE_MID, ROBE_MID, ROBE_MID, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, ROBE_MID, ROBE_DARK, ROBE_DARK, ROBE_DARK, ROBE_DARK, ROBE_MID, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_STRAW, BROOM_STRAW, BROOM_STRAW],
+        [TRANS, TRANS, TRANS, TRANS, ROBE_DARK, ROBE_DARK, TRANS, TRANS, TRANS, BROOM_STRAW, BROOM_STRAW, TRANS],
+        [TRANS, TRANS, TRANS, TRANS, ROBE_DARK, TRANS, ROBE_DARK, TRANS, TRANS, TRANS, BROOM_STRAW, TRANS],
+        [TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    ],
+    # Frame 2: Robe Flapping Back
+    [
+        [TRANS, TRANS, TRANS, TRANS, HAIR_DARK, HAIR_DARK, HAIR_DARK, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, HAIR_DARK, HAIR_DARK, HAIR_DARK, HAIR_DARK, HAIR_DARK, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, TRANS, SKIN, SKIN, SKIN, SKIN, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, TRANS, ROBE_MID, SKIN, SKIN, SKIN, ROBE_MID, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, ROBE_MID, ROBE_MID, ROBE_DARK, ROBE_MID, ROBE_MID, ROBE_MID, ROBE_MID, TRANS, TRANS, TRANS, TRANS],
+        [TRANS, ROBE_MID, ROBE_DARK, ROBE_DARK, ROBE_DARK, ROBE_DARK, ROBE_MID, TRANS, TRANS, TRANS, TRANS, TRANS],
+        [BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_BROWN, BROOM_STRAW, BROOM_STRAW, BROOM_STRAW],
+        [TRANS, TRANS, TRANS, ROBE_DARK, ROBE_DARK, ROBE_DARK, ROBE_DARK, TRANS, TRANS, BROOM_STRAW, BROOM_STRAW, TRANS],
+        [TRANS, TRANS, ROBE_DARK, ROBE_DARK, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, BROOM_STRAW, TRANS],
+        [TRANS, ROBE_DARK, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    ],
 ]
 
 # Sorting Hat (16x18) - watching in corner
@@ -161,6 +197,8 @@ class FlyingEntity:
     entity_type: EntityType
     collected: bool = False
     frame: int = 0  # Animation frame
+    # Trail history (last 5 positions) for snitches
+    trail: List[Tuple[float, float]] = field(default_factory=list)
 
     @property
     def width(self) -> int:
@@ -178,6 +216,7 @@ class Star:
     y: float
     brightness: float
     twinkle_speed: float
+    depth: float = 1.0  # For parallax (0.5 = far, 1.0 = near)
 
 
 @dataclass
@@ -186,6 +225,7 @@ class Cloud:
     x: float
     y: float
     width: int
+    speed: float = 10.0
 
 
 @dataclass
@@ -197,6 +237,7 @@ class Sparkle:
     vx: float
     vy: float
     color: Tuple[int, int, int]
+    size: int = 1
 
 
 @dataclass
@@ -206,6 +247,7 @@ class GameState:
     player_x: float = 64.0  # Center of 128px screen
     player_y: float = 90.0  # Near bottom
     target_x: float = 64.0  # Target position for smooth movement
+    player_frame: int = 0   # Seeker animation frame
 
     # Score
     snitches_caught: int = 0
@@ -224,6 +266,7 @@ class GameState:
 
     # Animation
     entity_anim_timer: float = 0.0
+    player_anim_timer: float = 0.0
 
 
 class SnitchCatcher:
@@ -261,7 +304,8 @@ class SnitchCatcher:
                 x=random.uniform(0, 128),
                 y=random.uniform(0, 80),
                 brightness=random.uniform(0.3, 1.0),
-                twinkle_speed=random.uniform(1.0, 3.0)
+                twinkle_speed=random.uniform(1.0, 3.0),
+                depth=random.uniform(0.2, 0.8)
             ))
 
         # Create clouds
@@ -269,7 +313,8 @@ class SnitchCatcher:
             self._state.clouds.append(Cloud(
                 x=i * 50 + random.randint(0, 20),
                 y=random.randint(60, 80),
-                width=random.randint(20, 35)
+                width=random.randint(20, 35),
+                speed=random.uniform(5.0, 15.0)
             ))
 
     def reset(self) -> None:
@@ -343,6 +388,46 @@ class SnitchCatcher:
 
         return False
 
+    def handle_jump(self) -> None:
+        """Handle jump input - move player up temporarily."""
+        self._state.player_y = max(30, self._state.player_y - 20)
+
+    def handle_catch(self) -> bool:
+        """Handle catch input - try to catch nearest snitch."""
+        catch_range = 25
+        nearest_snitch = None
+        nearest_dist = float('inf')
+
+        for entity in self._state.entities:
+            if entity.collected or entity.entity_type != EntityType.SNITCH:
+                continue
+
+            dx = entity.x - self._state.player_x
+            dy = entity.y - self._state.player_y
+            dist = (dx * dx + dy * dy) ** 0.5
+
+            if dist < catch_range and dist < nearest_dist:
+                nearest_dist = dist
+                nearest_snitch = entity
+
+        if nearest_snitch:
+            nearest_snitch.collected = True
+            self._state.snitches_caught += 1
+            # Create golden sparkles
+            for _ in range(12):
+                self._state.sparkles.append(Sparkle(
+                    x=nearest_snitch.x,
+                    y=nearest_snitch.y,
+                    life=random.uniform(300, 600),
+                    vx=random.uniform(-80, 80),
+                    vy=random.uniform(-100, -20),
+                    color=random.choice([GOLD_BRIGHT, GOLD_SHINE, WING_WHITE]),
+                    size=random.choice([1, 2])
+                ))
+            return True
+
+        return False
+
     def update(self, delta_ms: float) -> None:
         """Update game state."""
         dt = delta_ms / 1000.0
@@ -350,20 +435,35 @@ class SnitchCatcher:
 
         # Smooth player movement towards target (X axis)
         diff = self._state.target_x - self._state.player_x
-        self._state.player_x += diff * 8.0 * dt  # Smooth interpolation
+        movement = diff * 8.0 * dt
+        self._state.player_x += movement
+
+        # Parallax factor based on player movement
+        parallax_shift = -movement * 0.5
+
+        # Player Animation
+        self._state.player_anim_timer += delta_ms
+        base_anim_speed = 200
+        if abs(movement) > 0.5:
+             base_anim_speed = 100
+        
+        if self._state.player_anim_timer > base_anim_speed:
+            self._state.player_anim_timer = 0
+            self._state.player_frame = (self._state.player_frame + 1) % len(SEEKER_FRAMES)
 
         # Return player to ground level after jump (Y axis)
-        ground_y = 100  # Normal player Y position
+        ground_y = 110
         if self._state.player_y < ground_y:
-            self._state.player_y += 60 * dt  # Fall back down
+            self._state.player_y += 60 * dt
             self._state.player_y = min(self._state.player_y, ground_y)
 
-        # Update entity animation timer
+        # Update entity animation
         self._state.entity_anim_timer += delta_ms
-        if self._state.entity_anim_timer > 200:
+        if self._state.entity_anim_timer > 90:
             self._state.entity_anim_timer = 0
             for entity in self._state.entities:
-                entity.frame = 1 - entity.frame
+                if entity.entity_type == EntityType.SNITCH:
+                     entity.frame = (entity.frame + 1) % len(SNITCH_FRAMES)
 
         # Update hat thinking animation
         self._state.hat_think_timer += delta_ms
@@ -376,17 +476,23 @@ class SnitchCatcher:
 
         # Update entities
         for entity in self._state.entities:
-            entity.x += entity.vx * dt
+            entity.x += entity.vx * dt + parallax_shift
             entity.y += entity.vy * dt
+            
+            # Record trail
+            if entity.entity_type == EntityType.SNITCH:
+                entity.trail.append((entity.x, entity.y))
+                if len(entity.trail) > 4:
+                    entity.trail.pop(0)
 
-            # Bounce snitches off screen edges for erratic movement
+            # Bounce
             if entity.entity_type == EntityType.SNITCH:
                 if entity.x < 5 or entity.x > 118:
                     entity.vx *= -1
                 if entity.y < 20 or entity.y > 85:
                     entity.vy *= -1
 
-                # Random direction changes for snitches
+                # Random direction changes
                 if random.random() < 0.02:
                     entity.vx += random.uniform(-30, 30)
                     entity.vy += random.uniform(-20, 20)
@@ -401,22 +507,25 @@ class SnitchCatcher:
 
         # Update sparkles
         for sparkle in self._state.sparkles:
-            sparkle.x += sparkle.vx * dt
+            sparkle.x += sparkle.vx * dt + parallax_shift
             sparkle.y += sparkle.vy * dt
             sparkle.life -= delta_ms
-            sparkle.vy += 100 * dt  # Gravity
-
+            sparkle.vy += 100 * dt
         self._state.sparkles = [s for s in self._state.sparkles if s.life > 0]
 
-        # Update stars (twinkling)
+        # Update stars (Parallax)
         for star in self._state.stars:
+            star.x += parallax_shift * star.depth * 0.1
+            if star.x < 0: star.x += 128
+            if star.x > 128: star.x -= 128
+            
             star.brightness = 0.3 + 0.7 * abs(math.sin(
                 self._state.time_played / 1000.0 * star.twinkle_speed
             ))
 
-        # Update clouds
+        # Update clouds (Parallax)
         for cloud in self._state.clouds:
-            cloud.x -= 10 * dt
+            cloud.x -= cloud.speed * dt - parallax_shift * 0.8
             if cloud.x < -cloud.width:
                 cloud.x = 140
                 cloud.y = random.randint(60, 80)
@@ -483,7 +592,8 @@ class SnitchCatcher:
                             life=random.uniform(300, 600),
                             vx=random.uniform(-80, 80),
                             vy=random.uniform(-100, -20),
-                            color=random.choice([GOLD_BRIGHT, GOLD_SHINE, WING_WHITE])
+                            color=random.choice([GOLD_BRIGHT, GOLD_SHINE, WING_WHITE]),
+                            size=random.choice([1, 2])
                         ))
                 else:
                     self._state.bludger_hits += 1
@@ -495,21 +605,16 @@ class SnitchCatcher:
                             life=random.uniform(200, 400),
                             vx=random.uniform(-60, 60),
                             vy=random.uniform(-80, 0),
-                            color=random.choice([BLUDGER_LIGHT, BLUDGER_MID, (150, 50, 50)])
+                            color=random.choice([BLUDGER_LIGHT, BLUDGER_MID, (150, 50, 50)]),
+                            size=2
                         ))
 
     def render(self, buffer: NDArray[np.uint8], background: Optional[NDArray[np.uint8]] = None) -> None:
-        """Render the game to buffer.
-
-        Args:
-            buffer: The 128x128 RGB buffer to render to
-            background: Optional camera frame to use as background (dimmed).
-                        If None, uses default night sky.
-        """
+        """Render the game to buffer."""
+        # Background
         if background is not None and background.shape == buffer.shape:
             # Use camera frame as background (dimmed for visibility)
             np.copyto(buffer, (background.astype(np.float32) * 0.3).astype(np.uint8))
-
             # Add slight blue tint for night feel
             buffer[:, :, 2] = np.clip(buffer[:, :, 2].astype(np.int16) + 20, 0, 255).astype(np.uint8)
         else:
@@ -523,7 +628,6 @@ class SnitchCatcher:
                 buffer[y, :, 1] = g
                 buffer[y, :, 2] = b
 
-            # Render clouds
             for cloud in self._state.clouds:
                 self._render_cloud(buffer, int(cloud.x), int(cloud.y), cloud.width)
 
@@ -537,8 +641,16 @@ class SnitchCatcher:
         # Render entities
         for entity in self._state.entities:
             if not entity.collected:
+                # Ghost trails for snitches
+                if entity.entity_type == EntityType.SNITCH and entity.trail:
+                    for i, (tx, ty) in enumerate(entity.trail):
+                        alpha = (i + 1) / (len(entity.trail) + 1) * 0.5
+                        # Draw trail as small golden dots
+                        self._draw_pixel(buffer, int(tx), int(ty), tuple(int(c*alpha) for c in GOLD_DARK))
+
+                # Sprite
                 if entity.entity_type == EntityType.SNITCH:
-                    sprite = SNITCH if entity.frame == 0 else SNITCH_UP
+                    sprite = SNITCH_FRAMES[entity.frame % len(SNITCH_FRAMES)]
                 else:
                     sprite = BLUDGER
                 self._render_sprite_centered(buffer, sprite, int(entity.x), int(entity.y))
@@ -546,19 +658,20 @@ class SnitchCatcher:
         # Render sparkles
         for sparkle in self._state.sparkles:
             x, y = int(sparkle.x), int(sparkle.y)
-            if 0 <= x < 128 and 0 <= y < 128:
-                alpha = sparkle.life / 600.0
-                color = tuple(int(c * alpha) for c in sparkle.color)
-                buffer[y, x] = color
-                # Larger sparkles
-                if sparkle.life > 300:
-                    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                        nx, ny = x + dx, y + dy
-                        if 0 <= nx < 128 and 0 <= ny < 128:
-                            buffer[ny, nx] = tuple(int(c * alpha * 0.5) for c in sparkle.color)
+            alpha = sparkle.life / 600.0
+            color = tuple(int(c * alpha) for c in sparkle.color)
+            
+            if sparkle.size == 1:
+                self._draw_pixel(buffer, x, y, color)
+            else:
+                self._draw_pixel(buffer, x, y, color)
+                self._draw_pixel(buffer, x+1, y, color)
+                self._draw_pixel(buffer, x, y+1, color)
+                self._draw_pixel(buffer, x+1, y+1, color)
 
-        # Render player (seeker on broom)
-        self._render_sprite_centered(buffer, SEEKER, int(self._state.player_x), int(self._state.player_y))
+        # Render player (seeker on broom) - Animated
+        seeker_sprite = SEEKER_FRAMES[self._state.player_frame % len(SEEKER_FRAMES)]
+        self._render_sprite_centered(buffer, seeker_sprite, int(self._state.player_x), int(self._state.player_y))
 
         # Render Sorting Hat in top-left corner with thinking animation
         hat_sprite = SORTING_HAT_THINK if int(self._state.hat_think_timer / 500) % 2 == 0 else SORTING_HAT
@@ -566,6 +679,10 @@ class SnitchCatcher:
 
         # Render score
         self._render_score(buffer)
+
+    def _draw_pixel(self, buffer, x, y, color):
+        if 0 <= x < 128 and 0 <= y < 128:
+            buffer[y, x] = color
 
     def _render_sprite(self, buffer: NDArray, sprite: List[List], x: int, y: int) -> None:
         """Render a sprite to the buffer."""
