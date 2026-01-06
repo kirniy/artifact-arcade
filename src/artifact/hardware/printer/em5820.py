@@ -384,20 +384,25 @@ class EM5820Printer(Printer):
             return
 
         if self._file_backend:
-            # USB printer class - write directly
-            self._file_backend.write(data)
-            self._file_backend.flush()
+            # USB printer class - write directly (offload blocking I/O to thread)
+            await asyncio.to_thread(self._write_file_backend, data)
             await asyncio.sleep(0.01)
         elif self._serial:
-            # Send in chunks to avoid buffer overflow
-            chunk_size = 256
-            for i in range(0, len(data), chunk_size):
-                chunk = data[i:i + chunk_size]
-                self._serial.write(chunk)
-                self._serial.flush()
+            # Send in chunks to avoid buffer overflow (offload blocking I/O to thread)
+            await asyncio.to_thread(self._write_serial_chunks, data)
 
-                # Small delay between chunks
-                await asyncio.sleep(0.01)
+    def _write_file_backend(self, data: bytes) -> None:
+        """Blocking write to file backend (runs in thread pool)."""
+        self._file_backend.write(data)
+        self._file_backend.flush()
+
+    def _write_serial_chunks(self, data: bytes) -> None:
+        """Blocking write to serial port in chunks (runs in thread pool)."""
+        chunk_size = 256
+        for i in range(0, len(data), chunk_size):
+            chunk = data[i:i + chunk_size]
+            self._serial.write(chunk)
+            self._serial.flush()
 
     async def _wait_for_ready(self, timeout: float = 30.0) -> bool:
         """Wait for printer to become ready.
