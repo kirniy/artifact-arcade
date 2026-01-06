@@ -1453,7 +1453,8 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
         else:
             # House reveal!
             reveal_t = (self._reveal_progress - 0.5) * 2
-            reveal_t = Easing.ease_out(reveal_t)
+            from artifact.animation.easing import ease_out_quad
+            reveal_t = ease_out_quad(reveal_t)
 
             # House name grows in
             scale = 1 + int(reveal_t * 1.5)

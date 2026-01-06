@@ -1895,50 +1895,18 @@ class ModeManager:
 
         mode = self.get_selected_mode()
         if mode:
-            # Special handling for sorting_hat - word by word vertical animation
-            if mode.name == "sorting_hat":
-                words = ["УЗНАЙ", "СВОЙ", "ФАКУЛЬТЕТ"]
-                word_duration = 1200  # ms per word
-                total_cycle = len(words) * word_duration
-
-                # Calculate current word and transition progress
-                cycle_pos = int(self._time_in_state) % total_cycle
-                word_idx = cycle_pos // word_duration
-                progress = (cycle_pos % word_duration) / word_duration
-
-                # Vertical slide animation
-                current_word = words[word_idx]
-
-                # Slide up animation: word comes from bottom, stays in center, then slides up
-                if progress < 0.15:
-                    # Sliding in from bottom
-                    y_offset = int(8 * (1 - progress / 0.15))
-                elif progress > 0.85:
-                    # Sliding out to top
-                    y_offset = -int(8 * (progress - 0.85) / 0.15)
-                else:
-                    # Centered
-                    y_offset = 0
-
-                # Fade in/out
-                if progress < 0.1:
-                    alpha = progress / 0.1
-                elif progress > 0.9:
-                    alpha = (1 - progress) / 0.1
-                else:
-                    alpha = 1.0
-
-                color = tuple(int(c * alpha) for c in (255, 215, 0))  # Golden
-                draw_centered_ticker(buffer, current_word, color, y_offset=y_offset)
-            else:
-                # Default: scrolling text
-                description = MODE_DESCRIPTIONS_RU.get(mode.name, mode.display_name)
-                text = f"{mode.display_name}: {description}   {mode.display_name}: {description}   "
-                render_ticker_animated(
-                    buffer, text,
-                    self._time_in_state, (255, 200, 0),
-                    TickerEffect.SPARKLE_SCROLL, speed=0.025
-                )
+            # Standard clean scrolling text for all modes
+            description = MODE_DESCRIPTIONS_RU.get(mode.name, mode.display_name)
+            
+            # Format: NAME • Description • NAME • Description •
+            text = f"{mode.display_name.strip().upper()} \u2022 {description} \u2022   "
+            
+            # Use simple SCROLL effect (no sparkles) for better readability
+            render_ticker_animated(
+                buffer, text,
+                self._time_in_state, (255, 200, 0),
+                TickerEffect.SCROLL, speed=0.035
+            )
 
     def _render_result_ticker(self, buffer) -> None:
         """Render ticker during result/printing states."""
