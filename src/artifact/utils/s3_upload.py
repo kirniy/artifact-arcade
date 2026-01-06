@@ -70,6 +70,8 @@ class UploadResult:
     """Result of an upload operation."""
     success: bool
     url: Optional[str] = None
+    short_url: Optional[str] = None  # vnvnc.ru/p/{id} redirect URL
+    short_id: Optional[str] = None   # Just the short ID part
     qr_image: Optional[np.ndarray] = None
     error: Optional[str] = None
 
@@ -87,6 +89,118 @@ def generate_filename(prefix: str, extension: str = "jpg") -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = uuid.uuid4().hex[:8]
     return f"{prefix}_{timestamp}_{unique_id}.{extension}"
+
+
+def _create_redirect_html(target_url: str, title: str = "VNVNC Arcade") -> str:
+    """Create an HTML redirect page.
+
+    Args:
+        target_url: Full URL to redirect to
+        title: Page title
+
+    Returns:
+        HTML content as string
+    """
+    return f'''<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0;url={target_url}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <style>
+        body {{
+            background: #0a0a0a;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }}
+        .loader {{
+            text-align: center;
+        }}
+        .spinner {{
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top-color: #ff6b35;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }}
+        @keyframes spin {{
+            to {{ transform: rotate(360deg); }}
+        }}
+        a {{
+            color: #ff6b35;
+            text-decoration: none;
+        }}
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <p>Загрузка...</p>
+        <p><a href="{target_url}">Нажмите, если не перенаправлено</a></p>
+    </div>
+    <script>window.location.replace("{target_url}");</script>
+</body>
+</html>'''
+
+
+def _upload_redirect_html(short_id: str, target_url: str) -> bool:
+    """Upload a redirect HTML file to S3.
+
+    Creates artifact/p/{short_id}/index.html that redirects to target_url.
+    This enables short URLs like vnvnc.ru/p/{short_id}/
+
+    Args:
+        short_id: The short identifier (8 hex chars)
+        target_url: Full URL to redirect to
+
+    Returns:
+        True if successful, False otherwise
+    """
+    if not AWS_CLI_AVAILABLE:
+        return False
+
+    try:
+        html_content = _create_redirect_html(target_url)
+        s3_key = f"{SELECTEL_PREFIX}/p/{short_id}/index.html"
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as tmp:
+            tmp.write(html_content)
+            tmp_path = tmp.name
+
+        result = subprocess.run(
+            [AWS_CLI_PATH, '--endpoint-url', SELECTEL_ENDPOINT,
+             '--profile', 'selectel',
+             's3', 'cp', tmp_path,
+             f's3://{SELECTEL_BUCKET}/{s3_key}',
+             '--acl', 'public-read',
+             '--content-type', 'text/html; charset=utf-8'],
+            capture_output=True,
+            timeout=15
+        )
+
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+
+        if result.returncode == 0:
+            logger.info(f"Redirect HTML uploaded: vnvnc.ru/p/{short_id}/")
+            return True
+        else:
+            logger.warning(f"Failed to upload redirect HTML: {result.stderr.decode()}")
+            return False
+
+    except Exception as e:
+        logger.warning(f"Failed to create redirect: {e}")
+        return False
 
 
 def generate_qr_image(url: str, size: int = 60) -> Optional[np.ndarray]:
@@ -183,9 +297,20 @@ def upload_bytes_to_s3(
 
         if result.returncode == 0:
             url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
-            qr_image = generate_qr_image(url)
-            logger.info(f"Upload successful: {url}")
-            return UploadResult(success=True, url=url, qr_image=qr_image)
+
+            # Extract short_id from filename (the 8-char UUID portion)
+            # Filename format: prefix_20251227_123456_a1b2c3d4.jpg
+            short_id = filename.rsplit('_', 1)[-1].rsplit('.', 1)[0]
+            short_url = None
+
+            # Upload redirect HTML for short URL
+            if _upload_redirect_html(short_id, url):
+                short_url = f"https://vnvnc.ru/p/{short_id}/"
+
+            # Generate QR code for the short URL if available, otherwise full URL
+            qr_image = generate_qr_image(short_url or url)
+            logger.info(f"Upload successful: {url} (short: {short_url})")
+            return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
         else:
             stderr = result.stderr.decode() if result.stderr else ""
             # Provide helpful error messages
@@ -266,9 +391,20 @@ def upload_file_to_s3(
 
         if result.returncode == 0:
             url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
-            qr_image = generate_qr_image(url)
-            logger.info(f"Upload successful: {url}")
-            return UploadResult(success=True, url=url, qr_image=qr_image)
+
+            # Extract short_id from filename (the 8-char UUID portion)
+            # Filename format: prefix_20251227_123456_a1b2c3d4.jpg
+            short_id = filename.rsplit('_', 1)[-1].rsplit('.', 1)[0]
+            short_url = None
+
+            # Upload redirect HTML for short URL
+            if _upload_redirect_html(short_id, url):
+                short_url = f"https://vnvnc.ru/p/{short_id}/"
+
+            # Generate QR code for the short URL if available, otherwise full URL
+            qr_image = generate_qr_image(short_url or url)
+            logger.info(f"Upload successful: {url} (short: {short_url})")
+            return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
         else:
             stderr = result.stderr.decode() if result.stderr else ""
             # Provide helpful error messages

@@ -95,6 +95,8 @@ class ReceiptGenerator:
             layout = self._create_brick_breaker_receipt(data)
         elif mode_name == "video":
             layout = self._create_video_receipt(data)
+        elif mode_name == "sorting_hat":
+            layout = self._create_sorting_hat_receipt(data)
         else:
             layout = self._create_generic_receipt(mode_name, data)
 
@@ -212,7 +214,7 @@ class ReceiptGenerator:
 
         layout.add_space(1)
         layout.add_text("Спасибо за визит!", size=TextSize.SMALL)
-        layout.add_text("vnvnc.ai", size=TextSize.SMALL)
+        layout.add_text("vnvnc.ru", size=TextSize.SMALL)
         layout.add_space(2)
 
     def _create_fortune_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
@@ -791,3 +793,89 @@ class ReceiptGenerator:
 
         self._create_footer(layout, data)
         return layout
+
+    def _create_sorting_hat_receipt(self, data: Dict[str, Any]) -> ReceiptLayout:
+        """Create receipt for Sorting Hat (Harry Potter) mode.
+
+        Includes:
+        - Hogwarts house name and crest
+        - AI-generated portrait in house robes
+        - House traits
+        - QR code for download
+        """
+        layout = ReceiptLayout()
+        self._create_header(layout)
+
+        # Title with magic feel
+        layout.add_text("РАСПРЕДЕЛЯЮЩАЯ", size=TextSize.LARGE, bold=True)
+        layout.add_text("ШЛЯПА", size=TextSize.LARGE, bold=True)
+        layout.add_separator("stars")
+        layout.add_space(1)
+
+        # House name (big and prominent)
+        house_ru = data.get("house_name_ru") or data.get("house_ru") or data.get("house") or "Хогвартс"
+        layout.add_text(house_ru, size=TextSize.LARGE, bold=True)
+
+        # Animal
+        animal_ru = data.get("animal_ru")
+        if animal_ru:
+            layout.add_text(f"({animal_ru})", size=TextSize.SMALL)
+
+        layout.add_separator("line")
+        layout.add_space(1)
+
+        # Portrait image - FULL WIDTH
+        portrait = self._coerce_image(data.get("caricature") or data.get("portrait"))
+        if portrait:
+            layout.add_image(portrait, width=384, dither=True)
+            layout.add_space(1)
+
+        # House traits
+        traits = data.get("traits", [])
+        if traits:
+            layout.add_text("ЧЕРТЫ ХАРАКТЕРА:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+            traits_text = ", ".join(traits[:4])
+            layout.add_text(traits_text, alignment=Alignment.LEFT, size=TextSize.SMALL)
+            layout.add_space(1)
+
+        # Bracelet reminder
+        layout.add_separator("line")
+        layout.add_text("ПОЛУЧИ СВОЙ БРАСЛЕТ!", size=TextSize.MEDIUM, bold=True)
+        layout.add_separator("line")
+
+        # QR code with short link
+        qr_image = self._prepare_qr_image(data.get("qr_image"))
+        qr_url = data.get("qr_url")
+        short_url = data.get("short_url")  # Pre-generated short URL from S3 upload
+        if qr_image or qr_url or short_url:
+            layout.add_space(1)
+            layout.add_text("СКАЧАТЬ:", alignment=Alignment.LEFT, size=TextSize.SMALL, bold=True)
+            if qr_image:
+                layout.add_image(qr_image, width=192, dither=False)
+            # Display short URL (use pre-generated if available, else extract from qr_url)
+            display_url = short_url or (self._shorten_url(qr_url) if qr_url else None)
+            if display_url:
+                layout.add_text(display_url, alignment=Alignment.CENTER, size=TextSize.SMALL)
+
+        layout.add_space(1)
+        layout.add_separator("stars")
+
+        self._create_footer(layout, data)
+        return layout
+
+    def _shorten_url(self, url: str) -> str:
+        """Create a shortened display version of URL for receipt."""
+        if not url:
+            return ""
+        # Extract just filename from S3 URL for display
+        # e.g., https://xxx.selstorage.ru/artifact/sorting_hat/20260106_123456_abc12.png
+        # -> vnvnc.ru/p/abc12
+        import re
+        match = re.search(r'_([a-zA-Z0-9]{5,8})\.\w+$', url)
+        if match:
+            short_id = match.group(1)
+            return f"vnvnc.ru/p/{short_id}"
+        # Fallback: truncate URL
+        if len(url) > 40:
+            return url[:37] + "..."
+        return url

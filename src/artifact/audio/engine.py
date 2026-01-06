@@ -1064,6 +1064,11 @@ class AudioEngine:
         external_files = {
             "squidgame_menu": ["squidgame-menu.wav", "squidgame-menu.mp3"],
             "squidgame_run": ["squidgame-runsound.wav", "squidgame-runsound.mp3"],
+            "sorting_hat_theme": ["sorting-hat-theme.wav", "sorting-hat-theme.mp3"],
+            "sorting_gryffindor": ["sorting-gryffindor.wav", "sorting-gryffindor.mp3"],
+            "sorting_slytherin": ["sorting-slytherin.wav", "sorting-slytherin.mp3"],
+            "sorting_ravenclaw": ["sorting-ravenclaw.wav", "sorting-ravenclaw.mp3"],
+            "sorting_hufflepuff": ["sorting-hufflepuff.wav", "sorting-hufflepuff.mp3"],
         }
 
         for sound_name, filenames in external_files.items():
@@ -1120,6 +1125,83 @@ class AudioEngine:
             return self._music_channel
         except Exception as e:
             logger.error(f"Failed to play Squid Game track: {e}")
+            return None
+
+    def play_sorting_hat_theme(self) -> Optional[pygame.mixer.Channel]:
+        """Play Hedwig's Theme for Sorting Hat mode (looping)."""
+        return self._play_external_track("sorting_hat_theme")
+
+    def play_sorting_house_reveal(self, house: str, loop: bool = True) -> Optional[pygame.mixer.Channel]:
+        """Play house-specific reveal sound (GRYFFINDOR!, SLYTHERIN!, etc).
+
+        Args:
+            house: House name (gryffindor, slytherin, ravenclaw, hufflepuff)
+            loop: If True, loops until stopped. If False, plays once.
+        """
+        track_name = f"sorting_{house.lower()}"
+        if loop:
+            # Use music channel for looping
+            return self._play_external_track(track_name)
+        else:
+            return self._play_sfx_track(track_name)
+
+    def _play_sfx_track(self, track_name: str) -> Optional[pygame.mixer.Channel]:
+        """Play an external track once (no looping) on a free channel."""
+        if not self._initialized or self._muted:
+            return None
+
+        sound = self._sounds.get(track_name)
+        if not sound:
+            logger.warning(f"SFX track not found: {track_name}")
+            return None
+
+        volume = self._volume_sfx * self._volume_master
+        sound.set_volume(volume)
+
+        try:
+            channel = pygame.mixer.find_channel()
+            if channel:
+                channel.set_volume(volume)
+                channel.play(sound, loops=0)
+                logger.info(f"Playing SFX track: {track_name}")
+                return channel
+            else:
+                logger.warning(f"No free channel for SFX: {track_name}")
+                return None
+        except Exception as e:
+            logger.error(f"Failed to play SFX track: {e}")
+            return None
+
+    def _play_external_track(self, track_name: str) -> Optional[pygame.mixer.Channel]:
+        """Play an external track with looping."""
+        if not self._initialized or self._muted:
+            return None
+
+        # Don't restart if already playing this track
+        if self._current_music == track_name and self._music_channel:
+            if self._music_channel.get_busy():
+                return self._music_channel
+
+        self.stop_music(fade_out_ms=100)
+
+        sound = self._sounds.get(track_name)
+        if not sound:
+            logger.warning(f"External track not found: {track_name}")
+            return None
+
+        volume = self._volume_music * self._volume_master
+        sound.set_volume(volume)
+
+        try:
+            self._music_channel = pygame.mixer.Channel(0)
+            self._music_channel.set_volume(volume)
+            self._music_channel.play(sound, loops=-1, fade_ms=500)
+            self._current_music = track_name
+            self._music_playing = True
+            logger.info(f"Playing external track: {track_name}")
+            return self._music_channel
+        except Exception as e:
+            logger.error(f"Failed to play external track: {e}")
             return None
 
     # ===== PLAYBACK API =====

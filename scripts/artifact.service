@@ -1,7 +1,7 @@
 [Unit]
 Description=ARTIFACT Arcade Machine
-After=network.target graphical.target
-Wants=graphical.target
+After=network.target graphical.target artifact-audio.service
+Wants=graphical.target artifact-audio.service
 
 [Service]
 Type=simple
@@ -9,11 +9,14 @@ User=root
 WorkingDirectory=/home/kirniy/modular-arcade
 Environment=ARTIFACT_ENV=hardware
 Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+# Audio: Use ALSA driver with card 2 (3.5mm headphones)
+Environment=SDL_AUDIODRIVER=alsa
+Environment=AUDIODEV=hw:2,0
 # Let pygame auto-detect kmsdrm - do NOT set SDL_VIDEODRIVER explicitly!
 ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.main
 Restart=on-failure
 RestartSec=5
-# Give time for display to be available
+# Give time for display and audio to be available
 ExecStartPre=/bin/sleep 3
 
 [Install]

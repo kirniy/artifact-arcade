@@ -58,8 +58,9 @@ async def run_hardware() -> None:
     from artifact.utils.camera_service import camera_service
 
     # Import curated game modes (same as simulator)
-    from artifact.modes.fortune import FortuneMode           # 1. ГАДАЛКА
-    from artifact.modes.ai_prophet import AIProphetMode      # 2. ПРОРОК
+    from artifact.modes.sorting_hat import SortingHatMode    # 1. ШЛЯПА (Sorting Hat)
+    from artifact.modes.fortune import FortuneMode           # 2. ГАДАЛКА
+    from artifact.modes.ai_prophet import AIProphetMode      # 3. ПРОРОК
     from artifact.modes.photobooth import PhotoboothMode     # 3. ФОТОБУДКА
     from artifact.modes.roast import RoastMeMode             # 4. ПРОЖАРКА
     from artifact.modes.guess_me import GuessMeMode          # 5. КТО Я?
@@ -96,7 +97,14 @@ async def run_hardware() -> None:
     )
 
     # Register curated game modes (same order as simulator)
-    # 1. ГАДАЛКА - Fortune teller
+    # 1. ШЛЯПА - Sorting Hat (Harry Potter house sorting)
+    if os.environ.get("GEMINI_API_KEY"):
+        mode_manager.register_mode(SortingHatMode)
+        logger.info("Sorting Hat mode enabled (API key found)")
+    else:
+        logger.warning("Sorting Hat mode disabled (no GEMINI_API_KEY)")
+
+    # 2. ГАДАЛКА - Fortune teller
     mode_manager.register_mode(FortuneMode)
 
     # 2. ПРОРОК - AI Prophet (requires API key)

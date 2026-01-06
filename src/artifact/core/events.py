@@ -215,7 +215,7 @@ class EventBus:
             try:
                 handler(event)
             except Exception as e:
-                logger.error(f"Error in event handler: {e}")
+                logger.error(f"Error in event handler: {e}", exc_info=True)
 
     async def _dispatch_async(self, event: Event) -> None:
         """Dispatch event to all handlers (sync and async)."""
@@ -229,7 +229,7 @@ class EventBus:
                 try:
                     handler(event)
                 except Exception as e:
-                    logger.error(f"Error in sync handler: {e}")
+                    logger.error(f"Error in sync handler: {e}", exc_info=True)
 
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)

@@ -1366,6 +1366,34 @@ def render_ticker_static(
         draw_text_bitmap(buffer, text, x, 0, color, font, scale=1)
 
 
+def draw_centered_ticker(
+    buffer: NDArray[np.uint8],
+    text: str,
+    color: Tuple[int, int, int],
+    y_offset: int = 0,
+    font: Optional[PixelFont] = None,
+) -> None:
+    """Draw centered text on ticker with optional vertical offset.
+
+    Args:
+        buffer: Ticker buffer (48x8)
+        text: Text to display
+        color: RGB color tuple
+        y_offset: Vertical offset for animation (-8 to 8)
+        font: Optional font, defaults to ticker font
+    """
+    if font is None:
+        font = get_ticker_font()
+
+    text_w, text_h = font.measure_text(text)
+    x = (TICKER_WIDTH - text_w) // 2  # Center horizontally
+
+    # Clamp y position to keep text visible
+    y = max(-text_h + 1, min(TICKER_HEIGHT - 1, y_offset))
+
+    draw_text_bitmap(buffer, text, x, y, color, font, scale=1)
+
+
 # =============================================================================
 # STAR WARS CRAWL EFFECT
 # =============================================================================

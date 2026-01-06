@@ -23,8 +23,9 @@ from artifact.graphics.renderer import Renderer
 from artifact.animation.engine import AnimationEngine
 from artifact.modes.manager import ModeManager
 # Active modes only (in display order)
-from artifact.modes.fortune import FortuneMode           # 1. ГАДАЛКА
-from artifact.modes.ai_prophet import AIProphetMode      # 2. ПРОРОК
+from artifact.modes.sorting_hat import SortingHatMode    # 1. ШЛЯПА (Sorting Hat)
+from artifact.modes.fortune import FortuneMode           # 2. ГАДАЛКА
+from artifact.modes.ai_prophet import AIProphetMode      # 3. ПРОРОК
 from artifact.modes.photobooth import PhotoboothMode     # 3. ФОТОБУДКА
 from artifact.modes.roast import RoastMeMode             # 4. ПРОЖАРКА
 from artifact.modes.guess_me import GuessMeMode          # 5. КТО Я?
@@ -131,10 +132,17 @@ class ArtifactSimulator:
         """Register game modes in display order."""
         import os
 
-        # 1. ГАДАЛКА - Fortune teller
+        # 1. ШЛЯПА - Sorting Hat (Harry Potter house sorting)
+        if os.environ.get("GEMINI_API_KEY"):
+            self.mode_manager.register_mode(SortingHatMode)
+            logger.info("Sorting Hat mode enabled (API key found)")
+        else:
+            logger.warning("Sorting Hat mode disabled (no GEMINI_API_KEY)")
+
+        # 2. ГАДАЛКА - Fortune teller
         self.mode_manager.register_mode(FortuneMode)
 
-        # 2. ПРОРОК - AI Prophet (requires API key)
+        # 3. ПРОРОК - AI Prophet (requires API key)
         if os.environ.get("GEMINI_API_KEY"):
             self.mode_manager.register_mode(AIProphetMode)
             logger.info("AI Prophet mode enabled (API key found)")

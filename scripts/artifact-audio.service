@@ -1,0 +1,14 @@
+[Unit]
+Description=ARTIFACT Audio Setup - Maximum Volume
+Before=artifact.service
+After=sound.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/kirniy/modular-arcade/scripts/setup-audio.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

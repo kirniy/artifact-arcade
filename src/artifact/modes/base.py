@@ -37,6 +37,7 @@ class ModeResult:
     should_print: bool = False
     print_data: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+    skip_manager_result: bool = False  # If True, skip manager's result screen (mode handles its own)
 
 
 @dataclass
