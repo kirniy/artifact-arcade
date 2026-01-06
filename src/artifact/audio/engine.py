@@ -1037,6 +1037,52 @@ class AudioEngine:
 
     # ===== EXTERNAL SOUND LOADING =====
 
+    def _load_generated_sounds(self) -> None:
+        """Load pre-generated WAV files (instant startup!)."""
+        import os
+
+        # Try multiple base paths
+        possible_bases = [
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            os.getcwd(),
+            os.path.expanduser("~/modular-arcade"),
+        ]
+
+        generated_dir = None
+        for base in possible_bases:
+            candidate = os.path.join(base, "assets", "sounds", "generated")
+            if os.path.isdir(candidate):
+                generated_dir = candidate
+                break
+
+        if not generated_dir:
+            logger.warning("Pre-generated sounds not found, falling back to generation...")
+            self._generate_all_sounds()
+            return
+
+        # Load all WAV files from generated directory
+        loaded_count = 0
+        for filename in os.listdir(generated_dir):
+            if not filename.endswith('.wav'):
+                continue
+
+            sound_name = filename[:-4]  # Remove .wav extension
+            filepath = os.path.join(generated_dir, filename)
+
+            try:
+                sound = pygame.mixer.Sound(filepath)
+                self._sounds[sound_name] = sound
+                loaded_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to load {filename}: {e}")
+
+        if loaded_count > 0:
+            logger.info(f"Loaded {loaded_count} pre-generated sounds")
+            self._generated = True
+        else:
+            logger.warning("No sounds loaded, falling back to generation...")
+            self._generate_all_sounds()
+
     def _load_external_sounds(self) -> None:
         """Load external sound files from assets/sounds directory."""
         import os
