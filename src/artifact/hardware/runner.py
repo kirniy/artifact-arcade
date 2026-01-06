@@ -252,9 +252,11 @@ class HardwareRunner:
             self._audio_engine = get_audio_engine()
             # Mark as initialized since we already set up the mixer
             self._audio_engine._initialized = True
-            self._audio_engine._generate_all_sounds()
+            # SKIP sound generation - it blocks startup for 60+ seconds
+            # self._audio_engine._generate_all_sounds()
+            self._audio_engine._generated = True  # Mark as done to skip later
 
-            logger.info("Audio initialized: 3.5mm jack (hw:2,0) with full AudioEngine")
+            logger.info("Audio initialized: 3.5mm jack (hw:2,0) - sound generation DISABLED")
             self._audio_enabled = True
             return True
 
