@@ -157,17 +157,15 @@ async def run_hardware() -> None:
     # start_gallery_preloader()
 
     # Initialize printer manager
-    logger.info("Starting printer manager...")
     mock_printer = os.getenv("ARTIFACT_MOCK_PRINTER", "false").lower() == "true"
     mock_printer = mock_printer or os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
     printer_manager = PrintManager(event_bus=event_bus, mock=mock_printer)
     event_bus.subscribe(EventType.PRINT_START, printer_manager.handle_print_start)
-    logger.info("Calling printer_manager.start()...")
-    await printer_manager.start()
-    logger.info("Printer manager started!")
+    # Start printer in background (don't block main loop!)
+    asyncio.create_task(printer_manager.start())
+    logger.info("Printer manager starting in background...")
 
     # Wire up global sound effects for all button events
-    logger.info("Wiring up event handlers...")
     def on_button_press(event: Event) -> None:
         runner.play_sound('confirm')
 
@@ -211,10 +209,8 @@ async def run_hardware() -> None:
             runner.lcd_display.set_text(lcd_text)
 
     event_bus.subscribe(EventType.TICK, on_tick)
-    logger.info("Event handlers registered!")
 
     # Run hardware loop
-    logger.info("Starting hardware runner event loop...")
     await runner.run()
 
     # Cleanup
