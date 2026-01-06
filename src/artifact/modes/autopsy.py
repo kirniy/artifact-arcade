@@ -19,6 +19,8 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +97,12 @@ class AutopsyMode(BaseMode):
         self._green = (0, 255, 50)
         self._dark_green = (0, 50, 10)
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+        self._short_url: Optional[str] = None
+
     @property
     def is_ai_available(self) -> bool:
         return self._gemini_client.is_available
@@ -110,6 +118,11 @@ class AutopsyMode(BaseMode):
         self._text_scroll_complete = False
         self._text_view_time = 0.0
         self._scroll_duration = 0.0
+
+        # Reset QR state
+        self._qr_url = None
+        self._qr_image = None
+        self._short_url = None
 
         # Reset progress tracker
         self._progress_tracker.reset()
@@ -274,6 +287,17 @@ class AutopsyMode(BaseMode):
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
             self._xray_image = await get_image()
 
+            # Upload xray image for QR sharing
+            if self._xray_image and self._xray_image.image_data:
+                logger.info("Starting autopsy xray upload for QR sharing")
+                self._uploader.upload_bytes(
+                    self._xray_image.image_data,
+                    prefix="autopsy",
+                    extension="png",
+                    content_type="image/png",
+                    callback=self._on_upload_complete
+                )
+
             # Advance to finalizing
             self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
@@ -289,6 +313,16 @@ class AutopsyMode(BaseMode):
             elif line.startswith("ID_CODE:"): code = line[8:].strip()
         if not diag: diag = text[:100]
         return diag, code
+
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
+            self._qr_image = result.qr_image
+            self._short_url = result.short_url
+            logger.info(f"Autopsy xray uploaded: {self._qr_url}")
+        else:
+            logger.error(f"Autopsy xray upload failed: {result.error}")
 
     def _on_ai_complete(self) -> None:
         # Complete progress tracker
@@ -317,7 +351,10 @@ class AutopsyMode(BaseMode):
                 "diagnosis": self._diagnosis,
                 "id": self._id_code,
                 "scan_image": self._xray_image.image_data if self._xray_image else None,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "qr_url": self._qr_url,
+                "qr_image": self._qr_image,
+                "short_url": self._short_url
             }
         )
         self.complete(result)

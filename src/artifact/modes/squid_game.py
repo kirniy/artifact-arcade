@@ -27,6 +27,7 @@ from artifact.audio.engine import get_audio_engine
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.coupon_service import get_coupon_service, CouponResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +156,12 @@ class SquidGameMode(BaseMode):
         self._audio = get_audio_engine()
         self._countdown_second: int = 3
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+        self._short_url: Optional[str] = None
+
         # Particles
         self._particles = ParticleSystem()
 
@@ -188,6 +195,11 @@ class SquidGameMode(BaseMode):
         self._sketch_task = None
         self._sketch_cache = {}
         self._countdown_second = 3
+
+        # Reset QR state
+        self._qr_url = None
+        self._qr_image = None
+        self._short_url = None
 
         # Use shared camera service (always running)
         self._camera = camera_service.is_running
@@ -469,6 +481,16 @@ class SquidGameMode(BaseMode):
                         data = self._apply_elimination_overlay(data)
                     self._sketch_image = data
                     self._sketch_cache = {}
+
+                    # Upload sketch for QR sharing
+                    logger.info("Starting squid_game sketch upload for QR sharing")
+                    self._uploader.upload_bytes(
+                        data,
+                        prefix="squid_game",
+                        extension="png",
+                        content_type="image/png",
+                        callback=self._on_upload_complete
+                    )
                 else:
                     logger.warning("Sketch task completed but returned no data")
             except asyncio.CancelledError:
@@ -477,6 +499,16 @@ class SquidGameMode(BaseMode):
                 logger.warning(f"Failed to get sketch result: {e}")
             finally:
                 self._sketch_task = None
+
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
+            self._qr_image = result.qr_image
+            self._short_url = result.short_url
+            logger.info(f"Squid Game sketch uploaded: {self._qr_url}")
+        else:
+            logger.error(f"Squid Game sketch upload failed: {result.error}")
 
     def _apply_elimination_overlay(self, image_data: bytes) -> bytes:
         """Add a dramatic X/blood overlay for eliminated players."""
@@ -775,6 +807,9 @@ class SquidGameMode(BaseMode):
                     "caricature": self._sketch_image,
                     "photo": self._player_photo,
                     "sketch_variant": self._sketch_variant or "victory",
+                    "qr_url": self._qr_url,
+                    "qr_image": self._qr_image,
+                    "short_url": self._short_url,
                 }
             )
         else:
@@ -795,6 +830,9 @@ class SquidGameMode(BaseMode):
                     "sketch": self._sketch_image,
                     "caricature": self._sketch_image,
                     "photo": self._player_photo,
+                    "qr_url": self._qr_url,
+                    "qr_image": self._qr_image,
+                    "short_url": self._short_url,
                     "sketch_variant": self._sketch_variant or "eliminated",
                 }
             )

@@ -22,7 +22,9 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.coupon_service import get_coupon_service, CouponResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
 from artifact.audio.engine import get_audio_engine
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -390,6 +392,12 @@ class QuizMode(BaseMode):
         self._audio = get_audio_engine()
         self._last_countdown_tick: int = 0
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+        self._short_url: Optional[str] = None
+
     def _shuffle_question_options(self, question: Tuple[str, List[str], int], rng: random.Random) -> Tuple[str, List[str], int]:
         """Shuffle answer options and update correct index.
 
@@ -435,6 +443,11 @@ class QuizMode(BaseMode):
         self._suspense_time = 0.0
         self._pulse_time = 0.0
         self._wrong_display_timer = 0.0
+
+        # Reset QR state
+        self._qr_url = None
+        self._qr_image = None
+        self._short_url = None
 
         # Reset camera/AI state
         self._photo_data = None
@@ -731,6 +744,15 @@ class QuizMode(BaseMode):
 
             if self._victory_doodle:
                 logger.info(f"Victory doodle generated: {len(self._victory_doodle.image_data)} bytes")
+                # Upload doodle for QR sharing
+                logger.info("Starting quiz victory doodle upload for QR sharing")
+                self._uploader.upload_bytes(
+                    self._victory_doodle.image_data,
+                    prefix="quiz",
+                    extension="png",
+                    content_type="image/png",
+                    callback=self._on_upload_complete
+                )
             else:
                 logger.warning("Victory doodle generation returned None")
 
@@ -748,6 +770,16 @@ class QuizMode(BaseMode):
         except Exception as e:
             logger.error(f"Victory doodle generation failed: {e}")
             self._victory_doodle = None
+
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
+            self._qr_image = result.qr_image
+            self._short_url = result.short_url
+            logger.info(f"Quiz victory doodle uploaded: {self._qr_url}")
+        else:
+            logger.error(f"Quiz victory doodle upload failed: {result.error}")
 
     def _on_ai_complete(self) -> None:
         """Handle AI generation completion."""
@@ -802,6 +834,9 @@ class QuizMode(BaseMode):
                 "type": "quiz",
                 "caricature": self._victory_doodle.image_data if self._victory_doodle else None,
                 "coupon_code": self._coupon_code,  # Add coupon code for printing
+                "qr_url": self._qr_url,
+                "qr_image": self._qr_image,
+                "short_url": self._short_url,
                 "timestamp": datetime.now().isoformat()
             }
         )

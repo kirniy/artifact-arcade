@@ -20,6 +20,7 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
 from artifact.audio.engine import get_audio_engine
 
 logger = logging.getLogger(__name__)
@@ -256,6 +257,12 @@ class RouletteMode(BaseMode):
         self._audio = get_audio_engine()
         self._last_countdown_tick: int = 0
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+        self._short_url: Optional[str] = None
+
     def on_enter(self) -> None:
         """Initialize roulette mode."""
         self._sub_phase = RoulettePhase.INTRO
@@ -282,6 +289,11 @@ class RouletteMode(BaseMode):
         # Reset AI state
         self._winner_portrait = None
         self._ai_task = None
+
+        # Reset QR state
+        self._qr_url = None
+        self._qr_image = None
+        self._short_url = None
 
         # Reset progress tracker
         self._progress_tracker.reset()
@@ -624,6 +636,15 @@ class RouletteMode(BaseMode):
 
                 if self._winner_portrait:
                     logger.info("Roulette winner portrait generated successfully")
+                    # Upload portrait for QR sharing
+                    logger.info("Starting roulette portrait upload for QR sharing")
+                    self._uploader.upload_bytes(
+                        self._winner_portrait.image_data,
+                        prefix="roulette",
+                        extension="png",
+                        content_type="image/png",
+                        callback=self._on_upload_complete
+                    )
                 else:
                     logger.warning("Roulette winner portrait generation returned None")
             else:
@@ -632,6 +653,16 @@ class RouletteMode(BaseMode):
         except Exception as e:
             logger.error(f"Roulette portrait generation failed: {e}")
             self._winner_portrait = None
+
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
+            self._qr_image = result.qr_image
+            self._short_url = result.short_url
+            logger.info(f"Roulette portrait uploaded: {self._qr_url}")
+        else:
+            logger.error(f"Roulette portrait upload failed: {result.error}")
 
     def _on_ai_complete(self) -> None:
         """Handle completion of AI processing."""
@@ -724,7 +755,10 @@ class RouletteMode(BaseMode):
                 "rarity": self._result_rarity,
                 "portrait": self._winner_portrait.image_data if self._winner_portrait else None,
                 "category": "fortune_wheel",
-                "type": "roulette"
+                "type": "roulette",
+                "qr_url": self._qr_url,
+                "qr_image": self._qr_image,
+                "short_url": self._short_url,
             }
         )
         self.complete(result)

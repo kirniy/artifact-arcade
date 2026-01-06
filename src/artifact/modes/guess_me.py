@@ -27,6 +27,7 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
+from artifact.utils.s3_upload import AsyncUploader, UploadResult
 from artifact.animation.santa_runner import SantaRunner
 from artifact.audio.engine import get_audio_engine
 
@@ -301,6 +302,12 @@ class GuessMeMode(BaseMode):
         self._santa_runner: Optional[SantaRunner] = None
         self._audio = get_audio_engine()
 
+        # S3 upload for QR sharing
+        self._uploader = AsyncUploader()
+        self._qr_url: Optional[str] = None
+        self._qr_image: Optional[np.ndarray] = None
+        self._short_url: Optional[str] = None
+
     @property
     def is_ai_available(self) -> bool:
         return self._gemini_client.is_available
@@ -315,6 +322,11 @@ class GuessMeMode(BaseMode):
         self._reveal_progress = 0.0
         self._flash_alpha = 0.0
         self._confidence = 0
+
+        # Reset QR state
+        self._qr_url = None
+        self._qr_image = None
+        self._short_url = None
 
         # Reset progress tracker
         self._progress_tracker.reset()
@@ -706,8 +718,29 @@ class GuessMeMode(BaseMode):
 
             # Advance to finalizing
             self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
+
+            # Upload caricature for QR sharing
+            if self._illustration and self._illustration.image_data:
+                logger.info("Starting guess_me caricature upload for QR sharing")
+                self._uploader.upload_bytes(
+                    self._illustration.image_data,
+                    prefix="guess_me",
+                    extension="png",
+                    content_type="image/png",
+                    callback=self._on_upload_complete
+                )
         except Exception as e:
             logger.error(f"Image generation error: {e}")
+
+    def _on_upload_complete(self, result: UploadResult) -> None:
+        """Handle completion of S3 upload for QR sharing."""
+        if result.success:
+            self._qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
+            self._qr_image = result.qr_image
+            self._short_url = result.short_url
+            logger.info(f"Guess Me caricature uploaded: {self._qr_url}")
+        else:
+            logger.error(f"Guess Me caricature upload failed: {result.error}")
 
     def on_exit(self) -> None:
         # Clear camera reference (shared service, don't close)
@@ -734,6 +767,9 @@ class GuessMeMode(BaseMode):
                 "base_answers": len(self._base_answers),
                 "followup_answers": len(self._follow_up_answers),
                 "confidence": self._confidence,
+                "qr_url": self._qr_url,
+                "qr_image": self._qr_image,
+                "short_url": self._short_url,
                 "timestamp": datetime.now().isoformat()
             }
         )

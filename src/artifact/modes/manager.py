@@ -874,8 +874,9 @@ class ModeManager:
             self._display_coordinator.clear_effect()  # Clear effects on idle
             self._close_selector_camera()  # Close selector camera if open
         elif new_state == ManagerState.MODE_SELECT:
-            self._audio.stop_idle_music()  # Stop cycling idle music
-            self._audio.play_music("menu", fade_in_ms=300)
+            # Keep cycling nostalgic tracks in mode selector too
+            if not self._audio.is_idle_music_active():
+                self._audio.start_idle_music()
             self._audio.play_ui_confirm()  # Confirmation sound
             self._display_coordinator.set_effect(CrossDisplayEffect.SPARKLE_CASCADE, 0.5)
             # Open camera for selector background effects
