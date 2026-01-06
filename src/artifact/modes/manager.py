@@ -1895,18 +1895,66 @@ class ModeManager:
 
         mode = self.get_selected_mode()
         if mode:
-            # Standard clean scrolling text for all modes
+            # Clean "Word Cycle" ticker (RSVP style) - No horizontal scrolling
             description = MODE_DESCRIPTIONS_RU.get(mode.name, mode.display_name)
+            words = description.split()
+            if not words:
+                words = [mode.display_name]
             
-            # Format: NAME • Description • NAME • Description •
-            text = f"{mode.display_name.strip().upper()} \u2022 {description} \u2022   "
+            # multiple words, cycle them
+            word_duration = 1500  # ms per word
+            cycle_pos = int(self._time_in_state) % (len(words) * word_duration)
+            idx = cycle_pos // word_duration
+            word = words[idx]
+
+            # Vertical slide animation for transition
+            progress = (cycle_pos % word_duration) / word_duration
+            y_offset = 0
+            alpha = 1.0
             
-            # Use simple SCROLL effect (no sparkles) for better readability
-            render_ticker_animated(
-                buffer, text,
-                self._time_in_state, (255, 200, 0),
-                TickerEffect.SCROLL, speed=0.035
-            )
+            if progress < 0.1: # Slide in up
+                y_offset = int(8 * (1 - progress/0.1))
+                alpha = progress / 0.1
+            elif progress > 0.9: # Slide out up
+                y_offset = -int(8 * (progress - 0.9)/0.1)
+                alpha = (1 - progress) / 0.1
+            
+            color = tuple(int(c * alpha) for c in (255, 200, 0))
+            font = load_font("cyrillic")
+            
+            # Check width
+            w, _ = font.measure_text(word)
+            
+            if w <= 48:
+                # Fits normally
+                draw_centered_ticker(buffer, word, color, font=font, y_offset=y_offset)
+            else:
+                # Too wide! Try condensed (0 spacing)
+                # Calculate condensed width
+                condensed_w = sum(font.get_char_width(c) for c in word)
+                
+                if condensed_w <= 48:
+                    # Fits condensed!
+                    x = (48 - condensed_w) // 2
+                    curr_x = x
+                    y = y_offset + 1 # Centered vertically in 8px (font is 7px)
+                    
+                    for char in word:
+                        draw_text_bitmap(buffer, char, curr_x, y, color, font)
+                        curr_x += font.get_char_width(char) 
+                else:
+                    # Still too wide even condensed. 
+                    # Last resort: marquee scroll VERY slowly? 
+                    # User hate scroll. Let's just fit what we can or marquee vertical?
+                    # For now, default to centered normal (will clip edges) 
+                    # or better, use condensed anyway centered so we see maximum center
+                    x = (48 - condensed_w) // 2
+                    curr_x = x
+                    y = y_offset + 1
+                    for char in word:
+                        if 0 <= curr_x < 48: # Simple clipping
+                           draw_text_bitmap(buffer, char, curr_x, y, color, font)
+                        curr_x += font.get_char_width(char)
 
     def _render_result_ticker(self, buffer) -> None:
         """Render ticker during result/printing states."""
