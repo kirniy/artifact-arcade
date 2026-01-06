@@ -1430,23 +1430,32 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
 
         house = HOUSES[self._sorted_house]
 
-        # Background fades to house color
+        # Background starts with magical dark purple, NOT black
+        # fade to house color
         t = Easing.ease_out(self._reveal_progress)
 
-        # Dark to house color
-        bg_r = int(10 + (house.primary_color[0] * 0.3 - 10) * t)
-        bg_g = int(5 + (house.primary_color[1] * 0.3 - 5) * t)
-        bg_b = int(20 + (house.primary_color[2] * 0.3 - 20) * t)
+        # Start with visible dark purple (30, 20, 50), fade to house color
+        start_bg = (30, 20, 50)  # Visible dark purple, NOT black
+        target_bg = (
+            int(house.primary_color[0] * 0.4),
+            int(house.primary_color[1] * 0.4),
+            int(house.primary_color[2] * 0.4),
+        )
+        
+        bg_r = int(start_bg[0] + (target_bg[0] - start_bg[0]) * t)
+        bg_g = int(start_bg[1] + (target_bg[1] - start_bg[1]) * t)
+        bg_b = int(start_bg[2] + (target_bg[2] - start_bg[2]) * t)
         fill(buffer, (bg_r, bg_g, bg_b))
 
-        # Hat speaks first half
+        # Hat speaks first half - ALWAYS visible from start
         if self._reveal_progress < 0.5:
             hat_y = 20 + int(self._hat_bob)
-            pulse = 0.7 + 0.3 * math.sin(self._time_in_phase / 150)
+            # Hat visible immediately at full brightness
+            pulse = 0.8 + 0.2 * math.sin(self._time_in_phase / 150)
             self._draw_sorting_hat(buffer, 64, hat_y, pulse)
 
-            # "Хмм..." thinking text - visible from start
-            think_alpha = max(0.3, min(1.0, self._reveal_progress * 4))  # Min 0.3 so always visible
+            # "Хмм..." thinking text - visible from start (no fade-in delay)
+            think_alpha = max(0.6, min(1.0, 0.6 + self._reveal_progress * 0.8))  # Start at 60% visible
             think_color = tuple(int(200 * think_alpha) for _ in range(3))
             draw_centered_text(buffer, "Хмм...", 90, think_color, scale=2)
             draw_centered_text(buffer, "Вижу в тебе...", 108, (120, 120, 140), scale=1)

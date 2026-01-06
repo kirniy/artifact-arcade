@@ -720,16 +720,29 @@ class SnitchCatcher:
                         buffer[py, px] = (new_r, new_g, new_b)
 
     def _render_score(self, buffer: NDArray) -> None:
-        """Render score at top-right."""
+        """Render score at bottom-right with clear background."""
         from artifact.graphics.text_utils import draw_text
+        from artifact.graphics.primitives import draw_rect
 
-        # Snitches caught (gold text)
-        snitch_text = f"{self._state.snitches_caught}"
-        draw_text(buffer, snitch_text, 110, 4, GOLD_BRIGHT, scale=1)
+        # Score box background at bottom-right (above status bar)
+        box_x, box_y = 90, 100
+        box_w, box_h = 36, 16
+        draw_rect(buffer, box_x, box_y, box_w, box_h, (20, 20, 40))
+        
+        # Snitches caught (gold text) - larger and more visible
+        snitch_text = f"x{self._state.snitches_caught}"
+        draw_text(buffer, snitch_text, 108, box_y + 5, GOLD_BRIGHT, scale=1)
 
         # Small snitch icon
-        buffer[3:5, 103:107] = [GOLD_BRIGHT, GOLD_DARK, GOLD_DARK, GOLD_BRIGHT]
-        buffer[5:7, 103:107] = [GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK]
+        buffer[box_y + 4:box_y + 6, 95:99] = [GOLD_BRIGHT, GOLD_DARK, GOLD_DARK, GOLD_BRIGHT]
+        buffer[box_y + 6:box_y + 8, 95:99] = [GOLD_DARK, GOLD_BRIGHT, GOLD_BRIGHT, GOLD_DARK]
+        
+        # Gameplay instructions at top corners (visible above hat)
+        hint_alpha = 0.5 + 0.3 * abs(math.sin(self._state.time_played / 500))
+        hint_color = tuple(int(180 * hint_alpha) for _ in range(3))
+        
+        # Left/Right arrows hint (below hat)
+        draw_text(buffer, "< >", 6, 22, hint_color, scale=1)
 
     def render_ticker(self, buffer: NDArray, progress: float = 0.0) -> None:
         """Render game info on ticker display (48x8).
