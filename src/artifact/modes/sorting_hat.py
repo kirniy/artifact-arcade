@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from artifact.animation.easing import Easing
+from artifact.animation.easing import Easing, ease_out_quad
 from artifact.animation.particles import ParticlePresets, ParticleSystem
 from artifact.animation.snitch_catcher import SnitchCatcher
 from artifact.animation.timeline import Timeline
@@ -1432,7 +1432,7 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
 
         # Background starts with magical dark purple, NOT black
         # fade to house color
-        t = Easing.ease_out(self._reveal_progress)
+        t = ease_out_quad(self._reveal_progress)
 
         # Start with visible dark purple (30, 20, 50), fade to house color
         start_bg = (30, 20, 50)  # Visible dark purple, NOT black
