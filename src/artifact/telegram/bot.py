@@ -383,7 +383,8 @@ class ArcadeBot:
     # Available modes for mode selection
     AVAILABLE_MODES = [
         "fortune", "ai_prophet", "photobooth", "roast",
-        "squid_game", "quiz", "tower_stack", "brick_breaker", "video"
+        "squid_game", "quiz", "tower_stack", "brick_breaker", "video",
+        "sorting_hat", "guess_me", "roulette", "autopsy"
     ]
 
     def __init__(self, token: str = BOT_TOKEN, data_dir: Path = DATA_DIR):
