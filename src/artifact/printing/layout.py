@@ -215,7 +215,11 @@ class LayoutEngine:
         commands.append(self._cmd_init())
         commands.append(self.CHARSET_CP866)
 
-        for block in layout.blocks:
+        # When rotating 180°, reverse block order so receipt reads correctly
+        # (first block becomes last when paper is flipped)
+        blocks = list(reversed(layout.blocks)) if self.ROTATE_180 else layout.blocks
+
+        for block in blocks:
             if isinstance(block, TextBlock):
                 commands.append(self._render_text(block))
             elif isinstance(block, ImageBlock):

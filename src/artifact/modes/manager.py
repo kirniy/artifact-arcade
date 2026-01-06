@@ -1331,8 +1331,8 @@ class ModeManager:
                 self._return_to_idle()
 
         elif self._state == ManagerState.PRINTING:
-            # Simulate print completion after 10 seconds
-            if self._time_in_state > 10000:
+            # Print phase: 0-8s printing, 8-14s "take receipt" prompt, then idle
+            if self._time_in_state > 14000:
                 self._return_to_idle()
 
     # Rendering
@@ -2169,26 +2169,49 @@ class ModeManager:
                 draw_circle(buffer, x, y, 1, (80, 80, 100))  # Inactive dot
 
     def _render_printing(self, buffer) -> None:
-        """Render printing progress."""
+        """Render printing progress and take-receipt prompt."""
         from artifact.graphics.text_utils import draw_centered_text
         from artifact.graphics.primitives import fill, draw_rect
 
         fill(buffer, (30, 30, 30))
 
-        # Title centered
-        draw_centered_text(buffer, "ПЕЧАТАЮ", 35, (255, 255, 255), scale=2)
+        if self._time_in_state < 8000:
+            # Phase 1: Printing progress (0-8 seconds)
+            draw_centered_text(buffer, "ПЕЧАТАЮ", 35, (255, 255, 255), scale=2)
 
-        # Progress bar - centered
-        progress = min(1.0, self._time_in_state / 10000)
-        bar_width = int(100 * progress)
-        bar_x = (128 - 100) // 2  # Center the bar
-        draw_rect(buffer, bar_x, 60, 100, 10, (50, 50, 50))
-        draw_rect(buffer, bar_x, 60, bar_width, 10, (0, 200, 100))
+            # Progress bar - centered
+            progress = min(1.0, self._time_in_state / 8000)
+            bar_width = int(100 * progress)
+            bar_x = (128 - 100) // 2  # Center the bar
+            draw_rect(buffer, bar_x, 60, 100, 10, (50, 50, 50))
+            draw_rect(buffer, bar_x, 60, bar_width, 10, (0, 200, 100))
 
-        # Dots animation - centered below progress bar
-        dots = "." * (int(self._time_in_state / 300) % 4)
-        if dots:
-            draw_centered_text(buffer, dots, 80, (200, 200, 200), scale=2)
+            # Dots animation - centered below progress bar
+            dots = "." * (int(self._time_in_state / 300) % 4)
+            if dots:
+                draw_centered_text(buffer, dots, 80, (200, 200, 200), scale=2)
+        else:
+            # Phase 2: Take receipt prompt (8-14 seconds)
+            # Flashing effect - blink every 400ms
+            flash_on = (int(self._time_in_state / 400) % 2) == 0
+
+            if flash_on:
+                # Draw down arrow at top
+                arrow_color = (255, 200, 100)
+                draw_centered_text(buffer, "V", 15, arrow_color, scale=2)
+                draw_centered_text(buffer, "V", 30, arrow_color, scale=2)
+
+                # Main text
+                draw_centered_text(buffer, "ЗАБЕРИ", 55, (255, 255, 255), scale=2)
+                draw_centered_text(buffer, "ЧЕК", 80, (255, 255, 255), scale=2)
+
+                # Down arrow at bottom
+                draw_centered_text(buffer, "V", 100, arrow_color, scale=2)
+            else:
+                # Dim version during flash-off
+                dim_color = (80, 60, 40)
+                draw_centered_text(buffer, "ЗАБЕРИ", 55, dim_color, scale=2)
+                draw_centered_text(buffer, "ЧЕК", 80, dim_color, scale=2)
 
     def _render_admin_menu(self, buffer) -> None:
         """Render admin menu."""

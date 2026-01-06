@@ -147,9 +147,8 @@ class PhotoboothMode(BaseMode):
             return True
 
         elif self._state.show_result:
-            # Button press = take another photo
-            self._state = PhotoboothState()
-            self._working = False
+            # Button press during result = complete session (print and exit)
+            self._complete_session()
             return True
 
         return False
