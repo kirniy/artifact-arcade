@@ -142,13 +142,10 @@ class PrintManager:
                     if house:
                         caption_parts.append(f"Факультет: {house}")
 
-                # Add prediction/fortune text (truncated)
+                # Add prediction/fortune text (full)
                 for text_field in ["prediction", "fortune", "roast", "diagnosis", "display_text"]:
                     text = data.get(text_field)
                     if text and isinstance(text, str):
-                        # Truncate to 200 chars for caption
-                        if len(text) > 200:
-                            text = text[:197] + "..."
                         caption_parts.append(text)
                         break
 
