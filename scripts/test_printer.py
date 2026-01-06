@@ -52,7 +52,8 @@ async def main():
     # 3. Initialize
     print("\n[3] Initializing printer...")
     await printer._send_command(b'\x1b\x40')  # ESC @ - Reset
-    print("    ✓ Initialized")
+    await printer._send_command(b'\x1b\x7b\x01')  # ESC { 1 - Upside-down mode ON
+    print("    ✓ Initialized (upside-down mode enabled)")
     
     # 4. Full-width test pattern (384 dots = 48 bytes per line)
     print("\n[4] Printing full-width test pattern (384px)...")

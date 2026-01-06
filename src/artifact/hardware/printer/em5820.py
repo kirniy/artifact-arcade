@@ -121,9 +121,10 @@ class EM5820Printer(Printer):
                 self._file_backend = open(self._port, "wb")
                 self._connected = True
                 logger.info(f"EM5820 printer connected (USB printer class) on {self._port}")
-                
+
                 # Initialize printer
                 self._file_backend.write(b'\x1b\x40')  # ESC @ - Initialize
+                self._file_backend.write(b'\x1b\x7b\x01')  # ESC { 1 - Upside-down mode
                 self._file_backend.flush()
             else:
                 # Serial device (UART or USB-serial)
@@ -143,6 +144,7 @@ class EM5820Printer(Printer):
 
                 # Initialize printer
                 await self._send_command(b'\x1b\x40')  # ESC @ - Initialize
+                await self._send_command(b'\x1b\x7b\x01')  # ESC { 1 - Upside-down mode
 
             return True
 
