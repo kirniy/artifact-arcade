@@ -152,6 +152,8 @@ class HDMIDisplay(Display):
         """Clear display to specified color."""
         self._buffer[:, :] = [r, g, b]
 
+    _show_count = 0  # Class variable for counting calls
+
     def show(self) -> None:
         """Update physical display with buffer contents."""
         if not self._initialized or self._screen is None:
@@ -178,6 +180,14 @@ class HDMIDisplay(Display):
 
         # Blit LED content to top-left corner (T50 crops this region)
         self._screen.blit(surface, (0, 0))
+
+        # DEBUG: Log every 60 frames (1 second at 60fps)
+        HDMIRGB128x128Display._show_count += 1
+        if HDMIRGB128x128Display._show_count % 60 == 0:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"pygame.display.flip() called (frame {HDMIRGB128x128Display._show_count})")
+
         pygame.display.flip()
 
     def get_buffer(self) -> NDArray[np.uint8]:
