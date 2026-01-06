@@ -1936,8 +1936,8 @@ class ModeManager:
                 for char in word:
                      condensed_w += font.get_char_width(char)
                 
-                # Center it
-                x = (48 - condensed_w) // 2
+                # Center it, but NEVER go negative
+                x = max(0, (48 - condensed_w) // 2)
                 
                 # Draw char by char
                 curr_x = x
@@ -1946,7 +1946,7 @@ class ModeManager:
                 for char in word:
                     # Only draw if visible (skip off-screen)
                     char_w = font.get_char_width(char)
-                    if curr_x + char_w > 0 and curr_x < 48:
+                    if curr_x >= 0 and curr_x < 48:
                         draw_text_bitmap(buffer, char, curr_x, y, color, font)
                     curr_x += char_w
 
