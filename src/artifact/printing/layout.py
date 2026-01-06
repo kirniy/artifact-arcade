@@ -158,7 +158,7 @@ class LayoutEngine:
         return max(1, base // self._size_width_multiplier(size))
 
     def _wrap_text(self, text: str, max_chars: int) -> List[str]:
-        """Wrap text to fit within the given width."""
+        """Wrap text to fit within the given width (character-based)."""
         if max_chars <= 0:
             return [text] if text else [""]
 
@@ -199,6 +199,63 @@ class LayoutEngine:
                 lines.append(prefix + current)
 
         return lines
+
+    def _wrap_text_by_pixels(self, text: str, font, draw, max_width_px: int) -> List[str]:
+        """Wrap text to fit within the given pixel width using actual font metrics."""
+        if not text:
+            return [""]
+
+        lines: List[str] = []
+        raw_lines = text.splitlines() or [""]
+
+        def get_text_width(s: str) -> int:
+            """Get pixel width of text string."""
+            if not s:
+                return 0
+            try:
+                bbox = draw.textbbox((0, 0), s, font=font)
+                return bbox[2] - bbox[0]
+            except Exception:
+                return len(s) * 10  # Fallback
+
+        for raw in raw_lines:
+            words = raw.split()
+            if not words:
+                lines.append(raw)
+                continue
+
+            current = ""
+            for word in words:
+                # Check if single word is too long - must break it
+                if get_text_width(word) > max_width_px:
+                    if current:
+                        lines.append(current)
+                        current = ""
+                    # Break long word character by character
+                    for char in word:
+                        test = current + char
+                        if get_text_width(test) > max_width_px:
+                            if current:
+                                lines.append(current)
+                            current = char
+                        else:
+                            current = test
+                    continue
+
+                if not current:
+                    current = word
+                else:
+                    test = current + " " + word
+                    if get_text_width(test) <= max_width_px:
+                        current = test
+                    else:
+                        lines.append(current)
+                        current = word
+
+            if current:
+                lines.append(current)
+
+        return lines if lines else [""]
 
     def render(self, layout: ReceiptLayout) -> bytes:
         """Render a receipt layout to printer commands.
@@ -299,21 +356,22 @@ class LayoutEngine:
 
             # Font size based on text size
             font_sizes = {
-                TextSize.SMALL: 20,
-                TextSize.MEDIUM: 28,
-                TextSize.LARGE: 36,
-                TextSize.TITLE: 44,
+                TextSize.SMALL: 18,  # Smaller for better fit
+                TextSize.MEDIUM: 24,
+                TextSize.LARGE: 32,
+                TextSize.TITLE: 40,
             }
-            font_size = font_sizes.get(block.size, 20)
+            font_size = font_sizes.get(block.size, 18)
             font = self._get_font(font_size)
-
-            # Calculate text dimensions
-            max_chars = self._max_chars(block.size)
-            lines = self._wrap_text(block.text, max_chars) or [""]
 
             # Create temporary image to measure text
             temp_img = Image.new('1', (1, 1), 1)
-            draw = ImageDraw.Draw(temp_img)
+            temp_draw = ImageDraw.Draw(temp_img)
+
+            # Wrap text based on ACTUAL pixel width, not character count
+            margin = 16  # 8px margin on each side
+            max_width = self.paper_width - margin
+            lines = self._wrap_text_by_pixels(block.text, font, temp_draw, max_width)
 
             line_height = font_size + 4
             total_height = len(lines) * line_height
