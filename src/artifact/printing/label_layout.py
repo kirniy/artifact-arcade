@@ -65,8 +65,9 @@ class ImageBlock:
 @dataclass
 class SeparatorBlock:
     """A visual separator line."""
-    style: str = "line"  # line, dashes, dots, double
+    style: str = "line"  # line, dashes, dots, double, stars, fancy, ornate, wave
     thickness: int = 2
+    margin: int = 0  # Extra horizontal margin from content edges
 
 
 @dataclass
@@ -84,11 +85,24 @@ class QRCodeBlock:
 
 
 @dataclass
+class BoxBlock:
+    """A framed box containing other elements."""
+    content_blocks: List[Union["TextBlock", "ImageBlock", "SpacerBlock"]] = field(default_factory=list)
+    border_style: str = "solid"  # solid, dashed, double, rounded, ornate
+    padding: int = 8
+    corner_style: str = "square"  # square, rounded, ornate
+    title: Optional[str] = None  # Optional title text at top of box
+    fill_pattern: Optional[str] = None  # None, dots, lines, crosshatch
+
+
+@dataclass
 class LabelLayout:
     """Complete label layout definition."""
-    blocks: List[Union[TextBlock, ImageBlock, SeparatorBlock, SpacerBlock, QRCodeBlock]] = field(default_factory=list)
+    blocks: List[Union[TextBlock, ImageBlock, SeparatorBlock, SpacerBlock, QRCodeBlock, BoxBlock]] = field(default_factory=list)
     margin_x: int = 16  # Horizontal margin in pixels
     margin_y: int = 20  # Vertical margin in pixels
+    page_border: Optional[str] = None  # None, "solid", "double", "ornate", "stars"
+    page_border_margin: int = 4  # Margin from edge for page border
 
     def add_text(
         self,
@@ -145,6 +159,30 @@ class LabelLayout:
         """Add vertical spacing."""
         self.blocks.append(SpacerBlock(pixels=pixels))
         return self
+
+    def add_box(
+        self,
+        border_style: str = "solid",
+        padding: int = 8,
+        corner_style: str = "square",
+        title: Optional[str] = None,
+        fill_pattern: Optional[str] = None,
+    ) -> "BoxBlock":
+        """Add a framed box and return it for adding content.
+
+        Usage:
+            box = layout.add_box(border_style="double", title="РЕЗУЛЬТАТ")
+            box.content_blocks.append(TextBlock("Your text here", size=TextSize.LARGE))
+        """
+        box = BoxBlock(
+            border_style=border_style,
+            padding=padding,
+            corner_style=corner_style,
+            title=title,
+            fill_pattern=fill_pattern,
+        )
+        self.blocks.append(box)
+        return box
 
 
 class LabelLayoutEngine:
@@ -323,13 +361,67 @@ class LabelLayoutEngine:
                 y_pos = self._render_separator_block(
                     draw, block, layout.margin_x, y_pos, content_width
                 )
+            elif isinstance(block, BoxBlock):
+                y_pos = self._render_box_block(
+                    img, draw, block, layout.margin_x, y_pos, content_width
+                )
             elif isinstance(block, SpacerBlock):
                 y_pos += block.pixels
+
+        # Draw page border if specified
+        if layout.page_border:
+            self._draw_page_border(draw, layout)
 
         # Convert to 1-bit with Floyd-Steinberg dithering
         img = img.convert('1', dither=Image.Dither.FLOYDSTEINBERG)
 
         return img
+
+    def _draw_page_border(self, draw, layout: LabelLayout) -> None:
+        """Draw a decorative border around the entire page."""
+        m = layout.page_border_margin
+        x0, y0 = m, m
+        x1, y1 = self.width - m - 1, self.height - m - 1
+        style = layout.page_border
+
+        if style == "solid":
+            # Simple solid rectangle
+            draw.rectangle([x0, y0, x1, y1], outline=0, width=2)
+
+        elif style == "double":
+            # Double line border
+            draw.rectangle([x0, y0, x1, y1], outline=0, width=1)
+            inner_m = m + 4
+            draw.rectangle([inner_m, inner_m, self.width - inner_m - 1, self.height - inner_m - 1], outline=0, width=1)
+
+        elif style == "ornate":
+            # Solid border with corner decorations
+            draw.rectangle([x0, y0, x1, y1], outline=0, width=2)
+            # Corner decorations (small diamonds)
+            corner_size = 8
+            for cx, cy in [(x0, y0), (x1, y0), (x0, y1), (x1, y1)]:
+                draw.polygon([
+                    (cx, cy - corner_size if cy == y0 else cy + corner_size),
+                    (cx + corner_size if cx == x0 else cx - corner_size, cy),
+                    (cx, cy + corner_size if cy == y0 else cy - corner_size),
+                    (cx - corner_size if cx == x0 else cx + corner_size, cy),
+                ], fill=0)
+
+        elif style == "stars":
+            # Border with stars at corners and midpoints
+            draw.rectangle([x0, y0, x1, y1], outline=0, width=1)
+            # Draw stars at key points
+            star_positions = [
+                (x0 + 6, y0 + 6),  # Top-left
+                (x1 - 6, y0 + 6),  # Top-right
+                (x0 + 6, y1 - 6),  # Bottom-left
+                (x1 - 6, y1 - 6),  # Bottom-right
+                ((x0 + x1) // 2, y0 + 6),  # Top-center
+                ((x0 + x1) // 2, y1 - 6),  # Bottom-center
+            ]
+            for sx, sy in star_positions:
+                # Small 5-pointed star approximation
+                draw.ellipse([sx - 3, sy - 3, sx + 3, sy + 3], fill=0)
 
     def _render_text_block(
         self,
@@ -339,28 +431,21 @@ class LabelLayoutEngine:
         y_pos: int,
         content_width: int,
     ) -> int:
-        """Render a text block and return new y position."""
+        """Render a text block and return new y position.
+
+        NEVER truncates text - the receipt generator uses adaptive font
+        sizing to ensure all text fits. This just renders what's given.
+        """
         font_size = block.size.value
         font = self._get_font(font_size, block.bold)
         if font is None:
             return y_pos + font_size + 4
 
-        # Wrap text to fit width
+        # Wrap text to fit width (wrapping only, no truncation)
         lines = self._wrap_text(block.text, font, draw, content_width)
         line_height = font_size + 4
 
-        # Calculate available space for text
-        available_height = self.height - y_pos - 40  # Reserve 40px for footer
-        max_lines = max(1, available_height // line_height)
-
-        # Limit lines if too many
-        if len(lines) > max_lines:
-            lines = lines[:max_lines]
-            # Add ellipsis to last line if truncated
-            if lines[-1] and len(lines[-1]) > 3:
-                lines[-1] = lines[-1][:-3] + "..."
-            logger.debug(f"Text truncated to {max_lines} lines")
-
+        # Render ALL lines - no truncation
         for line in lines:
             # Calculate text width for alignment
             try:
@@ -523,47 +608,265 @@ class LabelLayoutEngine:
         content_width: int,
     ) -> int:
         """Render a separator line and return new y position."""
+        # Apply extra margin if specified
+        left_x = margin_x + block.margin
+        right_x = margin_x + content_width - block.margin
         y_center = y_pos + 5
 
         if block.style == "line":
             draw.line(
-                [(margin_x, y_center), (margin_x + content_width, y_center)],
+                [(left_x, y_center), (right_x, y_center)],
                 fill=0,
                 width=block.thickness,
             )
         elif block.style == "double":
             draw.line(
-                [(margin_x, y_center - 2), (margin_x + content_width, y_center - 2)],
+                [(left_x, y_center - 2), (right_x, y_center - 2)],
                 fill=0,
                 width=1,
             )
             draw.line(
-                [(margin_x, y_center + 2), (margin_x + content_width, y_center + 2)],
+                [(left_x, y_center + 2), (right_x, y_center + 2)],
                 fill=0,
                 width=1,
             )
         elif block.style == "dashes":
             dash_len = 8
             gap_len = 4
-            x = margin_x
-            while x < margin_x + content_width:
+            x = left_x
+            while x < right_x:
                 draw.line(
-                    [(x, y_center), (min(x + dash_len, margin_x + content_width), y_center)],
+                    [(x, y_center), (min(x + dash_len, right_x), y_center)],
                     fill=0,
                     width=block.thickness,
                 )
                 x += dash_len + gap_len
         elif block.style == "dots":
             dot_gap = 6
-            x = margin_x
-            while x < margin_x + content_width:
+            x = left_x
+            while x < right_x:
                 draw.ellipse(
                     [(x, y_center - 1), (x + 2, y_center + 1)],
                     fill=0,
                 )
                 x += dot_gap
+        elif block.style == "stars":
+            # ★ stars pattern
+            star_gap = 20
+            center_x = (left_x + right_x) // 2
+            # Draw center star
+            draw.text((center_x - 5, y_center - 6), "★", font=self._get_font(12), fill=0)
+            # Draw side stars
+            x_left = center_x - star_gap
+            x_right = center_x + star_gap
+            while x_left > left_x or x_right < right_x:
+                if x_left > left_x:
+                    draw.text((x_left - 5, y_center - 6), "★", font=self._get_font(10), fill=0)
+                if x_right < right_x:
+                    draw.text((x_right - 5, y_center - 6), "★", font=self._get_font(10), fill=0)
+                x_left -= star_gap
+                x_right += star_gap
+        elif block.style == "fancy":
+            # Fancy flourish: ═══════ ◆ ═══════
+            center_x = (left_x + right_x) // 2
+            # Draw double lines on sides
+            draw.line([(left_x, y_center - 1), (center_x - 12, y_center - 1)], fill=0, width=1)
+            draw.line([(left_x, y_center + 1), (center_x - 12, y_center + 1)], fill=0, width=1)
+            draw.line([(center_x + 12, y_center - 1), (right_x, y_center - 1)], fill=0, width=1)
+            draw.line([(center_x + 12, y_center + 1), (right_x, y_center + 1)], fill=0, width=1)
+            # Draw diamond in center
+            diamond_size = 6
+            draw.polygon([
+                (center_x, y_center - diamond_size),
+                (center_x + diamond_size, y_center),
+                (center_x, y_center + diamond_size),
+                (center_x - diamond_size, y_center),
+            ], fill=0)
+        elif block.style == "ornate":
+            # Ornate: ─────═══●═══─────
+            center_x = (left_x + right_x) // 2
+            third = (right_x - left_x) // 3
+            # Thin outer lines
+            draw.line([(left_x, y_center), (left_x + third, y_center)], fill=0, width=1)
+            draw.line([(right_x - third, y_center), (right_x, y_center)], fill=0, width=1)
+            # Thick inner lines
+            draw.line([(left_x + third, y_center), (center_x - 8, y_center)], fill=0, width=3)
+            draw.line([(center_x + 8, y_center), (right_x - third, y_center)], fill=0, width=3)
+            # Center dot
+            draw.ellipse([(center_x - 5, y_center - 5), (center_x + 5, y_center + 5)], fill=0)
+        elif block.style == "wave":
+            # Wavy line pattern
+            import math
+            wave_points = []
+            amplitude = 3
+            frequency = 0.15
+            for x in range(left_x, right_x, 2):
+                y = y_center + int(amplitude * math.sin(frequency * (x - left_x)))
+                wave_points.append((x, y))
+            if len(wave_points) > 1:
+                draw.line(wave_points, fill=0, width=block.thickness)
+        elif block.style == "arrows":
+            # Arrow chain: ──►──►──►──
+            arrow_gap = 15
+            x = left_x
+            while x < right_x - 10:
+                # Draw line segment
+                draw.line([(x, y_center), (x + arrow_gap - 5, y_center)], fill=0, width=1)
+                # Draw arrow head
+                arrow_x = x + arrow_gap - 3
+                if arrow_x < right_x:
+                    draw.polygon([
+                        (arrow_x, y_center),
+                        (arrow_x - 4, y_center - 3),
+                        (arrow_x - 4, y_center + 3),
+                    ], fill=0)
+                x += arrow_gap
 
-        return y_pos + 10 + block.thickness
+        return y_pos + 12 + block.thickness
+
+    def _render_box_block(
+        self,
+        img,
+        draw,
+        block: BoxBlock,
+        margin_x: int,
+        y_pos: int,
+        content_width: int,
+    ) -> int:
+        """Render a framed box with content and return new y position."""
+        padding = block.padding
+        border_width = 2
+
+        # Calculate box dimensions by pre-rendering content to measure height
+        temp_y = y_pos + padding + border_width
+        if block.title:
+            temp_y += 22  # Space for title
+
+        # Calculate content height
+        content_start_y = temp_y
+        for content_block in block.content_blocks:
+            if isinstance(content_block, TextBlock):
+                font = self._get_font(content_block.size.value, content_block.bold)
+                lines = self._wrap_text(content_block.text, font, draw, content_width - padding * 2 - border_width * 2)
+                temp_y += len(lines) * (content_block.size.value + 4)
+            elif isinstance(content_block, SpacerBlock):
+                temp_y += content_block.pixels
+
+        content_height = temp_y - content_start_y
+        box_height = content_height + padding * 2 + border_width * 2
+        if block.title:
+            box_height += 22
+
+        # Draw box border
+        box_left = margin_x
+        box_right = margin_x + content_width
+        box_top = y_pos
+        box_bottom = y_pos + box_height
+
+        if block.border_style == "solid":
+            draw.rectangle(
+                [(box_left, box_top), (box_right, box_bottom)],
+                outline=0,
+                width=border_width,
+            )
+        elif block.border_style == "double":
+            # Outer border
+            draw.rectangle(
+                [(box_left, box_top), (box_right, box_bottom)],
+                outline=0,
+                width=1,
+            )
+            # Inner border
+            draw.rectangle(
+                [(box_left + 3, box_top + 3), (box_right - 3, box_bottom - 3)],
+                outline=0,
+                width=1,
+            )
+        elif block.border_style == "dashed":
+            # Draw dashed border (4 sides)
+            dash_len = 6
+            gap_len = 3
+            # Top
+            x = box_left
+            while x < box_right:
+                end_x = min(x + dash_len, box_right)
+                draw.line([(x, box_top), (end_x, box_top)], fill=0, width=border_width)
+                x += dash_len + gap_len
+            # Bottom
+            x = box_left
+            while x < box_right:
+                end_x = min(x + dash_len, box_right)
+                draw.line([(x, box_bottom), (end_x, box_bottom)], fill=0, width=border_width)
+                x += dash_len + gap_len
+            # Left
+            y = box_top
+            while y < box_bottom:
+                end_y = min(y + dash_len, box_bottom)
+                draw.line([(box_left, y), (box_left, end_y)], fill=0, width=border_width)
+                y += dash_len + gap_len
+            # Right
+            y = box_top
+            while y < box_bottom:
+                end_y = min(y + dash_len, box_bottom)
+                draw.line([(box_right, y), (box_right, end_y)], fill=0, width=border_width)
+                y += dash_len + gap_len
+        elif block.border_style == "ornate":
+            # Ornate border with corner decorations
+            draw.rectangle(
+                [(box_left, box_top), (box_right, box_bottom)],
+                outline=0,
+                width=border_width,
+            )
+            # Corner decorations
+            corner_size = 8
+            for cx, cy in [(box_left, box_top), (box_right, box_top),
+                           (box_left, box_bottom), (box_right, box_bottom)]:
+                draw.ellipse(
+                    [(cx - corner_size // 2, cy - corner_size // 2),
+                     (cx + corner_size // 2, cy + corner_size // 2)],
+                    fill=0,
+                )
+
+        # Draw fill pattern if specified
+        if block.fill_pattern == "dots":
+            for px in range(box_left + 8, box_right - 8, 12):
+                for py in range(box_top + 8, box_bottom - 8, 12):
+                    draw.ellipse([(px, py), (px + 2, py + 2)], fill=180)
+
+        # Draw title if present
+        current_y = box_top + border_width + padding
+        if block.title:
+            title_font = self._get_font(14, bold=True)
+            try:
+                bbox = draw.textbbox((0, 0), block.title, font=title_font)
+                title_width = bbox[2] - bbox[0]
+            except Exception:
+                title_width = len(block.title) * 7
+            title_x = margin_x + (content_width - title_width) // 2
+            draw.text((title_x, current_y), block.title, font=title_font, fill=0)
+            current_y += 18
+            # Draw line under title
+            draw.line(
+                [(box_left + padding, current_y), (box_right - padding, current_y)],
+                fill=0,
+                width=1,
+            )
+            current_y += 4
+
+        # Render content blocks
+        inner_width = content_width - padding * 2 - border_width * 2
+        for content_block in block.content_blocks:
+            if isinstance(content_block, TextBlock):
+                current_y = self._render_text_block(
+                    draw, content_block,
+                    margin_x + padding + border_width,
+                    current_y,
+                    inner_width
+                )
+            elif isinstance(content_block, SpacerBlock):
+                current_y += content_block.pixels
+
+        return box_bottom + 8  # Add some space after box
 
     def _image_to_escpos_raster(self, img) -> bytes:
         """Convert PIL Image to ESC/POS raster commands.

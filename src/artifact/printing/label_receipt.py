@@ -25,6 +25,7 @@ from artifact.printing.label_layout import (
     QRCodeBlock,
     SeparatorBlock,
     SpacerBlock,
+    BoxBlock,
     Alignment,
     TextSize,
     LABEL_WIDTH_PX,
@@ -198,20 +199,104 @@ class LabelReceiptGenerator:
         num_lines = max(1, (len(text) + chars_per_line - 1) // chars_per_line)
         return num_lines * line_height
 
-    def _create_header(self, layout: LabelLayout, title: str) -> None:
-        """Add standard header with title."""
-        layout.add_text("VNVNC ARCADE", size=TextSize.SMALL)
-        layout.add_space(4)
-        layout.add_text(title, size=TextSize.TITLE, bold=True)
-        layout.add_separator("double")
-        layout.add_space(8)
+    def _get_adaptive_text_size(self, text: str, has_image: bool = True) -> TextSize:
+        """Pick font size based on text length to ensure ALL text fits.
 
-    def _create_footer(self, layout: LabelLayout, data: Dict[str, Any]) -> None:
-        """Add standard footer with date."""
-        layout.add_space(8)
-        layout.add_separator("line")
-        layout.add_text(self._get_date_string(data), size=TextSize.TINY)
-        layout.add_text("vnvnc.ru", size=TextSize.TINY)
+        NEVER truncate text - always make it fit by using smaller font.
+        Be aggressive about shrinking to prevent overflow.
+        """
+        text_len = len(text) if text else 0
+
+        if has_image:
+            # With image: very limited space - be aggressive
+            if text_len <= 100:
+                return TextSize.MEDIUM  # 24px - only for short text
+            elif text_len <= 200:
+                return TextSize.SMALL   # 18px - still readable
+            else:
+                return TextSize.TINY    # 14px - for medium/long text
+        else:
+            # No image: more space but still be careful
+            if text_len <= 180:
+                return TextSize.MEDIUM  # 24px
+            elif text_len <= 350:
+                return TextSize.SMALL   # 18px
+            else:
+                return TextSize.TINY    # 14px - for very long text
+
+    def _get_adaptive_image_width(self, text: str, base_width: int = 280) -> int:
+        """Shrink image when text is long to make room for all content.
+
+        NEVER cut off text - reduce image size instead.
+        Default to smaller images to prevent overflow.
+        """
+        text_len = len(text) if text else 0
+
+        if text_len <= 120:
+            return base_width          # Full size image
+        elif text_len <= 200:
+            return int(base_width * 0.85)  # 15% smaller
+        elif text_len <= 300:
+            return int(base_width * 0.70)  # 30% smaller
+        else:
+            return int(base_width * 0.55)  # 45% smaller for long text
+
+    def _create_header(self, layout: LabelLayout, title: str, style: str = "standard") -> None:
+        """Add stylish header with title.
+
+        Args:
+            layout: The layout to add to
+            title: Main title text
+            style: Header style - "standard", "mystical", "game", "prize"
+        """
+        if style == "mystical":
+            # Mystical style for fortune/zodiac/prophet
+            layout.add_separator("stars")
+            layout.add_text(title, size=TextSize.TITLE, bold=True)
+            layout.add_separator("fancy")
+            layout.add_space(4)
+        elif style == "game":
+            # Game style for quiz/squid/games
+            layout.add_text("▶ VNVNC ARCADE ◀", size=TextSize.SMALL, bold=True)
+            layout.add_text(title, size=TextSize.TITLE, bold=True)
+            layout.add_separator("arrows")
+            layout.add_space(4)
+        elif style == "prize":
+            # Prize style for winners
+            layout.add_separator("stars")
+            layout.add_text("★ VNVNC ARCADE ★", size=TextSize.SMALL, bold=True)
+            layout.add_text(title, size=TextSize.TITLE, bold=True)
+            layout.add_separator("stars")
+            layout.add_space(4)
+        else:
+            # Standard style
+            layout.add_text("VNVNC ARCADE", size=TextSize.SMALL)
+            layout.add_text(title, size=TextSize.TITLE, bold=True)
+            layout.add_separator("double")
+            layout.add_space(6)
+
+    def _create_footer(self, layout: LabelLayout, data: Dict[str, Any], style: str = "standard") -> None:
+        """Add stylish footer with date.
+
+        Args:
+            layout: The layout to add to
+            data: Mode data (for timestamp)
+            style: Footer style - "standard", "mystical", "minimal"
+        """
+        if style == "mystical":
+            layout.add_space(4)
+            layout.add_separator("fancy")
+            layout.add_text(self._get_date_string(data), size=TextSize.TINY)
+            layout.add_text("vnvnc.ru", size=TextSize.TINY)
+        elif style == "minimal":
+            layout.add_space(4)
+            layout.add_text(self._get_date_string(data), size=TextSize.TINY)
+            layout.add_text("vnvnc.ru", size=TextSize.TINY)
+        else:
+            layout.add_space(6)
+            layout.add_separator("line")
+            layout.add_text(self._get_date_string(data), size=TextSize.TINY)
+            layout.add_text("vnvnc.ru", size=TextSize.TINY)
 
     def _add_qr_section(
         self,
@@ -224,10 +309,10 @@ class LabelReceiptGenerator:
         if not qr_url:
             return False
 
-        layout.add_space(8)
+        layout.add_space(4)
         layout.add_separator("line")
         layout.add_text(label, size=TextSize.TINY, bold=True)
-        layout.add_qr(qr_url, size=70)
+        layout.add_qr(qr_url, size=80)  # Compact QR for better fit
 
         # Show short URL if available
         short_url = data.get("short_url")
@@ -241,484 +326,529 @@ class LabelReceiptGenerator:
     # =========================================================================
 
     def _create_fortune_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Fortune Teller mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🔮 ГАДАЛКА")
+        """Create label for Fortune Teller mode - mystical design with full border."""
+        layout = LabelLayout(page_border="double")
+        self._create_header(layout, "🔮 ГАДАЛКА", style="mystical")
 
-        # Caricature image
-        caricature = self._coerce_image(data.get("caricature"))
-        if caricature:
-            layout.add_image(caricature, width=380)
-            layout.add_space(8)
-
-        # Fortune text
+        # Get fortune text first to determine adaptive sizing
         fortune = (
             data.get("fortune") or
             data.get("prediction") or
             data.get("display_text") or
             "Звёзды молчат..."
         )
-        layout.add_text(fortune, size=TextSize.MEDIUM)
+        has_image = bool(data.get("caricature"))
 
-        # Details section
-        details = []
+        # Caricature image - adaptive size based on text length
+        caricature = self._coerce_image(data.get("caricature"))
+        if caricature:
+            img_width = self._get_adaptive_image_width(fortune, base_width=320)
+            layout.add_image(caricature, width=img_width)
+            layout.add_space(4)
+
+        # Fortune text in a nice box
+        layout.add_separator("wave")
+        text_size = self._get_adaptive_text_size(fortune, has_image=has_image)
+        layout.add_text(fortune, size=text_size)
+        layout.add_separator("wave")
+
+        # Details section with better formatting
         zodiac = data.get("zodiac_sign") or data.get("zodiac_ru")
-        if zodiac:
-            details.append(f"Знак: {zodiac}")
         lucky_color = data.get("lucky_color")
-        if lucky_color:
-            details.append(f"Цвет: {lucky_color}")
-
-        if details:
-            layout.add_space(6)
-            for detail in details:
-                layout.add_text(detail, size=TextSize.TINY)
+        if zodiac or lucky_color:
+            layout.add_space(2)
+            if zodiac:
+                layout.add_text(f"☆ {zodiac} ☆", size=TextSize.SMALL, bold=True)
+            if lucky_color:
+                layout.add_text(f"Счастливый цвет: {lucky_color}", size=TextSize.TINY)
 
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="mystical")
         return layout
 
     def _create_zodiac_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Zodiac mode."""
-        layout = LabelLayout()
+        """Create label for Zodiac mode - celestial design with stars border."""
+        layout = LabelLayout(page_border="stars")
 
-        # Zodiac sign header
+        # Get horoscope text first to determine adaptive sizing
+        horoscope = data.get("horoscope", "Звёзды ждут...")
+        has_image = bool(data.get("caricature") or data.get("portrait"))
+
+        # Zodiac sign header - compact
         zodiac_ru = data.get("zodiac_ru", "Знак")
         zodiac_symbol = data.get("zodiac_symbol", "⭐")
         birthday = data.get("birthday", "")
 
-        layout.add_text("VNVNC ARCADE", size=TextSize.SMALL)
-        layout.add_space(4)
-        layout.add_text(f"{zodiac_symbol} {zodiac_ru}", size=TextSize.TITLE, bold=True)
-
+        layout.add_text(f"{zodiac_symbol} {zodiac_ru.upper()} {zodiac_symbol}", size=TextSize.MEDIUM, bold=True)
         if birthday:
-            layout.add_text(f"({birthday})", size=TextSize.SMALL)
+            layout.add_text(f"ДР: {birthday}", size=TextSize.TINY)
 
-        layout.add_separator("dashes")
-        layout.add_space(8)
-
-        # Portrait if available
+        # Portrait - smaller
         portrait = self._coerce_image(data.get("caricature") or data.get("portrait"))
         if portrait:
-            layout.add_image(portrait, width=360)
-            layout.add_space(8)
+            img_width = self._get_adaptive_image_width(horoscope, base_width=220)
+            layout.add_image(portrait, width=img_width)
+            layout.add_space(2)
 
         # Horoscope
-        horoscope = data.get("horoscope", "Звёзды ждут...")
-        layout.add_text(horoscope, size=TextSize.MEDIUM)
+        text_size = self._get_adaptive_text_size(horoscope, has_image=has_image)
+        layout.add_text(horoscope, size=text_size)
 
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="mystical")
         return layout
 
     def _create_ai_prophet_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for AI Prophet mode (flagship mode)."""
-        layout = LabelLayout()
-        self._create_header(layout, "🧙 ИИ ПРОРОК")
+        """Create label for AI Prophet mode (flagship mode) - mystical design."""
+        layout = LabelLayout(page_border="ornate")
+        self._create_header(layout, "🧙 ИИ ПРОРОК", style="mystical")
 
-        # Caricature - large and prominent
-        caricature = self._coerce_image(data.get("caricature"))
-        if caricature:
-            layout.add_image(caricature, width=400)
-            layout.add_space(10)
-
-        # Prediction text
+        # Get prediction text first to determine adaptive sizing
         prediction = (
             data.get("prediction") or
             data.get("display_text") or
             "Твоё будущее сияет..."
         )
-        layout.add_text(prediction, size=TextSize.MEDIUM)
+        has_image = bool(data.get("caricature"))
 
-        # Lucky details
+        # Caricature - adaptive size based on text length
+        caricature = self._coerce_image(data.get("caricature"))
+        if caricature:
+            img_width = self._get_adaptive_image_width(prediction, base_width=260)
+            layout.add_image(caricature, width=img_width)
+            layout.add_space(4)
+
+        # Prediction text with elegant framing
+        layout.add_separator("wave")
+        text_size = self._get_adaptive_text_size(prediction, has_image=has_image)
+        layout.add_text(prediction, size=text_size)
+        layout.add_separator("wave")
+
+        # Lucky details in styled format
         lucky_number = data.get("lucky_number")
         lucky_color = data.get("lucky_color")
         if lucky_number or lucky_color:
-            layout.add_space(6)
-            if lucky_number:
-                layout.add_text(f"Число: {lucky_number}", size=TextSize.TINY)
-            if lucky_color:
-                layout.add_text(f"Цвет: {lucky_color}", size=TextSize.TINY)
+            layout.add_space(2)
+            if lucky_number and lucky_color:
+                layout.add_text(f"✦ {lucky_number} ✦ {lucky_color} ✦", size=TextSize.TINY)
+            elif lucky_number:
+                layout.add_text(f"✦ Число: {lucky_number} ✦", size=TextSize.TINY)
+            elif lucky_color:
+                layout.add_text(f"✦ Цвет: {lucky_color} ✦", size=TextSize.TINY)
 
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="mystical")
         return layout
 
     def _create_roulette_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Roulette mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🎰 РУЛЕТКА")
+        """Create label for Roulette mode - casino ticket style with solid border."""
+        layout = LabelLayout(page_border="solid")
 
-        # Result - big and bold
+        # Casino-style header
+        layout.add_separator("stars")
+        layout.add_text("🎰 РУЛЕТКА 🎰", size=TextSize.TITLE, bold=True)
+        layout.add_separator("stars")
+        layout.add_space(4)
+
+        # Result in a fancy box
         result = data.get("result", "???")
-        layout.add_text(result, size=TextSize.HUGE, bold=True)
+        box = layout.add_box(border_style="ornate", padding=8, title="РЕЗУЛЬТАТ")
+        box.content_blocks.append(TextBlock(result, size=TextSize.LARGE, bold=True))
 
-        # Category
+        # Category with styling
         category = data.get("category", "")
         if category:
-            layout.add_text(f"({category})", size=TextSize.SMALL)
+            layout.add_space(4)
+            layout.add_text(f"✦ {category} ✦", size=TextSize.SMALL)
 
-        self._create_footer(layout, data)
+        layout.add_separator("fancy")
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_quiz_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Quiz mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "❓ ВИКТОРИНА")
+        """Create label for Quiz mode - game style with prize highlight and double border."""
+        layout = LabelLayout(page_border="double")
 
-        # Doodle image
+        # Check if winner for special prize styling
+        won_cocktail = data.get("won_cocktail", False)
+        header_style = "prize" if won_cocktail else "game"
+        self._create_header(layout, "❓ ВИКТОРИНА", style=header_style)
+
+        # Doodle image - smaller to fit
         doodle = self._coerce_image(data.get("caricature"))
         if doodle:
-            layout.add_image(doodle, width=360)
-            layout.add_space(8)
+            layout.add_image(doodle, width=220)
+            layout.add_space(4)
 
-        # Score
+        # Score display
         score = data.get("score", 0)
         total = data.get("total", 0)
-        layout.add_text(f"СЧЁТ: {score}/{total}", size=TextSize.LARGE, bold=True)
-
         percentage = data.get("percentage")
         if percentage is None and total > 0:
             percentage = int(score / total * 100)
-        if percentage is not None:
-            layout.add_text(f"{percentage}%", size=TextSize.MEDIUM)
 
-        # Prize section
-        if data.get("won_cocktail"):
-            layout.add_space(10)
-            layout.add_separator("double")
-            layout.add_text("🍹 БЕСПЛАТНЫЙ", size=TextSize.LARGE, bold=True)
-            layout.add_text("КОКТЕЙЛЬ!", size=TextSize.LARGE, bold=True)
+        layout.add_text(f"СЧЁТ: {score}/{total}", size=TextSize.MEDIUM, bold=True)
+        if percentage is not None:
+            layout.add_text(f"▶ {percentage}% ◀", size=TextSize.SMALL, bold=True)
+
+        # Prize section - compact but visible
+        if won_cocktail:
+            layout.add_space(4)
+            layout.add_separator("stars")
+            layout.add_text("🍹 КОКТЕЙЛЬ! 🍹", size=TextSize.MEDIUM, bold=True)
 
             coupon = data.get("coupon_code")
             if coupon:
-                layout.add_space(6)
-                layout.add_text(f"КОД: {coupon}", size=TextSize.TITLE, bold=True)
-                layout.add_text("Покажи бармену", size=TextSize.SMALL)
-
-            layout.add_separator("double")
+                box = layout.add_box(border_style="double", padding=6, title="КОД")
+                box.content_blocks.append(TextBlock(coupon, size=TextSize.LARGE, bold=True))
+                box.content_blocks.append(TextBlock("Покажи бармену!", size=TextSize.TINY))
 
         # Rank
         rank = data.get("rank", "")
         if rank:
-            layout.add_space(6)
-            layout.add_text(rank, size=TextSize.SMALL)
+            layout.add_text(rank, size=TextSize.TINY, bold=True)
 
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_squid_game_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Squid Game mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🦑 КАЛЬМАР")
+        """Create label for Squid Game mode - dramatic game style with solid border."""
+        layout = LabelLayout(page_border="solid")
 
-        # Result status
+        # Determine win/lose for styling
         result = (data.get("result") or "").upper()
-        if result:
-            result_text = "🏆 ПОБЕДА" if result == "VICTORY" else "💀 ВЫБЫЛ" if result == "ELIMINATED" else result
-            layout.add_text(result_text, size=TextSize.LARGE, bold=True)
-            layout.add_space(8)
+        is_victory = result == "VICTORY"
+        header_style = "prize" if is_victory else "game"
+        self._create_header(layout, "🦑 КАЛЬМАР", style=header_style)
 
-        # Sketch
+        # Result status - compact
+        if result:
+            if is_victory:
+                layout.add_text("🏆 ПОБЕДА! 🏆", size=TextSize.MEDIUM, bold=True)
+            else:
+                layout.add_text("💀 ВЫБЫЛ 💀", size=TextSize.MEDIUM, bold=True)
+
+        # Sketch - smaller
         sketch = self._coerce_image(data.get("caricature") or data.get("sketch"))
         if sketch:
-            layout.add_image(sketch, width=380)
-            layout.add_space(8)
+            layout.add_image(sketch, width=220)
+            layout.add_space(2)
 
-        # Coupon or message
+        # Prize coupon in compact box (if winner)
         coupon = data.get("coupon_code")
         if coupon:
-            layout.add_separator("double")
-            layout.add_text(f"КОД: {coupon}", size=TextSize.TITLE, bold=True)
-            layout.add_text("Покажи бармену", size=TextSize.SMALL)
-            layout.add_separator("double")
-        else:
-            layout.add_text("Фото твоего бега!", size=TextSize.SMALL)
+            box = layout.add_box(border_style="double", padding=6, title="ПРИЗ")
+            box.content_blocks.append(TextBlock(coupon, size=TextSize.LARGE, bold=True))
+            box.content_blocks.append(TextBlock("Покажи бармену!", size=TextSize.TINY))
 
-        # Stats
+        # Stats section - compact
         reason = data.get("elimination_reason")
+        survived = data.get("survived_time")
+        if survived:
+            layout.add_text(f"⏱ {survived}", size=TextSize.TINY)
         if reason:
             layout.add_text(reason, size=TextSize.TINY)
 
-        survived = data.get("survived_time")
-        if survived:
-            layout.add_text(f"Время: {survived}", size=TextSize.TINY)
-
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_roast_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Roast mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🔥 ПРОЖАРКА")
+        """Create label for Roast mode - fiery design with wave border."""
+        layout = LabelLayout(page_border="solid")
 
-        # Doodle
+        # Fire-themed header
+        layout.add_separator("wave")
+        layout.add_text("🔥 ПРОЖАРКА 🔥", size=TextSize.LARGE, bold=True)
+        layout.add_separator("wave")
+
+        # Get roast text first to determine adaptive sizing
+        roast_text = data.get("roast") or data.get("display_text") or ""
+        has_image = bool(data.get("doodle") or data.get("caricature"))
+
+        # Doodle - smaller
         doodle = self._coerce_image(data.get("doodle") or data.get("caricature"))
         if doodle:
-            layout.add_image(doodle, width=380)
-            layout.add_space(8)
+            img_width = self._get_adaptive_image_width(roast_text, base_width=240)
+            layout.add_image(doodle, width=img_width)
+            layout.add_space(2)
 
         # Roast text
-        roast_text = data.get("roast") or data.get("display_text") or ""
         if roast_text:
-            layout.add_text(roast_text, size=TextSize.MEDIUM)
+            text_size = self._get_adaptive_text_size(roast_text, has_image=has_image)
+            layout.add_text(roast_text, size=text_size)
 
-        # Vibe
+        # Vibe - compact
         vibe = data.get("vibe")
         if vibe:
-            layout.add_space(6)
-            layout.add_text(f"Вайб: {vibe}", size=TextSize.TINY)
+            layout.add_text(f"✨ {vibe} ✨", size=TextSize.TINY, bold=True)
 
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_autopsy_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Autopsy/Diagnosis mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🩻 ДИАГНОЗ")
+        """Create label for Autopsy/Diagnosis mode - medical report style with double border."""
+        layout = LabelLayout(page_border="double")
 
-        # X-ray scan
-        scan_image = self._coerce_image(data.get("scan_image") or data.get("caricature"))
-        if scan_image:
-            layout.add_image(scan_image, width=380)
-            layout.add_space(8)
+        # Medical report header
+        layout.add_text("🩻 ДИАГНОЗ", size=TextSize.LARGE, bold=True)
+        layout.add_separator("double")
 
-        # Subject ID
+        # Get diagnosis text first to determine adaptive sizing
+        diagnosis = data.get("diagnosis") or data.get("display_text") or ""
+        has_image = bool(data.get("scan_image") or data.get("caricature"))
+
+        # Subject ID - compact
         subject_id = data.get("id") or ""
         if subject_id:
-            layout.add_text(f"ID: {subject_id}", size=TextSize.SMALL, bold=True)
+            layout.add_text(f"📋 {subject_id}", size=TextSize.TINY, bold=True)
 
-        # Diagnosis
-        diagnosis = data.get("diagnosis") or data.get("display_text") or ""
+        # X-ray scan - smaller
+        scan_image = self._coerce_image(data.get("scan_image") or data.get("caricature"))
+        if scan_image:
+            img_width = self._get_adaptive_image_width(diagnosis, base_width=240)
+            layout.add_image(scan_image, width=img_width)
+            layout.add_space(2)
+
+        # Diagnosis text
         if diagnosis:
-            layout.add_text(diagnosis, size=TextSize.MEDIUM)
+            text_size = self._get_adaptive_text_size(diagnosis, has_image=has_image)
+            layout.add_text(diagnosis, size=text_size)
 
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_photobooth_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Photobooth mode - optimized for photo stickers."""
-        layout = LabelLayout(margin_y=12)  # Smaller margins for more photo space
+        """Create label for Photobooth mode - elegant photo sticker with ornate border."""
+        layout = LabelLayout(margin_y=12, page_border="ornate")
 
         # Photo takes most of the space
         photo = self._coerce_image(data.get("caricature") or data.get("photo"))
         if photo:
-            layout.add_image(photo, width=420)  # Nearly full width
-            layout.add_space(6)
+            layout.add_image(photo, width=380)
+            layout.add_space(4)
 
-        layout.add_text("VNVNC ARCADE", size=TextSize.SMALL)
+        # Minimal branding
+        layout.add_text("📸 VNVNC", size=TextSize.SMALL, bold=True)
 
         # QR for download
-        self._add_qr_section(layout, data, "📥 СКАЧАТЬ ФОТО:")
+        self._add_qr_section(layout, data, "СКАЧАТЬ:")
 
         layout.add_text(self._get_date_string(data), size=TextSize.TINY)
         return layout
 
     def _create_rapgod_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for RapGod mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🎤 RAP GOD")
+        """Create label for RapGod mode - hip-hop record style with solid border."""
+        layout = LabelLayout(page_border="solid")
 
-        # Song title and artist
+        # Hip-hop style header
+        layout.add_text("🎤 RAP GOD 🎤", size=TextSize.LARGE, bold=True)
+        layout.add_separator("wave")
+
+        # Song title and artist - compact
         song_title = data.get("song_title") or "Untitled"
-        artist = data.get("artist") or "ARTIFACT AI"
+        artist = data.get("artist") or "AI"
 
-        layout.add_text(song_title, size=TextSize.LARGE, bold=True)
-        layout.add_text(artist, size=TextSize.SMALL)
-        layout.add_space(6)
+        layout.add_text(song_title, size=TextSize.MEDIUM, bold=True)
+        layout.add_text(f"by {artist}", size=TextSize.TINY)
 
-        # Genre and BPM
+        # Genre and BPM - compact
         genre = data.get("genre") or "trap"
         bpm = data.get("bpm") or 140
-        layout.add_text(f"{genre.upper()} / {bpm} BPM", size=TextSize.TINY)
-        layout.add_separator("line")
-        layout.add_space(6)
+        layout.add_text(f"🔊 {genre.upper()} • {bpm} BPM", size=TextSize.TINY, bold=True)
 
-        # Hook lyrics (max 4 lines)
+        # Hook lyrics - compact
         hook = data.get("hook") or ""
         if hook:
-            layout.add_text("ПРИПЕВ:", size=TextSize.TINY, bold=True)
-            lines = hook.split("\n")[:4]
+            layout.add_separator("dots")
+            lines = hook.split("\n")[:3]  # Max 3 lines
             for line in lines:
                 if line.strip():
-                    layout.add_text(line.strip()[:35], size=TextSize.SMALL, alignment=Alignment.LEFT)
-            layout.add_space(6)
+                    layout.add_text(f"» {line.strip()[:28]}", size=TextSize.TINY, alignment=Alignment.LEFT)
 
-        # One-liner
+        # One-liner quote
         one_liner = data.get("one_liner")
         if one_liner:
-            layout.add_text(f'"{one_liner}"', size=TextSize.TINY)
+            layout.add_text(f'"{one_liner[:35]}"', size=TextSize.TINY)
 
-        self._add_qr_section(layout, data, "🎵 СКАЧАТЬ ТРЕК:")
-        self._create_footer(layout, data)
+        self._add_qr_section(layout, data, "🎵 ТРЕК:")
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_tower_stack_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Tower Stack game."""
-        layout = LabelLayout()
-        self._create_header(layout, "🏗️ БАШНЯ")
+        """Create label for Tower Stack game - arcade score card style with double border."""
+        layout = LabelLayout(page_border="double")
+        self._create_header(layout, "🏗️ БАШНЯ", style="game")
 
-        # Score - big
+        # Score display
         score = data.get("score", 0)
-        layout.add_text(f"СЧЁТ: {score}", size=TextSize.HUGE, bold=True)
+        layout.add_text(str(score), size=TextSize.HUGE, bold=True)
 
-        # Stats
+        # Stats section - compact
         height = data.get("height")
         max_streak = data.get("max_streak")
         difficulty = data.get("difficulty")
 
-        layout.add_space(8)
-        if height is not None:
-            layout.add_text(f"Высота: {height}", size=TextSize.SMALL)
-        if max_streak is not None:
-            layout.add_text(f"Макс. серия: {max_streak}", size=TextSize.SMALL)
-        if difficulty:
-            layout.add_text(f"Сложность: {difficulty}", size=TextSize.SMALL)
+        layout.add_separator("arrows")
 
-        self._create_footer(layout, data)
+        if height is not None:
+            layout.add_text(f"🏢 Высота: {height}", size=TextSize.TINY)
+        if max_streak is not None:
+            layout.add_text(f"🔥 Серия: {max_streak}", size=TextSize.TINY)
+        if difficulty:
+            layout.add_text(f"⚡ {difficulty}", size=TextSize.TINY)
+
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_brick_breaker_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Brick Breaker game."""
-        layout = LabelLayout()
-        self._create_header(layout, "🧱 КИРПИЧИ")
+        """Create label for Brick Breaker game - retro arcade style with double border."""
+        layout = LabelLayout(page_border="double")
 
-        # Score
+        # Check if winner for special styling
+        win = data.get("win")
+        header_style = "prize" if win else "game"
+        self._create_header(layout, "🧱 КИРПИЧИ", style=header_style)
+
+        # Score display
         score = data.get("score", 0)
-        layout.add_text(f"СЧЁТ: {score}", size=TextSize.HUGE, bold=True)
+        layout.add_text(str(score), size=TextSize.HUGE, bold=True)
 
-        # Stats
+        # Win/Lose status - compact
+        if win is not None:
+            outcome = "🏆 ПОБЕДА!" if win else "💀 GAME OVER"
+            layout.add_text(outcome, size=TextSize.MEDIUM, bold=True)
+
+        # Stats section - compact
         level = data.get("level")
         max_combo = data.get("max_combo")
         lives = data.get("lives_remaining")
-        win = data.get("win")
 
-        layout.add_space(8)
+        layout.add_separator("dots")
         if level is not None:
-            layout.add_text(f"Уровень: {level}", size=TextSize.SMALL)
+            layout.add_text(f"📊 Уровень: {level}", size=TextSize.TINY)
         if max_combo is not None:
-            layout.add_text(f"Комбо: x{max_combo}", size=TextSize.SMALL)
+            layout.add_text(f"🔥 Комбо: x{max_combo}", size=TextSize.TINY)
         if lives is not None:
-            layout.add_text(f"Жизни: {lives}", size=TextSize.SMALL)
-        if win is not None:
-            outcome = "🏆 ПОБЕДА" if win else "💀 ПРОИГРЫШ"
-            layout.add_text(outcome, size=TextSize.MEDIUM, bold=True)
+            layout.add_text(f"❤️ Жизни: {lives}", size=TextSize.TINY)
 
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_video_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Video mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🎬 ВИДЕО")
+        """Create label for Video mode - film ticket style with solid border."""
+        layout = LabelLayout(page_border="solid")
 
+        # Film-style header
+        layout.add_text("🎬 ВИДЕО 🎬", size=TextSize.LARGE, bold=True)
+        layout.add_separator("dots")
+
+        # Title
         title = data.get("title") or data.get("media_name") or "Без названия"
-        layout.add_text(title, size=TextSize.LARGE, bold=True)
+        layout.add_text(title, size=TextSize.MEDIUM, bold=True)
 
+        # Media details - compact
         media_type = data.get("media_type")
         if media_type:
-            type_map = {"VIDEO": "ВИДЕО", "IMAGE": "ФОТО", "GIF": "GIF"}
-            layout.add_text(f"Тип: {type_map.get(str(media_type), str(media_type))}", size=TextSize.SMALL)
+            type_map = {"VIDEO": "🎥 ВИДЕО", "IMAGE": "🖼 ФОТО", "GIF": "✨ GIF"}
+            layout.add_text(type_map.get(str(media_type), str(media_type)), size=TextSize.TINY)
 
         index = data.get("index")
         total = data.get("total")
         if index is not None and total is not None:
-            layout.add_text(f"Позиция: {index}/{total}", size=TextSize.SMALL)
+            layout.add_text(f"📍 {index} из {total}", size=TextSize.TINY)
 
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_guess_me_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Guess Me / Who Am I mode."""
-        layout = LabelLayout()
-        self._create_header(layout, "🎭 КТО Я?")
+        """Create label for Guess Me / Who Am I mode - mysterious style with ornate border."""
+        layout = LabelLayout(page_border="ornate")
+
+        # Mysterious header
+        layout.add_text("🎭 КТО Я? 🎭", size=TextSize.LARGE, bold=True)
+        layout.add_separator("fancy")
 
         title = data.get("title") or "Загадка"
         prediction = data.get("prediction") or ""
+        has_image = bool(data.get("caricature"))
 
-        layout.add_text(title, size=TextSize.LARGE, bold=True)
-        if prediction:
-            layout.add_space(6)
-            layout.add_text(prediction, size=TextSize.MEDIUM)
+        # Title
+        layout.add_text(title, size=TextSize.MEDIUM, bold=True)
 
-        # Caricature
+        # Caricature - smaller, before prediction
         caricature = self._coerce_image(data.get("caricature"))
         if caricature:
-            layout.add_space(8)
-            layout.add_image(caricature, width=380)
+            img_width = self._get_adaptive_image_width(prediction, base_width=220)
+            layout.add_image(caricature, width=img_width)
+            layout.add_space(2)
+
+        # Prediction text
+        if prediction:
+            text_size = self._get_adaptive_text_size(prediction, has_image=has_image)
+            layout.add_text(prediction, size=text_size)
 
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="mystical")
         return layout
 
     def _create_sorting_hat_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Sorting Hat (Harry Potter) mode.
+        """Create label for Sorting Hat mode - magical style with stars border."""
+        layout = LabelLayout(margin_y=12, page_border="stars")
 
-        This is a key mode with:
-        - Hogwarts house name (big and bold)
-        - AI-generated portrait in house robes
-        - House traits
-        - QR code for download
-        - Bracelet reminder
-        """
-        layout = LabelLayout()
+        # Magical header
+        layout.add_text("🎩 ШЛЯПА", size=TextSize.LARGE, bold=True)
 
-        # Magic header
-        layout.add_text("VNVNC ARCADE", size=TextSize.TINY)
-        layout.add_text("🎩 РАСПРЕДЕЛЯЮЩАЯ", size=TextSize.MEDIUM, bold=True)
-        layout.add_text("ШЛЯПА", size=TextSize.MEDIUM, bold=True)
-        layout.add_separator("dashes")
-        layout.add_space(6)
-
-        # House name - BIG AND PROMINENT
+        # House name
         house_ru = data.get("house_name_ru") or data.get("house_ru") or data.get("house") or "Хогвартс"
-        layout.add_text(house_ru.upper(), size=TextSize.TITLE, bold=True)
-
-        # Animal
         animal_ru = data.get("animal_ru")
+
+        layout.add_text(house_ru.upper(), size=TextSize.MEDIUM, bold=True)
         if animal_ru:
-            layout.add_text(f"({animal_ru})", size=TextSize.SMALL)
+            layout.add_text(f"({animal_ru})", size=TextSize.TINY)
 
-        layout.add_space(6)
-
-        # Portrait - prominent
+        # Portrait - compact
         portrait = self._coerce_image(data.get("caricature") or data.get("portrait"))
         if portrait:
-            layout.add_image(portrait, width=380)
-            layout.add_space(6)
+            layout.add_image(portrait, width=200)
 
-        # House traits
+        # House traits - compact
         traits = data.get("traits", [])
         if traits:
-            traits_text = ", ".join(traits[:3])
+            traits_text = " ✦ ".join(traits[:3])
             layout.add_text(traits_text, size=TextSize.TINY)
 
-        # Bracelet reminder
-        layout.add_space(8)
-        layout.add_separator("double")
-        layout.add_text("ПОЛУЧИ СВОЙ", size=TextSize.MEDIUM, bold=True)
-        layout.add_text("БРАСЛЕТ!", size=TextSize.MEDIUM, bold=True)
-        layout.add_separator("double")
+        # Bracelet reminder - compact
+        layout.add_text("🎁 БРАСЛЕТ! 🎁", size=TextSize.SMALL, bold=True)
 
         # QR code
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        qr_url = data.get("qr_url") or data.get("short_url")
+        if qr_url:
+            layout.add_qr(qr_url, size=70)
+
+        layout.add_text(self._get_date_string(data), size=TextSize.TINY)
         return layout
 
     def _create_generic_label(self, mode_name: str, data: Dict[str, Any]) -> LabelLayout:
-        """Create a generic label for any unknown mode."""
-        layout = LabelLayout()
-        self._create_header(layout, mode_name.upper())
+        """Create a generic label for any unknown mode - clean versatile design with solid border."""
+        layout = LabelLayout(page_border="solid")
 
-        # Display text if available
+        # Clean header
+        layout.add_text(mode_name.upper(), size=TextSize.LARGE, bold=True)
+        layout.add_separator("fancy")
+
+        # Get display text first to determine adaptive sizing
         display_text = data.get("display_text") or data.get("result", "")
-        if display_text:
-            layout.add_text(display_text, size=TextSize.MEDIUM)
+        has_image = bool(
+            data.get("caricature") or
+            data.get("portrait") or
+            data.get("photo") or
+            data.get("image")
+        )
 
-        # Image if available
+        # Image - compact, before text
         image = self._coerce_image(
             data.get("caricature") or
             data.get("portrait") or
@@ -726,9 +856,15 @@ class LabelReceiptGenerator:
             data.get("image")
         )
         if image:
-            layout.add_space(8)
-            layout.add_image(image, width=380)
+            img_width = self._get_adaptive_image_width(display_text, base_width=220)
+            layout.add_image(image, width=img_width)
+            layout.add_space(2)
+
+        # Display text - adaptive font size to fit ALL text
+        if display_text:
+            text_size = self._get_adaptive_text_size(display_text, has_image=has_image)
+            layout.add_text(display_text, size=text_size)
 
         self._add_qr_section(layout, data)
-        self._create_footer(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
