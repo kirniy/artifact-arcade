@@ -188,8 +188,10 @@ class Y2KMode(BaseMode):
 
         # Questions state
         self._questions: List[Y2KQuestion] = []
+        self._shuffled_options: List[List[str]] = []  # Shuffled options for each question
+        self._shuffled_correct: List[int] = []  # New correct index after shuffle
         self._current_question: int = 0
-        self._selected_option: int = 0
+        self._selected_option: Optional[int] = None  # None = no selection yet
         self._score: int = 0
         self._answers: List[int] = []  # Track what user answered
         self._category_scores: Dict[str, int] = {

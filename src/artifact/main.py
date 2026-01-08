@@ -58,13 +58,13 @@ async def run_hardware() -> None:
     from artifact.utils.camera_service import camera_service
 
     # Import curated game modes (same as simulator)
-    from artifact.modes.y2k import Y2KMode                   # НУЛЕВЫЕ (2000s trivia)
+    from artifact.modes.roast import RoastMeMode             # ПРОЖАРКА (first!)
     from artifact.modes.bad_santa import BadSantaMode        # ПЛОХОЙ САНТА (18+)
-    from artifact.modes.sorting_hat import SortingHatMode    # ШЛЯПА (Sorting Hat)
+    # from artifact.modes.y2k import Y2KMode                 # НУЛЕВЫЕ - HIDDEN
+    # from artifact.modes.sorting_hat import SortingHatMode  # ШЛЯПА - HIDDEN
     from artifact.modes.fortune import FortuneMode           # ГАДАЛКА
     from artifact.modes.ai_prophet import AIProphetMode      # ПРОРОК
     from artifact.modes.photobooth import PhotoboothMode     # ФОТОБУДКА
-    from artifact.modes.roast import RoastMeMode             # ПРОЖАРКА
     from artifact.modes.guess_me import GuessMeMode          # КТО Я?
     from artifact.modes.squid_game import SquidGameMode      # КАЛЬМАР
     from artifact.modes.quiz import QuizMode                 # КВИЗ
@@ -98,6 +98,20 @@ async def run_hardware() -> None:
         theme="mystical"
     )
 
+    # Check for API key
+    has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
+
+    # Register modes in order: Roast -> Photobooth -> Quiz -> rest
+    # ПРОЖАРКА - Roast mode (FIRST!)
+    mode_manager.register_mode(RoastMeMode)
+    logger.info("🔥 ROAST MODE registered as #1")
+
+    # ФОТОБУДКА - Photo booth (SECOND)
+    mode_manager.register_mode(PhotoboothMode)
+
+    # КВИЗ - Quiz (THIRD)
+    mode_manager.register_mode(QuizMode)
+
     # Time-based mode activation (Bad Santa only on Jan 9 after 5pm Moscow)
     from datetime import datetime
     from zoneinfo import ZoneInfo
@@ -105,26 +119,16 @@ async def run_hardware() -> None:
     now = datetime.now(moscow_tz)
     bad_santa_active = (now.month == 1 and now.day == 9 and now.hour >= 17)
 
-    # Register curated game modes
-    # Time-based priority: Bad Santa #1 when active, Y2K #2
-    # Otherwise: Y2K #1
-    has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
-
     if bad_santa_active and has_api_key:
-        # Bad Santa event active - it's #1!
         mode_manager.register_mode(BadSantaMode)
-        mode_manager.register_mode(Y2KMode)
         logger.info("🎅 BAD SANTA MODE ACTIVE! (Jan 9 after 5pm Moscow)")
-    elif has_api_key:
-        # Normal mode - Y2K is #1
-        mode_manager.register_mode(Y2KMode)
-        logger.info("НУЛЕВЫЕ mode registered as #1")
 
-    # ШЛЯПА - Sorting Hat (Harry Potter house sorting)
-    if has_api_key:
-        mode_manager.register_mode(SortingHatMode)
-        logger.info("Sorting Hat mode enabled (API key found)")
-    else:
+    # Y2K and Sorting Hat are HIDDEN for now
+    # if has_api_key:
+    #     mode_manager.register_mode(Y2KMode)
+    #     mode_manager.register_mode(SortingHatMode)
+
+    if not has_api_key:
         logger.warning("AI modes disabled (no GEMINI_API_KEY)")
 
     # ГАДАЛКА - Fortune teller
@@ -135,20 +139,11 @@ async def run_hardware() -> None:
         mode_manager.register_mode(AIProphetMode)
         logger.info("AI Prophet mode enabled (API key found)")
 
-    # ФОТОБУДКА - Photo booth
-    mode_manager.register_mode(PhotoboothMode)
-
-    # ПРОЖАРКА - Roast mode
-    mode_manager.register_mode(RoastMeMode)
-
     # КТО Я? - AI guessing "Who Am I?"
     mode_manager.register_mode(GuessMeMode)
 
     # КАЛЬМАР - Squid game (red light/green light)
     mode_manager.register_mode(SquidGameMode)
-
-    # КВИЗ - Quiz
-    mode_manager.register_mode(QuizMode)
 
     # БАШНЯ - Tower stack
     mode_manager.register_mode(TowerStackMode)
