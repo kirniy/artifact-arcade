@@ -308,7 +308,7 @@ class BadSantaMode(BaseMode):
         # Play intro sound
         audio = get_audio_engine()
         if audio:
-            audio.play_sfx("mystical")
+            audio.play_transition()
 
     def on_exit(self) -> None:
         """Called when mode is deactivated."""
@@ -316,13 +316,23 @@ class BadSantaMode(BaseMode):
 
     def on_input(self, event: Event) -> bool:
         """Handle input events."""
+        # Keypad 1/2 for direct selection in questions
+        if event.type == EventType.KEYPAD_INPUT and self._phase == BadSantaPhase.QUESTIONS:
+            key = event.data.get("key", "")
+            if key == "1":
+                self._selected_option = 0
+                return self._handle_confirm()
+            elif key == "2":
+                self._selected_option = 1
+                return self._handle_confirm()
+
         if event.type == EventType.ARCADE_LEFT:
             return self._handle_left()
         elif event.type == EventType.ARCADE_RIGHT:
             return self._handle_right()
-        elif event.type in (EventType.BUTTON_PRESS, EventType.KEYPAD_ENTER):
+        elif event.type == EventType.BUTTON_PRESS:
             return self._handle_confirm()
-        elif event.type == EventType.KEYPAD_BACK:
+        elif event.type == EventType.BACK:
             return self._handle_back()
 
         return False
@@ -448,7 +458,7 @@ class BadSantaMode(BaseMode):
             if self._countdown > 0:
                 audio = get_audio_engine()
                 if audio:
-                    audio.play_sfx("tick")
+                    audio.play_countdown_tick()
 
         # Get latest frame
         self._last_frame = camera_service.get_frame()
@@ -469,7 +479,7 @@ class BadSantaMode(BaseMode):
 
                 audio = get_audio_engine()
                 if audio:
-                    audio.play_sfx("shutter")
+                    audio.play_camera_shutter()
 
             # Move to processing
             self._phase = BadSantaPhase.PROCESSING

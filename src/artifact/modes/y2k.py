@@ -232,7 +232,7 @@ class Y2KMode(BaseMode):
         self._phase_timer = 0
 
         # Initialize particles with retro theme
-        self._particles.clear()
+        self._particles.clear_all()
 
         self.change_phase(ModePhase.INTRO)
 
@@ -240,7 +240,7 @@ class Y2KMode(BaseMode):
         """Clean up."""
         if self._ai_task and not self._ai_task.done():
             self._ai_task.cancel()
-        self._particles.clear()
+        self._particles.clear_all()
 
     def on_update(self, delta_ms: float) -> None:
         """Update mode state."""
@@ -364,7 +364,7 @@ class Y2KMode(BaseMode):
 
     def on_input(self, event: Event) -> bool:
         """Handle input events."""
-        if event.type == EventType.ARCADE_BACK:
+        if event.type == EventType.BACK:
             self.request_exit()
             return True
 
@@ -376,14 +376,35 @@ class Y2KMode(BaseMode):
         return False
 
     def _handle_question_input(self, event: Event) -> bool:
-        """Handle input during questions."""
+        """Handle input during questions - keypad 1-4 for direct selection."""
+        # Direct answer selection via keypad 1-4
+        if event.type == EventType.KEYPAD_INPUT:
+            key = event.data.get("key", "")
+            if key == "1":
+                self._selected_option = 0
+                self._submit_answer()
+                return True
+            elif key == "2":
+                self._selected_option = 1
+                self._submit_answer()
+                return True
+            elif key == "3":
+                self._selected_option = 2
+                self._submit_answer()
+                return True
+            elif key == "4":
+                self._selected_option = 3
+                self._submit_answer()
+                return True
+
+        # Navigation via arrows (backup method)
         if event.type == EventType.ARCADE_LEFT:
             self._selected_option = (self._selected_option - 1) % 4
             return True
         elif event.type == EventType.ARCADE_RIGHT:
             self._selected_option = (self._selected_option + 1) % 4
             return True
-        elif event.type in (EventType.ARCADE_CONFIRM, EventType.BUTTON_PRESS):
+        elif event.type == EventType.BUTTON_PRESS:
             self._submit_answer()
             return True
         return False
@@ -644,10 +665,9 @@ CRITICAL: Capture their ACTUAL FACE from the photo - this must look like THEM, j
             draw_rect(buffer, 0, 0, 128, 128, (20, 40, 40))
             draw_centered_text(buffer, "КАМЕРА...", 60, (0, 255, 200), scale=1)
 
-        # Add viewfinder overlay
-        overlay = create_viewfinder_overlay(128, 128)
-        mask = overlay[:, :, 3] > 0
-        buffer[mask] = overlay[mask, :3]
+        # Add viewfinder overlay (pass buffer, get back overlaid buffer)
+        overlaid = create_viewfinder_overlay(buffer, self._phase_timer)
+        buffer[:] = overlaid
 
         # Show countdown
         if self._phase == Y2KPhase.CAMERA_CAPTURE and self._countdown > 0:
@@ -709,9 +729,9 @@ CRITICAL: Capture their ACTUAL FACE from the photo - this must look like THEM, j
             if is_selected:
                 draw_rect(buffer, x, y, 58, 30, (0, 255, 200))
 
-            # Option letter
-            letter = ["A", "B", "C", "D"][i]
-            draw_text(buffer, letter, x + 2, y + 2, (0, 255, 200), scale=1)
+            # Option number (1-4 for keypad)
+            number = ["1", "2", "3", "4"][i]
+            draw_text(buffer, number, x + 2, y + 2, (0, 255, 200), scale=1)
 
             # Option text (truncate if needed)
             opt_text = opt[:10] if len(opt) > 10 else opt
