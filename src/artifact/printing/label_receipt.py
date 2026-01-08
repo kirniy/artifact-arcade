@@ -106,6 +106,10 @@ class LabelReceiptGenerator:
             layout = self._create_video_label(data)
         elif mode_name == "sorting_hat":
             layout = self._create_sorting_hat_label(data)
+        elif mode_name == "y2k":
+            layout = self._create_y2k_label(data)
+        elif mode_name == "bad_santa":
+            layout = self._create_bad_santa_label(data)
         else:
             layout = self._create_generic_label(mode_name, data)
 
@@ -829,6 +833,109 @@ class LabelReceiptGenerator:
             layout.add_qr(qr_url, size=70)
 
         layout.add_text(self._get_date_string(data), size=TextSize.TINY)
+        return layout
+
+    def _create_y2k_label(self, data: Dict[str, Any]) -> LabelLayout:
+        """Create label for Y2K (2000s) mode - retro millennium style with double border."""
+        layout = LabelLayout(page_border="double")
+
+        # Retro 2000s header with CRT vibes
+        layout.add_text("💿 НУЛЕВЫЕ 💿", size=TextSize.LARGE, bold=True)
+        layout.add_separator("wave")
+
+        # Get archetype/character description
+        archetype = data.get("archetype") or data.get("character_type") or ""
+        description = data.get("description") or data.get("display_text") or ""
+        has_image = bool(data.get("caricature"))
+
+        # Score display
+        score = data.get("score")
+        total = data.get("total")
+        if score is not None and total is not None:
+            percentage = int(score / total * 100) if total > 0 else 0
+            layout.add_text(f"СЧЁТ: {score}/{total} ({percentage}%)", size=TextSize.SMALL, bold=True)
+
+        # Archetype title
+        if archetype:
+            layout.add_text(archetype, size=TextSize.MEDIUM, bold=True)
+
+        # 2000s character portrait - adaptive size
+        caricature = self._coerce_image(data.get("caricature"))
+        if caricature:
+            img_width = self._get_adaptive_image_width(description, base_width=260)
+            layout.add_image(caricature, width=img_width)
+            layout.add_space(4)
+
+        # Character description
+        if description:
+            layout.add_separator("dots")
+            text_size = self._get_adaptive_text_size(description, has_image=has_image)
+            layout.add_text(description, size=text_size)
+
+        # Category scores (if available)
+        category_scores = data.get("category_scores")
+        if category_scores:
+            layout.add_space(2)
+            top_categories = sorted(category_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+            cats_text = " • ".join([f"{cat}" for cat, _ in top_categories])
+            layout.add_text(cats_text, size=TextSize.TINY)
+
+        self._add_qr_section(layout, data)
+        self._create_footer(layout, data, style="minimal")
+        return layout
+
+    def _create_bad_santa_label(self, data: Dict[str, Any]) -> LabelLayout:
+        """Create label for Bad Santa mode - naughty/nice verdict with prize code."""
+        # Determine verdict for styling
+        verdict = data.get("verdict") or data.get("result") or "NICE"
+        is_winner = verdict.upper() in ["NICE", "ПОДАРОК ЗАСЛУЖЕН", "WINNER"]
+        border_style = "stars" if is_winner else "solid"
+        layout = LabelLayout(page_border=border_style)
+
+        # Bad Santa header with adult vibes
+        layout.add_text("🎅 ПЛОХОЙ САНТА 🎅", size=TextSize.LARGE, bold=True)
+        layout.add_separator("wave")
+
+        # Score display
+        nice_score = data.get("nice_score")
+        if nice_score is not None:
+            percentage = int(nice_score * 100) if nice_score <= 1 else int(nice_score)
+            layout.add_text(f"ХОРОШИЙ НА {percentage}%", size=TextSize.SMALL, bold=True)
+
+        # Verdict portrait - adaptive size
+        verdict_text = data.get("verdict_text") or data.get("display_text") or ""
+        has_image = bool(data.get("caricature"))
+
+        caricature = self._coerce_image(data.get("caricature"))
+        if caricature:
+            img_width = self._get_adaptive_image_width(verdict_text, base_width=240)
+            layout.add_image(caricature, width=img_width)
+            layout.add_space(4)
+
+        # Verdict result - big and bold
+        if is_winner:
+            layout.add_text("🎁 ПОДАРОК ЗАСЛУЖЕН! 🎁", size=TextSize.MEDIUM, bold=True)
+        else:
+            layout.add_text("💀 УГОЛЬ ТЕБЕ! 💀", size=TextSize.MEDIUM, bold=True)
+
+        # Verdict text/roast
+        if verdict_text:
+            layout.add_separator("dots")
+            text_size = self._get_adaptive_text_size(verdict_text, has_image=has_image)
+            layout.add_text(verdict_text, size=text_size)
+
+        # Prize coupon (only for winners)
+        coupon = data.get("coupon_code")
+        if coupon and is_winner:
+            layout.add_space(4)
+            layout.add_separator("stars")
+            layout.add_text("🍹 БЕСПЛАТНЫЙ ШОТ! 🍹", size=TextSize.MEDIUM, bold=True)
+            box = layout.add_box(border_style="double", padding=6, title="КОД")
+            box.content_blocks.append(TextBlock(coupon, size=TextSize.LARGE, bold=True))
+            box.content_blocks.append(TextBlock("Покажи бармену!", size=TextSize.TINY))
+
+        self._add_qr_section(layout, data)
+        self._create_footer(layout, data, style="minimal")
         return layout
 
     def _create_generic_label(self, mode_name: str, data: Dict[str, Any]) -> LabelLayout:

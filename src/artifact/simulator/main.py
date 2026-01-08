@@ -23,18 +23,20 @@ from artifact.graphics.renderer import Renderer
 from artifact.animation.engine import AnimationEngine
 from artifact.modes.manager import ModeManager
 # Active modes only (in display order)
-from artifact.modes.sorting_hat import SortingHatMode    # 1. ШЛЯПА (Sorting Hat)
-from artifact.modes.fortune import FortuneMode           # 2. ГАДАЛКА
-from artifact.modes.ai_prophet import AIProphetMode      # 3. ПРОРОК
-from artifact.modes.photobooth import PhotoboothMode     # 3. ФОТОБУДКА
-from artifact.modes.roast import RoastMeMode             # 4. ПРОЖАРКА
-from artifact.modes.guess_me import GuessMeMode          # 5. КТО Я?
-from artifact.modes.squid_game import SquidGameMode      # 6. КАЛЬМАР
-from artifact.modes.quiz import QuizMode                 # 6. КВИЗ
-from artifact.modes.tower_stack import TowerStackMode    # 7. БАШНЯ
-from artifact.modes.brick_breaker import BrickBreakerMode  # 8. КИРПИЧИ
-from artifact.modes.video import VideoMode               # 9. ВИДЕО
-from artifact.modes.gallery import GalleryMode, start_gallery_preloader           # 10. ГАЛЕРЕЯ
+from artifact.modes.y2k import Y2KMode                   # НУЛЕВЫЕ (2000s trivia)
+from artifact.modes.bad_santa import BadSantaMode        # ПЛОХОЙ САНТА (18+)
+from artifact.modes.sorting_hat import SortingHatMode    # ШЛЯПА (Sorting Hat)
+from artifact.modes.fortune import FortuneMode           # ГАДАЛКА
+from artifact.modes.ai_prophet import AIProphetMode      # ПРОРОК
+from artifact.modes.photobooth import PhotoboothMode     # ФОТОБУДКА
+from artifact.modes.roast import RoastMeMode             # ПРОЖАРКА
+from artifact.modes.guess_me import GuessMeMode          # КТО Я?
+from artifact.modes.squid_game import SquidGameMode      # КАЛЬМАР
+from artifact.modes.quiz import QuizMode                 # КВИЗ
+from artifact.modes.tower_stack import TowerStackMode    # БАШНЯ
+from artifact.modes.brick_breaker import BrickBreakerMode  # КИРПИЧИ
+from artifact.modes.video import VideoMode               # ВИДЕО
+from artifact.modes.gallery import GalleryMode, start_gallery_preloader           # ГАЛЕРЕЯ
 from artifact.audio.engine import AudioEngine, get_audio_engine
 from artifact.utils.camera_service import camera_service
 
@@ -131,49 +133,69 @@ class ArtifactSimulator:
     def _register_modes(self) -> None:
         """Register game modes in display order."""
         import os
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
 
-        # 1. ШЛЯПА - Sorting Hat (Harry Potter house sorting)
-        if os.environ.get("GEMINI_API_KEY"):
+        # Time-based mode activation (Bad Santa only on Jan 9 after 5pm Moscow)
+        moscow_tz = ZoneInfo('Europe/Moscow')
+        now = datetime.now(moscow_tz)
+        bad_santa_active = (now.month == 1 and now.day == 9 and now.hour >= 17)
+
+        # Check for API key
+        has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
+
+        # Time-based priority: Bad Santa #1 when active, Y2K #2
+        # Otherwise: Y2K #1
+        if bad_santa_active and has_api_key:
+            # Bad Santa event active - it's #1!
+            self.mode_manager.register_mode(BadSantaMode)
+            self.mode_manager.register_mode(Y2KMode)
+            logger.info("🎅 BAD SANTA MODE ACTIVE! (Jan 9 after 5pm Moscow)")
+        elif has_api_key:
+            # Normal mode - Y2K is #1
+            self.mode_manager.register_mode(Y2KMode)
+            logger.info("НУЛЕВЫЕ mode registered as #1")
+
+        # ШЛЯПА - Sorting Hat (Harry Potter house sorting)
+        if has_api_key:
             self.mode_manager.register_mode(SortingHatMode)
             logger.info("Sorting Hat mode enabled (API key found)")
         else:
-            logger.warning("Sorting Hat mode disabled (no GEMINI_API_KEY)")
+            logger.warning("AI modes disabled (no GEMINI_API_KEY)")
 
-        # 2. ГАДАЛКА - Fortune teller
+        # ГАДАЛКА - Fortune teller
         self.mode_manager.register_mode(FortuneMode)
 
-        # 3. ПРОРОК - AI Prophet (requires API key)
-        if os.environ.get("GEMINI_API_KEY"):
+        # ПРОРОК - AI Prophet (requires API key)
+        if has_api_key:
             self.mode_manager.register_mode(AIProphetMode)
             logger.info("AI Prophet mode enabled (API key found)")
-        else:
-            logger.warning("AI Prophet mode disabled (no GEMINI_API_KEY)")
 
-        # 3. ФОТОБУДКА - Photo booth
+        # ФОТОБУДКА - Photo booth
         self.mode_manager.register_mode(PhotoboothMode)
 
-        # 4. ПРОЖАРКА - Roast mode
+        # ПРОЖАРКА - Roast mode
         self.mode_manager.register_mode(RoastMeMode)
 
-        # 5. КТО Я? - AI guessing "Who Am I?"
+        # КТО Я? - AI guessing "Who Am I?"
         self.mode_manager.register_mode(GuessMeMode)
 
-        # 6. КАЛЬМАР - Squid game (red light/green light)
+        # КАЛЬМАР - Squid game (red light/green light)
         self.mode_manager.register_mode(SquidGameMode)
 
-        # 6. КВИЗ - Quiz
+        # КВИЗ - Quiz
         self.mode_manager.register_mode(QuizMode)
 
-        # 7. БАШНЯ - Tower stack
+        # БАШНЯ - Tower stack
         self.mode_manager.register_mode(TowerStackMode)
 
-        # 8. КИРПИЧИ - Brick breaker
+        # КИРПИЧИ - Brick breaker
         self.mode_manager.register_mode(BrickBreakerMode)
 
-        # 9. ВИДЕО - Video player
+        # ВИДЕО - Video player
         self.mode_manager.register_mode(VideoMode)
 
-        # 10. ГАЛЕРЕЯ - Photo gallery slideshow
+        # ГАЛЕРЕЯ - Photo gallery slideshow
         self.mode_manager.register_mode(GalleryMode)
 
         logger.info(f"Registered {len(self.mode_manager._registered_modes)} modes")

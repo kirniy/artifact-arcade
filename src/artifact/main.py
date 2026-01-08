@@ -58,18 +58,20 @@ async def run_hardware() -> None:
     from artifact.utils.camera_service import camera_service
 
     # Import curated game modes (same as simulator)
-    from artifact.modes.sorting_hat import SortingHatMode    # 1. ШЛЯПА (Sorting Hat)
-    from artifact.modes.fortune import FortuneMode           # 2. ГАДАЛКА
-    from artifact.modes.ai_prophet import AIProphetMode      # 3. ПРОРОК
-    from artifact.modes.photobooth import PhotoboothMode     # 3. ФОТОБУДКА
-    from artifact.modes.roast import RoastMeMode             # 4. ПРОЖАРКА
-    from artifact.modes.guess_me import GuessMeMode          # 5. КТО Я?
-    from artifact.modes.squid_game import SquidGameMode      # 6. КАЛЬМАР
-    from artifact.modes.quiz import QuizMode                 # 7. КВИЗ
-    from artifact.modes.tower_stack import TowerStackMode    # 8. БАШНЯ
-    from artifact.modes.brick_breaker import BrickBreakerMode  # 9. КИРПИЧИ
-    from artifact.modes.video import VideoMode               # 10. ВИДЕО
-    from artifact.modes.gallery import GalleryMode, start_gallery_preloader  # 11. ГАЛЕРЕЯ
+    from artifact.modes.y2k import Y2KMode                   # НУЛЕВЫЕ (2000s trivia)
+    from artifact.modes.bad_santa import BadSantaMode        # ПЛОХОЙ САНТА (18+)
+    from artifact.modes.sorting_hat import SortingHatMode    # ШЛЯПА (Sorting Hat)
+    from artifact.modes.fortune import FortuneMode           # ГАДАЛКА
+    from artifact.modes.ai_prophet import AIProphetMode      # ПРОРОК
+    from artifact.modes.photobooth import PhotoboothMode     # ФОТОБУДКА
+    from artifact.modes.roast import RoastMeMode             # ПРОЖАРКА
+    from artifact.modes.guess_me import GuessMeMode          # КТО Я?
+    from artifact.modes.squid_game import SquidGameMode      # КАЛЬМАР
+    from artifact.modes.quiz import QuizMode                 # КВИЗ
+    from artifact.modes.tower_stack import TowerStackMode    # БАШНЯ
+    from artifact.modes.brick_breaker import BrickBreakerMode  # КИРПИЧИ
+    from artifact.modes.video import VideoMode               # ВИДЕО
+    from artifact.modes.gallery import GalleryMode, start_gallery_preloader  # ГАЛЕРЕЯ
 
     logger = logging.getLogger(__name__)
 
@@ -96,49 +98,68 @@ async def run_hardware() -> None:
         theme="mystical"
     )
 
-    # Register curated game modes (same order as simulator)
-    # 1. ШЛЯПА - Sorting Hat (Harry Potter house sorting)
-    if os.environ.get("GEMINI_API_KEY"):
+    # Time-based mode activation (Bad Santa only on Jan 9 after 5pm Moscow)
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    moscow_tz = ZoneInfo('Europe/Moscow')
+    now = datetime.now(moscow_tz)
+    bad_santa_active = (now.month == 1 and now.day == 9 and now.hour >= 17)
+
+    # Register curated game modes
+    # Time-based priority: Bad Santa #1 when active, Y2K #2
+    # Otherwise: Y2K #1
+    has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
+
+    if bad_santa_active and has_api_key:
+        # Bad Santa event active - it's #1!
+        mode_manager.register_mode(BadSantaMode)
+        mode_manager.register_mode(Y2KMode)
+        logger.info("🎅 BAD SANTA MODE ACTIVE! (Jan 9 after 5pm Moscow)")
+    elif has_api_key:
+        # Normal mode - Y2K is #1
+        mode_manager.register_mode(Y2KMode)
+        logger.info("НУЛЕВЫЕ mode registered as #1")
+
+    # ШЛЯПА - Sorting Hat (Harry Potter house sorting)
+    if has_api_key:
         mode_manager.register_mode(SortingHatMode)
         logger.info("Sorting Hat mode enabled (API key found)")
     else:
-        logger.warning("Sorting Hat mode disabled (no GEMINI_API_KEY)")
+        logger.warning("AI modes disabled (no GEMINI_API_KEY)")
 
-    # 2. ГАДАЛКА - Fortune teller
+    # ГАДАЛКА - Fortune teller
     mode_manager.register_mode(FortuneMode)
 
-    # 2. ПРОРОК - AI Prophet (requires API key)
-    if os.environ.get("GEMINI_API_KEY"):
+    # ПРОРОК - AI Prophet (requires API key)
+    if has_api_key:
         mode_manager.register_mode(AIProphetMode)
         logger.info("AI Prophet mode enabled (API key found)")
-    else:
-        logger.warning("AI Prophet mode disabled (no GEMINI_API_KEY)")
 
-    # 3. ФОТОБУДКА - Photo booth
+    # ФОТОБУДКА - Photo booth
     mode_manager.register_mode(PhotoboothMode)
 
-    # 4. ПРОЖАРКА - Roast mode
+    # ПРОЖАРКА - Roast mode
     mode_manager.register_mode(RoastMeMode)
 
-    # 5. КТО Я? - AI guessing "Who Am I?"
+    # КТО Я? - AI guessing "Who Am I?"
     mode_manager.register_mode(GuessMeMode)
 
-    # 6. КАЛЬМАР - Squid game (red light/green light)
+    # КАЛЬМАР - Squid game (red light/green light)
     mode_manager.register_mode(SquidGameMode)
 
-    # 7. КВИЗ - Quiz
+    # КВИЗ - Quiz
     mode_manager.register_mode(QuizMode)
 
-    # 8. БАШНЯ - Tower stack
+    # БАШНЯ - Tower stack
     mode_manager.register_mode(TowerStackMode)
 
-    # 9. КИРПИЧИ - Brick breaker
+    # КИРПИЧИ - Brick breaker
     mode_manager.register_mode(BrickBreakerMode)
 
-    # 10. ВИДЕО - Video player
+    # ВИДЕО - Video player
     mode_manager.register_mode(VideoMode)
 
-    # 11. ГАЛЕРЕЯ - Photo gallery slideshow
+    # ГАЛЕРЕЯ - Photo gallery slideshow
     mode_manager.register_mode(GalleryMode)
 
     logger.info(f"Registered {len(mode_manager._registered_modes)} modes")
@@ -157,9 +178,19 @@ async def run_hardware() -> None:
     # start_gallery_preloader()
 
     # Initialize printer manager
+    # IP-802 label printer is default; set ARTIFACT_USE_LEGACY_PRINTER=true for EM5820
     mock_printer = os.getenv("ARTIFACT_MOCK_PRINTER", "false").lower() == "true"
     mock_printer = mock_printer or os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
-    printer_manager = PrintManager(event_bus=event_bus, mock=mock_printer)
+    use_legacy_printer = os.getenv("ARTIFACT_USE_LEGACY_PRINTER", "false").lower() == "true"
+    printer_manager = PrintManager(
+        event_bus=event_bus,
+        mock=mock_printer,
+        use_legacy_printer=use_legacy_printer
+    )
+    if use_legacy_printer:
+        logger.info("Using legacy EM5820 receipt printer")
+    else:
+        logger.info("Using IP-802 label printer (default)")
     event_bus.subscribe(EventType.PRINT_START, printer_manager.handle_print_start)
     # Start printer in background (don't block main loop!)
     asyncio.create_task(printer_manager.start())

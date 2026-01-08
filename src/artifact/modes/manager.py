@@ -231,6 +231,30 @@ MODE_ICONS = {
         "  ████████  ",
         "    ████    ",
     ],
+    "y2k": [  # Y2K - CD/disc with 00
+        "  ████████  ",
+        " ██░░░░░░██ ",
+        "██░░░██░░░██",
+        "██░░████░░██",
+        "██░░░██░░░██",
+        " ██░░░░░░██ ",
+        "  ████████  ",
+        "   ▀▀▀▀▀▀   ",
+        "  2 0 0 0 s ",
+        "            ",
+    ],
+    "bad_santa": [  # Bad Santa - Santa hat with devil horns
+        "  ▲     ▲   ",
+        "  ██████████",
+        " ████████████",
+        "██░░░░░░░░░██",
+        "██░░██░░██░██",
+        "██░░░░░░░░░██",
+        "██░░░████░░██",
+        " ██████████ ",
+        "  █      █  ",
+        "   ██████   ",
+    ],
 }
 
 # Mode colors for visual identity - unique vibrant color per mode
@@ -270,6 +294,8 @@ MODE_COLORS = {
     "zodiac": (200, 180, 255),      # Cosmic lavender
     "gesture_game": (255, 180, 100),# Warm amber
     "gallery": (100, 180, 255),     # Sky blue
+    "y2k": (255, 0, 255),           # Hot magenta - millennium vibes
+    "bad_santa": (200, 50, 50),     # Dark red - naughty Santa
 }
 
 
@@ -311,6 +337,8 @@ MODE_EFFECTS = {
     "zodiac": SelectorEffect.DITHER,
     "bar_runner": SelectorEffect.PIXELATE,
     "tower_stack": SelectorEffect.DITHER,
+    "y2k": SelectorEffect.SCANLINES,       # CRT scanlines - retro millennium
+    "bad_santa": SelectorEffect.THERMAL,   # Naughty/nice thermal vision
 }
 
 # Menu-specific display name overrides (keep Russian on the selector/ticker/LCD)
@@ -337,6 +365,8 @@ MODE_LABELS_RU = {
     "roulette": "РУЛЕТКА",
     "squid_game": "SQUID GAME",
     "photobooth": "ФОТОБУДКА",
+    "y2k": "НУЛЕВЫЕ",
+    "bad_santa": "ПЛОХОЙ САНТА",
 }
 
 # Brief mode descriptions for ticker display (short, fun, informal)
@@ -360,6 +390,8 @@ MODE_DESCRIPTIONS_RU = {
     "snake_classic": "Ешь и расти!",
     "flappy": "Лети и не падай!",
     "gallery": "Галерея фоток",
+    "y2k": "Тест на знание нулевых!",
+    "bad_santa": "Заслужил ли ты подарки?",
 }
 
 

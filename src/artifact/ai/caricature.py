@@ -38,6 +38,8 @@ class CaricatureStyle(Enum):
     ZODIAC = "zodiac"          # Constellation/zodiac sign portrait
     ROULETTE = "roulette"      # Casino/wheel winner style
     PHOTOBOOTH = "photobooth"  # Christmas 2x2 photo booth grid
+    Y2K = "y2k"                # 2000s era character portrait
+    BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
 
 @dataclass
@@ -502,6 +504,89 @@ Film noir casino aesthetic, tension and triumph.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
 ]
 
+# Y2K VARIATIONS - 2000s era character portrait with AI creative freedom
+Y2K_VARIATIONS = [
+    """BLACK AND WHITE portrait of this person as a 2000s CHARACTER.
+Based on their personality traits, transform them into an authentic early 2000s archetype.
+AI HAS CREATIVE FREEDOM to choose the subculture that fits best:
+- emo kid with side bangs and band tees
+- raver with glow sticks and pacifier
+- rapper with oversized jersey and bling
+- pop princess with butterfly clips
+- gamer with Xbox controller
+- skater with baggy jeans
+- scene kid with raccoon stripes
+Pick what fits THIS person's vibe. Draw them in that style.
+Background elements: Nokia 3310, ICQ flower, Windows XP hills, CD-ROM, flip phone.
+Text: their archetype in RUSSIAN (all lowercase or ALL CAPS - your choice) + "VNVNC 2000s"
+Bold ink illustration style, nostalgic millennium energy. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait transforming this person into a Y2K ICON.
+You decide what 2000s character they become based on their appearance and energy:
+Could be a nu-metal fan, a pop punk kid, a hip-hop head, a techno raver,
+a mall goth, a preppy teen, a skater, a scene queen - whatever fits THEM.
+Style them with era-appropriate fashion: low-rise jeans, frosted tips, platform shoes,
+butterfly clips, chain wallets, oversized hoodies, or whatever matches the archetype.
+Add 2000s props: MP3 player, flip phone, MSN messenger, early internet vibes.
+Text: character type in RUSSIAN + "VNVNC 2000s" banner.
+Thick black ink lines, white background, nostalgic early internet aesthetic. Square aspect ratio.""",
+
+    """BLACK AND WHITE 2000s TRANSFORMATION portrait!
+Look at this person and decide what millennium character they'd be:
+- The answers to their quiz suggest their personality
+- Transform them into the 2000s archetype that matches
+Could be emo, scene, raver, skater, hip-hop, pop star, gamer, punk, goth...
+AI DECIDES based on their vibe. No fixed categories - be creative!
+Draw them with signature 2000s elements: chunky highlights, band merch,
+cargo pants, platform sneakers, studded belts, wallet chains...
+Background: early 2000s tech (CRT monitor, dial-up, ICQ, MSN, Winamp)
+Include "VNVNC 2000s" text in decorative early-internet style.
+High contrast ink drawing, millennium nostalgia. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait - НУЛЕВЫЕ (Y2K) CHARACTER REVEAL!
+This person answered questions about 2000s culture. Based on their answers:
+Transform them into their 2000s alter ego.
+AI picks the subculture - could be anything from that era:
+Russian: тусовщик, эмо, рэпер, гот, панк, геймер, рейвер, скейтер
+International: emo, scene, punk, goth, raver, skater, hip-hop, pop
+Draw them fully styled for their chosen tribe.
+Props: Motorola RAZR, iPod mini, PS2, DDR, LiveJournal vibes.
+Russian archetype label + "VNVNC 2000s" branding.
+Bold graphic style, pure black ink on white. Square aspect ratio.""",
+]
+
+# BAD SANTA VARIATIONS - Naughty/nice verdict with adult humor
+BAD_SANTA_VARIATIONS = [
+    """BLACK AND WHITE portrait as a BAD SANTA VERDICT!
+Draw this person in a comedic Santa-related scenario.
+If they're NICE: reluctant Santa gives them a gift, sarcastic halo, "too good to be true" energy
+If they're NAUGHTY: coal, drunk Santa judgment, middle finger optional, stamp of disapproval
+Adult humor OK - this is R-rated Bad Santa movie vibes, not mall Santa.
+Russian text verdict in BOLD (could be praise or roast depending on result).
+Add "VNVNC BAD SANTA 2026" branding.
+Sketch comedy energy, thick ink lines, white background. Square aspect ratio.""",
+
+    """BLACK AND WHITE BAD SANTA JUDGMENT portrait!
+Based on their quiz answers, render the verdict:
+NICE LIST: Gift-receiving pose, skeptical Santa in background muttering curses,
+ironic halo, "серьёзно?" Santa expression, they somehow passed
+NAUGHTY LIST: Coal pile, crossed-out gifts, Santa's middle finger salute,
+"ЗАСРАНЕЦ" stamp, they blew it
+Billy Bob Thornton Bad Santa energy - drunk, rude, but funny.
+Russian verdict text + "VNVNC BAD SANTA 2026" banner.
+Bold comic style, adult humor, high contrast ink. Square aspect ratio.""",
+
+    """BLACK AND WHITE portrait - ПЛОХОЙ САНТА ПРИГОВОР!
+Comedic Santa verdict scene based on their naughty/nice score:
+FOR WINNERS (nice): Begrudging gift, sarcastic compliment in Russian,
+Santa can't believe they actually deserve it, suspicious halo
+FOR LOSERS (naughty): Dramatic coal pile, Russian profanity (жопа, сука level),
+Santa's disappointed judgment, "УГОЛЬ" stamp
+Adult comedy style - think Bad Santa movie, not Coca-Cola Santa.
+Include "VNVNC BAD SANTA 2026" in festive-ironic style.
+Thick black lines, sketch comedy aesthetic. Square aspect ratio.""",
+]
+
 STYLE_PROMPTS = {
     # =========================================================================
     # GUESS MODE - "Кто Я?" - Detective investigation board (uses GUESS_VARIATIONS)
@@ -572,6 +657,16 @@ STYLE_PROMPTS = {
     # PHOTOBOOTH MODE - Christmas 2x2 photo booth grid (uses PHOTOBOOTH_VARIATIONS)
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH: "PHOTOBOOTH_VARIATION",  # Will be replaced with random variation
+
+    # =========================================================================
+    # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
+
+    # =========================================================================
+    # BAD SANTA MODE - Naughty/nice verdict (uses BAD_SANTA_VARIATIONS)
+    # =========================================================================
+    CaricatureStyle.BAD_SANTA: "BAD_SANTA_VARIATION",  # Will be replaced with random variation
 }
 
 NEGATIVE_PROMPT = """
@@ -643,6 +738,8 @@ class CaricatureService:
                 "VINTAGE_VARIATION": VINTAGE_VARIATIONS,
                 "ZODIAC_VARIATION": ZODIAC_VARIATIONS,
                 "ROULETTE_VARIATION": ROULETTE_VARIATIONS,
+                "Y2K_VARIATION": Y2K_VARIATIONS,
+                "BAD_SANTA_VARIATION": BAD_SANTA_VARIATIONS,
             }
             if style_prompt in variation_map:
                 style_prompt = random.choice(variation_map[style_prompt])
