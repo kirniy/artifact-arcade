@@ -62,94 +62,101 @@ class Caricature:
 # VARIETY: Each prompt has multiple variations to avoid repetition
 # =============================================================================
 
-# ROAST VARIATIONS - Adult humor with real bite (18+) - BLACK AND WHITE
+# ROAST VARIATIONS - Reddit/r/RoastMe style (18+) - BLACK AND WHITE
+# These should feel like actual Reddit roasts: edgy, personal, creative, brutal but funny
+# CRITICAL: DO NOT use these example texts literally! Create ORIGINAL labels based on THIS PERSON!
 ROAST_VARIATIONS = [
-    """BLACK AND WHITE ROAST SKETCH. Draw this person being hilariously roasted:
-- EXAGGERATE what makes them unique: forehead, eyebrows, cheekbones, lips, ears, jawline, hairline
-- NOT just the nose! Pick 2-3 features that are ACTUALLY distinctive about THIS person
-- Add 3-4 arrows with SAVAGE but FUNNY labels in RUSSIAN
-- PURE BLACK AND WHITE - thick black lines on white background
-- Hand-drawn sketch style, bold strokes, high contrast
-- RUSSIAN text, ALL CAPS, chunky hand-drawn letters
-Square aspect ratio. Black ink on white paper aesthetic.""",
+    """BLACK AND WHITE REDDIT ROAST SKETCH. r/RoastMe energy - BRUTAL but CREATIVE:
+- EXAGGERATE their most roastable features based on what YOU SEE in the photo
+- Think "top comment on Reddit" - personal, specific, DEVASTATING but hilarious
+- Add 2-3 arrows with YOUR OWN SAVAGE labels in RUSSIAN - be ORIGINAL, don't copy anything
+- Style: quick messy sketch like someone drew it during boring meeting
+- PURE BLACK AND WHITE - thick black lines, no shading
+- RUSSIAN text, ALL CAPS, scratchy roast energy
 
-    """SAVAGE NOTEBOOK DOODLE. Draw this person getting ROASTED like a mean high school drawing:
-- Find their DISTINCTIVE features: chin, eye spacing, smile lines, hair, face shape
-- Exaggerate 2-3 unique features BESIDES the nose
-- 3-4 arrows with SAVAGE Russian labels like standup comedy roasts
-- BLACK AND WHITE ONLY - pen on paper style
-- Messy notebook margin doodle aesthetic
-- RUSSIAN labels, ALL CAPS, scratchy handwriting
-Square aspect ratio. Pure black ink, white background.""",
+CRITICAL: The labels must be SPECIFIC to THIS PERSON's actual appearance!
+Look at their face, hair, expression, vibe - and roast THAT. Be creative. Be brutal. Be funny.
+DO NOT use generic insults. EVERY roast should be unique to this face.
+Square. The kind of roast that makes you say "damn" and laugh.""",
 
-    """DRUNK ARTIST ROAST. Someone drew this person at 2am being brutally honest:
-- CARICATURE their real features: ears, eyebrows, chin, forehead
-- Pick what's ACTUALLY distinctive about THIS person
-- Drunk friend energy with arrows and labels in RUSSIAN
-- SKETCHY BLACK AND WHITE - wobbly lines, cross-hatching
-- Labels in wobbly hand-drawn style
-- RUSSIAN text, ALL CAPS, sketchy letters
-Square aspect ratio. Black marker on napkin aesthetic.""",
+    """BRUTAL HONEST DOODLE. Draw this person getting DESTROYED like r/RoastMe:
+- Find what's ACTUALLY roastable about THIS SPECIFIC PERSON
+- NO GENERIC INSULTS - be SPECIFIC to THIS person's unique flaws
+- Create YOUR OWN savage labels in RUSSIAN based on what you observe
+- BLACK AND WHITE pen sketch, messy notebook margins
+- Arrows pointing to their worst features with YOUR original commentary
+- RUSSIAN, ALL CAPS, drunk friend handwriting
 
-    """COURTROOM SKETCH ROAST. Draw this person like a savage court artist:
-- EXAGGERATE their unique facial geometry: asymmetry, proportions, expression
-- What would a brutal observer notice first? Draw THAT exaggerated
-- 3-4 arrows with NO MERCY labels in RUSSIAN
-- BLACK AND WHITE charcoal/pencil sketch style
-- Quick expressive strokes, dramatic shading
-- RUSSIAN text, ALL CAPS, bold blocky letters
-Square aspect ratio. Black and white courtroom drama.""",
+IMPORTANT: You are a comedy WRITER. Don't copy - CREATE. Look at this person and
+find what's ACTUALLY funny about them. Original observations only.
+Square. Make it hurt (in a funny way).""",
+
+    """ROAST BATTLE SKETCH. Comedy club roast energy - DESTROY THEM:
+- What would a standup comedian IMMEDIATELY notice about THIS person? Draw that BIGGER
+- Exaggerate whatever is ACTUALLY their most distinctive/roastable feature
+- Add 2-3 arrows with YOUR OWN standup-worthy burns in RUSSIAN
+- BLACK AND WHITE quick sketch style
+- RUSSIAN text, ALL CAPS, bold roast letters
+
+BE ORIGINAL: Study the photo. What's weird? What's tryhard? What screams "roast me"?
+Create labels that are SPECIFIC to this face. No templates, no copying.
+Square. Like a mean caricature artist at a carnival who tells the TRUTH.""",
+
+    """INTERNET ROAST DOODLE. What would Reddit say about THIS SPECIFIC face:
+- Find the MEME potential unique to THIS person
+- Exaggerate what makes THEM specifically roastable
+- Arrows with YOUR ORIGINAL savage humor labels in RUSSIAN
+- BLACK AND WHITE scratchy style, photocopied zine aesthetic
+- RUSSIAN, ALL CAPS, internet troll energy
+
+CREATIVITY REQUIRED: Every person has something unique to roast. Find it.
+Don't use any pre-written labels. Observe and create fresh burns for THIS face.
+Square. Original savage commentary only.""",
 ]
 
-# VNVNC 2026 STICKER VARIATIONS - Festive portrait stickers with Christmas vibes
+# VNVNC STICKER VARIATIONS - Portrait stickers with mystical/fortune-teller vibes
 TAROT_VARIATIONS = [
-    """BLACK AND WHITE portrait STICKER of this person celebrating NEW YEAR!
-Slight caricature - emphasize their festive joy.
-Big decorative "VNVNC 2026" text prominently displayed in Christmas/holiday lettering style.
-NOTE: Text must be exactly "VNVNC 2026" 
-Snowflakes, party hats, champagne bubbles as decoration.
+    """BLACK AND WHITE portrait STICKER of this person as a MYSTICAL CHARACTER!
+Slight caricature - emphasize their mysterious charm.
+Big decorative "VNVNC" logo prominently displayed in ornate mystical lettering.
+Stars, moons, cosmic swirls, crystal ball elements as decoration.
 Sticker die-cut style with white border.
-Fun celebration energy, holiday party vibes. Square aspect ratio.""",
+Fortune teller carnival energy, mystical arcade vibes. Square aspect ratio.""",
 
-    """BLACK AND WHITE NEW YEAR portrait STICKER!
-Slight caricature - capture their party spirit.
-Ornate Christmas-style "VNVNC 2026" as the main text element.
-NOTE: Text must read "VNVNC 2026" exactly - the club/brand name plus year.
-Confetti, stars, holiday decorations around the portrait.
-Bold sticker outline, festive hand-lettered text.
-Joyful celebration mood. Square aspect ratio.""",
+    """BLACK AND WHITE portrait STICKER with magical vibes!
+Slight caricature - capture their enigmatic spirit.
+Ornate mystical-style "VNVNC" as the main text element.
+Tarot card aesthetic, all-seeing eye, celestial motifs around the portrait.
+Bold sticker outline, vintage carnival hand-lettered text.
+Mysterious fortune teller mood. Square aspect ratio.""",
 
-    """BLACK AND WHITE festive STICKER portrait!
-Slight caricature - bring out their cheerful features.
-Decorative vintage Christmas lettering showing "VNVNC 2026" prominently.
-NOTE: Include full text "VNVNC 2026" - not just the year!
-Winter holiday motifs: snowflakes, bells, ribbons.
+    """BLACK AND WHITE mystical STICKER portrait!
+Slight caricature - bring out their mysterious features.
+Decorative vintage carnival lettering showing "VNVNC" prominently.
+Crystal balls, playing cards, stars, cosmic rays.
 Classic sticker format with clean die-cut edge.
-New Year's Eve party energy. Square aspect ratio.""",
+Arcade fortune machine aesthetic. Square aspect ratio.""",
 
-    """BLACK AND WHITE NEW YEAR STICKER of this person!
-Slight caricature - emphasize what makes them look happy.
-Big bold "VNVNC 2026" in fancy holiday/Christmas font style.
-NOTE: Text is "VNVNC 2026" - the brand name followed by the year.
-Fireworks, sparkles, celebration elements.
+    """BLACK AND WHITE MYSTIC STICKER of this person!
+Slight caricature - emphasize what makes them intriguing.
+Big bold "VNVNC" in fancy vintage carnival font style.
+Sparkles, stars, mystical symbols, fortune-telling elements.
 Sticker aesthetic with thick outline border.
-Champagne toast vibes, midnight countdown energy. Square aspect ratio.""",
+Sideshow attraction vibes, mysterious oracle energy. Square aspect ratio.""",
 
-    """BLACK AND WHITE portrait STICKER - Happy New Year!
-Slight caricature - capture their festive personality.
-Ornamental "VNVNC 2026" text in decorative Christmas calligraphy.
-NOTE: Write "VNVNC 2026" as the main branding element.
-Holiday party decorations: balloons, streamers, snow.
+    """BLACK AND WHITE portrait STICKER - Fortune Teller Style!
+Slight caricature - capture their mystical personality.
+Ornamental "VNVNC" text in decorative vintage calligraphy.
+Crystal ball, tarot cards, cosmic decorations.
 Die-cut sticker style, bold graphic look.
-New Year celebration, winter wonderland vibes. Square aspect ratio.""",
+Carnival mystic, arcade fortune machine vibes. Square aspect ratio.""",
 
-    """BLACK AND WHITE NEW YEAR celebration STICKER!
-Slight caricature - play up their joyful expression.
-Retro Christmas card style "VNVNC 2026" lettering.
-NOTE: Include exact text "VNVNC 2026" - brand plus year together.
-Vintage holiday illustrations: Santa hats, tinsel, ornaments.
+    """BLACK AND WHITE mystical celebration STICKER!
+Slight caricature - play up their mysterious expression.
+Retro sideshow poster style "VNVNC" lettering.
+Vintage circus illustrations: stars, moons, cosmic elements.
 Classic sticker format with decorative border.
-Nostalgic holiday cheer, party time energy. Square aspect ratio.""",
+Nostalgic carnival energy, fortune teller aesthetic. Square aspect ratio.""",
 ]
 
 # PROPHET VARIATIONS - Fun, stylish AI prophet portraits - NOT mystical
@@ -185,11 +192,11 @@ Googie architecture vibes, optimistic tomorrow, stylized cool.
 Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
 ]
 
-# PHOTOBOOTH VARIATIONS - Christmas 2x2 photo booth grid with VNVNC 2026
+# PHOTOBOOTH VARIATIONS - Brazil/Copacabana theme photo booth grid
 # NOTE: These prompts handle both single person AND groups - include ALL people from the photo!
-# BRANDING: "VNVNC 2026" appears ONCE as a banner at the bottom, NOT in each frame!
+# BRANDING: "VNVNC" appears ONCE as a banner at the bottom, NOT in each frame!
 PHOTOBOOTH_VARIATIONS = [
-    """Create a FUN CHRISTMAS PHOTO BOOTH 2x2 GRID image!
+    """Create a FUN BRAZIL PARTY PHOTO BOOTH 2x2 GRID image!
 
 IMPORTANT: Look at the reference photo carefully!
 - If there is ONE person: show that person in 4 different playful poses
@@ -197,24 +204,25 @@ IMPORTANT: Look at the reference photo carefully!
 ALL people from the reference MUST appear in each frame!
 
 LAYOUT: A 2x2 grid of 4 photo booth frames:
-- Frame 1: Big smiles, looking happy together
-- Frame 2: Silly faces, tongues out, funny expressions
+- Frame 1: Big smiles, carnival energy, party vibes
+- Frame 2: Silly faces, samba poses, fun expressions
 - Frame 3: Peace signs, celebration poses, thumbs up
-- Frame 4: Surprised / excited expressions, party energy
+- Frame 4: Dancing poses, excited expressions, party energy
 
 CRITICAL: Preserve EVERY person's likeness!
 Each person's face, hair, and distinctive features must be recognizable in ALL 4 frames.
 
-CHRISTMAS DECORATIONS: Festive frame border with snowflakes, stars, holly, Christmas lights.
-Colors: red, green, gold, silver, white - vibrant holiday energy!
+BRAZIL THEME DECORATIONS: Tropical frame border with palm leaves, exotic flowers, carnival feathers.
+Colors: Brazilian flag (green, yellow, blue), tropical bright colors, carnival vibes!
+Think Copacabana beach, Rio carnival, samba energy!
 
-BRANDING: Add "VNVNC 2026" as a SINGLE BANNER at the very bottom of the entire grid.
+BRANDING: Add "VNVNC" as a SINGLE BANNER at the very bottom of the entire grid.
 NOT in each photo frame - just ONE text banner below all 4 frames!
-Festive Christmas-style lettering with snow caps.
+Tropical party style lettering with Brazilian flair.
 
 High quality, joyful, professional photo booth aesthetic. Square aspect ratio.""",
 
-    """CHRISTMAS PHOTO BOOTH STRIP - 2x2 grid of fun poses!
+    """BRAZIL CARNIVAL PHOTO BOOTH STRIP - 2x2 grid of fun poses!
 
 FIRST: Count how many people are in the reference photo.
 - ONE person? Show them solo in 4 different poses
@@ -224,44 +232,46 @@ Never leave anyone out!
 Create a classic photo booth layout:
 - 4 frames arranged in a 2x2 grid
 - Each frame shows THE SAME PEOPLE from the reference photo
-- Poses: happy, silly, excited, peace signs
+- Poses: happy, dancing, excited, samba vibes
 
 ESSENTIAL: EVERY person in the reference must appear in ALL 4 frames!
 Same faces, same hair, same clothing - just different expressions.
 
-FESTIVE FRAME: Christmas decorations border, sparkles, holly, candy canes.
-BRIGHT COLORS: Red, green, gold holiday palette!
+TROPICAL FRAME: Palm leaves, exotic flowers, carnival feathers border.
+BRIGHT COLORS: Green, yellow, blue (Brazil colors), tropical vibes!
+Copacabana beach party energy, Rio carnival atmosphere!
 
-BRANDING: "VNVNC 2026" text appears ONCE as a decorative banner BELOW the 4-frame grid.
+BRANDING: "VNVNC" text appears ONCE as a decorative banner BELOW the 4-frame grid.
 Do NOT put text inside each photo frame - only ONE banner at the bottom!
-Festive holiday font with decorative snowflake elements.
+Tropical party font with Brazilian carnival elements.
 
 Fun party atmosphere, professional photo booth quality. Square aspect ratio.""",
 
-    """NEW YEAR PHOTO BOOTH GRID - 4 fun poses!
+    """COPACABANA PARTY PHOTO BOOTH GRID - 4 fun poses!
 
 CHECK THE REFERENCE: How many people are there?
 - Single person: 4 different solo poses
 - Group photo: ALL people together in each of the 4 frames!
 
 2x2 photo booth layout:
-- Top left: Genuine smiles, looking happy
-- Top right: Funny faces, playful expressions
-- Bottom left: Victory poses, celebration
-- Bottom right: Surprised, excited energy
+- Top left: Genuine smiles, beach party vibes
+- Top right: Funny faces, carnival expressions
+- Bottom left: Dancing poses, samba energy
+- Bottom right: Excited, tropical party mood
 
 CRITICAL REQUIREMENT: EVERYONE from the reference appears in ALL 4 frames!
 Same facial features, hairstyles, and outfits - just different expressions.
 Do NOT omit anyone from the group!
 
-HOLIDAY DECORATIONS: Snowflakes, confetti, stars, Christmas lights border around the grid.
-COLORS: Festive red, green, gold, silver.
+BRAZIL DECORATIONS: Palm trees, tropical flowers, carnival feathers, beach vibes border.
+COLORS: Brazilian green, yellow, blue with tropical accents.
+Rio de Janeiro carnival energy, Copacabana beach party atmosphere!
 
-BRANDING: Add "VNVNC 2026" as a SINGLE banner text at the bottom of the entire image.
+BRANDING: Add "VNVNC" as a SINGLE banner text at the bottom of the entire image.
 This text should appear ONLY ONCE, below all 4 photo frames - NOT inside each frame!
-Christmas calligraphy style, decorative holiday font.
+Tropical party style, Brazilian carnival font.
 
-Joyful holiday photo booth energy! Square aspect ratio.""",
+Joyful Brazil party photo booth energy! Square aspect ratio.""",
 ]
 
 # GUESS VARIATIONS - Detective investigation board

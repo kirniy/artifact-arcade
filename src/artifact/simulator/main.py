@@ -45,8 +45,28 @@ logger = logging.getLogger(__name__)
 
 
 def is_real_printer_enabled() -> bool:
-    """Check if real printer is enabled (checked at runtime, not import time)."""
-    return os.environ.get("ARTIFACT_REAL_PRINTER", "0") == "1"
+    """Check if real printer is enabled (checked at runtime, not import time).
+
+    Checks both environment variable AND .simulator-config file directly.
+    """
+    # First check env var
+    val = os.environ.get("ARTIFACT_REAL_PRINTER", "")
+
+    # If not in env, try reading config file directly
+    if not val:
+        config_path = Path(__file__).parent.parent.parent.parent / ".simulator-config"
+        if config_path.exists():
+            try:
+                content = config_path.read_text()
+                for line in content.splitlines():
+                    line = line.strip()
+                    if line.startswith("ARTIFACT_REAL_PRINTER="):
+                        val = line.split("=", 1)[1].strip()
+                        break
+            except Exception:
+                pass
+
+    return val == "1"
 
 
 def setup_logging() -> None:
@@ -369,10 +389,16 @@ def main() -> None:
     logger.info("  S  - Screenshot")
     logger.info("  Q  - Quit")
     logger.info("")
+    # Always log printer status for debugging
+    printer_env = os.environ.get("ARTIFACT_REAL_PRINTER", "")
+    config_path = Path(__file__).parent.parent.parent.parent / ".simulator-config"
+    logger.info(f"Printer config: env={printer_env!r}, config_file={config_path.exists()}")
     if is_real_printer_enabled():
         logger.info("** REAL PRINTER MODE ENABLED **")
         logger.info("   Print events will be sent to USB printer")
-        logger.info("")
+    else:
+        logger.info("Real printer DISABLED (set ARTIFACT_REAL_PRINTER=1 in .simulator-config)")
+    logger.info("")
 
     try:
         asyncio.run(run())

@@ -405,16 +405,11 @@ class LabelReceiptGenerator:
         """Create label for Fortune Teller mode - mystical design with full border."""
         layout = LabelLayout(page_border="double")
 
-        # Get QR URL if available
-        qr_url = data.get("qr_url") or data.get("short_url") or data.get("download_url")
-
-        # Header with QR integrated
+        # Compact centered header (QR in footer)
         layout.add_separator("wave")
         layout.add_header_row(
             title="ГАДАЛКА",
             icon="eye",
-            qr_url=qr_url,
-            qr_size=70,
             title_size=42,
             icon_size=28,
         )
@@ -428,10 +423,10 @@ class LabelReceiptGenerator:
             "Звёзды молчат..."
         )
 
-        # Caricature image - FULL WIDTH
+        # Caricature image - reduced width to leave room for footer with QR
         caricature = self._coerce_image(data.get("caricature"))
         if caricature:
-            layout.add_image(caricature, width=420)
+            layout.add_image(caricature, width=380)
             layout.add_space(4)
 
         # Fortune text - dynamic sizing
@@ -472,10 +467,10 @@ class LabelReceiptGenerator:
         if birthday:
             layout.add_text(f"ДР: {birthday}", size=TextSize.SMALL)
 
-        # Portrait - FULL WIDTH
+        # Portrait - reduced width to leave room for footer with QR
         portrait = self._coerce_image(data.get("caricature") or data.get("portrait"))
         if portrait:
-            layout.add_image(portrait, width=420)
+            layout.add_image(portrait, width=380)
             layout.add_space(4)
 
         # Horoscope - dynamic sizing
@@ -487,7 +482,6 @@ class LabelReceiptGenerator:
         else:
             layout.add_text(horoscope, size=TextSize.SMALL)
 
-        self._add_qr_section(layout, data)
         layout.add_flex_space(min_pixels=10)
         self._create_footer(layout, data, style="bottom")
         return layout
@@ -495,7 +489,16 @@ class LabelReceiptGenerator:
     def _create_ai_prophet_label(self, data: Dict[str, Any]) -> LabelLayout:
         """Create label for AI Prophet mode (flagship mode) - mystical design."""
         layout = LabelLayout(page_border="ornate")
-        self._create_header(layout, "ИИ ПРОРОК", style="mystical", icon="brain")
+
+        # Compact centered header (QR in footer)
+        layout.add_separator("wave")
+        layout.add_header_row(
+            title="ИИ ПРОРОК",
+            icon="brain",
+            title_size=40,
+            icon_size=32,
+        )
+        layout.add_separator("wave")
 
         # Get prediction text first to determine adaptive sizing
         prediction = (
@@ -503,20 +506,21 @@ class LabelReceiptGenerator:
             data.get("display_text") or
             "Твоё будущее сияет..."
         )
-        has_image = bool(data.get("caricature"))
 
-        # Caricature - adaptive size based on text length
+        # Caricature - reduced width to leave room for footer with QR
         caricature = self._coerce_image(data.get("caricature"))
         if caricature:
-            img_width = self._get_adaptive_image_width(prediction, base_width=400)
-            layout.add_image(caricature, width=img_width)
+            layout.add_image(caricature, width=380)
             layout.add_space(4)
 
-        # Prediction text with elegant framing
-        layout.add_separator("wave")
-        text_size = self._get_adaptive_text_size(prediction, has_image=has_image)
-        layout.add_text(prediction, size=text_size)
-        layout.add_separator("wave")
+        # Prediction text - dynamic sizing
+        text_len = len(prediction)
+        if text_len < 80:
+            layout.add_text(prediction, size=TextSize.LARGE)
+        elif text_len < 150:
+            layout.add_text(prediction, size=TextSize.MEDIUM)
+        else:
+            layout.add_text(prediction, size=TextSize.SMALL)
 
         # Lucky details in styled format
         lucky_number = data.get("lucky_number")
@@ -530,8 +534,10 @@ class LabelReceiptGenerator:
             elif lucky_color:
                 layout.add_text(f"Цвет: {lucky_color}", size=TextSize.TINY)
 
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data, style="mystical")
+        # Flex space pushes footer to bottom
+        layout.add_flex_space(min_pixels=10)
+
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_roulette_label(self, data: Dict[str, Any]) -> LabelLayout:
@@ -569,10 +575,10 @@ class LabelReceiptGenerator:
         header_style = "prize" if won_cocktail else "game"
         self._create_header(layout, "ВИКТОРИНА", style=header_style, icon="question-circle")
 
-        # Doodle image - smaller to fit
+        # Doodle image - reduced width to leave room for footer with QR
         doodle = self._coerce_image(data.get("caricature"))
         if doodle:
-            layout.add_image(doodle, width=400)
+            layout.add_image(doodle, width=380)
             layout.add_space(4)
 
         # Score display
@@ -604,7 +610,10 @@ class LabelReceiptGenerator:
         if rank:
             layout.add_text(rank, size=TextSize.TINY, bold=True)
 
-        self._create_footer(layout, data, style="minimal")
+        # Flex space pushes footer to bottom
+        layout.add_flex_space(min_pixels=10)
+
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_squid_game_label(self, data: Dict[str, Any]) -> LabelLayout:
@@ -626,10 +635,10 @@ class LabelReceiptGenerator:
                 layout.add_icon("skull", size=24)
                 layout.add_text("ВЫБЫЛ", size=TextSize.MEDIUM, bold=True)
 
-        # Sketch - smaller
+        # Sketch - reduced width to leave room for footer with QR
         sketch = self._coerce_image(data.get("caricature") or data.get("sketch"))
         if sketch:
-            layout.add_image(sketch, width=400)
+            layout.add_image(sketch, width=380)
             layout.add_space(2)
 
         # Prize coupon in compact box (if winner)
@@ -647,8 +656,8 @@ class LabelReceiptGenerator:
         if reason:
             layout.add_text(reason, size=TextSize.TINY)
 
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data, style="minimal")
+        layout.add_flex_space(min_pixels=10)
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_roast_label(self, data: Dict[str, Any]) -> LabelLayout:
@@ -716,10 +725,10 @@ class LabelReceiptGenerator:
         if subject_id:
             layout.add_text(f"ID: {subject_id}", size=TextSize.TINY, bold=True)
 
-        # X-ray scan - smaller
+        # X-ray scan - reduced width to leave room for footer with QR
         scan_image = self._coerce_image(data.get("scan_image") or data.get("caricature"))
         if scan_image:
-            img_width = self._get_adaptive_image_width(diagnosis, base_width=400)
+            img_width = self._get_adaptive_image_width(diagnosis, base_width=380)
             layout.add_image(scan_image, width=img_width)
             layout.add_space(2)
 
@@ -728,28 +737,29 @@ class LabelReceiptGenerator:
             text_size = self._get_adaptive_text_size(diagnosis, has_image=has_image)
             layout.add_text(diagnosis, size=text_size)
 
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data, style="minimal")
+        layout.add_flex_space(min_pixels=10)
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_photobooth_label(self, data: Dict[str, Any]) -> LabelLayout:
         """Create label for Photobooth mode - elegant photo sticker with ornate border."""
         layout = LabelLayout(margin_y=12, page_border="ornate")
 
-        # Photo takes most of the space
+        # Photo takes most of the space - reduced width to leave room for footer with QR
         photo = self._coerce_image(data.get("caricature") or data.get("photo"))
         if photo:
-            layout.add_image(photo, width=420)
+            layout.add_image(photo, width=380)
             layout.add_space(4)
 
         # Minimal branding
         layout.add_icon("camera", size=24)
         layout.add_text("VNVNC", size=TextSize.SMALL, bold=True)
 
-        # QR for download
-        self._add_qr_section(layout, data, "СКАЧАТЬ:")
+        # Flex space pushes footer to bottom
+        layout.add_flex_space(min_pixels=10)
 
-        layout.add_text(self._get_date_string(data), size=TextSize.TINY)
+        # Two-column footer with QR on right (consistent with roast mode)
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_rapgod_label(self, data: Dict[str, Any]) -> LabelLayout:
@@ -894,10 +904,10 @@ class LabelReceiptGenerator:
         # Title
         layout.add_text(title, size=TextSize.MEDIUM, bold=True)
 
-        # Caricature - smaller, before prediction
+        # Caricature - reduced width to leave room for footer with QR
         caricature = self._coerce_image(data.get("caricature"))
         if caricature:
-            img_width = self._get_adaptive_image_width(prediction, base_width=400)
+            img_width = self._get_adaptive_image_width(prediction, base_width=380)
             layout.add_image(caricature, width=img_width)
             layout.add_space(2)
 
@@ -906,8 +916,8 @@ class LabelReceiptGenerator:
             text_size = self._get_adaptive_text_size(prediction, has_image=has_image)
             layout.add_text(prediction, size=text_size)
 
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data, style="mystical")
+        layout.add_flex_space(min_pixels=10)
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_sorting_hat_label(self, data: Dict[str, Any]) -> LabelLayout:
@@ -926,10 +936,10 @@ class LabelReceiptGenerator:
         if animal_ru:
             layout.add_text(f"({animal_ru})", size=TextSize.TINY)
 
-        # Portrait - compact
+        # Portrait - reduced width to leave room for footer with QR
         portrait = self._coerce_image(data.get("caricature") or data.get("portrait"))
         if portrait:
-            layout.add_image(portrait, width=420)
+            layout.add_image(portrait, width=380)
 
         # House traits - compact
         traits = data.get("traits", [])
@@ -941,12 +951,8 @@ class LabelReceiptGenerator:
         layout.add_icon("gift", size=22)
         layout.add_text("БРАСЛЕТ!", size=TextSize.SMALL, bold=True)
 
-        # QR code
-        qr_url = data.get("qr_url") or data.get("short_url")
-        if qr_url:
-            layout.add_qr(qr_url, size=70)
-
-        layout.add_text(self._get_date_string(data), size=TextSize.TINY)
+        layout.add_flex_space(min_pixels=10)
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_y2k_label(self, data: Dict[str, Any]) -> LabelLayout:
@@ -974,10 +980,10 @@ class LabelReceiptGenerator:
         if archetype:
             layout.add_text(archetype, size=TextSize.MEDIUM, bold=True)
 
-        # 2000s character portrait - adaptive size
+        # 2000s character portrait - reduced width to leave room for footer with QR
         caricature = self._coerce_image(data.get("caricature"))
         if caricature:
-            img_width = self._get_adaptive_image_width(description, base_width=400)
+            img_width = self._get_adaptive_image_width(description, base_width=380)
             layout.add_image(caricature, width=img_width)
             layout.add_space(4)
 
@@ -995,8 +1001,8 @@ class LabelReceiptGenerator:
             cats_text = " • ".join([f"{cat}" for cat, _ in top_categories])
             layout.add_text(cats_text, size=TextSize.TINY)
 
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data, style="minimal")
+        layout.add_flex_space(min_pixels=10)
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_bad_santa_label(self, data: Dict[str, Any]) -> LabelLayout:
@@ -1018,13 +1024,13 @@ class LabelReceiptGenerator:
             percentage = int(nice_score * 100) if nice_score <= 1 else int(nice_score)
             layout.add_text(f"ХОРОШИЙ НА {percentage}%", size=TextSize.SMALL, bold=True)
 
-        # Verdict portrait - adaptive size
+        # Verdict portrait - reduced width to leave room for footer with QR
         verdict_text = data.get("verdict_text") or data.get("display_text") or ""
         has_image = bool(data.get("caricature"))
 
         caricature = self._coerce_image(data.get("caricature"))
         if caricature:
-            img_width = self._get_adaptive_image_width(verdict_text, base_width=400)
+            img_width = self._get_adaptive_image_width(verdict_text, base_width=380)
             layout.add_image(caricature, width=img_width)
             layout.add_space(4)
 
@@ -1053,8 +1059,8 @@ class LabelReceiptGenerator:
             box.content_blocks.append(TextBlock(coupon, size=TextSize.LARGE, bold=True))
             box.content_blocks.append(TextBlock("Покажи бармену!", size=TextSize.TINY))
 
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data, style="minimal")
+        layout.add_flex_space(min_pixels=10)
+        self._create_footer(layout, data, style="bottom")
         return layout
 
     def _create_generic_label(self, mode_name: str, data: Dict[str, Any]) -> LabelLayout:
@@ -1074,7 +1080,7 @@ class LabelReceiptGenerator:
             data.get("image")
         )
 
-        # Image - compact, before text
+        # Image - reduced width to leave room for footer with QR
         image = self._coerce_image(
             data.get("caricature") or
             data.get("portrait") or
@@ -1082,7 +1088,7 @@ class LabelReceiptGenerator:
             data.get("image")
         )
         if image:
-            img_width = self._get_adaptive_image_width(display_text, base_width=400)
+            img_width = self._get_adaptive_image_width(display_text, base_width=380)
             layout.add_image(image, width=img_width)
             layout.add_space(2)
 
@@ -1091,6 +1097,6 @@ class LabelReceiptGenerator:
             text_size = self._get_adaptive_text_size(display_text, has_image=has_image)
             layout.add_text(display_text, size=text_size)
 
-        self._add_qr_section(layout, data)
-        self._create_footer(layout, data, style="minimal")
+        layout.add_flex_space(min_pixels=10)
+        self._create_footer(layout, data, style="bottom")
         return layout
