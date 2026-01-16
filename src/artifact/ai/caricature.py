@@ -63,55 +63,48 @@ class Caricature:
 # =============================================================================
 
 # ROAST VARIATIONS - Reddit/r/RoastMe style (18+) - BLACK AND WHITE
-# These should feel like actual Reddit roasts: edgy, personal, creative, brutal but funny
-# CRITICAL: DO NOT use these example texts literally! Create ORIGINAL labels based on THIS PERSON!
+# Style: Isolated portrait, stunning minimal B&W, speech bubbles, club-themed doodles
+# CRITICAL: DO NOT use example texts literally! Create ORIGINAL content for THIS PERSON!
 ROAST_VARIATIONS = [
-    """BLACK AND WHITE REDDIT ROAST SKETCH. r/RoastMe energy - BRUTAL but CREATIVE:
-- EXAGGERATE their most roastable features based on what YOU SEE in the photo
-- Think "top comment on Reddit" - personal, specific, DEVASTATING but hilarious
-- Add 2-3 arrows with YOUR OWN SAVAGE labels in RUSSIAN - be ORIGINAL, don't copy anything
-- Style: quick messy sketch like someone drew it during boring meeting
-- PURE BLACK AND WHITE - thick black lines, no shading
-- RUSSIAN text, ALL CAPS, scratchy roast energy
+    """ISOLATE THE PERSON. Create a PERFECT BLACK AND WHITE DRAWING of them.
+Super stunning and MINIMAL - clean lines, high contrast, no unnecessary detail.
+Add HANDWRITTEN TEXT as a SPEECH BUBBLE - like they're saying something roast-worthy about themselves.
+Surround with DOODLES and SCRIBBLES of CLUB THEMED OBJECTS: cocktails, bottles, disco balls,
+music notes, party hats, shot glasses, beer mugs, dance floor, DJ booth elements.
 
-CRITICAL: The labels must be SPECIFIC to THIS PERSON's actual appearance!
-Look at their face, hair, expression, vibe - and roast THAT. Be creative. Be brutal. Be funny.
-DO NOT use generic insults. EVERY roast should be unique to this face.
-Square. The kind of roast that makes you say "damn" and laugh.""",
+The speech bubble text should be in RUSSIAN - a self-roast or funny confession that fits THIS person.
+Study their face and create something ORIGINAL and SPECIFIC to them.
+Black ink on white paper aesthetic. Square. Nightclub party energy.""",
 
-    """BRUTAL HONEST DOODLE. Draw this person getting DESTROYED like r/RoastMe:
-- Find what's ACTUALLY roastable about THIS SPECIFIC PERSON
-- NO GENERIC INSULTS - be SPECIFIC to THIS person's unique flaws
-- Create YOUR OWN savage labels in RUSSIAN based on what you observe
-- BLACK AND WHITE pen sketch, messy notebook margins
-- Arrows pointing to their worst features with YOUR original commentary
-- RUSSIAN, ALL CAPS, drunk friend handwriting
+    """STUNNING MINIMAL PORTRAIT. Isolate this person with a PERFECT B&W illustration.
+Clean, bold black lines - like a high-end editorial sketch but for a ROAST.
+SPEECH BUBBLE with handwritten RUSSIAN text - what would THIS person admit at 3am in a club?
+CLUB DOODLES scattered around: martini glasses, vinyl records, strobe lights, champagne,
+dancing figures, bar stools, neon signs, bottle sparklers.
 
-IMPORTANT: You are a comedy WRITER. Don't copy - CREATE. Look at this person and
-find what's ACTUALLY funny about them. Original observations only.
-Square. Make it hurt (in a funny way).""",
+BE ORIGINAL: Look at their face, expression, vibe. Create a speech bubble confession
+that's SPECIFIC to THIS person. Brutal but funny. No generic roasts.
+Minimal masterpiece with party chaos around it. Square.""",
 
-    """ROAST BATTLE SKETCH. Comedy club roast energy - DESTROY THEM:
-- What would a standup comedian IMMEDIATELY notice about THIS person? Draw that BIGGER
-- Exaggerate whatever is ACTUALLY their most distinctive/roastable feature
-- Add 2-3 arrows with YOUR OWN standup-worthy burns in RUSSIAN
-- BLACK AND WHITE quick sketch style
-- RUSSIAN text, ALL CAPS, bold roast letters
+    """ISOLATED PORTRAIT with SPEECH BUBBLE ROAST. Black and white perfection.
+Draw THIS PERSON in stunning minimal style - capture their essence in clean bold strokes.
+Add a HANDWRITTEN SPEECH BUBBLE in RUSSIAN - their inner monologue at a party.
+SCRIBBLE club objects around: cocktail shakers, ice cubes, lime wedges, bar napkins,
+glow sticks, speaker stacks, VIP wristbands, cigarettes, lighters.
 
-BE ORIGINAL: Study the photo. What's weird? What's tryhard? What screams "roast me"?
-Create labels that are SPECIFIC to this face. No templates, no copying.
-Square. Like a mean caricature artist at a carnival who tells the TRUTH.""",
+The text must be ORIGINAL - based on what YOU observe about THIS face.
+What are they REALLY thinking? What would they never say out loud?
+High contrast B&W, minimal portrait, chaotic party doodles. Square.""",
 
-    """INTERNET ROAST DOODLE. What would Reddit say about THIS SPECIFIC face:
-- Find the MEME potential unique to THIS person
-- Exaggerate what makes THEM specifically roastable
-- Arrows with YOUR ORIGINAL savage humor labels in RUSSIAN
-- BLACK AND WHITE scratchy style, photocopied zine aesthetic
-- RUSSIAN, ALL CAPS, internet troll energy
+    """PERFECT BLACK AND WHITE SKETCH. Isolate and draw this person BEAUTIFULLY.
+Minimal, stunning, clean - but surrounded by messy CLUB DOODLES and SCRIBBLES.
+SPEECH BUBBLE with handwritten RUSSIAN roast - like a drunk thought bubble.
+Party objects: beer bottles, wine glasses, olives, straws, umbrellas, dice, cards,
+pool cues, ashtrays, matchbooks, cocktail cherries.
 
-CREATIVITY REQUIRED: Every person has something unique to roast. Find it.
-Don't use any pre-written labels. Observe and create fresh burns for THIS face.
-Square. Original savage commentary only.""",
+CREATIVITY REQUIRED: Study THIS person. What's their party persona?
+Write something SPECIFIC to this face - no templates, no copying.
+Beautiful portrait meets chaotic nightlife energy. Square.""",
 ]
 
 # VNVNC STICKER VARIATIONS - Portrait stickers with mystical/fortune-teller vibes
