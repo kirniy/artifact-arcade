@@ -101,27 +101,29 @@ async def run_hardware() -> None:
     # Check for API key
     has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
 
-    # Register modes in order: Roast -> Photobooth -> Quiz -> rest
-    # ПРОЖАРКА - Roast mode (FIRST!)
-    mode_manager.register_mode(RoastMeMode)
-    logger.info("🔥 ROAST MODE registered as #1")
-
-    # ФОТОБУДКА - Photo booth (SECOND)
+    # Register modes in order: Photobooth -> Roast -> rest
+    # ФОТОБУДКА - Photo booth (FIRST!) - Brazil theme party
     mode_manager.register_mode(PhotoboothMode)
+    logger.info("📸 PHOTOBOOTH registered as #1")
 
-    # КВИЗ - Quiz (THIRD)
-    mode_manager.register_mode(QuizMode)
+    # ПРОЖАРКА - Roast mode (SECOND)
+    mode_manager.register_mode(RoastMeMode)
+    logger.info("🔥 ROAST MODE registered as #2")
+
+    # КВИЗ - Quiz (DISABLED for Brazil party)
+    # mode_manager.register_mode(QuizMode)
 
     # Time-based mode activation (Bad Santa only on Jan 9 after 5pm Moscow)
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-    moscow_tz = ZoneInfo('Europe/Moscow')
-    now = datetime.now(moscow_tz)
-    bad_santa_active = (now.month == 1 and now.day == 9 and now.hour >= 17)
-
-    if bad_santa_active and has_api_key:
-        mode_manager.register_mode(BadSantaMode)
-        logger.info("🎅 BAD SANTA MODE ACTIVE! (Jan 9 after 5pm Moscow)")
+    # TEMPORARILY DISABLED - ONLY PHOTOBOOTH + ROAST FOR TODAY
+    # from datetime import datetime
+    # from zoneinfo import ZoneInfo
+    # moscow_tz = ZoneInfo('Europe/Moscow')
+    # now = datetime.now(moscow_tz)
+    # bad_santa_active = (now.month == 1 and now.day == 9 and now.hour >= 17)
+    #
+    # if bad_santa_active and has_api_key:
+    #     mode_manager.register_mode(BadSantaMode)
+    #     logger.info("🎅 BAD SANTA MODE ACTIVE! (Jan 9 after 5pm Moscow)")
 
     # Y2K and Sorting Hat are HIDDEN for now
     # if has_api_key:
@@ -131,31 +133,33 @@ async def run_hardware() -> None:
     if not has_api_key:
         logger.warning("AI modes disabled (no GEMINI_API_KEY)")
 
-    # ГАДАЛКА - Fortune teller
-    mode_manager.register_mode(FortuneMode)
+    # ====== TEMPORARILY DISABLED - ONLY PHOTOBOOTH + ROAST FOR TODAY ======
+    # ГАДАЛКА - Fortune teller (DISABLED)
+    # mode_manager.register_mode(FortuneMode)
 
-    # ПРОРОК - AI Prophet (requires API key)
-    if has_api_key:
-        mode_manager.register_mode(AIProphetMode)
-        logger.info("AI Prophet mode enabled (API key found)")
+    # ПРОРОК - AI Prophet (requires API key) (DISABLED)
+    # if has_api_key:
+    #     mode_manager.register_mode(AIProphetMode)
+    #     logger.info("AI Prophet mode enabled (API key found)")
 
-    # КТО Я? - AI guessing "Who Am I?"
-    mode_manager.register_mode(GuessMeMode)
+    # КТО Я? - AI guessing "Who Am I?" (DISABLED for Brazil party)
+    # mode_manager.register_mode(GuessMeMode)
 
-    # КАЛЬМАР - Squid game (red light/green light)
-    mode_manager.register_mode(SquidGameMode)
+    # КАЛЬМАР - Squid game (red light/green light) (DISABLED for Brazil party)
+    # mode_manager.register_mode(SquidGameMode)
 
-    # БАШНЯ - Tower stack
-    mode_manager.register_mode(TowerStackMode)
+    # БАШНЯ - Tower stack (DISABLED)
+    # mode_manager.register_mode(TowerStackMode)
 
-    # КИРПИЧИ - Brick breaker
-    mode_manager.register_mode(BrickBreakerMode)
+    # КИРПИЧИ - Brick breaker (DISABLED)
+    # mode_manager.register_mode(BrickBreakerMode)
 
-    # ВИДЕО - Video player
-    mode_manager.register_mode(VideoMode)
+    # ВИДЕО - Video player (DISABLED)
+    # mode_manager.register_mode(VideoMode)
 
-    # ГАЛЕРЕЯ - Photo gallery slideshow
-    mode_manager.register_mode(GalleryMode)
+    # ГАЛЕРЕЯ - Photo gallery slideshow (DISABLED)
+    # mode_manager.register_mode(GalleryMode)
+    # ======================================================================
 
     logger.info(f"Registered {len(mode_manager._registered_modes)} modes")
 

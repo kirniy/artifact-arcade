@@ -356,11 +356,14 @@ class LabelReceiptGenerator:
             if qr_url:
                 # Use FooterWithQR block for side-by-side layout
                 from artifact.printing.label_layout import FooterWithQRBlock
+                # Get short_url for display (prefer short_url over qr_url for cleaner display)
+                short_url = data.get("short_url") or data.get("qr_url") or ""
                 layout.blocks.append(FooterWithQRBlock(
                     date_text=self._get_date_string(data),
                     website="VNVNC.RU",
                     qr_url=qr_url,
-                    qr_size=110,  # Large but fits
+                    qr_size=150,  # Large for thermal printer scannability
+                    short_url=short_url,  # Display URL next to QR
                 ))
             else:
                 # Simple footer without QR
@@ -747,23 +750,32 @@ class LabelReceiptGenerator:
         return layout
 
     def _create_photobooth_label(self, data: Dict[str, Any]) -> LabelLayout:
-        """Create label for Photobooth mode - elegant photo sticker with ornate border."""
-        layout = LabelLayout(margin_y=12, page_border="ornate")
+        """Create label for Photobooth mode - full-width 9:16 vertical image + footer.
 
-        # Photo takes most of the space - reduced width to leave room for footer with QR
+        Layout is maximized for the photo:
+        - No icon, no role, no header - just the image
+        - 9:16 vertical image fills most of the label width
+        - Compact footer with QR at the bottom
+
+        Label: 464px wide x 800px tall
+        Margins: 12px horizontal, 6px vertical (minimal for max image area)
+        Content width: 440px
+        9:16 at 440px = ~782px tall (fits nicely with ~160px footer)
+        """
+        # Minimal margins to maximize image area
+        layout = LabelLayout(margin_x=12, margin_y=6, page_border="ornate")
+
+        # Photo takes most of the space - use full content width
+        # 9:16 vertical image at 440px width = ~782px tall
         photo = self._coerce_image(data.get("caricature") or data.get("photo"))
         if photo:
-            layout.add_image(photo, width=380)
-            layout.add_space(4)
+            # Full content width (464 - 24 margins = 440px)
+            layout.add_image(photo, width=440)
 
-        # Minimal branding
-        layout.add_icon("camera", size=24)
-        layout.add_text("VNVNC", size=TextSize.SMALL, bold=True)
+        # Minimal flex space - the image should nearly fill to the footer
+        layout.add_flex_space(min_pixels=2)
 
-        # Flex space pushes footer to bottom
-        layout.add_flex_space(min_pixels=10)
-
-        # Two-column footer with QR on right (consistent with roast mode)
+        # Two-column footer with QR on right
         self._create_footer(layout, data, style="bottom")
         return layout
 

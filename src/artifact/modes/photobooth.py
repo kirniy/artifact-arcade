@@ -1,13 +1,13 @@
-"""Photobooth Mode - AI Christmas Photo Booth with QR sharing.
+"""Photobooth Mode - AI Brazil Photo Booth with QR sharing.
 
 Photo booth flow:
 1. Button press → Countdown (3-2-1)
 2. Camera flash → Take photo
-3. AI generates Christmas-themed 2x2 photo booth grid
+3. AI generates Brazil carnival-themed 2x2 photo booth grid
 4. Show preview → Print + QR code
 
-Uses Gemini 2.0 Flash for image generation to create festive
-photo booth strips with "VNVNC 2026" Christmas branding.
+Creates vibrant Brazilian carnival photo booth strips with
+festive colors and VNVNC branding.
 """
 
 import logging
@@ -15,6 +15,7 @@ import io
 import asyncio
 from typing import Optional
 from dataclasses import dataclass
+from datetime import datetime
 
 import numpy as np
 from numpy.typing import NDArray
@@ -24,11 +25,12 @@ from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect
 from artifact.graphics.text_utils import draw_centered_text
 from artifact.utils.camera_service import camera_service
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.animation.santa_runner import SantaRunner
 from artifact.audio.engine import get_audio_engine
+from artifact.printing.label_receipt import LabelReceiptGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +42,12 @@ class PhotoboothState:
     countdown_timer: float = 0.0
     photo_bytes: Optional[bytes] = None  # Original captured photo
     photo_frame: Optional[NDArray[np.uint8]] = None  # Original photo for preview
-    ai_result_bytes: Optional[bytes] = None  # AI-generated Christmas grid
-    ai_result_frame: Optional[NDArray[np.uint8]] = None  # AI result for display
+    # AI generates TWO images:
+    # - Square (1:1) for LED display
+    # - Vertical (9:16) for label printing
+    ai_display_bytes: Optional[bytes] = None  # 1:1 square for LED display
+    ai_display_frame: Optional[NDArray[np.uint8]] = None  # Decoded frame for display
+    ai_label_bytes: Optional[bytes] = None  # 9:16 vertical for label printing
     photo_path: Optional[str] = None
     qr_url: Optional[str] = None
     qr_image: Optional[NDArray[np.uint8]] = None
@@ -55,24 +61,34 @@ class PhotoboothState:
 
 
 class PhotoboothMode(BaseMode):
-    """AI Christmas Photo Booth - generates festive photo booth grids.
+    """AI Brazil Photo Booth - generates vibrant carnival photo booth grids.
 
     Flow:
     1. Countdown timer with visual + audio feedback
     2. Photo capture
-    3. AI generates Christmas-themed 2x2 photo booth grid with VNVNC 2026 branding
+    3. AI generates Brazil carnival-themed 2x2 photo booth grid
     4. Upload to S3 for QR code sharing
     5. Thermal printing of the AI-generated result
+
+    Brazilian flag colors:
+    - Green: (0, 155, 58)
+    - Yellow/Gold: (255, 223, 0)
+    - Blue: (0, 39, 118)
     """
 
     name = "photobooth"
-    display_name = "ФОТОЗОНА"
-    description = "Новогоднее фото с AI!"
+    display_name = "ФОТО\nБУДКА"
+    description = "Карнавал начинается!"
     icon = "camera"
     style = "arcade"
     requires_camera = True
     requires_ai = True
     estimated_duration = 30
+
+    # Brazilian flag colors
+    BRAZIL_GREEN = (0, 155, 58)
+    BRAZIL_YELLOW = (255, 223, 0)
+    BRAZIL_BLUE = (0, 39, 118)
 
     BEEP_TIME = 0.2
     COUNTDOWN_SECONDS = 3
@@ -202,10 +218,16 @@ class PhotoboothMode(BaseMode):
                 try:
                     result = self._ai_task.result()
                     if result:
-                        self._state.ai_result_bytes = result
-                        self._state.ai_result_frame = self._decode_photo_frame(result)
-                        logger.info("AI Christmas grid generation completed")
-                        # Upload the AI result for QR
+                        display_bytes, label_bytes = result
+                        # Store display image (1:1 square for LED)
+                        if display_bytes:
+                            self._state.ai_display_bytes = display_bytes
+                            self._state.ai_display_frame = self._decode_photo_frame(display_bytes)
+                        # Store label image (9:16 vertical for printing)
+                        if label_bytes:
+                            self._state.ai_label_bytes = label_bytes
+                        logger.info("AI photo booth generation completed (display + label)")
+                        # Upload the LABEL image for QR (vertical format looks better when downloaded)
                         self._upload_ai_result_async()
                     else:
                         logger.error("AI generation returned no result")
@@ -220,6 +242,9 @@ class PhotoboothMode(BaseMode):
                 self._state.show_result = True
                 self._state.countdown_timer = self.RESULT_DURATION
                 self.change_phase(ModePhase.RESULT)
+
+                # Start printing IMMEDIATELY when result appears
+                self._start_printing_now()
 
     def _do_flash_and_capture(self) -> None:
         """Flash, capture, and start AI generation."""
@@ -264,50 +289,139 @@ class PhotoboothMode(BaseMode):
         except Exception:
             return None
 
-    async def _generate_christmas_grid(self) -> Optional[bytes]:
-        """Generate AI Christmas photo booth grid from captured photo."""
+    async def _generate_christmas_grid(self) -> Optional[tuple]:
+        """Generate AI photo booth images from captured photo.
+
+        Generates TWO images:
+        - 1:1 square for LED display (128x128)
+        - 9:16 vertical for label printing
+
+        Returns:
+            Tuple of (display_bytes, label_bytes) or None on error
+        """
         if not self._state.photo_bytes:
             logger.error("No photo bytes for AI generation")
             return None
 
         try:
-            logger.info("Calling CaricatureService for Christmas photo booth grid generation")
+            logger.info("Calling CaricatureService for photo booth generation (2 images)")
 
-            # Generate the Christmas photo booth grid using CaricatureService
-            result = await self._caricature_service.generate_caricature(
+            # Generate both images in parallel for speed
+            # 1. Square for display (use PHOTOBOOTH_SQUARE style variant)
+            # 2. Vertical for label (uses PHOTOBOOTH style with 9:16)
+
+            display_task = self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
-                style=CaricatureStyle.PHOTOBOOTH,
+                style=CaricatureStyle.PHOTOBOOTH_SQUARE,  # 1:1 square for display
             )
 
-            if result and result.image_data:
-                logger.info(f"AI generation successful, got {len(result.image_data)} bytes")
-                return result.image_data
+            label_task = self._caricature_service.generate_caricature(
+                reference_photo=self._state.photo_bytes,
+                style=CaricatureStyle.PHOTOBOOTH,  # 9:16 vertical for label
+            )
+
+            # Wait for both to complete
+            display_result, label_result = await asyncio.gather(display_task, label_task)
+
+            display_bytes = None
+            label_bytes = None
+
+            if display_result and display_result.image_data:
+                display_bytes = display_result.image_data
+                logger.info(f"Display image generated: {len(display_bytes)} bytes")
             else:
-                logger.error("AI generation returned no result")
+                logger.warning("Display image generation failed, will use original photo")
+
+            if label_result and label_result.image_data:
+                label_bytes = label_result.image_data
+                logger.info(f"Label image generated: {len(label_bytes)} bytes")
+            else:
+                logger.warning("Label image generation failed, will use display image")
+                label_bytes = display_bytes  # Fallback to display image
+
+            if display_bytes or label_bytes:
+                return (display_bytes, label_bytes)
+            else:
+                logger.error("Both AI generations failed")
                 return None
 
         except Exception as e:
-            logger.error(f"AI Christmas grid generation failed: {e}")
+            logger.error(f"AI photo booth generation failed: {e}")
             return None
 
     def _upload_ai_result_async(self) -> None:
-        """Upload AI-generated result for QR sharing."""
-        # Prefer AI result, fall back to original photo
-        upload_bytes = self._state.ai_result_bytes or self._state.photo_bytes
-        if not upload_bytes:
+        """Upload rendered label with QR code for sharing.
+
+        Flow:
+        1. Pre-generate short URL before upload (and store in state for print!)
+        2. Render complete label with footer + QR code
+        3. Upload the rendered label image
+
+        This way, when users scan the QR, they see the full label design.
+        """
+        # Get image for the label
+        caricature_bytes = self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
+
+        if not caricature_bytes:
             logger.warning("No image bytes available for upload")
             return
 
-        logger.info("Starting async AI result upload via AsyncUploader")
+        logger.info("Rendering label and uploading...")
         self._state.is_uploading = True
 
-        self._uploader.upload_bytes(
-            upload_bytes,
-            prefix="photobooth",
-            extension="png" if self._state.ai_result_bytes else "jpg",
-            content_type="image/png" if self._state.ai_result_bytes else "image/jpeg",
-            callback=self._on_upload_complete
-        )
+        try:
+            # 1. Pre-generate upload info with short URL
+            pre_info = pre_generate_upload_info("photobooth", "png")
+            logger.info(f"Pre-generated short URL: {pre_info.short_url}")
+
+            # IMPORTANT: Store URL and QR image in state NOW so print can use it!
+            self._state.qr_url = pre_info.short_url
+            self._state.qr_image = generate_qr_image(pre_info.short_url)
+
+            # 2. Render complete label with QR code pointing to itself
+            label_gen = LabelReceiptGenerator()
+            print_data = {
+                "caricature": caricature_bytes,
+                "photo": self._state.photo_bytes,
+                "qr_url": pre_info.short_url,
+                "short_url": pre_info.short_url,  # Explicitly pass for footer display
+                "date": datetime.now().strftime("%d.%m.%Y"),
+            }
+
+            # Generate the receipt which includes preview_image (PNG)
+            receipt = label_gen.generate_receipt("photobooth", print_data)
+            label_png = receipt.preview_image
+
+            if label_png:
+                # 3. Upload rendered label with pre-generated filename
+                self._uploader.upload_bytes(
+                    label_png,
+                    prefix="photobooth",
+                    extension="png",
+                    content_type="image/png",
+                    callback=self._on_upload_complete,
+                    pre_info=pre_info,
+                )
+            else:
+                # Fallback: upload raw image
+                logger.warning("Label render failed, uploading raw image")
+                self._uploader.upload_bytes(
+                    caricature_bytes,
+                    prefix="photobooth",
+                    extension="png",
+                    content_type="image/png",
+                    callback=self._on_upload_complete,
+                )
+        except Exception as e:
+            logger.error(f"Label render/upload failed: {e}")
+            # Fallback: upload raw image
+            self._uploader.upload_bytes(
+                caricature_bytes,
+                prefix="photobooth",
+                extension="png",
+                content_type="image/png",
+                callback=self._on_upload_complete,
+            )
 
     def _upload_photo_async(self) -> None:
         """Upload photo for QR sharing using shared AsyncUploader."""
@@ -336,6 +450,38 @@ class PhotoboothMode(BaseMode):
         else:
             logger.error(f"Photo upload failed: {result.error}")
 
+    def _start_printing_now(self) -> None:
+        """Start printing immediately when result screen appears.
+
+        This is called as soon as AI generation completes, so the label
+        prints while the user views the result and QR code.
+        """
+        if self._state.is_printing:
+            return  # Already printing
+
+        image_for_print = self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
+        if not image_for_print:
+            logger.warning("No image available for printing")
+            return
+
+        self._state.is_printing = True
+        logger.info("Starting print immediately on result screen")
+
+        # Emit print event directly
+        print_data = {
+            "type": "photobooth",
+            "caricature": image_for_print,
+            "photo": self._state.photo_bytes,
+            "qr_url": self._state.qr_url,
+            "short_url": self._state.qr_url,  # Explicitly pass for footer display
+            "qr_image": self._state.qr_image,
+        }
+        self.context.event_bus.emit(Event(
+            EventType.PRINT_START,
+            data=print_data,
+            source="photobooth"
+        ))
+
     def _update_result(self, delta_ms: float) -> None:
         """Update result display timer."""
         self._state.countdown_timer -= delta_ms / 1000.0
@@ -348,10 +494,11 @@ class PhotoboothMode(BaseMode):
             self._complete_session()
 
     def _complete_session(self) -> None:
-        """Complete the session."""
-        # Prefer AI-generated grid, fall back to original photo
-        image_for_print = self._state.ai_result_bytes or self._state.photo_bytes
+        """Complete the session.
 
+        Printing already started when result screen appeared,
+        so should_print=False to avoid double printing.
+        """
         result = ModeResult(
             mode_name=self.name,
             success=True,
@@ -360,14 +507,9 @@ class PhotoboothMode(BaseMode):
             },
             display_text="ФОТО ГОТОВО!",
             ticker_text="СКАЧАЙ ПО QR!",
-            should_print=image_for_print is not None,
-            print_data={
-                "type": "photobooth",
-                "caricature": image_for_print,  # AI grid or original photo
-                "photo": self._state.photo_bytes,  # Original photo for reference
-                "qr_url": self._state.qr_url,
-                "qr_image": self._state.qr_image,
-            }
+            should_print=False,  # Already printed when result screen appeared
+            skip_manager_result=True,  # Photobooth has its own result display, skip manager's
+            print_data=None,  # No need - already printed
         )
         self.complete(result)
         self._working = False
@@ -405,13 +547,14 @@ class PhotoboothMode(BaseMode):
             self._render_ready(buffer)
 
     def _render_countdown(self, buffer: NDArray[np.uint8]) -> None:
-        """Render countdown number."""
-        # Dim camera background
+        """Render countdown number with Brazilian colors."""
+        # Dim camera background with green tint
         buffer[:, :, :] = (buffer.astype(np.float32) * 0.3).astype(np.uint8)
+        buffer[:, :, 1] = np.minimum(buffer[:, :, 1].astype(np.uint16) + 20, 255).astype(np.uint8)
 
-        # Big countdown number
+        # Big countdown number in Brazilian yellow
         num_str = str(self._state.countdown)
-        draw_centered_text(buffer, num_str, 40, (255, 255, 0), scale=6)
+        draw_centered_text(buffer, num_str, 40, self.BRAZIL_YELLOW, scale=5)
 
     def _render_generating(self, buffer: NDArray[np.uint8]) -> None:
         """Render Santa runner minigame while AI is generating, with captured photo as background."""
@@ -425,53 +568,60 @@ class PhotoboothMode(BaseMode):
             bar_y = 2
 
             # Semi-transparent dark background for progress bar
-            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, (20, 20, 40))
+            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, self.BRAZIL_BLUE)
 
             # Use the SmartProgressTracker's render method for the progress bar
             self._progress_tracker.render_progress_bar(
                 buffer, bar_x, bar_y, bar_w, bar_h,
-                bar_color=(100, 255, 100),  # Christmas green
-                bg_color=(40, 40, 40),
+                bar_color=self.BRAZIL_YELLOW,
+                bg_color=self.BRAZIL_GREEN,
                 time_ms=self._time_in_phase
             )
 
             # Show compact status at bottom
             status_message = self._progress_tracker.get_message()
             # Semi-transparent dark strip for text
-            draw_rect(buffer, 0, 118, 128, 10, (20, 20, 40))
-            draw_centered_text(buffer, status_message, 119, (200, 200, 200), scale=1)
+            draw_rect(buffer, 0, 118, 128, 10, self.BRAZIL_GREEN)
+            draw_centered_text(buffer, status_message, 119, self.BRAZIL_YELLOW, scale=1)
 
         else:
             # Fallback to simple generating screen if no game
-            fill(buffer, (15, 20, 35))
-            draw_centered_text(buffer, "СОЗДАЕМ...", 55, (100, 255, 100), scale=2)
+            fill(buffer, self.BRAZIL_GREEN)
+            draw_centered_text(buffer, "CRIANDO...", 55, self.BRAZIL_YELLOW, scale=1)
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ready state."""
-        # Semi-transparent overlay
-        overlay = buffer.copy()
-        buffer[:20, :, :] = (overlay[:20, :, :].astype(np.float32) * 0.5).astype(np.uint8)
-        buffer[-20:, :, :] = (overlay[-20:, :, :].astype(np.float32) * 0.5).astype(np.uint8)
+        """Render ready state with Brazilian flair."""
+        # If no camera (dark buffer), show Brazil theme background
+        if np.mean(buffer) < 30:  # Buffer is nearly black = no camera
+            fill(buffer, self.BRAZIL_GREEN)
+            draw_centered_text(buffer, "BRAZIL", 40, self.BRAZIL_YELLOW, scale=2)
+            draw_centered_text(buffer, "ФОТОЗОНА", 70, (255, 255, 255), scale=1)
 
-        # Instruction text only - no mode title
-        draw_centered_text(buffer, "НАЖМИ", 110, (200, 200, 200), scale=1)
-        draw_centered_text(buffer, "КНОПКУ", 120, (200, 200, 200), scale=1)
+        # Semi-transparent overlay for text
+        buffer[-24:, :, :] = (buffer[-24:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
+        buffer[-24:, :, 1] = np.minimum(buffer[-24:, :, 1].astype(np.uint16) + 40, 255).astype(np.uint8)
+
+        # Instruction text
+        draw_centered_text(buffer, "ЖМИ", 115, self.BRAZIL_YELLOW, scale=1)
 
     def _render_result(self, buffer: NDArray[np.uint8]) -> None:
         """Render result screen - full screen AI photo or QR."""
         if self._state.result_view == "photo":
-            # Full screen AI-generated Christmas photo booth grid
-            if self._state.ai_result_frame is not None:
-                np.copyto(buffer, self._state.ai_result_frame)
+            # Full screen AI-generated photo booth (1:1 square for display)
+            if self._state.ai_display_frame is not None:
+                np.copyto(buffer, self._state.ai_display_frame)
             elif self._state.photo_frame is not None:
                 # Fallback to original photo if AI failed
                 np.copyto(buffer, self._state.photo_frame)
             else:
-                fill(buffer, (10, 10, 20))
-                draw_centered_text(buffer, "ФОТО", 55, (100, 100, 100), scale=2)
+                fill(buffer, self.BRAZIL_GREEN)
+                draw_centered_text(buffer, "FOTO", 55, self.BRAZIL_YELLOW, scale=1)
 
-            # Small hint at bottom
-            draw_centered_text(buffer, "◄ ► QR", 118, (150, 150, 150), scale=1)
+            # Small hint at bottom with green background
+            buffer[-12:, :, 0] = 0
+            buffer[-12:, :, 1] = 100
+            buffer[-12:, :, 2] = 40
+            draw_centered_text(buffer, "< > QR", 118, self.BRAZIL_YELLOW, scale=1)
 
         elif self._state.result_view == "qr":
             # Full screen QR code
@@ -493,41 +643,41 @@ class PhotoboothMode(BaseMode):
                 y_offset = (128 - qr_h) // 2
                 buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
             elif self._state.is_uploading:
-                fill(buffer, (20, 20, 30))
-                draw_centered_text(buffer, "ЗАГРУЗКА", 50, (200, 200, 100), scale=1)
-                draw_centered_text(buffer, "QR...", 65, (200, 200, 100), scale=1)
+                fill(buffer, self.BRAZIL_BLUE)
+                draw_centered_text(buffer, "UPLOAD", 50, self.BRAZIL_YELLOW, scale=1)
+                draw_centered_text(buffer, "QR...", 65, self.BRAZIL_YELLOW, scale=1)
             else:
-                fill(buffer, (20, 20, 30))
-                draw_centered_text(buffer, "QR", 50, (100, 100, 100), scale=2)
-                draw_centered_text(buffer, "НЕ ГОТОВ", 75, (100, 100, 100), scale=1)
+                fill(buffer, self.BRAZIL_BLUE)
+                draw_centered_text(buffer, "QR", 50, self.BRAZIL_YELLOW, scale=1)
+                draw_centered_text(buffer, "AGUARDE", 65, self.BRAZIL_YELLOW, scale=1)
 
             # Hint stays on ticker/LCD for full-screen QR
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display."""
-        fill(buffer, (0, 0, 0))
+        """Render ticker display with Brazilian colors."""
+        fill(buffer, self.BRAZIL_GREEN)
 
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             # Show countdown on ticker
             text = f"   {self._state.countdown}   "
-            draw_centered_text(buffer, text, 1, (255, 255, 0), scale=1)
+            draw_centered_text(buffer, text, 1, self.BRAZIL_YELLOW, scale=1)
         elif self._state.is_generating:
-            # Use Santa Runner's ticker progress bar
+            # Use Santa Runner's ticker progress bar (cycles continuously)
             if self._santa_runner:
-                self._santa_runner.render_ticker(buffer, self._state.generation_progress)
+                self._santa_runner.render_ticker(buffer, self._state.generation_progress, self._time_in_phase)
         elif self._state.show_result:
             if self._state.result_view == "qr":
-                draw_centered_text(buffer, "QR", 1, (100, 255, 100), scale=1)
+                draw_centered_text(buffer, "QR", 1, self.BRAZIL_YELLOW, scale=1)
             else:
-                draw_centered_text(buffer, "ГОТОВО", 1, (100, 255, 100), scale=1)
+                draw_centered_text(buffer, "PRONTO", 1, self.BRAZIL_YELLOW, scale=1)
         else:
-            draw_centered_text(buffer, "ФОТО", 1, (255, 150, 50), scale=1)
+            draw_centered_text(buffer, "BRAZIL", 1, self.BRAZIL_YELLOW, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            return f" ОТСЧЕТ: {self._state.countdown} "[:16].ljust(16)
+            return f"  BRAZIL: {self._state.countdown}   "[:16].ljust(16)
         elif self._state.show_result:
-            return "    ГОТОВО    "[:16]
+            return "    ГОТОВО!   "[:16]
         else:
-            return " НАЖМИ КНОПКУ  "[:16]
+            return "      ЖМИ     "[:16]

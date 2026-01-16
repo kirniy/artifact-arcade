@@ -19,7 +19,7 @@ from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 from artifact.audio.engine import get_audio_engine
 import numpy as np
 
@@ -336,14 +336,37 @@ class Y2KMode(BaseMode):
             except Exception as e:
                 logger.error(f"Portrait generation failed: {e}")
 
-            # Upload to S3
+            # Upload rendered LABEL to S3
             if self._caricature_data:
+                # Pre-generate URL for printing
+                pre_info = pre_generate_upload_info("y2k", "png")
+                self._qr_url = pre_info.short_url
+                self._qr_image = generate_qr_image(pre_info.short_url)
+                logger.info(f"Pre-generated QR URL for y2k: {self._qr_url}")
+
+                # Generate the full label preview
+                from artifact.printing.label_receipt import LabelReceiptGenerator
+                from datetime import datetime
+                label_gen = LabelReceiptGenerator()
+                temp_print_data = {
+                    "type": "y2k",
+                    "caricature": self._caricature_data,
+                    "qr_url": pre_info.short_url,
+                    "short_url": pre_info.short_url,
+                    "timestamp": datetime.now().isoformat(),
+                }
+                receipt = label_gen.generate_receipt("y2k", temp_print_data)
+                label_png = receipt.preview_image if receipt else None
+
+                # Upload rendered label (or fallback to caricature)
+                upload_data = label_png if label_png else self._caricature_data
                 self._uploader.upload_bytes(
-                    self._caricature_data,
+                    upload_data,
                     prefix="y2k",
                     extension="png",
                     content_type="image/png",
-                    callback=self._on_upload_complete
+                    callback=self._on_upload_complete,
+                    pre_info=pre_info,
                 )
 
             self._phase = Y2KPhase.RESULT

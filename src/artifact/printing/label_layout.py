@@ -173,14 +173,15 @@ class FooterWithQRBlock:
     """Two-column footer: text on left, QR on right.
 
     Layout: [СКАЧАЙ:        ]  [QR]
+            [vnvnc.ru/p/xxx ]  [QR]
             [date           ]  [QR]
-            [VNVNC.RU       ]  [QR]
     """
     date_text: str
     website: str = "VNVNC.RU"
     qr_url: str = ""
-    qr_size: int = 120  # Large for thermal printer scannability
+    qr_size: int = 150  # Large for thermal printer scannability (minimum 120px)
     label_text: str = "СКАЧАЙ:"
+    short_url: str = ""  # Display URL like "vnvnc.ru/p/abc123"
 
 
 @dataclass
@@ -550,7 +551,7 @@ class LabelLayoutEngine:
             return block.title_size + 8
         elif isinstance(block, FooterWithQRBlock):
             # Two-column footer height = max(QR size, text height) + separator + padding
-            text_height = 24 + 4 + 22 + 4 + 24  # 78px for text stack
+            text_height = 24 + 3 + 22 + 3 + 24  # 78px for text stack
             return max(block.qr_size, text_height) + 10
         return 0
 
@@ -852,20 +853,21 @@ class LabelLayoutEngine:
             return y_pos
 
         # Calculate available height (leave room for page border)
-        max_y = self.height - 8  # 8px margin for page border
+        max_y = self.height - 16  # 16px margin for page border (increased from 8px)
         available_height = max_y - y_pos - 8  # 8px for top separator + padding
 
         # QR size - use requested size but clamp to available space
-        # Minimum 90px for scannability on thermal printer
-        qr_size = min(block.qr_size, available_height - 10)
-        qr_size = max(qr_size, 90)  # Ensure minimum scannable size
+        # Minimum 120px for scannability on thermal printer (at 203 DPI, ~15mm)
+        qr_size = min(block.qr_size, available_height - 20)  # 20px buffer
+        qr_size = max(qr_size, 120)  # Ensure minimum scannable size
 
         # Draw top separator line
         draw.line([(margin_x, y_pos), (margin_x + content_width, y_pos)], fill=0, width=1)
         y_pos += 6
 
         # Calculate text heights (slightly smaller to fit)
-        text_total_height = 24 + 3 + 22 + 3 + 24  # label + gap + date + gap + website = 76px
+        # label (24) + gap (3) + url (18) + gap (4) + date (20) = ~69px
+        text_total_height = 24 + 3 + 18 + 4 + 20  # label + gap + url + gap + date = 69px
 
         # Row height is the larger of QR or text, clamped to available
         row_height = min(max(qr_size, text_total_height), available_height)
@@ -899,14 +901,22 @@ class LabelLayoutEngine:
         draw_centered_text(block.label_text, label_font, text_y)
         text_y += 27
 
-        # Date - centered
-        date_font = self._get_font(22, bold=False)
-        draw_centered_text(block.date_text, date_font, text_y)
-        text_y += 25
+        # Short URL (e.g., "vnvnc.ru/p/abc123") - centered, smaller font
+        if block.short_url:
+            url_font = self._get_font(18, bold=False)
+            # Extract just the path part for cleaner display
+            url_display = block.short_url.replace("https://", "").replace("http://", "")
+            draw_centered_text(url_display, url_font, text_y)
+            text_y += 22
+        else:
+            # Fallback to website if no short URL
+            web_font = self._get_font(22, bold=True)
+            draw_centered_text(block.website, web_font, text_y)
+            text_y += 25
 
-        # Website - centered
-        web_font = self._get_font(24, bold=True)
-        draw_centered_text(block.website, web_font, text_y)
+        # Date - centered
+        date_font = self._get_font(20, bold=False)
+        draw_centered_text(block.date_text, date_font, text_y)
 
         # DOTTED VERTICAL SEPARATOR in center
         dot_gap = 6
@@ -951,8 +961,8 @@ class LabelLayoutEngine:
             # Load image
             block_img = Image.open(BytesIO(block.image_data))
 
-            # Calculate available height (leave some room for footer)
-            available_height = self.height - y_pos - 100  # Reserve 100px for footer
+            # Calculate available height (leave room for footer with QR code)
+            available_height = self.height - y_pos - 180  # Reserve 180px for footer with 150px QR
 
             # Calculate target size
             if block.width and block.height:

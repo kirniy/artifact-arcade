@@ -49,7 +49,7 @@ CAMERA_EFFECT_DURATION = 8000  # 8 seconds per camera effect before auto-cycling
 
 # Scene-specific duration overrides (ms)
 SCENE_DURATIONS = {
-    # DIVOOM_GALLERY is the star - New Year celebration, plays all GIFs fully
+    # DIVOOM_GALLERY - pixel art GIF gallery (currently disabled)
     'DIVOOM_GALLERY': 180000,  # 3 minutes - cycles through ~15 GIFs
     # VNVNC entrance gets more time - it's the signature scene
     'VNVNC_ENTRANCE': 25000,  # 25 seconds
@@ -406,13 +406,8 @@ class RotatingIdleAnimation:
             # Shuffle the GIFs for variety
             random.shuffle(self.divoom_gifs)
             logger.info(f"Loaded {len(self.divoom_gifs)} Divoom GIF animations")
-            # Re-initialize scenes with DIVOOM_GALLERY FIRST (New Year special!)
-            self.scenes = [IdleScene.DIVOOM_GALLERY, IdleScene.VNVNC_ENTRANCE]
-            other_scenes = [s for s in IdleScene if s not in (IdleScene.VNVNC_ENTRANCE, IdleScene.DIVOOM_GALLERY)]
-            random.shuffle(other_scenes)
-            self.scenes.extend(other_scenes)
-            self.scene_index = 0
-            self.state.current_scene = self.scenes[0]
+            # Note: DIVOOM_GALLERY is disabled - don't re-enable it here
+            # GIFs will be available if manually enabled later
         else:
             logger.warning("No Divoom GIFs loaded successfully")
 
@@ -3927,21 +3922,21 @@ class RotatingIdleAnimation:
         # Unified rotating texts for all idle modes (horizontal scroll for longer ones)
         texts = [
             "VNVNC",
-            "WINTER SAGA",
-            "26.12-11.01",
-            "HAPPY NEW YEAR",
+            "SOUNDS LIKE:",
+            "BRAZIL",
+            "16.01-17.01",
+            "ФОТОБУДКА",
             "VNVNC <3",
-            "С НОВЫМ ГОДОМ",
         ]
 
-        # Colors cycle with texts - winter/festive palette
+        # Colors cycle with texts - Brazil carnival palette
         colors = [
-            (255, 100, 200),   # Pink
-            (100, 200, 255),   # Ice blue
-            (255, 215, 0),     # Gold
-            (100, 255, 150),   # Mint
-            (255, 150, 200),   # Light pink
-            (200, 220, 255),   # Snow white-blue
+            (0, 155, 58),      # Brazilian green
+            (255, 223, 0),     # Brazilian yellow
+            (0, 39, 118),      # Brazilian blue
+            (255, 180, 0),     # Gold/orange
+            (0, 200, 100),     # Bright green
+            (255, 255, 100),   # Light yellow
         ]
 
         # Timing: 3 seconds per text, with 0.3s transition
@@ -3984,8 +3979,8 @@ class RotatingIdleAnimation:
         texts = {
             IdleScene.VNVNC_ENTRANCE: ["  ДОБРО       ", " ПОЖАЛОВАТЬ  ", " НАЖМИ СТАРТ "],
             IdleScene.CAMERA_EFFECTS: ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "],
-            IdleScene.DIVOOM_GALLERY: [" С НОВЫМ    ", " ГОДОМ 2026!", " НАЖМИ СТАРТ "],
-            IdleScene.SAGA_LIVE: ["WINTER SAGA ", "26.12-11.01 ", " НАЖМИ СТАРТ "],
+            IdleScene.DIVOOM_GALLERY: ["SOUNDS LIKE:", "  BRAZIL    ", " НАЖМИ СТАРТ "],
+            IdleScene.SAGA_LIVE: ["SOUNDS LIKE:", "  BRAZIL    ", " НАЖМИ СТАРТ "],
             IdleScene.POSTER_SLIDESHOW: ["   АФИШИ    ", "  СОБЫТИЙ   ", " НАЖМИ СТАРТ "],
             IdleScene.DNA_HELIX: ["   СПИРАЛЬ  ", "   ЖИЗНИ    ", " НАЖМИ СТАРТ "],
             IdleScene.SNOWFALL: ["   ЗИМНЯЯ   ", "   СКАЗКА   ", " НАЖМИ СТАРТ "],
@@ -4000,13 +3995,17 @@ class RotatingIdleAnimation:
         self._close_camera()
         self._stop_saga_video()  # Stop video and its audio
         self.state = SceneState()
-        # DIVOOM_GALLERY is FIRST (New Year special!), then VNVNC_ENTRANCE, then shuffle the rest
+        # VNVNC_ENTRANCE first, then shuffle the rest
+        # Disabled scenes: winter/NY themes
+        disabled_scenes = {
+            IdleScene.SAGA_LIVE,      # Winter Saga video
+            IdleScene.SNOWFALL,       # Winter theme
+            IdleScene.FIREPLACE,      # Winter theme
+            IdleScene.DIVOOM_GALLERY, # Pixel art gallery (disabled)
+        }
         self.scenes = []
-        # Divoom Gallery first if we have GIFs (New Year celebration!)
-        if self.divoom_gifs:
-            self.scenes.append(IdleScene.DIVOOM_GALLERY)
         self.scenes.append(IdleScene.VNVNC_ENTRANCE)
-        other_scenes = [s for s in IdleScene if s not in (IdleScene.VNVNC_ENTRANCE, IdleScene.DIVOOM_GALLERY)]
+        other_scenes = [s for s in IdleScene if s != IdleScene.VNVNC_ENTRANCE and s not in disabled_scenes]
         random.shuffle(other_scenes)
         self.scenes.extend(other_scenes)
         self.scene_index = 0

@@ -22,7 +22,7 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.coupon_service import get_coupon_service, CouponResult
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 from artifact.audio.engine import get_audio_engine
 import numpy as np
 
@@ -744,14 +744,39 @@ class QuizMode(BaseMode):
 
             if self._victory_doodle:
                 logger.info(f"Victory doodle generated: {len(self._victory_doodle.image_data)} bytes")
-                # Upload doodle for QR sharing
-                logger.info("Starting quiz victory doodle upload for QR sharing")
+                # Upload rendered LABEL for QR sharing
+                logger.info("Starting quiz label upload for QR sharing")
+                # Pre-generate URL for printing
+                pre_info = pre_generate_upload_info("quiz", "png")
+                self._qr_url = pre_info.short_url
+                self._qr_image = generate_qr_image(pre_info.short_url)
+                logger.info(f"Pre-generated QR URL for quiz: {self._qr_url}")
+
+                # Generate the full label preview
+                from artifact.printing.label_receipt import LabelReceiptGenerator
+                from datetime import datetime
+                label_gen = LabelReceiptGenerator()
+                temp_print_data = {
+                    "type": "quiz",
+                    "caricature": self._victory_doodle.image_data,
+                    "score": self._score,
+                    "coupon_code": self._coupon_code if hasattr(self, '_coupon_code') else None,
+                    "qr_url": pre_info.short_url,
+                    "short_url": pre_info.short_url,
+                    "timestamp": datetime.now().isoformat(),
+                }
+                receipt = label_gen.generate_receipt("quiz", temp_print_data)
+                label_png = receipt.preview_image if receipt else None
+
+                # Upload rendered label (or fallback to doodle)
+                upload_data = label_png if label_png else self._victory_doodle.image_data
                 self._uploader.upload_bytes(
-                    self._victory_doodle.image_data,
+                    upload_data,
                     prefix="quiz",
                     extension="png",
                     content_type="image/png",
-                    callback=self._on_upload_complete
+                    callback=self._on_upload_complete,
+                    pre_info=pre_info,
                 )
             else:
                 logger.warning("Victory doodle generation returned None")

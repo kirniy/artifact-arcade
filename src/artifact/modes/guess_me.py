@@ -27,7 +27,7 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 from artifact.animation.santa_runner import SantaRunner
 from artifact.audio.engine import get_audio_engine
 
@@ -719,15 +719,41 @@ class GuessMeMode(BaseMode):
             # Advance to finalizing
             self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
-            # Upload caricature for QR sharing
+            # Upload rendered LABEL (not just caricature) for QR sharing - like photobooth
             if self._illustration and self._illustration.image_data:
-                logger.info("Starting guess_me caricature upload for QR sharing")
+                logger.info("Starting guess_me label upload for QR sharing")
+                # Pre-generate URL NOW so it's available for printing
+                pre_info = pre_generate_upload_info("guess_me", "png")
+                self._qr_url = pre_info.short_url
+                self._qr_image = generate_qr_image(pre_info.short_url)
+                self._short_url = pre_info.short_url
+                logger.info(f"Pre-generated QR URL for guess_me: {self._qr_url}")
+
+                # Generate the full label preview (like photobooth does)
+                from artifact.printing.label_receipt import LabelReceiptGenerator
+                label_gen = LabelReceiptGenerator()
+                temp_print_data = {
+                    "type": "guess_me",
+                    "title": self._guess_title,
+                    "prediction": self._guess_text or "",
+                    "caricature": self._illustration.image_data,
+                    "photo": self._photo_data,
+                    "qr_url": pre_info.short_url,
+                    "short_url": pre_info.short_url,
+                    "timestamp": datetime.now().isoformat()
+                }
+                receipt = label_gen.generate_receipt("guess_me", temp_print_data)
+                label_png = receipt.preview_image if receipt else None
+
+                # Upload rendered label (or fallback to caricature)
+                upload_data = label_png if label_png else self._illustration.image_data
                 self._uploader.upload_bytes(
-                    self._illustration.image_data,
+                    upload_data,
                     prefix="guess_me",
                     extension="png",
                     content_type="image/png",
-                    callback=self._on_upload_complete
+                    callback=self._on_upload_complete,
+                    pre_info=pre_info,
                 )
         except Exception as e:
             logger.error(f"Image generation error: {e}")

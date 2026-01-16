@@ -29,8 +29,8 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.audio.engine import get_audio_engine
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
-from artifact.animation.santa_runner import SantaRunner, reset_santa_runner
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
+from artifact.animation.santa_runner import SantaRunner
 
 logger = logging.getLogger(__name__)
 
@@ -808,15 +808,43 @@ class FortuneMode(BaseMode):
                 # Image done, advance to finalizing
                 self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
-                # Upload caricature for QR sharing
+                # Upload rendered LABEL (not just caricature) for QR sharing
                 if self._caricature and self._caricature.image_data:
-                    logger.info("Starting caricature upload for QR sharing")
+                    logger.info("Starting label upload for QR sharing")
+                    # Pre-generate URL NOW so it's available for printing
+                    pre_info = pre_generate_upload_info("fortune", "png")
+                    self._qr_url = pre_info.short_url
+                    self._qr_image = generate_qr_image(pre_info.short_url)
+                    logger.info(f"Pre-generated QR URL for fortune: {self._qr_url}")
+
+                    # Generate the full label preview
+                    from artifact.printing.label_receipt import LabelReceiptGenerator
+                    label_gen = LabelReceiptGenerator()
+                    day, month, year = self._birthdate if self._birthdate else (1, 1, 2000)
+                    temp_print_data = {
+                        "prediction": self._prediction,
+                        "caricature": self._caricature.image_data,
+                        "zodiac_sign": self._zodiac_sign,
+                        "chinese_zodiac": self._chinese_zodiac,
+                        "birthdate": f"{day:02d}.{month:02d}.{year}",
+                        "lucky_color": self._lucky_color,
+                        "timestamp": datetime.now().isoformat(),
+                        "type": "fortune",
+                        "qr_url": pre_info.short_url,
+                        "short_url": pre_info.short_url,
+                    }
+                    receipt = label_gen.generate_receipt("fortune", temp_print_data)
+                    label_png = receipt.preview_image if receipt else None
+
+                    # Upload rendered label (or fallback to caricature)
+                    upload_data = label_png if label_png else self._caricature.image_data
                     self._uploader.upload_bytes(
-                        self._caricature.image_data,
+                        upload_data,
                         prefix="fortune",
                         extension="png",
                         content_type="image/png",
-                        callback=self._on_upload_complete
+                        callback=self._on_upload_complete,
+                        pre_info=pre_info,
                     )
             except asyncio.TimeoutError:
                 logger.warning("Caricature generation timed out")
@@ -1071,6 +1099,7 @@ class FortuneMode(BaseMode):
                 "timestamp": datetime.now().isoformat(),
                 "type": "fortune",
                 "qr_url": self._qr_url,
+                "short_url": self._qr_url,  # Explicitly pass for footer display
                 "qr_image": self._qr_image,
             }
         )
@@ -1501,10 +1530,10 @@ class FortuneMode(BaseMode):
             )
 
         elif self._sub_phase == FortunePhase.PROCESSING:
-            # Use Santa Runner's ticker progress bar
+            # Use Santa Runner's ticker progress bar (cycles continuously)
             if self._santa_runner:
                 progress = self._progress_tracker.get_progress()
-                self._santa_runner.render_ticker(buffer, progress)
+                self._santa_runner.render_ticker(buffer, progress, self._time_in_phase)
                 return  # Skip other rendering
 
         elif self._sub_phase == FortunePhase.RESULT:

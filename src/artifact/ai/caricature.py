@@ -37,7 +37,8 @@ class CaricatureStyle(Enum):
     QUIZ_WINNER = "quiz_winner"  # Victory celebration doodle for quiz winners
     ZODIAC = "zodiac"          # Constellation/zodiac sign portrait
     ROULETTE = "roulette"      # Casino/wheel winner style
-    PHOTOBOOTH = "photobooth"  # Christmas 2x2 photo booth grid
+    PHOTOBOOTH = "photobooth"  # 9:16 vertical photo booth strip for label
+    PHOTOBOOTH_SQUARE = "photobooth_square"  # 1:1 square photo booth for LED display
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -189,86 +190,131 @@ Googie architecture vibes, optimistic tomorrow, stylized cool.
 Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
 ]
 
-# PHOTOBOOTH VARIATIONS - Brazil/Copacabana theme photo booth grid
-# NOTE: These prompts handle both single person AND groups - include ALL people from the photo!
-# BRANDING: "VNVNC" appears ONCE as a banner at the bottom, NOT in each frame!
+# PHOTOBOOTH VARIATIONS - Brazil/Copacabana theme VERTICAL photo strip
+# OUTPUT: 9:16 VERTICAL aspect ratio for thermal label printing
 PHOTOBOOTH_VARIATIONS = [
-    """Create a FUN BRAZIL PARTY PHOTO BOOTH 2x2 GRID image!
+    """BRAZIL PARTY PHOTO BOOTH - TALL VERTICAL STRIP (9:16)
 
-IMPORTANT: Look at the reference photo carefully!
-- If there is ONE person: show that person in 4 different playful poses
-- If there are MULTIPLE people: show the WHOLE GROUP together in all 4 frames!
-ALL people from the reference MUST appear in each frame!
+Create a vibrant VERTICAL photo booth strip with 4 frames in a 2x2 grid.
+The image should be TALL (portrait orientation, 9:16 ratio).
 
-LAYOUT: A 2x2 grid of 4 photo booth frames:
-- Frame 1: Big smiles, carnival energy, party vibes
-- Frame 2: Silly faces, samba poses, fun expressions
-- Frame 3: Peace signs, celebration poses, thumbs up
-- Frame 4: Dancing poses, excited expressions, party energy
+TOP BANNER - ARCHING TEXT (CRITICAL - MUST BE IN ENGLISH!):
+At the TOP of the image, add stylized arching/curved text in Brazilian graffiti style:
+Main text: "SOUNDS LIKE: BRAZIL" - MUST BE IN ENGLISH, NOT TRANSLATED!
+Below it: "16.01—17.01" (the event dates)
+Make it bold, street-art inspired, with Brazilian colors!
+IMPORTANT: Keep "SOUNDS LIKE: BRAZIL" exactly as written - in ENGLISH letters!
 
-CRITICAL: Preserve EVERY person's likeness!
-Each person's face, hair, and distinctive features must be recognizable in ALL 4 frames.
+PEOPLE: Capture EVERYONE from the reference photo!
+- Solo person → 4 different fun poses of the same person
+- Group → ALL people appear together in ALL 4 frames
+PRESERVE LIKENESS: Same face, hair, features in every frame - just different expressions!
 
-BRAZIL THEME DECORATIONS: Tropical frame border with palm leaves, exotic flowers, carnival feathers.
-Colors: Brazilian flag (green, yellow, blue), tropical bright colors, carnival vibes!
-Think Copacabana beach, Rio carnival, samba energy!
+4 FRAMES: Each frame shows a DIFFERENT fun pose/expression - mix it up!
+Be creative with poses: smiles, silly faces, peace signs, dancing, samba poses,
+thumbs up, excited expressions, party energy - surprise us with the arrangement!
 
-BRANDING: Add "VNVNC" as a SINGLE BANNER at the very bottom of the entire grid.
-NOT in each photo frame - just ONE text banner below all 4 frames!
-Tropical party style lettering with Brazilian flair.
+BRAZIL CARNIVAL THEME:
+- Tropical border: palm leaves, exotic flowers, carnival feathers
+- Colors: Brazilian green, yellow, blue - Copacabana beach vibes!
+- Rio carnival energy, samba atmosphere
 
-High quality, joyful, professional photo booth aesthetic. Square aspect ratio.""",
+BRANDING: "VNVNC" banner at the BOTTOM of the strip (ONE time only, NOT in each frame).
+Tropical party style lettering.
 
-    """BRAZIL CARNIVAL PHOTO BOOTH STRIP - 2x2 grid of fun poses!
+Professional photo booth quality. VERTICAL 9:16 aspect ratio!""",
 
-FIRST: Count how many people are in the reference photo.
-- ONE person? Show them solo in 4 different poses
-- TWO or MORE people? Include the ENTIRE GROUP in each frame!
-Never leave anyone out!
+    """COPACABANA PHOTO BOOTH STRIP - VERTICAL FORMAT (9:16)
 
-Create a classic photo booth layout:
-- 4 frames arranged in a 2x2 grid
-- Each frame shows THE SAME PEOPLE from the reference photo
-- Poses: happy, dancing, excited, samba vibes
+Generate a FUN photo booth strip in TALL/VERTICAL orientation (9:16 ratio).
+Layout: 4 photo frames in a 2x2 grid filling the vertical space.
 
-ESSENTIAL: EVERY person in the reference must appear in ALL 4 frames!
-Same faces, same hair, same clothing - just different expressions.
+TOP HEADER - BRAZILIAN GRAFFITI STYLE (CRITICAL - ENGLISH TEXT!):
+Above the photo frames, add an arching/curved banner text:
+"SOUNDS LIKE: BRAZIL" in bold graffiti/street-art lettering - KEEP IN ENGLISH!
+"16.01—17.01" as smaller date text below
+Use Brazilian flag colors (green, yellow, blue) for the text!
+IMPORTANT: Do NOT translate "SOUNDS LIKE: BRAZIL" - it must stay in ENGLISH!
 
-TROPICAL FRAME: Palm leaves, exotic flowers, carnival feathers border.
-BRIGHT COLORS: Green, yellow, blue (Brazil colors), tropical vibes!
-Copacabana beach party energy, Rio carnival atmosphere!
+CRITICAL - PRESERVE ALL PEOPLE:
+- Count everyone in the reference photo
+- EVERY person must appear in ALL 4 frames
+- Same faces, same hair, same clothes - different expressions!
 
-BRANDING: "VNVNC" text appears ONCE as a decorative banner BELOW the 4-frame grid.
-Do NOT put text inside each photo frame - only ONE banner at the bottom!
-Tropical party font with Brazilian carnival elements.
+4 FRAMES WITH VARIETY: Get creative with the poses!
+Mix of: silly faces, genuine smiles, dancing moves, samba poses, peace signs,
+excited expressions, party vibes, celebration energy.
+Each frame should feel different and fun - no boring repetition!
 
-Fun party atmosphere, professional photo booth quality. Square aspect ratio.""",
+TROPICAL BRAZIL DECORATIONS:
+- Border: Palm trees, tropical flowers, carnival feathers
+- Colors: Green, yellow, blue (Brazilian flag colors)
+- Copacabana beach party atmosphere!
 
-    """COPACABANA PARTY PHOTO BOOTH GRID - 4 fun poses!
+BRANDING: Single "VNVNC" banner at the very bottom (below all frames).
+Do NOT put text inside individual photo frames!
 
-CHECK THE REFERENCE: How many people are there?
-- Single person: 4 different solo poses
-- Group photo: ALL people together in each of the 4 frames!
+High quality, joyful aesthetic. TALL VERTICAL 9:16 format!""",
 
-2x2 photo booth layout:
-- Top left: Genuine smiles, beach party vibes
-- Top right: Funny faces, carnival expressions
-- Bottom left: Dancing poses, samba energy
-- Bottom right: Excited, tropical party mood
+    """RIO CARNIVAL PHOTO BOOTH - VERTICAL STRIP (9:16)
 
-CRITICAL REQUIREMENT: EVERYONE from the reference appears in ALL 4 frames!
-Same facial features, hairstyles, and outfits - just different expressions.
-Do NOT omit anyone from the group!
+Create a VERTICAL (tall) photo booth strip with 4 fun frames in 2x2 layout.
 
-BRAZIL DECORATIONS: Palm trees, tropical flowers, carnival feathers, beach vibes border.
-COLORS: Brazilian green, yellow, blue with tropical accents.
-Rio de Janeiro carnival energy, Copacabana beach party atmosphere!
+EVENT TITLE AT TOP (CRITICAL - ENGLISH TEXT REQUIRED!):
+Arching/curved text at the very top in graffiti/street-art Brazilian style:
+"SOUNDS LIKE: BRAZIL" - bold, colorful, graffiti letters - MUST BE IN ENGLISH!
+"16.01—17.01" - event dates below the main title
+Make the text pop with green, yellow, blue colors!
+IMPORTANT: "SOUNDS LIKE: BRAZIL" must remain in ENGLISH - do NOT translate!
 
-BRANDING: Add "VNVNC" as a SINGLE banner text at the bottom of the entire image.
-This text should appear ONLY ONCE, below all 4 photo frames - NOT inside each frame!
-Tropical party style, Brazilian carnival font.
+PEOPLE HANDLING:
+- Single person: Show them in 4 different playful poses
+- Multiple people: Include the ENTIRE GROUP in each of the 4 frames
+IMPORTANT: Everyone's likeness must be recognizable in ALL frames!
 
-Joyful Brazil party photo booth energy! Square aspect ratio.""",
+4 FRAMES - CREATIVE FREEDOM:
+Each frame should have a different vibe - you choose the arrangement!
+Ideas: big smiles, goofy faces, dance moves, peace signs, samba poses,
+excited jumping, thumbs up, party energy, celebration!
+Make each frame feel unique and fun!
+
+BRAZIL THEME:
+- Tropical frame border with palm leaves, exotic flowers, feathers
+- Brazilian colors: green, yellow, blue accents
+- Rio de Janeiro carnival energy!
+
+BRANDING: "VNVNC" as ONE banner text at the bottom of the entire image.
+NOT inside each photo - just one at the very bottom!
+
+Professional photo booth quality. 9:16 VERTICAL (TALL) aspect ratio!""",
+]
+
+# PHOTOBOOTH SQUARE VARIATIONS - Same Brazil theme but 1:1 for LED display
+# OUTPUT: 1:1 SQUARE aspect ratio for 128x128 LED display preview
+PHOTOBOOTH_SQUARE_VARIATIONS = [
+    """BRAZIL PARTY PHOTO BOOTH - SQUARE FORMAT (1:1)
+
+Create a vibrant photo booth grid with 4 frames in a 2x2 layout.
+The image should be SQUARE (1:1 aspect ratio).
+
+PEOPLE: Capture EVERYONE from the reference!
+- Solo → 4 fun poses of the same person
+- Group → ALL people in ALL 4 frames
+PRESERVE LIKENESS in every frame!
+
+4 FRAMES WITH VARIETY - get creative with the poses!
+Mix of: silly faces, genuine smiles, peace signs, dancing, samba poses,
+excited expressions, party vibes, celebration energy.
+Each frame should feel different and fun!
+
+BRAZIL CARNIVAL THEME:
+- Tropical border: palm leaves, flowers, feathers
+- Colors: Brazilian green, yellow, blue
+- Rio carnival vibes!
+
+BRANDING: "VNVNC" banner at the bottom (ONE time only).
+
+Professional photo booth quality. SQUARE 1:1 aspect ratio!""",
 ]
 
 # GUESS VARIATIONS - Detective investigation board
@@ -661,9 +707,14 @@ STYLE_PROMPTS = {
     CaricatureStyle.ROULETTE: "ROULETTE_VARIATION",  # Will be replaced with random variation
 
     # =========================================================================
-    # PHOTOBOOTH MODE - Christmas 2x2 photo booth grid (uses PHOTOBOOTH_VARIATIONS)
+    # PHOTOBOOTH MODE - 9:16 vertical photo booth for label printing
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH: "PHOTOBOOTH_VARIATION",  # Will be replaced with random variation
+
+    # =========================================================================
+    # PHOTOBOOTH SQUARE MODE - 1:1 square photo booth for LED display
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_SQUARE: "PHOTOBOOTH_SQUARE_VARIATION",  # 1:1 for display
 
     # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
@@ -735,6 +786,7 @@ class CaricatureService:
                 "PROPHET_VARIATION": PROPHET_VARIATIONS,
                 "TAROT_VARIATION": TAROT_VARIATIONS,
                 "PHOTOBOOTH_VARIATION": PHOTOBOOTH_VARIATIONS,
+                "PHOTOBOOTH_SQUARE_VARIATION": PHOTOBOOTH_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -783,13 +835,17 @@ The result should be recognizable as THIS specific person, transformed artistica
 UNIQUENESS TOKEN: {uniqueness_token}
 """
 
+            # Determine aspect ratio based on style
+            # Photobooth uses 9:16 vertical format for better label layout
+            aspect_ratio = "9:16" if style == CaricatureStyle.PHOTOBOOTH else "1:1"
+
             # Send photo directly to Gemini 3 Pro Image Preview
             # The model understands to use the photo as reference
             image_data = await self._client.generate_image(
                 prompt=prompt,
                 reference_photo=reference_photo,
                 photo_mime_type="image/jpeg",
-                aspect_ratio="1:1",
+                aspect_ratio=aspect_ratio,
                 image_size="1K",  # Use 1K resolution
                 style="Black and white illustration, high contrast ink drawing, thermal printer style",
             )

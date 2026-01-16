@@ -20,7 +20,7 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.coupon_service import get_coupon_service, CouponResult
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 from artifact.audio.engine import get_audio_engine
 import numpy as np
 
@@ -532,13 +532,38 @@ class BadSantaMode(BaseMode):
                     img = Image.open(BytesIO(self._caricature.image_data))
                     self._caricature_image = np.array(img.convert('RGB'))
 
-                    # Upload for QR
+                    # Upload rendered LABEL for QR - pre-generate URL so print has it immediately
+                    pre_info = pre_generate_upload_info("bad_santa", "png")
+                    self._qr_url = pre_info.short_url
+                    self._qr_image = generate_qr_image(pre_info.short_url)
+                    logger.info(f"Pre-generated QR URL for bad_santa: {self._qr_url}")
+
+                    # Generate the full label preview
+                    from artifact.printing.label_receipt import LabelReceiptGenerator
+                    from datetime import datetime
+                    label_gen = LabelReceiptGenerator()
+                    category = self._get_verdict_category()
+                    temp_print_data = {
+                        "verdict": category,
+                        "nice_score": pct,
+                        "verdict_text": self._verdict_text or category,
+                        "display_text": self._verdict_text or category,
+                        "caricature": self._caricature.image_data,
+                        "qr_url": pre_info.short_url,
+                        "short_url": pre_info.short_url,
+                    }
+                    receipt = label_gen.generate_receipt("bad_santa", temp_print_data)
+                    label_png = receipt.preview_image if receipt else None
+
+                    # Upload rendered label (or fallback to caricature)
+                    upload_data = label_png if label_png else self._caricature.image_data
                     self._uploader.upload_bytes(
-                        self._caricature.image_data,
+                        upload_data,
                         prefix="bad_santa",
                         extension="png",
                         content_type="image/png",
-                        callback=self._on_upload_complete
+                        callback=self._on_upload_complete,
+                        pre_info=pre_info,
                     )
 
             # Wait for coupon
@@ -613,6 +638,7 @@ class BadSantaMode(BaseMode):
             "verdict_text": self._verdict_text or category,
             "display_text": self._verdict_text or category,
             "qr_url": self._qr_url,
+            "short_url": self._qr_url,  # Explicitly pass for footer display
         }
 
         if self._caricature:

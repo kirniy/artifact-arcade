@@ -40,7 +40,7 @@ from artifact.graphics.progress import ProgressPhase, SmartProgressTracker
 from artifact.modes.base import BaseMode, ModeContext, ModePhase, ModeResult
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 
 logger = logging.getLogger(__name__)
 
@@ -971,14 +971,44 @@ Square aspect ratio. Make it feel like a magical yearbook photo!"""
 
                     self._progress_tracker.advance_to_phase(ProgressPhase.FINALIZING)
 
-                    # Upload for QR
-                    logger.info("Starting portrait upload for QR sharing")
+                    # Upload rendered LABEL (not just portrait) for QR sharing - like photobooth
+                    logger.info("Starting sorting_hat label upload for QR sharing")
+                    # Pre-generate URL NOW so it's available for printing
+                    pre_info = pre_generate_upload_info("sorting_hat", "png")
+                    self._qr_url = pre_info.short_url
+                    self._qr_image = generate_qr_image(pre_info.short_url)
+                    self._short_url = pre_info.short_url
+                    logger.info(f"Pre-generated QR URL for sorting_hat: {self._qr_url}")
+
+                    # Generate the full label preview (like photobooth does)
+                    from artifact.printing.label_receipt import LabelReceiptGenerator
+                    house = HOUSES.get(self._sorted_house, HOUSES[HogwartsHouse.GRYFFINDOR])
+                    label_gen = LabelReceiptGenerator()
+                    temp_print_data = {
+                        "type": "sorting_hat",
+                        "house": self._sorted_house.value if self._sorted_house else "gryffindor",
+                        "house_name_ru": house.name_ru,
+                        "house_name_en": house.name_en,
+                        "traits": house.traits,
+                        "animal_ru": house.animal_ru,
+                        "caricature": self._caricature_data,
+                        "qr_url": pre_info.short_url,
+                        "short_url": pre_info.short_url,
+                        "scores": {h.value: s for h, s in self._house_scores.items()},
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                    receipt = label_gen.generate_receipt("sorting_hat", temp_print_data)
+                    label_png = receipt.preview_image if receipt else None
+
+                    # Upload rendered label (or fallback to portrait)
+                    upload_data = label_png if label_png else self._caricature_data
                     self._uploader.upload_bytes(
-                        self._caricature_data,
+                        upload_data,
                         prefix="sorting_hat",
                         extension="png",
                         content_type="image/png",
                         callback=self._on_upload_complete,
+                        pre_info=pre_info,
                     )
 
             logger.info("AI generation complete")

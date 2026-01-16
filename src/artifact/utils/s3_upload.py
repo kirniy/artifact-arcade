@@ -91,6 +91,48 @@ def generate_filename(prefix: str, extension: str = "jpg") -> str:
     return f"{prefix}_{timestamp}_{unique_id}.{extension}"
 
 
+@dataclass
+class PreUploadInfo:
+    """Pre-generated upload information for rendering labels before upload.
+
+    This allows rendering the label with the QR code/URL before uploading,
+    so the uploaded image can be the complete rendered label.
+    """
+    filename: str
+    short_id: str
+    short_url: str
+    s3_key: str
+    full_url: str
+
+
+def pre_generate_upload_info(prefix: str, extension: str = "png") -> PreUploadInfo:
+    """Pre-generate upload info including short URL before actual upload.
+
+    Use this when you need to render a label with the QR code/URL
+    before uploading the final image.
+
+    Args:
+        prefix: Type prefix (e.g., 'photobooth', 'roast')
+        extension: File extension
+
+    Returns:
+        PreUploadInfo with filename, short_id, short_url, etc.
+    """
+    filename = generate_filename(prefix, extension)
+    short_id = filename.rsplit('_', 1)[-1].rsplit('.', 1)[0]
+    s3_key = f"{SELECTEL_PREFIX}/{prefix}/{filename}"
+    full_url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
+    short_url = f"https://vnvnc.ru/p/{short_id}"
+
+    return PreUploadInfo(
+        filename=filename,
+        short_id=short_id,
+        short_url=short_url,
+        s3_key=s3_key,
+        full_url=full_url,
+    )
+
+
 def _create_redirect_html(target_url: str, title: str = "VNVNC Arcade") -> str:
     """Create an HTML redirect page.
 
@@ -244,7 +286,8 @@ def upload_bytes_to_s3(
     data: bytes,
     prefix: str,
     extension: str = "jpg",
-    content_type: str = "image/jpeg"
+    content_type: str = "image/jpeg",
+    pre_info: Optional[PreUploadInfo] = None,
 ) -> UploadResult:
     """Upload bytes to Selectel S3 synchronously.
 
@@ -253,6 +296,8 @@ def upload_bytes_to_s3(
         prefix: Type prefix for filename (e.g., 'caricature', 'photo')
         extension: File extension
         content_type: MIME type for the file
+        pre_info: Optional pre-generated upload info (from pre_generate_upload_info)
+                  Use this when you need to render a label with the URL before upload.
 
     Returns:
         UploadResult with success status, URL, and optional QR image
@@ -271,9 +316,13 @@ def upload_bytes_to_s3(
         return UploadResult(success=False, error=error)
 
     try:
-        # Save to temp file
-        filename = generate_filename(prefix, extension)
-        s3_key = f"{SELECTEL_PREFIX}/{prefix}/{filename}"
+        # Use pre-generated info if provided, otherwise generate new
+        if pre_info:
+            filename = pre_info.filename
+            s3_key = pre_info.s3_key
+        else:
+            filename = generate_filename(prefix, extension)
+            s3_key = f"{SELECTEL_PREFIX}/{prefix}/{filename}"
 
         with tempfile.NamedTemporaryFile(suffix=f'.{extension}', delete=False) as tmp:
             tmp.write(data)
@@ -473,7 +522,8 @@ class AsyncUploader:
         prefix: str,
         extension: str = "jpg",
         content_type: str = "image/jpeg",
-        callback: Optional[Callable[[UploadResult], None]] = None
+        callback: Optional[Callable[[UploadResult], None]] = None,
+        pre_info: Optional[PreUploadInfo] = None,
     ) -> None:
         """Start background upload of bytes.
 
@@ -483,12 +533,13 @@ class AsyncUploader:
             extension: File extension
             content_type: MIME type
             callback: Optional callback when complete
+            pre_info: Optional pre-generated upload info (for rendering labels with URL before upload)
         """
         self._result = None
         self._callback = callback
 
         def _upload():
-            result = upload_bytes_to_s3(data, prefix, extension, content_type)
+            result = upload_bytes_to_s3(data, prefix, extension, content_type, pre_info=pre_info)
             self._result = result
             if self._callback:
                 try:

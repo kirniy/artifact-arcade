@@ -27,7 +27,7 @@ from artifact.audio.engine import get_audio_engine
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
 from artifact.utils.coupon_service import get_coupon_service, CouponResult
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 
 logger = logging.getLogger(__name__)
 
@@ -482,14 +482,39 @@ class SquidGameMode(BaseMode):
                     self._sketch_image = data
                     self._sketch_cache = {}
 
-                    # Upload sketch for QR sharing
-                    logger.info("Starting squid_game sketch upload for QR sharing")
+                    # Upload rendered LABEL (not just sketch) for QR sharing - like photobooth
+                    logger.info("Starting squid_game label upload for QR sharing")
+                    # Pre-generate URL NOW so it's available for printing
+                    pre_info = pre_generate_upload_info("squid_game", "png")
+                    self._qr_url = pre_info.short_url
+                    self._qr_image = generate_qr_image(pre_info.short_url)
+                    self._short_url = pre_info.short_url
+                    logger.info(f"Pre-generated QR URL for squid_game: {self._qr_url}")
+
+                    # Generate the full label preview (like photobooth does)
+                    from artifact.printing.label_receipt import LabelReceiptGenerator
+                    label_gen = LabelReceiptGenerator()
+                    temp_print_data = {
+                        "type": "squid_game",
+                        "sketch": data,
+                        "qr_url": pre_info.short_url,
+                        "short_url": pre_info.short_url,
+                        "victory": self._sub_phase == SquidPhase.VICTORY,
+                        "coupon_code": self._coupon_code,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    receipt = label_gen.generate_receipt("squid_game", temp_print_data)
+                    label_png = receipt.preview_image if receipt else None
+
+                    # Upload rendered label (or fallback to sketch)
+                    upload_data = label_png if label_png else data
                     self._uploader.upload_bytes(
-                        data,
+                        upload_data,
                         prefix="squid_game",
                         extension="png",
                         content_type="image/png",
-                        callback=self._on_upload_complete
+                        callback=self._on_upload_complete,
+                        pre_info=pre_info,
                     )
                 else:
                     logger.warning("Sketch task completed but returned no data")

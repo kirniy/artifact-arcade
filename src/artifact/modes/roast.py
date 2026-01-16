@@ -21,7 +21,7 @@ from artifact.ai.client import get_gemini_client, GeminiModel
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.utils.camera import create_viewfinder_overlay
 from artifact.utils.camera_service import camera_service
-from artifact.utils.s3_upload import AsyncUploader, UploadResult
+from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 from artifact.audio.engine import get_audio_engine
 
 import numpy as np
@@ -438,15 +438,41 @@ class RoastMeMode(BaseMode):
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
             self._doodle_image = await get_image()
 
-            # Upload doodle for QR sharing
+            # Upload rendered LABEL (not just doodle) for QR sharing - like photobooth
             if self._doodle_image and self._doodle_image.image_data:
-                logger.info("Starting doodle upload for QR sharing")
+                logger.info("Starting label upload for QR sharing")
+                # Pre-generate URL NOW so it's available for printing
+                pre_info = pre_generate_upload_info("roast", "png")
+                self._qr_url = pre_info.short_url
+                self._qr_image = generate_qr_image(pre_info.short_url)
+                logger.info(f"Pre-generated QR URL for roast: {self._qr_url}")
+
+                # Generate the full label preview (like photobooth does)
+                from artifact.printing.label_receipt import LabelReceiptGenerator
+                label_gen = LabelReceiptGenerator()
+                temp_print_data = {
+                    "type": "roast",
+                    "roast": self._roast_text,
+                    "vibe": self._vibe_score,
+                    "vibe_icon": self._vibe_icon,
+                    "doodle": self._doodle_image.image_data,
+                    "qr_url": pre_info.short_url,
+                    "short_url": pre_info.short_url,
+                    "photo": self._photo_data,
+                    "timestamp": datetime.now().isoformat()
+                }
+                receipt = label_gen.generate_receipt("roast", temp_print_data)
+                label_png = receipt.preview_image if receipt else None
+
+                # Upload rendered label (or fallback to doodle)
+                upload_data = label_png if label_png else self._doodle_image.image_data
                 self._uploader.upload_bytes(
-                    self._doodle_image.image_data,
+                    upload_data,
                     prefix="roast",
                     extension="png",
                     content_type="image/png",
-                    callback=self._on_upload_complete
+                    callback=self._on_upload_complete,
+                    pre_info=pre_info,
                 )
 
             # Advance to finalizing
@@ -543,6 +569,7 @@ class RoastMeMode(BaseMode):
                 "vibe_icon": self._vibe_icon,
                 "doodle": self._doodle_image.image_data if self._doodle_image else None,
                 "qr_url": self._qr_url,
+                "short_url": self._qr_url,  # Explicitly pass for footer display
                 "qr_image": self._qr_image,
                 "photo": self._photo_data,
                 "timestamp": datetime.now().isoformat()
@@ -566,14 +593,30 @@ class RoastMeMode(BaseMode):
             draw_animated_text(buffer, "ПРОЖАРКА", 64, self._red, self._time_in_phase, TextEffect.GLITCH, scale=2)
 
         elif self._sub_phase in (RoastPhase.CAMERA_PREP, RoastPhase.CAMERA_CAPTURE):
-             if self._camera_frame is not None:
-                if self._camera_frame.shape == (128, 128, 3):
-                    import numpy as np
-                    np.copyto(buffer, self._camera_frame)
-             
-             if self._sub_phase == RoastPhase.CAMERA_CAPTURE:
-                 cnt = math.ceil(self._camera_countdown)
-                 draw_centered_text(buffer, str(cnt), 64+shake_x, self._yellow, scale=3)
+            # SIMPLE APPROACH (copied from photobooth - WORKS!)
+            # Get camera frame and copy directly to buffer
+            frame = camera_service.get_frame(timeout=0)
+            if frame is not None and frame.shape[:2] == (128, 128):
+                np.copyto(buffer, frame)
+            else:
+                # Fallback when no camera
+                fill(buffer, (30, 15, 15))  # Dark red background
+                draw_centered_text(buffer, "ПРОЖАРКА", 50, self._red, scale=2)
+                draw_centered_text(buffer, "КАМЕРА", 75, self._yellow, scale=1)
+
+            if self._sub_phase == RoastPhase.CAMERA_CAPTURE and self._camera_countdown > 0:
+                # Dim camera background with red tint (like photobooth does with green)
+                buffer[:, :, :] = (buffer.astype(np.float32) * 0.3).astype(np.uint8)
+                buffer[:, :, 0] = np.minimum(buffer[:, :, 0].astype(np.uint16) + 20, 255).astype(np.uint8)
+
+                # Big countdown number in yellow
+                cnt = int(math.ceil(self._camera_countdown))
+                draw_centered_text(buffer, str(cnt), 40, self._yellow, scale=5)
+            elif self._sub_phase == RoastPhase.CAMERA_PREP:
+                # Show "press button" prompt with semi-transparent overlay at bottom
+                buffer[-24:, :, :] = (buffer[-24:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
+                buffer[-24:, :, 0] = np.minimum(buffer[-24:, :, 0].astype(np.uint16) + 40, 255).astype(np.uint8)
+                draw_centered_text(buffer, "ЖМИ", 115, self._yellow, scale=1)
 
         elif self._sub_phase == RoastPhase.PROCESSING:
             # Render Santa runner minigame while AI is processing, with camera as background
@@ -707,10 +750,10 @@ class RoastMeMode(BaseMode):
             render_ticker_static(buffer, f"ФОТО: {cnt}", self._time_in_phase, self._yellow, TextEffect.GLOW)
 
         elif self._sub_phase == RoastPhase.PROCESSING:
-            # Use Santa Runner's ticker progress bar
+            # Use Santa Runner's ticker progress bar (cycles continuously)
             if self._santa_runner:
                 progress = self._progress_tracker.get_progress()
-                self._santa_runner.render_ticker(buffer, progress)
+                self._santa_runner.render_ticker(buffer, progress, self._time_in_phase)
                 return  # Skip other rendering
 
         elif self._sub_phase == RoastPhase.REVEAL:

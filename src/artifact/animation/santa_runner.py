@@ -1,8 +1,8 @@
-"""Santa Runner Mini-Game - Chrome Dino style game with Christmas theme.
+"""Beach Runner Mini-Game - Chrome Dino style game with Brazil/tropical theme.
 
 A fun mini-game to play while waiting for AI processing.
-Features Santa Claus running through a snowy landscape,
-jumping over presents, snowmen, and Christmas trees!
+Features a colorful parrot running through a tropical beach,
+jumping over coconuts, crabs, and beach umbrellas!
 """
 
 import math
@@ -19,171 +19,159 @@ from numpy.typing import NDArray
 # Pixel Art Sprites (each row is a line of pixels, using color tuples)
 # =============================================================================
 
-# Santa colors
-SANTA_RED = (220, 50, 50)
-SANTA_WHITE = (255, 255, 255)
-SANTA_SKIN = (255, 200, 160)
-SANTA_BLACK = (40, 40, 40)
-SANTA_BELT = (80, 60, 40)
-SANTA_GOLD = (255, 200, 0)
+# Parrot colors (tropical bird)
+PARROT_GREEN = (50, 200, 80)
+PARROT_YELLOW = (255, 220, 50)
+PARROT_RED = (230, 60, 60)
+PARROT_BLUE = (50, 150, 255)
+PARROT_ORANGE = (255, 150, 50)
+PARROT_WHITE = (255, 255, 255)
+PARROT_BLACK = (30, 30, 30)
+PARROT_BEAK = (255, 180, 50)
 TRANS = None  # Transparent
 
-# Santa running frame 1 (12x14)
-SANTA_RUN1 = [
-    [TRANS, TRANS, TRANS, SANTA_WHITE, SANTA_WHITE, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_SKIN, SANTA_SKIN, SANTA_SKIN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_SKIN, SANTA_WHITE, SANTA_SKIN, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_WHITE, SANTA_WHITE, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_BELT, SANTA_GOLD, SANTA_BELT, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_RED, SANTA_RED, TRANS, SANTA_RED, SANTA_RED, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_RED, SANTA_RED, TRANS, TRANS, SANTA_RED, SANTA_RED, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_BLACK, SANTA_BLACK, TRANS, TRANS, TRANS, TRANS, SANTA_BLACK, SANTA_BLACK, TRANS, TRANS, TRANS],
+# Parrot running frame 1 (12x12)
+PARROT_RUN1 = [
+    [TRANS, TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_YELLOW, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_GREEN, PARROT_WHITE, PARROT_BLACK, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BEAK, PARROT_BEAK, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_RED, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [PARROT_RED, PARROT_RED, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_RED, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_ORANGE, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_ORANGE, TRANS, PARROT_ORANGE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_ORANGE, PARROT_ORANGE, TRANS, PARROT_ORANGE, PARROT_ORANGE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
 ]
 
-# Santa running frame 2 (12x14) - legs swapped
-SANTA_RUN2 = [
-    [TRANS, TRANS, TRANS, SANTA_WHITE, SANTA_WHITE, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_SKIN, SANTA_SKIN, SANTA_SKIN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_SKIN, SANTA_WHITE, SANTA_SKIN, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_WHITE, SANTA_WHITE, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_BELT, SANTA_GOLD, SANTA_BELT, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_RED, SANTA_RED, SANTA_RED, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_RED, SANTA_RED, TRANS, SANTA_RED, SANTA_RED, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_BLACK, SANTA_BLACK, TRANS, TRANS, SANTA_BLACK, SANTA_BLACK, TRANS, TRANS, TRANS, TRANS, TRANS],
+# Parrot running frame 2 (12x12) - wings flap
+PARROT_RUN2 = [
+    [TRANS, TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_YELLOW, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_GREEN, PARROT_WHITE, PARROT_BLACK, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BEAK, PARROT_BEAK, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [PARROT_RED, PARROT_RED, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [PARROT_RED, PARROT_RED, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_ORANGE, PARROT_ORANGE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_ORANGE, TRANS, TRANS, PARROT_ORANGE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_ORANGE, TRANS, TRANS, PARROT_ORANGE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
 ]
 
-# Santa jumping (12x14)
-SANTA_JUMP = [
-    [TRANS, TRANS, TRANS, SANTA_WHITE, SANTA_WHITE, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_SKIN, SANTA_SKIN, SANTA_SKIN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_WHITE, SANTA_SKIN, SANTA_WHITE, SANTA_SKIN, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_WHITE, SANTA_WHITE, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS],
-    [SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_BELT, SANTA_GOLD, SANTA_BELT, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_WHITE, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_RED, SANTA_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SANTA_RED, TRANS, SANTA_RED, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SANTA_RED, TRANS, TRANS, TRANS, SANTA_RED, TRANS, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, SANTA_BLACK, SANTA_BLACK, TRANS, TRANS, SANTA_BLACK, SANTA_BLACK, TRANS, TRANS, TRANS, TRANS, TRANS],
+# Parrot jumping (12x12) - wings spread
+PARROT_JUMP = [
+    [TRANS, TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_YELLOW, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_GREEN, PARROT_WHITE, PARROT_BLACK, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BEAK, PARROT_BEAK, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [PARROT_RED, PARROT_RED, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [PARROT_RED, PARROT_RED, PARROT_RED, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, PARROT_RED, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, PARROT_BLUE, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_GREEN, PARROT_GREEN, PARROT_GREEN, PARROT_BLUE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, PARROT_ORANGE, PARROT_ORANGE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, PARROT_ORANGE, TRANS, TRANS, PARROT_ORANGE, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS],
 ]
 
-# Obstacle colors
-PRESENT_RED = (200, 50, 50)
-PRESENT_GREEN = (50, 150, 50)
-PRESENT_GOLD = (255, 200, 0)
-PRESENT_BLUE = (50, 100, 200)
-SNOWMAN_WHITE = (255, 255, 255)
-SNOWMAN_ORANGE = (255, 150, 50)
-SNOWMAN_BLACK = (30, 30, 30)
-TREE_GREEN = (40, 120, 40)
-TREE_DARK = (30, 90, 30)
-TREE_BROWN = (100, 70, 40)
-TREE_STAR = (255, 220, 50)
-CANDY_RED = (220, 50, 50)
-CANDY_WHITE = (255, 255, 255)
+# Beach/tropical obstacle colors
+COCONUT_BROWN = (139, 90, 43)
+COCONUT_DARK = (100, 60, 30)
+CRAB_RED = (220, 80, 60)
+CRAB_ORANGE = (255, 140, 80)
+UMBRELLA_RED = (230, 50, 50)
+UMBRELLA_WHITE = (255, 255, 255)
+UMBRELLA_YELLOW = (255, 220, 50)
+PALM_GREEN = (50, 140, 50)
+PALM_DARK = (30, 100, 30)
+PALM_BROWN = (120, 80, 40)
+BUCKET_BLUE = (80, 150, 255)
+BUCKET_YELLOW = (255, 220, 80)
 
-# Present box (8x8)
-PRESENT = [
-    [TRANS, PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD, TRANS],
-    [PRESENT_GOLD, PRESENT_GOLD, TRANS, PRESENT_GOLD, PRESENT_GOLD, TRANS, PRESENT_GOLD, PRESENT_GOLD],
-    [PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED],
-    [PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED],
-    [PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED],
-    [PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED],
-    [PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED],
-    [PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED, PRESENT_GOLD, PRESENT_RED, PRESENT_RED],
+# Coconut (8x8)
+COCONUT = [
+    [TRANS, TRANS, COCONUT_BROWN, COCONUT_BROWN, COCONUT_BROWN, COCONUT_BROWN, TRANS, TRANS],
+    [TRANS, COCONUT_BROWN, COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN, COCONUT_BROWN, TRANS],
+    [COCONUT_BROWN, COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN, COCONUT_BROWN],
+    [COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN],
+    [COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN],
+    [COCONUT_BROWN, COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN, COCONUT_BROWN],
+    [TRANS, COCONUT_BROWN, COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN, COCONUT_BROWN, TRANS],
+    [TRANS, TRANS, COCONUT_BROWN, COCONUT_BROWN, COCONUT_BROWN, COCONUT_BROWN, TRANS, TRANS],
 ]
 
-# Snowman (10x12)
-SNOWMAN = [
-    [TRANS, TRANS, TRANS, SNOWMAN_BLACK, SNOWMAN_BLACK, SNOWMAN_BLACK, SNOWMAN_BLACK, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, SNOWMAN_BLACK, SNOWMAN_BLACK, SNOWMAN_BLACK, SNOWMAN_BLACK, SNOWMAN_BLACK, SNOWMAN_BLACK, TRANS, TRANS],
-    [TRANS, TRANS, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS],
-    [TRANS, SNOWMAN_WHITE, SNOWMAN_BLACK, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_BLACK, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS],
-    [TRANS, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_ORANGE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS],
-    [TRANS, TRANS, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS, TRANS],
-    [TRANS, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS],
-    [SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_BLACK, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS],
-    [SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_BLACK, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS],
-    [TRANS, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_BLACK, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS],
-    [TRANS, TRANS, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, SNOWMAN_WHITE, SNOWMAN_WHITE, SNOWMAN_WHITE, TRANS, TRANS, TRANS, TRANS],
+# Crab (10x6)
+CRAB = [
+    [TRANS, CRAB_RED, TRANS, TRANS, TRANS, TRANS, TRANS, TRANS, CRAB_RED, TRANS],
+    [CRAB_RED, CRAB_RED, TRANS, CRAB_ORANGE, CRAB_ORANGE, CRAB_ORANGE, CRAB_ORANGE, TRANS, CRAB_RED, CRAB_RED],
+    [TRANS, TRANS, CRAB_ORANGE, CRAB_RED, CRAB_RED, CRAB_RED, CRAB_RED, CRAB_ORANGE, TRANS, TRANS],
+    [TRANS, CRAB_ORANGE, CRAB_RED, CRAB_RED, CRAB_RED, CRAB_RED, CRAB_RED, CRAB_RED, CRAB_ORANGE, TRANS],
+    [TRANS, CRAB_ORANGE, TRANS, CRAB_ORANGE, TRANS, TRANS, CRAB_ORANGE, TRANS, CRAB_ORANGE, TRANS],
+    [CRAB_ORANGE, TRANS, TRANS, TRANS, CRAB_ORANGE, CRAB_ORANGE, TRANS, TRANS, TRANS, CRAB_ORANGE],
 ]
 
-# Christmas tree (10x14)
-TREE = [
-    [TRANS, TRANS, TRANS, TRANS, TREE_STAR, TREE_STAR, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, TRANS, TREE_STAR, TREE_STAR, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, TRANS, TREE_GREEN, TREE_GREEN, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TREE_GREEN, TREE_GREEN, PRESENT_RED, TREE_GREEN, TREE_GREEN, TREE_GREEN, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TRANS, TRANS],
-    [TRANS, TREE_GREEN, TREE_GREEN, PRESENT_GOLD, TREE_GREEN, TREE_GREEN, PRESENT_BLUE, TREE_GREEN, TREE_GREEN, TRANS],
-    [TRANS, TRANS, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TRANS, TRANS],
-    [TRANS, TREE_GREEN, TREE_GREEN, TREE_GREEN, PRESENT_RED, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TRANS],
-    [TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN, TREE_GREEN],
-    [TRANS, TRANS, TRANS, TRANS, TREE_BROWN, TREE_BROWN, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, TRANS, TREE_BROWN, TREE_BROWN, TRANS, TRANS, TRANS, TRANS],
-    [TRANS, TRANS, TRANS, TREE_BROWN, TREE_BROWN, TREE_BROWN, TREE_BROWN, TRANS, TRANS, TRANS],
+# Beach umbrella (10x12)
+UMBRELLA = [
+    [TRANS, TRANS, TRANS, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_RED, TRANS, TRANS],
+    [TRANS, UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_WHITE, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_WHITE, UMBRELLA_RED, TRANS],
+    [UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_WHITE, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_WHITE, UMBRELLA_RED],
+    [UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_RED, UMBRELLA_WHITE, UMBRELLA_RED],
+    [TRANS, TRANS, TRANS, TRANS, PALM_BROWN, PALM_BROWN, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, TRANS, PALM_BROWN, PALM_BROWN, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, TRANS, PALM_BROWN, PALM_BROWN, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, TRANS, PALM_BROWN, PALM_BROWN, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, TRANS, PALM_BROWN, PALM_BROWN, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, TRANS, PALM_BROWN, PALM_BROWN, TRANS, TRANS, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, TRANS, PALM_BROWN, PALM_BROWN, TRANS, TRANS, TRANS, TRANS],
 ]
 
-# Candy cane (5x12)
-CANDY_CANE = [
-    [TRANS, CANDY_RED, CANDY_RED, CANDY_RED, TRANS],
-    [CANDY_RED, CANDY_WHITE, CANDY_WHITE, CANDY_RED, CANDY_RED],
-    [CANDY_RED, TRANS, TRANS, TRANS, CANDY_WHITE],
-    [CANDY_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_RED, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_RED, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_RED, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_WHITE, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_RED, TRANS, TRANS, TRANS, TRANS],
-    [CANDY_WHITE, TRANS, TRANS, TRANS, TRANS],
+# Beach bucket (8x8)
+BUCKET = [
+    [TRANS, BUCKET_YELLOW, BUCKET_YELLOW, BUCKET_YELLOW, BUCKET_YELLOW, BUCKET_YELLOW, BUCKET_YELLOW, TRANS],
+    [BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE],
+    [BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE],
+    [BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE],
+    [BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE],
+    [TRANS, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, TRANS],
+    [TRANS, TRANS, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, BUCKET_BLUE, TRANS, TRANS],
+    [TRANS, TRANS, TRANS, BUCKET_BLUE, BUCKET_BLUE, TRANS, TRANS, TRANS],
 ]
 
-# Star collectible (5x5)
+# Collectible star (beach ball style) (6x6)
 STAR = [
-    [TRANS, TRANS, TREE_STAR, TRANS, TRANS],
-    [TRANS, TREE_STAR, TREE_STAR, TREE_STAR, TRANS],
-    [TREE_STAR, TREE_STAR, TREE_STAR, TREE_STAR, TREE_STAR],
-    [TRANS, TREE_STAR, TREE_STAR, TREE_STAR, TRANS],
-    [TRANS, TREE_STAR, TRANS, TREE_STAR, TRANS],
+    [TRANS, (255, 200, 50), (255, 200, 50), (255, 200, 50), (255, 200, 50), TRANS],
+    [(255, 200, 50), (255, 100, 100), (255, 255, 255), (255, 255, 255), (100, 200, 255), (255, 200, 50)],
+    [(255, 200, 50), (255, 255, 255), (255, 100, 100), (100, 200, 255), (255, 255, 255), (255, 200, 50)],
+    [(255, 200, 50), (255, 255, 255), (100, 200, 255), (255, 100, 100), (255, 255, 255), (255, 200, 50)],
+    [(255, 200, 50), (100, 200, 255), (255, 255, 255), (255, 255, 255), (255, 100, 100), (255, 200, 50)],
+    [TRANS, (255, 200, 50), (255, 200, 50), (255, 200, 50), (255, 200, 50), TRANS],
 ]
 
-# Gift projectile (4x4) - small wrapped present
-GIFT_PROJECTILE = [
-    [PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD, PRESENT_GOLD],
-    [PRESENT_GREEN, PRESENT_GOLD, PRESENT_GREEN, PRESENT_GREEN],
-    [PRESENT_GREEN, PRESENT_GOLD, PRESENT_GREEN, PRESENT_GREEN],
-    [PRESENT_GREEN, PRESENT_GOLD, PRESENT_GREEN, PRESENT_GREEN],
+# Projectile - coconut (small) (4x4)
+PROJECTILE = [
+    [TRANS, COCONUT_BROWN, COCONUT_BROWN, TRANS],
+    [COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN],
+    [COCONUT_BROWN, COCONUT_DARK, COCONUT_DARK, COCONUT_BROWN],
+    [TRANS, COCONUT_BROWN, COCONUT_BROWN, TRANS],
 ]
 
 
 class ObstacleType(Enum):
     """Types of obstacles."""
-    PRESENT = auto()
-    SNOWMAN = auto()
-    TREE = auto()
-    CANDY_CANE = auto()
+    COCONUT = auto()
+    CRAB = auto()
+    UMBRELLA = auto()
+    BUCKET = auto()
 
 
+# Map obstacle types to sprites
 OBSTACLE_SPRITES = {
-    ObstacleType.PRESENT: PRESENT,
-    ObstacleType.SNOWMAN: SNOWMAN,
-    ObstacleType.TREE: TREE,
-    ObstacleType.CANDY_CANE: CANDY_CANE,
+    ObstacleType.COCONUT: COCONUT,
+    ObstacleType.CRAB: CRAB,
+    ObstacleType.UMBRELLA: UMBRELLA,
+    ObstacleType.BUCKET: BUCKET,
 }
 
 
@@ -206,15 +194,15 @@ class Obstacle:
 
 @dataclass
 class Collectible:
-    """A collectible star."""
+    """A collectible beach ball."""
     x: float
     y: float
     collected: bool = False
 
 
 @dataclass
-class Snowflake:
-    """A snowflake particle."""
+class SandParticle:
+    """A sand particle effect."""
     x: float
     y: float
     speed: float
@@ -231,7 +219,7 @@ class Cloud:
 
 @dataclass
 class Projectile:
-    """A gift projectile shot by Santa."""
+    """A coconut projectile thrown by parrot."""
     x: float
     y: float
     active: bool = True
@@ -239,9 +227,9 @@ class Projectile:
 
 @dataclass
 class GameState:
-    """State of the Santa runner game."""
-    # Santa position and physics
-    santa_y: float = 0.0
+    """State of the beach runner game."""
+    # Parrot position and physics
+    santa_y: float = 0.0  # Keep variable names for compatibility
     santa_vy: float = 0.0
     is_jumping: bool = False
     jump_count: int = 0  # For double jump (0, 1, or 2)
@@ -259,7 +247,7 @@ class GameState:
     # Entities
     obstacles: List[Obstacle] = field(default_factory=list)
     collectibles: List[Collectible] = field(default_factory=list)
-    snowflakes: List[Snowflake] = field(default_factory=list)
+    snowflakes: List[SandParticle] = field(default_factory=list)  # Sand particles
     clouds: List[Cloud] = field(default_factory=list)
     projectiles: List[Projectile] = field(default_factory=list)
 
@@ -272,10 +260,10 @@ class GameState:
 
 
 class SantaRunner:
-    """Santa Runner mini-game.
+    """Beach Runner mini-game (keeping class name for compatibility).
 
-    A Chrome dinosaur-style endless runner with Santa Claus.
-    Jump over presents, snowmen, and Christmas trees!
+    A Chrome dinosaur-style endless runner with a tropical parrot.
+    Jump over coconuts, crabs, and beach umbrellas!
 
     Usage:
         runner = SantaRunner()
@@ -289,8 +277,8 @@ class SantaRunner:
     """
 
     # Game constants
-    GROUND_Y = 100  # Y position of ground
-    SANTA_X = 20    # Santa's X position (fixed)
+    GROUND_Y = 100  # Y position of ground (beach)
+    SANTA_X = 20    # Parrot's X position (fixed)
     GRAVITY = 600.0  # Pixels per second squared
     JUMP_VELOCITY = -200.0  # Initial jump velocity
 
@@ -300,20 +288,20 @@ class SantaRunner:
 
     def _init_environment(self) -> None:
         """Initialize background elements."""
-        # Create initial snowflakes
-        for _ in range(30):
-            self._state.snowflakes.append(Snowflake(
+        # Create initial sand particles (sparse, subtle)
+        for _ in range(15):
+            self._state.snowflakes.append(SandParticle(
                 x=random.uniform(0, 128),
-                y=random.uniform(0, 100),
-                speed=random.uniform(20, 50),
-                size=random.choice([1, 1, 2])
+                y=random.uniform(self.GROUND_Y, 128),
+                speed=random.uniform(30, 60),
+                size=1
             ))
 
         # Create initial clouds
         for i in range(3):
             self._state.clouds.append(Cloud(
                 x=i * 50 + random.randint(0, 20),
-                y=random.randint(10, 30),
+                y=random.randint(10, 35),
                 width=random.randint(15, 25)
             ))
 
@@ -363,7 +351,7 @@ class SantaRunner:
     def handle_shoot(self) -> bool:
         """Handle shoot input. Returns True if shot was fired.
 
-        Shoots a gift projectile that destroys obstacles on contact.
+        Throws a coconut projectile that destroys obstacles on contact.
         """
         if self._state.game_over:
             # Auto-restart on any input
@@ -374,10 +362,10 @@ class SantaRunner:
         if self._state.shoot_cooldown > 0:
             return False
 
-        # Fire a projectile from Santa's position
+        # Fire a projectile from parrot's position
         santa_y = self.GROUND_Y - 6 + int(self._state.santa_y)
         self._state.projectiles.append(Projectile(
-            x=float(self.SANTA_X + 12),  # Start ahead of Santa
+            x=float(self.SANTA_X + 12),  # Start ahead of parrot
             y=float(santa_y)
         ))
         self._state.shoot_cooldown = 300.0  # 300ms cooldown
@@ -389,162 +377,136 @@ class SantaRunner:
             self._state.game_over_timer += delta_ms
             return
 
-        dt = delta_ms / 1000.0
         self._state.time_played += delta_ms
+        delta_s = delta_ms / 1000.0
 
-        # Update score based on distance
-        self._state.distance += self._state.speed * dt
-        self._state.score = int(self._state.distance / 10)
-
-        # Increase speed over time (max 150)
-        self._state.speed = min(150.0, 60.0 + self._state.time_played / 1000.0 * 2)
-
-        # Update Santa physics
-        if self._state.is_jumping:
-            self._state.santa_vy += self.GRAVITY * dt
-            self._state.santa_y += self._state.santa_vy * dt
-
-            if self._state.santa_y >= 0:
-                self._state.santa_y = 0
-                self._state.santa_vy = 0
-                self._state.is_jumping = False
-                self._state.jump_count = 0  # Reset double jump on landing
-
-        # Update shoot cooldown
+        # Update cooldowns
         if self._state.shoot_cooldown > 0:
             self._state.shoot_cooldown -= delta_ms
 
-        # Update projectiles
-        projectile_speed = 200.0  # Pixels per second
-        for proj in self._state.projectiles:
-            proj.x += projectile_speed * dt
+        # Update parrot physics
+        if self._state.is_jumping:
+            self._state.santa_vy += self.GRAVITY * delta_s
+            self._state.santa_y += self._state.santa_vy * delta_s
 
-        # Remove off-screen projectiles
-        self._state.projectiles = [p for p in self._state.projectiles if p.x < 140 and p.active]
-
-        # Check projectile-obstacle collisions (projectiles destroy obstacles!)
-        for proj in self._state.projectiles:
-            if not proj.active:
-                continue
-            for obs in self._state.obstacles[:]:  # Copy list to allow removal
-                obs_left = obs.x
-                obs_right = obs.x + obs.width
-                obs_top = self.GROUND_Y - obs.height
-                obs_bottom = self.GROUND_Y
-
-                # Check if projectile hits obstacle
-                if (obs_left < proj.x < obs_right and
-                    obs_top < proj.y < obs_bottom):
-                    proj.active = False
-                    self._state.obstacles.remove(obs)
-                    self._state.score += 5  # Bonus for destroying obstacle
-                    break
+            if self._state.santa_y >= 0:
+                self._state.santa_y = 0
+                self._state.is_jumping = False
+                self._state.santa_vy = 0
+                self._state.jump_count = 0
 
         # Update run animation
         self._state.run_timer += delta_ms
-        if self._state.run_timer > 150:
+        if self._state.run_timer >= 150:  # Faster animation
             self._state.run_timer = 0
             self._state.run_frame = 1 - self._state.run_frame
 
-        # Spawn obstacles
+        # Move obstacles
+        move_dist = self._state.speed * delta_s
+        self._state.distance += move_dist
+
+        for obs in self._state.obstacles:
+            obs.x -= move_dist
+
+        # Move collectibles
+        for col in self._state.collectibles:
+            col.x -= move_dist
+
+        # Move sand particles
+        for particle in self._state.snowflakes:
+            particle.x -= particle.speed * delta_s * 0.5
+            if particle.x < 0:
+                particle.x = 128 + random.randint(0, 20)
+                particle.y = random.uniform(self.GROUND_Y, 128)
+
+        # Move clouds (slower)
+        for cloud in self._state.clouds:
+            cloud.x -= move_dist * 0.2
+            if cloud.x < -cloud.width:
+                cloud.x = 128 + random.randint(0, 30)
+                cloud.y = random.randint(10, 35)
+
+        # Move projectiles
+        for proj in self._state.projectiles:
+            if proj.active:
+                proj.x += 150 * delta_s  # Fast projectile
+
+        # Remove off-screen obstacles
+        self._state.obstacles = [o for o in self._state.obstacles if o.x > -20]
+        self._state.collectibles = [c for c in self._state.collectibles if c.x > -10]
+        self._state.projectiles = [p for p in self._state.projectiles if p.x < 140 and p.active]
+
+        # Check projectile collisions with obstacles
+        for proj in self._state.projectiles:
+            if not proj.active:
+                continue
+            for obs in self._state.obstacles[:]:
+                if (obs.x < proj.x < obs.x + obs.width and
+                    self.GROUND_Y - obs.height < proj.y < self.GROUND_Y):
+                    # Hit! Remove both
+                    proj.active = False
+                    self._state.obstacles.remove(obs)
+                    self._state.score += 5  # Bonus for shooting
+                    break
+
+        # Check collisions
+        parrot_rect = (self.SANTA_X + 2, self.GROUND_Y - 10 + int(self._state.santa_y), 8, 10)
+
+        for obs in self._state.obstacles:
+            obs_rect = (obs.x, self.GROUND_Y - obs.height, obs.width, obs.height)
+            if self._check_collision(parrot_rect, obs_rect):
+                self._state.game_over = True
+                if self._state.score > self._state.high_score:
+                    self._state.high_score = self._state.score
+                return
+
+        # Check collectible pickup
+        for col in self._state.collectibles:
+            if not col.collected:
+                if (abs(col.x - self.SANTA_X) < 10 and
+                    abs(col.y - (self.GROUND_Y - 6 + int(self._state.santa_y))) < 10):
+                    col.collected = True
+                    self._state.score += 10
+
+        # Spawn new obstacles
         self._state.spawn_timer += delta_ms
         if self._state.spawn_timer >= self._state.spawn_interval:
             self._state.spawn_timer = 0
             self._spawn_obstacle()
-            # Decrease spawn interval over time (min 800ms)
-            self._state.spawn_interval = max(800.0, 1500.0 - self._state.time_played / 1000.0 * 20)
 
-        # Update obstacles
-        for obs in self._state.obstacles:
-            obs.x -= self._state.speed * dt
+            # Gradually increase speed
+            self._state.speed = min(150, 60 + self._state.distance / 100)
 
-        # Remove off-screen obstacles
-        self._state.obstacles = [o for o in self._state.obstacles if o.x > -20]
+            # Gradually decrease spawn interval
+            self._state.spawn_interval = max(800, 1500 - self._state.distance / 5)
 
-        # Update collectibles
-        for col in self._state.collectibles:
-            col.x -= self._state.speed * dt
-        self._state.collectibles = [c for c in self._state.collectibles if c.x > -10 and not c.collected]
+        # Score based on distance
+        self._state.score = max(self._state.score, int(self._state.distance / 10))
 
-        # Update snowflakes
-        for flake in self._state.snowflakes:
-            flake.y += flake.speed * dt
-            flake.x -= self._state.speed * dt * 0.2  # Slight horizontal drift
-            if flake.y > 105:
-                flake.y = -5
-                flake.x = random.uniform(0, 140)
-            if flake.x < -5:
-                flake.x = 133
-
-        # Update clouds
-        for cloud in self._state.clouds:
-            cloud.x -= self._state.speed * dt * 0.3
-            if cloud.x < -cloud.width:
-                cloud.x = 128 + random.randint(0, 20)
-                cloud.y = random.randint(10, 30)
-                cloud.width = random.randint(15, 25)
-
-        # Check collisions
-        self._check_collisions()
-
-        # Check collectible pickups
-        self._check_collectibles()
+    def _check_collision(self, rect1: Tuple, rect2: Tuple) -> bool:
+        """Check if two rectangles overlap."""
+        x1, y1, w1, h1 = rect1
+        x2, y2, w2, h2 = rect2
+        return (x1 < x2 + w2 and x1 + w1 > x2 and
+                y1 < y2 + h2 and y1 + h1 > y2)
 
     def _spawn_obstacle(self) -> None:
         """Spawn a new obstacle."""
-        # Choose random obstacle type with weights
-        weights = [4, 2, 2, 3]  # present, snowman, tree, candy cane
-        obstacle_type = random.choices(list(ObstacleType), weights=weights)[0]
+        # Weight towards smaller obstacles
+        weights = [4, 3, 2, 3]  # coconut, crab, umbrella, bucket
+        obs_type = random.choices(list(ObstacleType), weights=weights)[0]
 
         self._state.obstacles.append(Obstacle(
-            x=140.0,
-            type=obstacle_type
+            x=140,
+            type=obs_type
         ))
 
-        # Sometimes spawn a collectible star above the obstacle
-        if random.random() < 0.3:
+        # Occasionally spawn a collectible (beach ball)
+        if random.random() < 0.2:
             self._state.collectibles.append(Collectible(
-                x=145.0,
-                y=self.GROUND_Y - 35 - random.randint(0, 15)
+                x=160,
+                y=self.GROUND_Y - 25 - random.randint(0, 20)
             ))
-
-    def _check_collisions(self) -> None:
-        """Check for collisions with obstacles."""
-        santa_left = self.SANTA_X
-        santa_right = self.SANTA_X + 10
-        santa_top = self.GROUND_Y - 12 + int(self._state.santa_y)
-        santa_bottom = self.GROUND_Y + int(self._state.santa_y)
-
-        for obs in self._state.obstacles:
-            obs_left = obs.x
-            obs_right = obs.x + obs.width
-            obs_top = self.GROUND_Y - obs.height
-            obs_bottom = self.GROUND_Y
-
-            # AABB collision
-            if (santa_right > obs_left + 2 and santa_left < obs_right - 2 and
-                santa_bottom > obs_top + 2 and santa_top < obs_bottom):
-                self._game_over()
-                return
-
-    def _check_collectibles(self) -> None:
-        """Check for collectible pickups."""
-        santa_x = self.SANTA_X + 5
-        santa_y = self.GROUND_Y - 6 + int(self._state.santa_y)
-
-        for col in self._state.collectibles:
-            if not col.collected:
-                dist = math.sqrt((santa_x - col.x) ** 2 + (santa_y - col.y) ** 2)
-                if dist < 10:
-                    col.collected = True
-                    self._state.score += 10  # Bonus for collecting star
-
-    def _game_over(self) -> None:
-        """Handle game over."""
-        self._state.game_over = True
-        self._state.game_over_timer = 0
-        if self._state.score > self._state.high_score:
-            self._state.high_score = self._state.score
 
     def render(self, buffer: NDArray[np.uint8], background: Optional[NDArray[np.uint8]] = None) -> None:
         """Render the game to buffer.
@@ -552,7 +514,7 @@ class SantaRunner:
         Args:
             buffer: The 128x128 RGB buffer to render to
             background: Optional camera frame to use as background (dimmed).
-                        If None, uses default gradient sky.
+                        If None, uses default tropical sky.
         """
         if background is not None and background.shape == buffer.shape:
             # Use camera frame as background (dimmed for visibility)
@@ -564,61 +526,65 @@ class SantaRunner:
                 0, 255
             ).astype(np.uint8)
         else:
-            # Clear with gradient sky (dark blue to lighter)
+            # Clear with tropical sky gradient (cyan to light blue)
             for y in range(self.GROUND_Y):
-                darkness = int(20 + y * 0.3)
-                buffer[y, :, 0] = darkness // 2
-                buffer[y, :, 1] = darkness // 2
-                buffer[y, :, 2] = darkness + 20
+                # Gradient from light blue at top to cyan at horizon
+                ratio = y / self.GROUND_Y
+                r = int(100 + 50 * ratio)
+                g = int(180 + 40 * ratio)
+                b = int(255 - 20 * ratio)
+                buffer[y, :, 0] = r
+                buffer[y, :, 1] = g
+                buffer[y, :, 2] = b
 
-            # Ground (white snow)
-            buffer[self.GROUND_Y:, :, 0] = 240
-            buffer[self.GROUND_Y:, :, 1] = 245
-            buffer[self.GROUND_Y:, :, 2] = 255
+            # Beach sand (golden yellow gradient)
+            for y in range(self.GROUND_Y, 128):
+                sand_shade = 210 + int((y - self.GROUND_Y) * 1.5)
+                buffer[y, :, 0] = min(255, sand_shade)
+                buffer[y, :, 1] = min(255, sand_shade - 30)
+                buffer[y, :, 2] = min(255, sand_shade - 80)
 
-            # Add some ground texture (darker patches)
+            # Add some sand texture (darker patches)
             for x in range(0, 128, 8):
                 offset = int((self._state.distance / 3 + x) % 16)
                 if offset < 4:
-                    buffer[self.GROUND_Y + 2:self.GROUND_Y + 4, x:x + 3, 0] = 220
-                    buffer[self.GROUND_Y + 2:self.GROUND_Y + 4, x:x + 3, 1] = 225
-                    buffer[self.GROUND_Y + 2:self.GROUND_Y + 4, x:x + 3, 2] = 235
+                    buffer[self.GROUND_Y + 2:self.GROUND_Y + 4, x:x + 3, 0] = 200
+                    buffer[self.GROUND_Y + 2:self.GROUND_Y + 4, x:x + 3, 1] = 170
+                    buffer[self.GROUND_Y + 2:self.GROUND_Y + 4, x:x + 3, 2] = 120
 
-            # Render clouds (only on default background)
+            # Render clouds (always)
             for cloud in self._state.clouds:
                 self._render_cloud(buffer, int(cloud.x), int(cloud.y), cloud.width)
 
-        # Render snowflakes (always)
-        for flake in self._state.snowflakes:
-            x, y = int(flake.x), int(flake.y)
-            if 0 <= x < 128 and 0 <= y < 100:
-                buffer[y, x] = (255, 255, 255)
-                if flake.size >= 2 and x + 1 < 128:
-                    buffer[y, x + 1] = (255, 255, 255)
+        # Render sand particles (subtle)
+        for particle in self._state.snowflakes:
+            x, y = int(particle.x), int(particle.y)
+            if 0 <= x < 128 and self.GROUND_Y <= y < 128:
+                buffer[y, x] = (220, 200, 160)  # Sand color
 
         # Render obstacles
         for obs in self._state.obstacles:
             sprite = OBSTACLE_SPRITES[obs.type]
             self._render_sprite(buffer, sprite, int(obs.x), self.GROUND_Y - len(sprite))
 
-        # Render collectibles
+        # Render collectibles (beach balls)
         for col in self._state.collectibles:
             if not col.collected:
                 self._render_sprite(buffer, STAR, int(col.x), int(col.y))
 
-        # Render projectiles (gifts)
+        # Render projectiles (coconuts)
         for proj in self._state.projectiles:
             if proj.active:
-                self._render_sprite(buffer, GIFT_PROJECTILE, int(proj.x), int(proj.y) - 2)
+                self._render_sprite(buffer, PROJECTILE, int(proj.x), int(proj.y) - 2)
 
-        # Render Santa
-        santa_y = self.GROUND_Y - 12 + int(self._state.santa_y)
+        # Render parrot
+        santa_y = self.GROUND_Y - 11 + int(self._state.santa_y)
         if self._state.is_jumping:
-            sprite = SANTA_JUMP
+            sprite = PARROT_JUMP
         elif self._state.run_frame == 0:
-            sprite = SANTA_RUN1
+            sprite = PARROT_RUN1
         else:
-            sprite = SANTA_RUN2
+            sprite = PARROT_RUN2
         self._render_sprite(buffer, sprite, self.SANTA_X, santa_y)
 
         # Render score
@@ -643,22 +609,20 @@ class SantaRunner:
                         buffer[py, px] = pixel
 
     def _render_cloud(self, buffer: NDArray, x: int, y: int, width: int) -> None:
-        """Render a simple cloud."""
-        cloud_color = (60, 70, 90)
-        height = width // 3
-
-        for dy in range(height):
-            for dx in range(width):
-                # Circular cloud shape
-                cx, cy = width // 2, height // 2
-                dist = math.sqrt((dx - cx) ** 2 + (dy - cy) ** 2 * 3)
-                if dist < width // 2:
-                    px, py = x + dx, y + dy
-                    if 0 <= px < 128 and 0 <= py < 100:
+        """Render a fluffy white cloud."""
+        cloud_color = (255, 255, 255)
+        # Simple ellipse cloud
+        for dx in range(-width // 2, width // 2 + 1):
+            for dy in range(-3, 4):
+                # Ellipse formula
+                if (dx * dx) / (width * width / 4) + (dy * dy) / 9 <= 1:
+                    px = x + dx
+                    py = y + dy
+                    if 0 <= px < 128 and 0 <= py < 128:
                         buffer[py, px] = cloud_color
 
     def _render_score(self, buffer: NDArray) -> None:
-        """Render score at top of screen (below progress bar area)."""
+        """Render score display."""
         from artifact.graphics.text_utils import draw_text
 
         # Score in top-right, positioned below progress bar (y=10 to avoid overlap)
@@ -725,23 +689,45 @@ class SantaRunner:
         if self._state.game_over_timer > 200:
             self.reset()
 
-    def render_ticker(self, buffer: NDArray, progress: float = 0.0) -> None:
+    def render_ticker(self, buffer: NDArray, progress: float = 0.0, time_ms: float = 0.0) -> None:
         """Render animated progress bar on ticker display (48x8).
 
         Args:
             buffer: The 48x8 RGB ticker buffer
             progress: Progress value from 0.0 to 1.0
+            time_ms: Current time in ms for cycling animation
         """
         from artifact.graphics.primitives import fill, draw_rect
 
         # Clear ticker
         fill(buffer, (0, 0, 0))
 
-        # Animated progress bar with smooth gradient
-        bar_w = int(44 * progress)  # 44 pixels max width (2px margins each side)
-
         # Background bar
         draw_rect(buffer, 2, 2, 44, 4, (30, 30, 40))
+
+        # If progress is complete (1.0), show full bar
+        if progress >= 1.0:
+            display_progress = 1.0
+        else:
+            # Cycle continuously: use time to create a looping animation
+            # One full cycle every 3 seconds (3000ms)
+            cycle_duration = 3000.0
+            cycle_progress = (time_ms % cycle_duration) / cycle_duration
+
+            # Use eased progress for smooth acceleration/deceleration
+            # Ease in-out: slow at start, fast in middle, slow at end
+            if cycle_progress < 0.5:
+                # Ease in: quadratic
+                eased = 2 * cycle_progress * cycle_progress
+            else:
+                # Ease out: quadratic
+                t = cycle_progress - 0.5
+                eased = 0.5 + (1 - (1 - 2 * t) * (1 - 2 * t)) * 0.5
+
+            display_progress = eased
+
+        # Animated progress bar with smooth gradient
+        bar_w = int(44 * display_progress)  # 44 pixels max width (2px margins each side)
 
         # Filled progress bar - smooth gradient from green to gold
         if bar_w > 0:
@@ -750,26 +736,5 @@ class SantaRunner:
                 ratio = x / 44
                 r = int(100 + 155 * ratio)   # 100 -> 255
                 g = int(255 - 55 * ratio)    # 255 -> 200
-                b = int(100 - 100 * ratio)   # 100 -> 0
-                buffer[2:6, 2 + x, 0] = r
-                buffer[2:6, 2 + x, 1] = g
-                buffer[2:6, 2 + x, 2] = b
-
-
-# Singleton instance for easy access across modes
-_santa_runner: Optional[SantaRunner] = None
-
-
-def get_santa_runner() -> SantaRunner:
-    """Get or create the Santa runner game instance."""
-    global _santa_runner
-    if _santa_runner is None:
-        _santa_runner = SantaRunner()
-    return _santa_runner
-
-
-def reset_santa_runner() -> SantaRunner:
-    """Reset and return the Santa runner game."""
-    global _santa_runner
-    _santa_runner = SantaRunner()
-    return _santa_runner
+                b = int(50 - 30 * ratio)     # 50 -> 20
+                buffer[2:6, 2 + x] = (r, g, b)
