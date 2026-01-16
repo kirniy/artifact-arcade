@@ -178,7 +178,8 @@ Pin 6 (GND) → Black wire
 | HDMI | Main RGB Matrix (via T50) | HDMI port → NovaStar T50 |
 | GPIO 21 | WS2812B Ticker LEDs | PWM (384 LEDs, 48×8 pixels) |
 | I2C | LCD 16x1 | /dev/i2c-1 (GPIO 2,3), Address 0x27 |
-| UART | Thermal Printer | /dev/ttyAMA0 (GPIO 14,15) |
+| UART | Thermal Printer (legacy) | /dev/ttyAMA0 (GPIO 14,15) |
+| USB | AIYIN IP-802 Label Printer | /dev/usb/lp0 (USB Printer Class) |
 
 #### Camera
 | Component | Specification |
@@ -479,6 +480,128 @@ lcd.init()
 lcd.set_text("Привет мир!")  # Cyrillic works!
 lcd.set_text("АРТЕФАКТ")     # Mix of lookalikes + custom chars
 ```
+
+---
+
+## AIYIN IP-802 Thermal Label Printer
+
+### Hardware Specifications
+
+| Component | Specification |
+|-----------|---------------|
+| **Model** | AIYIN IP-802 (NEW) / QR-368C |
+| **Type** | Thermal label printer |
+| **Interface** | USB (Printer Class device) |
+| **Protocol** | **TSPL** (NOT ESC/POS!) |
+| **Max Print Width** | 72mm |
+| **Label Size** | 58mm × 100mm (our configuration) |
+| **Resolution** | 203 DPI (8 dots/mm) |
+| **Print Area** | 464 × 800 pixels |
+
+### USB Detection
+
+| Property | Value |
+|----------|-------|
+| Vendor Name | IPRT LABELPrinter |
+| idVendor | 0x353D (13629) |
+| idProduct | 0x1249 (4681) |
+| Device Path | `/dev/usb/lp0` (Linux) |
+
+### TSPL Protocol (Critical!)
+
+**This printer uses TSPL (TSC Printer Language), NOT ESC/POS!** The original driver assumed ESC/POS which doesn't work.
+
+#### Basic TSPL Commands
+
+```
+SIZE 58 mm, 100 mm     # Label dimensions
+GAP 3 mm, 0 mm         # Gap between labels (for gap sensor)
+DIRECTION 1,0          # Print direction
+SET TEAR ON            # Feed to tear-off position after printing
+CLS                    # Clear image buffer
+TEXT x,y,"font",rot,h,v,"text"  # Print text
+BITMAP x,y,width,height,mode,data  # Print raster image
+PRINT 1,1              # Print 1 copy
+```
+
+#### TSPL Text Command
+
+```
+TEXT x,y,"font",rotation,h-mult,v-mult,"content"
+```
+- `x,y`: Position in dots (8 dots/mm)
+- `font`: "1"-"5" for built-in fonts (bigger number = bigger font)
+- `rotation`: 0, 90, 180, 270
+- `h-mult, v-mult`: Horizontal/vertical multiplier
+
+#### TSPL Bitmap Command
+
+```
+BITMAP x,y,width_bytes,height,mode,<binary data>
+```
+- `width_bytes`: Image width in bytes (pixels ÷ 8)
+- `height`: Image height in pixels
+- `mode`: 0=OVERWRITE, 1=OR, 2=XOR
+- **Bitmap polarity**: In the binary data, bit=1 means WHITE (no print), bit=0 means BLACK (print)
+  - This is **inverted** from typical expectations!
+  - When converting PIL images: XOR each byte with 0xFF to invert
+
+#### Bitmap Conversion (PIL to TSPL)
+
+```python
+from PIL import Image
+
+# Create 1-bit image (0=black, 1=white in PIL)
+img = Image.new('1', (464, 800), 1)  # White background
+# ... draw content ...
+
+# Convert to TSPL bitmap
+width_bytes = (img.width + 7) // 8
+bitmap_data = []
+
+for y in range(img.height):
+    for xb in range(width_bytes):
+        byte_val = 0
+        for bit in range(8):
+            x = xb * 8 + bit
+            if x < img.width:
+                pixel = img.getpixel((x, y))
+                if pixel == 0:  # Black pixel
+                    byte_val |= (0x80 >> bit)
+        # CRITICAL: Invert byte for TSPL polarity
+        byte_val = byte_val ^ 0xFF
+        bitmap_data.append(byte_val)
+
+# Build TSPL command
+tspl = f'BITMAP 0,0,{width_bytes},{img.height},0,'.encode()
+tspl += bytes(bitmap_data)
+tspl += b'\r\n'
+```
+
+### Label Feeding
+
+- **SET TEAR ON**: After printing, automatically advances label to tear-off position
+- **SET TEAR OFF**: Label stops immediately after printing (may be partially inside printer)
+- **GAP command**: Tells printer where gaps between labels are for proper positioning
+
+### Test Script (Mac USB)
+
+```bash
+# Test printer from Mac via USB
+PYTHONPATH=src .venv/bin/python scripts/test_mac_printer.py fortune
+```
+
+See `scripts/test_mac_printer.py` for complete USB communication example using `pyusb`.
+
+### Font Size Guidelines
+
+For readable labels at 203 DPI on 58mm width:
+- **Huge titles**: 72pt (e.g., "VNVNC")
+- **Section headers**: 48pt
+- **Body text**: 36pt
+- **Small text/footer**: 28pt
+
+Fonts smaller than 24pt become hard to read on thermal prints.
 
 ---
 
