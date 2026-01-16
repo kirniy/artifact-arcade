@@ -136,19 +136,20 @@ class PhotoboothMode(BaseMode):
         if event.type not in (EventType.BUTTON_PRESS, EventType.KEYPAD_INPUT):
             return False
 
+        # Allow exit during result phase (must check BEFORE _working flag)
+        if self._state.show_result:
+            # Button press during result = complete session (print and exit)
+            self._complete_session()
+            return True
+
         # Prevent re-entry while working (from raspi-photo-booth Working flag)
         if self._working:
             return True
 
-        if self.phase == ModePhase.ACTIVE and not self._state.show_result:
+        if self.phase == ModePhase.ACTIVE:
             # Start countdown
             self._working = True
             self._start_countdown()
-            return True
-
-        elif self._state.show_result:
-            # Button press during result = complete session (print and exit)
-            self._complete_session()
             return True
 
         return False
