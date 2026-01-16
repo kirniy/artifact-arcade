@@ -254,6 +254,7 @@ class GameState:
     game_over: bool = False
     game_over_timer: float = 0.0
     speed: float = 60.0  # Pixels per second
+    has_interacted: bool = False  # True after first button press (hides instructions)
 
     # Entities
     obstacles: List[Obstacle] = field(default_factory=list)
@@ -343,6 +344,9 @@ class SantaRunner:
 
         Supports double jump - can jump once from ground, once more in air.
         """
+        # Mark as interacted (hides instructions)
+        self._state.has_interacted = True
+
         if self._state.game_over:
             # Auto-restart immediately on any input (it's a waiting game)
             self.reset()
@@ -620,6 +624,10 @@ class SantaRunner:
         # Render score
         self._render_score(buffer)
 
+        # Render instructions if not yet interacted
+        if not self._state.has_interacted:
+            self._render_instructions(buffer)
+
         # Game over overlay
         if self._state.game_over:
             self._render_game_over(buffer)
@@ -660,6 +668,45 @@ class SantaRunner:
         # High score indicator if beaten
         if self._state.score > 0 and self._state.score >= self._state.high_score:
             draw_text(buffer, "HI", 80, 10, (255, 200, 0), scale=1)
+
+    def _render_instructions(self, buffer: NDArray) -> None:
+        """Render instructions overlay before first interaction."""
+        from artifact.graphics.text_utils import draw_centered_text
+
+        # Semi-transparent darkening
+        buffer[:, :, :] = (buffer[:, :, :] * 0.6).astype(np.uint8)
+
+        # Main instruction text
+        draw_centered_text(buffer, "МИНИ-ИГРА", 20, (255, 255, 100), scale=1)
+        draw_centered_text(buffer, "ЖМЯКНИ", 45, (255, 255, 255), scale=2)
+        draw_centered_text(buffer, "КНОПКУ!", 70, (255, 255, 255), scale=2)
+
+        # Pulsing arrow pointing down (to the button)
+        pulse = int(abs(math.sin(self._state.time_played / 200)) * 8)
+        arrow_y = 95 + pulse
+
+        # Draw down arrow
+        for i in range(5):
+            # Arrow stem
+            buffer[arrow_y - 10 + i, 62:66, :] = (255, 100, 100)
+        # Arrow head
+        for i in range(7):
+            left = 64 - 3 + i // 2
+            right = 64 + 3 - i // 2
+            if arrow_y + i < 128 and left >= 0 and right < 128:
+                buffer[arrow_y + i, left:right + 1, :] = (255, 100, 100)
+
+        # Red button icon at bottom
+        cx, cy = 64, 115
+        for dy in range(-6, 7):
+            for dx in range(-6, 7):
+                if dx * dx + dy * dy <= 36:  # Circle radius 6
+                    x, y = cx + dx, cy + dy
+                    if 0 <= x < 128 and 0 <= y < 128:
+                        # Red gradient button
+                        dist = (dx * dx + dy * dy) ** 0.5
+                        brightness = int(200 - dist * 15)
+                        buffer[y, x] = (brightness, 40, 40)
 
     def _render_game_over(self, buffer: NDArray) -> None:
         """Render game over overlay - brief flash then auto-restart."""

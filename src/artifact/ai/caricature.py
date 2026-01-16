@@ -75,7 +75,7 @@ Think "top comment on Reddit" - personal, specific, DEVASTATING but hilarious.
 The roast must be SPECIFIC to THIS PERSON's actual appearance!
 Look at their face, hair, expression, vibe - and roast THAT.
 BRANDING: Just "VNVNC" somewhere small - NO YEAR, never add 2024/2025/2026!
-Black ink on white. Square.""",
+Black ink on white. Square. The kind of roast that makes you say "damn" and laugh.""",
 
     """STUNNING MINIMAL B&W PORTRAIT. Isolate this person, draw them PERFECTLY.
 BRUTAL HONEST ROAST like r/RoastMe - find what's ACTUALLY roastable about THIS SPECIFIC PERSON.
@@ -83,9 +83,10 @@ SPEECH BUBBLES with YOUR OWN savage labels in RUSSIAN - be ORIGINAL, don't copy 
 Cool DOODLES scattered around - messy scribbles, zigzags, exclamation marks, spirals.
 
 NO GENERIC INSULTS - be SPECIFIC to THIS person's unique flaws.
-You are a comedy WRITER. Don't copy - CREATE.
+You are a comedy WRITER. Don't copy - CREATE. Look at this person and
+find what's ACTUALLY funny about them. Original observations only.
 BRANDING: Just "VNVNC" small somewhere - NEVER add any year!
-Clean portrait, chaotic doodles. Square.""",
+Clean portrait, chaotic doodles. Square. Make it hurt (in a funny way).""",
 
     """ISOLATED PORTRAIT - perfect B&W, super minimal. ROAST BATTLE energy.
 What would a standup comedian IMMEDIATELY notice about THIS person? Draw that.
@@ -94,6 +95,7 @@ Add cool SCRIBBLES and DOODLES around - lightning bolts, crosses, underlines, ch
 
 BE ORIGINAL: Study the photo. What's weird? What's tryhard? What screams "roast me"?
 Create roasts that are SPECIFIC to this face. No templates, no copying.
+Like a mean caricature artist at a carnival who tells the TRUTH.
 BRANDING: "VNVNC" only - NO YEAR (never 2024, 2025, 2026, etc)!
 Stunning drawing meets savage comedy. Square.""",
 
@@ -104,8 +106,9 @@ Messy DOODLES around - scrawls, asterisks, emphasis marks, chaotic decorations.
 
 Find the MEME potential unique to THIS person. Exaggerate what makes THEM roastable.
 CREATIVITY REQUIRED: Every person has something unique to roast. Find it.
+Don't use any pre-written labels. Observe and create fresh burns for THIS face.
 BRANDING: Just "VNVNC" - absolutely NO year attached!
-Beautiful portrait meets chaotic energy. Square.""",
+Beautiful portrait meets chaotic energy. Square. Original savage commentary only.""",
 ]
 
 # VNVNC STICKER VARIATIONS - Portrait stickers with mystical/fortune-teller vibes
