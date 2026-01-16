@@ -303,20 +303,24 @@ class LabelLayoutEngine:
 
         return lines if lines else [""]
 
-    def render(self, layout: LabelLayout) -> bytes:
-        """Render a label layout to ESC/POS raster commands.
+    def render(self, layout: LabelLayout, protocol: str = "tspl") -> bytes:
+        """Render a label layout to printer commands.
 
         Args:
             layout: The label layout to render
+            protocol: Printer protocol - "tspl" (default) or "escpos"
 
         Returns:
-            ESC/POS raster command bytes ready to send to printer
+            Printer command bytes ready to send
         """
         # First render to PIL Image
         img = self.render_to_image(layout)
 
-        # Then convert to ESC/POS raster commands
-        return self._image_to_escpos_raster(img)
+        # Convert to appropriate protocol
+        if protocol == "tspl":
+            return self._image_to_tspl_commands(img)
+        else:
+            return self._image_to_escpos_raster(img)
 
     def render_to_image(self, layout: LabelLayout):
         """Render a label layout to a PIL Image.
@@ -867,6 +871,72 @@ class LabelLayoutEngine:
                 current_y += content_block.pixels
 
         return box_bottom + 8  # Add some space after box
+
+    def _image_to_tspl_commands(self, img) -> bytes:
+        """Convert PIL Image to TSPL raster commands for label printers.
+
+        TSPL (TSC Printer Language) is used by AIYIN IP-802 and similar
+        label printers. Key differences from ESC/POS:
+        - Text-based command structure
+        - Inverted bitmap polarity (1=white, 0=black)
+        - Explicit label size and gap commands
+
+        Args:
+            img: PIL Image in 1-bit mode
+
+        Returns:
+            TSPL command bytes ready to send to printer
+        """
+        width, height = img.size
+
+        # Ensure width is multiple of 8 for byte alignment
+        if width % 8 != 0:
+            from PIL import Image
+            new_width = (width // 8 + 1) * 8
+            new_img = Image.new('1', (new_width, height), 1)  # White background
+            new_img.paste(img, (0, 0))
+            img = new_img
+            width = new_width
+
+        width_bytes = width // 8
+
+        # Build bitmap data with TSPL polarity (inverted: 1=white, 0=black)
+        bitmap_data = []
+        for y in range(height):
+            for xb in range(width_bytes):
+                byte_val = 0
+                for bit in range(8):
+                    x = xb * 8 + bit
+                    if x < img.width:
+                        pixel = img.getpixel((x, y))
+                        if pixel == 0:  # Black pixel in PIL
+                            byte_val |= (0x80 >> bit)
+                # CRITICAL: XOR with 0xFF to invert for TSPL polarity
+                # In TSPL bitmap: bit=1 means NO PRINT (white), bit=0 means PRINT (black)
+                byte_val = byte_val ^ 0xFF
+                bitmap_data.append(byte_val)
+
+        # Build TSPL command sequence
+        commands = []
+
+        # Label setup commands
+        commands.append(f"SIZE {LABEL_WIDTH_MM} mm, {LABEL_HEIGHT_MM} mm\r\n".encode())
+        commands.append(b"GAP 3 mm, 0 mm\r\n")  # Gap between labels
+        commands.append(b"DIRECTION 1,0\r\n")   # Print direction
+        commands.append(b"SET TEAR ON\r\n")     # Auto-advance to tear position
+        commands.append(b"CLS\r\n")             # Clear image buffer
+
+        # BITMAP command: BITMAP x,y,width_bytes,height,mode,<data>
+        # mode 0 = OVERWRITE
+        bitmap_header = f"BITMAP 0,0,{width_bytes},{height},0,".encode()
+        commands.append(bitmap_header)
+        commands.append(bytes(bitmap_data))
+        commands.append(b"\r\n")
+
+        # Print command: PRINT copies, pages
+        commands.append(b"PRINT 1,1\r\n")
+
+        return b''.join(commands)
 
     def _image_to_escpos_raster(self, img) -> bytes:
         """Convert PIL Image to ESC/POS raster commands.

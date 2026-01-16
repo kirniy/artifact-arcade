@@ -6,6 +6,7 @@ Runs the ARTIFACT arcade machine in a desktop pygame window.
 
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -41,6 +42,9 @@ from artifact.audio.engine import AudioEngine, get_audio_engine
 from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
+
+# Real printer support via environment variable
+REAL_PRINTER_ENABLED = os.environ.get("ARTIFACT_REAL_PRINTER", "0") == "1"
 
 
 def setup_logging() -> None:
@@ -125,10 +129,30 @@ class ArtifactSimulator:
         # Start gallery preloader for instant photo loading
         start_gallery_preloader()
 
+        # Real printer support (for testing from Mac)
+        self._real_printer = None
+        if REAL_PRINTER_ENABLED:
+            self._setup_real_printer()
+
         # Wire up event handlers
         self._setup_event_handlers()
 
         logger.info("ArtifactSimulator initialized")
+
+    def _setup_real_printer(self) -> None:
+        """Setup real USB printer for testing."""
+        try:
+            from artifact.hardware.printer import IP802Printer, auto_detect_label_printer
+
+            port = auto_detect_label_printer()
+            if port:
+                self._real_printer = IP802Printer(port=port)
+                # Connect asynchronously later
+                logger.info(f"Real printer configured: {port}")
+            else:
+                logger.warning("Real printer not found, using preview only")
+        except Exception as e:
+            logger.error(f"Failed to setup real printer: {e}")
 
     def _register_modes(self) -> None:
         """Register game modes in display order."""
@@ -230,8 +254,38 @@ class ArtifactSimulator:
         # Trigger the printer preview in the simulator window
         self.window.trigger_print(print_data)
 
+        # Also print to real printer if enabled
+        if self._real_printer and REAL_PRINTER_ENABLED:
+            asyncio.create_task(self._print_to_real_printer(print_data))
+
         # Play printer sound effect
         self.audio.play_reward()
+
+    async def _print_to_real_printer(self, print_data: dict) -> None:
+        """Print to real USB printer."""
+        try:
+            # Connect if not connected
+            if not self._real_printer.is_connected:
+                await self._real_printer.connect()
+
+            # Generate receipt using label layout engine
+            from artifact.printing.label_receipt import LabelReceiptGenerator
+            from artifact.printing.label_layout import LabelLayoutEngine
+
+            mode_type = print_data.get('type', 'unknown')
+            generator = LabelReceiptGenerator()
+            receipt = generator.generate_receipt(mode_type, print_data)
+
+            # Render to TSPL commands
+            engine = LabelLayoutEngine()
+            tspl_commands = engine.render(receipt.layout, protocol="tspl")
+
+            # Send to printer
+            await self._real_printer.print_raw(tspl_commands)
+            logger.info(f"Real printer: sent {len(tspl_commands)} bytes")
+
+        except Exception as e:
+            logger.error(f"Real printer error: {e}")
 
     def _on_tick(self, event: Event) -> None:
         """Handle frame tick - update and render."""
@@ -277,6 +331,8 @@ class ArtifactSimulator:
         await self.window.run()
 
         # Cleanup
+        if self._real_printer and self._real_printer.is_connected:
+            await self._real_printer.disconnect()
         camera_service.stop()
         self.audio.cleanup()
 
@@ -307,9 +363,14 @@ def main() -> None:
     logger.info("  D  - Toggle debug panel")
     logger.info("  L  - Toggle log viewer")
     logger.info("  P  - Toggle printer preview")
+    logger.info("  T  - Toggle print test panel (load & print images)")
     logger.info("  S  - Screenshot")
     logger.info("  Q  - Quit")
     logger.info("")
+    if REAL_PRINTER_ENABLED:
+        logger.info("** REAL PRINTER MODE ENABLED **")
+        logger.info("   Print events will be sent to USB printer")
+        logger.info("")
 
     try:
         asyncio.run(run())

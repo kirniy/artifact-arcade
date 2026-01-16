@@ -17,6 +17,7 @@ from ..audio.engine import get_audio_engine
 from .mock_hardware.display import SimulatedHUB75, SimulatedWS2812B, SimulatedLCD
 from .mock_hardware.input import SimulatedButton, SimulatedKeypad, SimulatedArcade
 from .printer_preview import ThermalPrinterPreview, PrintJob
+from .print_test_panel import PrintTestPanel
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,10 @@ class SimulatorWindow:
         # Thermal printer preview
         self._show_printer = False
         self._printer_preview = ThermalPrinterPreview()
+
+        # Print test panel (T key)
+        self._show_print_test = False
+        self._print_test_panel = PrintTestPanel()
 
         # Setup log handler to capture logs
         self._setup_log_capture()
@@ -248,6 +253,15 @@ class SimulatorWindow:
         """Handle key press."""
         key = event.key
 
+        # Forward keys to print test panel if visible (except Escape/T to close)
+        if self._show_print_test:
+            if key == pygame.K_ESCAPE:
+                self._show_print_test = False
+                return
+            elif key != pygame.K_t:  # T toggles the panel
+                if self._print_test_panel.handle_key(key):
+                    return  # Key was consumed by panel
+
         # System keys (Mac-friendly - no F-keys required)
         if key == pygame.K_ESCAPE or key == pygame.K_q:
             self._running = False
@@ -266,6 +280,15 @@ class SimulatorWindow:
         elif key == pygame.K_p:
             # P for Printer preview
             self._show_printer = not self._show_printer
+        elif key == pygame.K_t:
+            # T for print Test panel
+            if self._show_print_test:
+                # If panel is open, let it handle keys first
+                if not self._print_test_panel.handle_key(key):
+                    self._show_print_test = False
+            else:
+                self._show_print_test = True
+            return  # Don't process further
         elif key == pygame.K_r:
             # R for Reboot/restart system
             self.event_bus.emit(Event(EventType.REBOOT, source="keyboard"))
@@ -397,6 +420,8 @@ class SimulatorWindow:
             self._render_log_panel()
         if self._show_printer:
             self._render_printer_panel()
+        if self._show_print_test:
+            self._render_print_test_panel()
 
         # Render title bar
         self._render_title_bar()
@@ -594,6 +619,20 @@ class SimulatorWindow:
         self._printer_preview.set_print_job(job)
         self._show_printer = True
 
+    def _render_print_test_panel(self) -> None:
+        """Render the print test panel."""
+        if not self._show_print_test:
+            return
+
+        # Position on the right side (same as printer panel)
+        panel_width = 280
+        panel_height = 500
+        panel_x = self.config.width - panel_width - 10
+        panel_y = 50
+
+        rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        self._print_test_panel.render(self._screen, rect)
+
     def _render_title_bar(self) -> None:
         """Render the title bar with stylish header."""
         if not self._font:
@@ -614,6 +653,8 @@ class SimulatorWindow:
             indicators.append("◎ LOG")
         if self._show_printer:
             indicators.append("⎙ PRINT")
+        if self._show_print_test:
+            indicators.append("⎙ TEST")
 
         if indicators:
             status = " │ ".join(indicators)

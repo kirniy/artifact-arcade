@@ -1,18 +1,19 @@
 """AIYIN IP-802 thermal label printer driver for ARTIFACT.
 
 Communicates with the AIYIN IP-802 (QR-368C) 80mm thermal label printer via USB.
-Supports ESC/POS commands for text and raster image printing on labels.
+Uses TSPL (TSC Printer Language) protocol for label printing.
 
 Hardware specifications:
 - Max paper width: 80mm (~640 dots at 203 DPI)
 - Label size: 58×100mm (user's configuration)
 - Print width: 58mm (~464 dots at 203 DPI)
 - Interface: USB (USB printer class device)
-- Commands: ESC/POS compatible with label support
+- Protocol: TSPL (NOT ESC/POS!)
 - Gap detection: Automatic label gap sensing
 
 Supported connections:
-- USB Printer: /dev/usb/lp0, /dev/usb/lp1 (auto-detected)
+- Linux: /dev/usb/lp0, /dev/usb/lp1 (auto-detected)
+- Mac: Direct USB via pyusb (no /dev/usb/lp* on macOS)
 
 Override with env var: ARTIFACT_PRINTER_PORT=/dev/usb/lp0
 """
@@ -20,24 +21,127 @@ Override with env var: ARTIFACT_PRINTER_PORT=/dev/usb/lp0
 import logging
 import asyncio
 import os
+import sys
 import glob
-from typing import Optional
+from typing import Optional, Union
 
 from artifact.hardware.base import Printer
 from artifact.printing.receipt import Receipt
 
 logger = logging.getLogger(__name__)
 
+# USB identifiers for AIYIN IP-802 / IPRT LABELPrinter
+USB_VENDOR_ID = 0x353D
+USB_PRODUCT_ID = 0x1249
 
-def auto_detect_label_printer() -> Optional[str]:
+# Check if pyusb is available
+try:
+    import usb.core
+    import usb.util
+    PYUSB_AVAILABLE = True
+except ImportError:
+    PYUSB_AVAILABLE = False
+    logger.debug("pyusb not available - USB printing on Mac requires: pip install pyusb")
+
+
+class _PyUSBBackend:
+    """PyUSB backend for direct USB communication on Mac/Linux.
+
+    Used when /dev/usb/lp* devices are not available (macOS)
+    or when direct USB control is preferred.
+    """
+
+    def __init__(self):
+        self.dev = None
+        self.ep_out = None
+        self.ep_in = None
+        self._connected = False
+
+    def connect(self) -> bool:
+        """Connect to the printer via USB."""
+        if not PYUSB_AVAILABLE:
+            logger.error("pyusb not installed - run: pip install pyusb")
+            return False
+
+        self.dev = usb.core.find(idVendor=USB_VENDOR_ID, idProduct=USB_PRODUCT_ID)
+        if self.dev is None:
+            logger.warning("USB label printer not found")
+            return False
+
+        logger.info(f"Found USB printer: {self.dev.manufacturer} - {self.dev.product}")
+
+        # Detach kernel driver if necessary (Linux)
+        try:
+            if self.dev.is_kernel_driver_active(0):
+                self.dev.detach_kernel_driver(0)
+                logger.debug("Detached kernel driver")
+        except Exception:
+            pass  # May not have kernel driver on Mac
+
+        # Set configuration
+        try:
+            self.dev.set_configuration()
+        except Exception:
+            pass  # May already be configured
+
+        # Claim interface
+        try:
+            usb.util.claim_interface(self.dev, 0)
+            logger.debug("USB interface claimed")
+        except Exception as e:
+            logger.debug(f"Interface claim note: {e}")
+
+        # Find endpoints
+        cfg = self.dev.get_active_configuration()
+        intf = cfg[(0, 0)]  # First interface
+
+        for ep in intf:
+            if usb.util.endpoint_direction(ep.bEndpointAddress) == usb.util.ENDPOINT_OUT:
+                self.ep_out = ep.bEndpointAddress
+            else:
+                self.ep_in = ep.bEndpointAddress
+
+        logger.debug(f"USB OUT endpoint: 0x{self.ep_out:02x}")
+        self._connected = True
+        return True
+
+    def write(self, data: bytes, timeout: int = 10000) -> int:
+        """Write data to printer."""
+        if not self.dev or not self.ep_out:
+            raise RuntimeError("Printer not connected")
+        return self.dev.write(self.ep_out, data, timeout=timeout)
+
+    def flush(self) -> None:
+        """Flush is a no-op for USB (writes are immediate)."""
+        pass
+
+    def close(self) -> None:
+        """Release the USB interface."""
+        if self.dev:
+            try:
+                usb.util.release_interface(self.dev, 0)
+            except Exception:
+                pass
+            self.dev = None
+        self._connected = False
+
+    @property
+    def is_connected(self) -> bool:
+        return self._connected
+
+
+def auto_detect_label_printer() -> Optional[Union[str, dict]]:
     """Auto-detect USB label printer.
 
     Checks in order:
     1. Environment variable ARTIFACT_PRINTER_PORT
-    2. USB printer class (/dev/usb/lp*)
+    2. USB printer class (/dev/usb/lp*) - Linux
+    3. PyUSB direct detection - Mac/Linux fallback
 
     Returns:
-        Detected port path, or None if not found
+        - str: Device path like "/dev/usb/lp0" (Linux file backend)
+        - dict: {"backend": "pyusb"} (Mac/pyusb backend)
+        - None: No printer found
     """
     # 1. Check environment override first
     env_port = os.environ.get("ARTIFACT_PRINTER_PORT")
@@ -45,12 +149,22 @@ def auto_detect_label_printer() -> Optional[str]:
         logger.info(f"Using printer port from env: {env_port}")
         return env_port
 
-    # 2. Check USB printer class device (primary for label printers)
+    # 2. Check USB printer class device (primary for Linux)
     usb_printers = glob.glob("/dev/usb/lp*")
     if usb_printers:
         port = sorted(usb_printers)[0]
         logger.info(f"Auto-detected USB label printer: {port}")
         return port
+
+    # 3. Try pyusb (Mac or Linux without usblp module)
+    if PYUSB_AVAILABLE:
+        try:
+            dev = usb.core.find(idVendor=USB_VENDOR_ID, idProduct=USB_PRODUCT_ID)
+            if dev:
+                logger.info(f"Auto-detected USB printer via pyusb: {dev.manufacturer} {dev.product}")
+                return {"backend": "pyusb"}
+        except Exception as e:
+            logger.debug(f"PyUSB detection failed: {e}")
 
     logger.warning("No label printer detected")
     return None
@@ -59,7 +173,8 @@ def auto_detect_label_printer() -> Optional[str]:
 class IP802Printer(Printer):
     """Driver for AIYIN IP-802 (QR-368C) thermal label printer.
 
-    Uses USB printer class device for communication.
+    Uses TSPL (TSC Printer Language) protocol for communication.
+    Supports both file backend (Linux /dev/usb/lp*) and pyusb (Mac).
     Falls back to mock mode if hardware is unavailable.
 
     Label specifications (user's config):
@@ -78,26 +193,22 @@ class IP802Printer(Printer):
     LABEL_WIDTH_PX = int(LABEL_WIDTH_MM * DPI / 25.4)  # ~464 pixels
     LABEL_HEIGHT_PX = int(LABEL_HEIGHT_MM * DPI / 25.4)  # ~800 pixels
 
-    # ESC/POS commands
-    ESC = b'\x1b'
-    GS = b'\x1d'
-    LF = b'\x0a'
-
     def __init__(
         self,
-        port: Optional[str] = None,
+        port: Optional[Union[str, dict]] = None,
         mock: bool = False,
     ):
         """Initialize the label printer driver.
 
         Args:
-            port: USB device path (auto-detected if None)
+            port: USB device path, {"backend": "pyusb"}, or None for auto-detect
             mock: If True, simulate printing without hardware
         """
         super().__init__()
-        self._port = port or auto_detect_label_printer()
+        self._port_config = port if port is not None else auto_detect_label_printer()
         self._mock = mock
         self._file_backend = None
+        self._pyusb_backend: Optional[_PyUSBBackend] = None
         self._connected = False
         self._busy = False
 
@@ -112,43 +223,43 @@ class IP802Printer(Printer):
             self._connected = True
             return True
 
-        if not self._port:
+        if not self._port_config:
             logger.warning("No printer port available, using mock mode")
             self._mock = True
             self._connected = True
             return True
 
         try:
-            # USB printer class device - use file backend
-            self._file_backend = open(self._port, "wb")
-            self._connected = True
-            logger.info(f"IP-802 label printer connected on {self._port}")
-
-            # Initialize printer
-            await self._init_printer()
-            return True
+            # Check if using pyusb backend
+            if isinstance(self._port_config, dict) and self._port_config.get("backend") == "pyusb":
+                # Use pyusb backend (Mac or Linux without usblp)
+                self._pyusb_backend = _PyUSBBackend()
+                if self._pyusb_backend.connect():
+                    self._connected = True
+                    logger.info("IP-802 label printer connected via pyusb (TSPL)")
+                    return True
+                else:
+                    raise RuntimeError("PyUSB connection failed")
+            else:
+                # Use file backend (Linux /dev/usb/lp*)
+                port_path = self._port_config if isinstance(self._port_config, str) else str(self._port_config)
+                self._file_backend = open(port_path, "wb")
+                self._connected = True
+                logger.info(f"IP-802 label printer connected on {port_path} (TSPL)")
+                return True
 
         except Exception as e:
-            logger.error(f"Failed to connect to printer on {self._port}: {e}")
+            logger.error(f"Failed to connect to printer: {e}")
             logger.info("Falling back to mock mode")
             self._mock = True
             self._connected = True
             return True
 
     async def _init_printer(self) -> None:
-        """Initialize printer with startup commands."""
-        # ESC @ - Initialize/reset printer
-        await self._send_command(b'\x1b\x40')
-
-        # Small delay for printer to initialize
-        await asyncio.sleep(0.1)
-
-        # Set print density (adjust if too light/dark)
-        # GS ( K pL pH fn m - Set print density
-        # fn=49, m=8 (default density)
-        await self._send_command(b'\x1d\x28\x4b\x02\x00\x31\x08')
-
-        logger.debug("Printer initialized")
+        """Initialize printer - no-op for TSPL (commands include setup)."""
+        # TSPL printers don't need initialization - each print job includes
+        # SIZE, GAP, DIRECTION commands
+        logger.debug("TSPL printer ready (no init needed)")
 
     async def disconnect(self) -> None:
         """Disconnect from the printer."""
@@ -158,6 +269,10 @@ class IP802Printer(Printer):
             except Exception:
                 pass
             self._file_backend = None
+
+        if self._pyusb_backend:
+            self._pyusb_backend.close()
+            self._pyusb_backend = None
 
         self._connected = False
         logger.info("IP-802 printer disconnected")
@@ -492,11 +607,20 @@ class IP802Printer(Printer):
         Returns:
             Status dictionary
         """
+        backend = "mock"
+        if not self._mock:
+            if self._pyusb_backend:
+                backend = "pyusb"
+            elif self._file_backend:
+                backend = "file"
+
         return {
             "connected": self._connected,
             "busy": self._busy,
             "mock_mode": self._mock,
-            "port": self._port,
+            "backend": backend,
+            "protocol": "TSPL",
+            "port_config": str(self._port_config),
             "model": "AIYIN IP-802",
             "label_width_mm": self.LABEL_WIDTH_MM,
             "label_height_mm": self.LABEL_HEIGHT_MM,
@@ -514,8 +638,12 @@ class IP802Printer(Printer):
             logger.debug(f"Mock send: {len(data)} bytes")
             return
 
-        if self._file_backend:
-            # USB printer class - write directly (offload blocking I/O to thread)
+        if self._pyusb_backend:
+            # PyUSB backend - write via USB (offload to thread)
+            await asyncio.to_thread(self._write_pyusb_backend, data)
+            await asyncio.sleep(0.01)
+        elif self._file_backend:
+            # File backend (Linux /dev/usb/lp*) - write directly (offload to thread)
             await asyncio.to_thread(self._write_file_backend, data)
             await asyncio.sleep(0.01)
 
@@ -523,6 +651,10 @@ class IP802Printer(Printer):
         """Blocking write to file backend (runs in thread pool)."""
         self._file_backend.write(data)
         self._file_backend.flush()
+
+    def _write_pyusb_backend(self, data: bytes) -> None:
+        """Blocking write to pyusb backend (runs in thread pool)."""
+        self._pyusb_backend.write(data)
 
     async def _wait_for_ready(self, timeout: float = 30.0) -> bool:
         """Wait for printer to become ready.
