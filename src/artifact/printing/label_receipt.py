@@ -693,13 +693,18 @@ class LabelReceiptGenerator:
             else:
                 layout.add_text(roast_text, size=TextSize.SMALL)
 
-        # Vibe with dynamic icon (AI-chosen based on the role)
+        # Vibe with dynamic icon (AI-chosen based on the role) - icon LEFT of text
         vibe = data.get("vibe")
         if vibe:
             layout.add_space(4)
             vibe_icon = data.get("vibe_icon", "star")
-            layout.add_icon(vibe_icon, size=18)
-            layout.add_text(vibe, size=TextSize.SMALL, bold=True)
+            # Use header_row for inline icon + text
+            layout.add_header_row(
+                title=vibe,
+                icon=vibe_icon,
+                title_size=24,  # Small text
+                icon_size=18,
+            )
 
         # Flex space pushes footer to bottom
         layout.add_flex_space(min_pixels=10)
