@@ -667,7 +667,7 @@ class RoastMeMode(BaseMode):
                     try:
                         from PIL import Image
                         from io import BytesIO
-                        import numpy as np
+                        # NOTE: numpy is imported at module level as 'np'
 
                         img = Image.open(BytesIO(self._doodle_image.image_data))
                         img = img.convert("RGB")
