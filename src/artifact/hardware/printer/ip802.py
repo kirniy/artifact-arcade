@@ -207,7 +207,7 @@ class IP802Printer(Printer):
         super().__init__()
         self._port_config = port if port is not None else auto_detect_label_printer()
         self._mock = mock
-        self._file_backend = None
+        self._file_backend_path: Optional[str] = None  # Store path, not file handle
         self._pyusb_backend: Optional[_PyUSBBackend] = None
         self._connected = False
         self._busy = False
@@ -241,9 +241,9 @@ class IP802Printer(Printer):
                 else:
                     raise RuntimeError("PyUSB connection failed")
             else:
-                # Use file backend (Linux /dev/usb/lp*)
+                # Use file backend (Linux /dev/usb/lp*) - store path, open on demand
                 port_path = self._port_config if isinstance(self._port_config, str) else str(self._port_config)
-                self._file_backend = open(port_path, "wb")
+                self._file_backend_path = port_path
                 self._connected = True
                 logger.info(f"IP-802 label printer connected on {port_path} (TSPL)")
                 return True
@@ -263,12 +263,7 @@ class IP802Printer(Printer):
 
     async def disconnect(self) -> None:
         """Disconnect from the printer."""
-        if self._file_backend:
-            try:
-                self._file_backend.close()
-            except Exception:
-                pass
-            self._file_backend = None
+        self._file_backend_path = None
 
         if self._pyusb_backend:
             self._pyusb_backend.close()
@@ -642,15 +637,19 @@ class IP802Printer(Printer):
             # PyUSB backend - write via USB (offload to thread)
             await asyncio.to_thread(self._write_pyusb_backend, data)
             await asyncio.sleep(0.01)
-        elif self._file_backend:
-            # File backend (Linux /dev/usb/lp*) - write directly (offload to thread)
+        elif self._file_backend_path:
+            # File backend (Linux /dev/usb/lp*) - open, write, close (offload to thread)
             await asyncio.to_thread(self._write_file_backend, data)
             await asyncio.sleep(0.01)
 
     def _write_file_backend(self, data: bytes) -> None:
-        """Blocking write to file backend (runs in thread pool)."""
-        self._file_backend.write(data)
-        self._file_backend.flush()
+        """Blocking write to file backend (runs in thread pool).
+        
+        Opens fresh handle each time to handle USB re-enumeration.
+        """
+        with open(self._file_backend_path, "wb") as f:
+            f.write(data)
+            f.flush()
 
     def _write_pyusb_backend(self, data: bytes) -> None:
         """Blocking write to pyusb backend (runs in thread pool)."""
