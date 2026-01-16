@@ -326,180 +326,111 @@ def floyd_steinberg_dither(
 
 def create_viewfinder_overlay(
     dithered: NDArray[np.uint8],
-    time_ms: float = 0
+    time_ms: float = 0,
+    instruction: str = "СМОТРИ СЮДА"
 ) -> NDArray[np.uint8]:
-    """Add premium arcade-style viewfinder overlay effects.
+    """Add minimal B&W viewfinder overlay with instructions.
 
-    Creates a professional camera viewfinder with:
-    - Animated progressive scan lines
-    - Multi-layer corner brackets with depth
-    - Targeting reticle with range rings
-    - Subtle edge glow effects
-    - Recording indicator pulse
+    Creates a clean camera viewfinder with:
+    - Simple white corner brackets
+    - Brief instruction text at bottom
+    - No center reticle (keeps face visible)
+    - Subtle scan line effect
 
     Args:
         dithered: Dithered image (128x128)
         time_ms: Current time for animations (milliseconds)
+        instruction: Brief instruction text to display
 
     Returns:
-        Image with professional viewfinder overlay
+        Image with clean B&W viewfinder overlay
     """
     output = dithered.copy()
     h, w = output.shape[:2]
 
-    # === ANIMATED SCAN LINES ===
-    # Primary scan line (fast, bright)
-    scan_y1 = int((time_ms / 40) % h)
-    output[scan_y1:scan_y1+2, :] = np.clip(
-        output[scan_y1:scan_y1+2, :].astype(np.int16) + 50, 0, 255
+    # === SUBTLE SCAN LINE (B&W) ===
+    scan_y = int((time_ms / 60) % h)
+    output[scan_y:scan_y+1, :] = np.clip(
+        output[scan_y:scan_y+1, :].astype(np.int16) + 30, 0, 255
     ).astype(np.uint8)
 
-    # Secondary scan line (slower, subtle)
-    scan_y2 = int((time_ms / 80) % h)
-    output[scan_y2, :] = np.clip(
-        output[scan_y2, :].astype(np.int16) + 20, 0, 255
-    ).astype(np.uint8)
+    # === SIMPLE WHITE CORNER BRACKETS ===
+    bracket_length = 16
+    bracket_color = (255, 255, 255)  # White
 
-    # === PROFESSIONAL CORNER BRACKETS ===
-    bracket_length = 20
-    bracket_thickness = 3
-
-    # Color scheme - cyan with subtle glow
-    bracket_outer = (100, 180, 255)  # Bright cyan
-    bracket_inner = (60, 140, 200)   # Darker cyan
-    bracket_core = (180, 220, 255)   # Bright core
-
-    def draw_corner_bracket(corner_x, corner_y, flip_h=False, flip_v=False):
-        """Draw a professional multi-layer corner bracket."""
-        # Calculate directions
+    def draw_corner(corner_x, corner_y, flip_h=False, flip_v=False):
+        """Draw a simple L-shaped corner bracket."""
         dx = -1 if flip_h else 1
         dy = -1 if flip_v else 1
 
-        # Outer layer (thickest, darker)
+        # Horizontal arm (2px thick)
         for i in range(bracket_length):
-            # Horizontal arm
             x = corner_x + i * dx
-            y_range = slice(corner_y, corner_y + dy * (bracket_thickness + 1), dy)
-            if 0 <= x < w and 0 <= corner_y < h:
-                output[y_range, x] = bracket_outer
+            if 0 <= x < w:
+                for t in range(2):
+                    y = corner_y + t * dy
+                    if 0 <= y < h:
+                        output[y, x] = bracket_color
 
-            # Vertical arm
+        # Vertical arm (2px thick)
+        for i in range(bracket_length):
             y = corner_y + i * dy
-            x_range = slice(corner_x, corner_x + dx * (bracket_thickness + 1), dx)
-            if 0 <= y < h and 0 <= corner_x < w:
-                output[y, x_range] = bracket_outer
-
-        # Inner layer (medium)
-        for i in range(1, bracket_length - 2):
-            x = corner_x + i * dx
-            y = corner_y + dy
-            if 0 <= x < w and 0 <= y < h:
-                output[y, x] = bracket_inner
-
-            y = corner_y + i * dy
-            x = corner_x + dx
-            if 0 <= x < w and 0 <= y < h:
-                output[y, x] = bracket_inner
-
-        # Core highlight (brightest, thin line)
-        for i in range(2, bracket_length - 4):
-            x = corner_x + i * dx
-            y = corner_y + dy * 2
-            if 0 <= x < w and 0 <= y < h:
-                output[y, x] = bracket_core
-
-            y = corner_y + i * dy
-            x = corner_x + dx * 2
-            if 0 <= x < w and 0 <= y < h:
-                output[y, x] = bracket_core
+            if 0 <= y < h:
+                for t in range(2):
+                    x = corner_x + t * dx
+                    if 0 <= x < w:
+                        output[y, x] = bracket_color
 
     # Draw all four corners
-    margin = 4
-    draw_corner_bracket(margin, margin, False, False)                    # Top-left
-    draw_corner_bracket(w - margin - 1, margin, True, False)             # Top-right
-    draw_corner_bracket(margin, h - margin - 1, False, True)             # Bottom-left
-    draw_corner_bracket(w - margin - 1, h - margin - 1, True, True)      # Bottom-right
+    margin = 6
+    draw_corner(margin, margin, False, False)                    # Top-left
+    draw_corner(w - margin - 1, margin, True, False)             # Top-right
+    draw_corner(margin, h - margin - 1, False, True)             # Bottom-left
+    draw_corner(w - margin - 1, h - margin - 1, True, True)      # Bottom-right
 
-    # === TARGETING RETICLE (CENTER) ===
-    cx, cy = w // 2, h // 2
-    reticle_color = (150, 220, 255)  # Bright cyan
-    reticle_dim = (80, 140, 180)     # Dimmer cyan
+    # === INSTRUCTION TEXT AT BOTTOM ===
+    # Draw simple pixel text for the instruction
+    from artifact.graphics.fonts import get_pixel_font, render_text_line
 
-    # Center dot (pulsing)
-    pulse = int(abs(np.sin(time_ms / 200)) * 2) + 1
-    for dy in range(-pulse, pulse + 1):
-        for dx in range(-pulse, pulse + 1):
-            if dx*dx + dy*dy <= pulse*pulse:
-                y, x = cy + dy, cx + dx
-                if 0 <= x < w and 0 <= y < h:
-                    output[y, x] = reticle_color
+    try:
+        font = get_pixel_font()
+        # Render instruction text
+        text_surface = render_text_line(instruction, font, scale=1)
+        text_h, text_w = text_surface.shape[:2]
 
-    # Crosshair arms (4 directions, with gaps)
-    arm_length = 8
-    gap = 4
-    for i in range(gap, gap + arm_length):
-        # Horizontal arms
-        if cx + i < w:
-            output[cy, cx + i] = reticle_dim  # Right
-        if cx - i >= 0:
-            output[cy, cx - i] = reticle_dim  # Left
+        # Position at bottom center with background
+        text_x = (w - text_w) // 2
+        text_y = h - text_h - 8
 
-        # Vertical arms
-        if cy + i < h:
-            output[cy + i, cx] = reticle_dim  # Down
-        if cy - i >= 0:
-            output[cy - i, cx] = reticle_dim  # Up
+        # Draw dark background for text
+        bg_margin = 2
+        y1 = max(0, text_y - bg_margin)
+        y2 = min(h, text_y + text_h + bg_margin)
+        x1 = max(0, text_x - bg_margin)
+        x2 = min(w, text_x + text_w + bg_margin)
+        output[y1:y2, x1:x2] = (output[y1:y2, x1:x2].astype(np.float32) * 0.3).astype(np.uint8)
 
-    # Outer tick marks at arm ends
-    for i in range(gap + arm_length - 2, gap + arm_length):
-        if cx + i < w:
-            output[cy - 1:cy + 2, cx + i] = reticle_color  # Right
-        if cx - i >= 0:
-            output[cy - 1:cy + 2, cx - i] = reticle_color  # Left
-        if cy + i < h:
-            output[cy + i, cx - 1:cx + 2] = reticle_color  # Down
-        if cy - i >= 0:
-            output[cy - i, cx - 1:cx + 2] = reticle_color  # Up
-
-    # === RANGE RINGS (SUBTLE) ===
-    # Two subtle circles around center for depth
-    import math
-
-    ring_color = (60, 100, 140)  # Very subtle
-
-    for radius in [16, 24]:
-        for angle in range(0, 360, 3):
-            rad = math.radians(angle)
-            x = int(cx + radius * math.cos(rad))
-            y = int(cy + radius * math.sin(rad))
-            if 0 <= x < w and 0 <= y < h:
-                output[y, x] = ring_color
+        # Draw white text
+        for ty in range(text_h):
+            for tx in range(text_w):
+                if text_surface[ty, tx, 0] > 128:  # White pixel
+                    py, px = text_y + ty, text_x + tx
+                    if 0 <= py < h and 0 <= px < w:
+                        output[py, px] = (255, 255, 255)
+    except Exception:
+        pass  # Skip text if font not available
 
     # === RECORDING INDICATOR (TOP-RIGHT) ===
-    # Pulsing red dot to indicate "recording"
-    rec_x, rec_y = w - 12, 12
+    # Pulsing white dot
+    rec_x, rec_y = w - 10, 10
     rec_pulse = abs(np.sin(time_ms / 300))
-    rec_brightness = int(100 + rec_pulse * 155)
+    rec_brightness = int(150 + rec_pulse * 105)
 
     for dy in range(-2, 3):
         for dx in range(-2, 3):
             if dx*dx + dy*dy <= 4:  # Circle
                 y, x = rec_y + dy, rec_x + dx
                 if 0 <= x < w and 0 <= y < h:
-                    output[y, x] = (rec_brightness, 40, 40)  # Red
-
-    # === EDGE GLOW (SUBTLE VIGNETTE) ===
-    # Darken edges slightly for professional look
-    edge_fade = 12
-    for i in range(edge_fade):
-        fade_factor = 1.0 - (i / edge_fade) * 0.3
-
-        # Top/bottom edges
-        output[i, :] = (output[i, :].astype(np.float32) * fade_factor).astype(np.uint8)
-        output[h - 1 - i, :] = (output[h - 1 - i, :].astype(np.float32) * fade_factor).astype(np.uint8)
-
-        # Left/right edges
-        output[:, i] = (output[:, i].astype(np.float32) * fade_factor).astype(np.uint8)
-        output[:, w - 1 - i] = (output[:, w - 1 - i].astype(np.float32) * fade_factor).astype(np.uint8)
+                    output[y, x] = (rec_brightness, rec_brightness, rec_brightness)
 
     return output

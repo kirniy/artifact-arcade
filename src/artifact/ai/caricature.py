@@ -74,7 +74,8 @@ Surround with cool DOODLES and SCRIBBLES - abstract shapes, squiggles, stars, ar
 Think "top comment on Reddit" - personal, specific, DEVASTATING but hilarious.
 The roast must be SPECIFIC to THIS PERSON's actual appearance!
 Look at their face, hair, expression, vibe - and roast THAT.
-Black ink on white. Square. The kind of roast that makes you say "damn" and laugh.""",
+BRANDING: Just "VNVNC" somewhere small - NO YEAR, never add 2024/2025/2026!
+Black ink on white. Square.""",
 
     """STUNNING MINIMAL B&W PORTRAIT. Isolate this person, draw them PERFECTLY.
 BRUTAL HONEST ROAST like r/RoastMe - find what's ACTUALLY roastable about THIS SPECIFIC PERSON.
@@ -82,9 +83,9 @@ SPEECH BUBBLES with YOUR OWN savage labels in RUSSIAN - be ORIGINAL, don't copy 
 Cool DOODLES scattered around - messy scribbles, zigzags, exclamation marks, spirals.
 
 NO GENERIC INSULTS - be SPECIFIC to THIS person's unique flaws.
-You are a comedy WRITER. Don't copy - CREATE. Look at this person and
-find what's ACTUALLY funny about them. Original observations only.
-Clean portrait, chaotic doodles. Square. Make it hurt (in a funny way).""",
+You are a comedy WRITER. Don't copy - CREATE.
+BRANDING: Just "VNVNC" small somewhere - NEVER add any year!
+Clean portrait, chaotic doodles. Square.""",
 
     """ISOLATED PORTRAIT - perfect B&W, super minimal. ROAST BATTLE energy.
 What would a standup comedian IMMEDIATELY notice about THIS person? Draw that.
@@ -93,7 +94,7 @@ Add cool SCRIBBLES and DOODLES around - lightning bolts, crosses, underlines, ch
 
 BE ORIGINAL: Study the photo. What's weird? What's tryhard? What screams "roast me"?
 Create roasts that are SPECIFIC to this face. No templates, no copying.
-Like a mean caricature artist at a carnival who tells the TRUTH.
+BRANDING: "VNVNC" only - NO YEAR (never 2024, 2025, 2026, etc)!
 Stunning drawing meets savage comedy. Square.""",
 
     """PERFECT BLACK AND WHITE SKETCH. Isolate this person BEAUTIFULLY.
@@ -103,8 +104,8 @@ Messy DOODLES around - scrawls, asterisks, emphasis marks, chaotic decorations.
 
 Find the MEME potential unique to THIS person. Exaggerate what makes THEM roastable.
 CREATIVITY REQUIRED: Every person has something unique to roast. Find it.
-Don't use any pre-written labels. Observe and create fresh burns for THIS face.
-Beautiful portrait meets chaotic energy. Square. Original savage commentary only.""",
+BRANDING: Just "VNVNC" - absolutely NO year attached!
+Beautiful portrait meets chaotic energy. Square.""",
 ]
 
 # VNVNC STICKER VARIATIONS - Portrait stickers with mystical/fortune-teller vibes
@@ -770,7 +771,8 @@ CRITICAL REQUIREMENTS:
   * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C
   * NEVER translate or transliterate VNVNC to Russian (НЕ писать ВНВНЦ или что-то подобное!)
   * All OTHER text (labels, annotations, decorations) must be in RUSSIAN, ALL CAPS
-  * Example: "VNVNC 2026" is correct, "ВНВНЦ 2026" is WRONG!
+  * NEVER add any year (2024, 2025, 2026, etc.) - just "VNVNC" alone if adding branding
+  * Example: "VNVNC" is correct, "ВНВНЦ" or "VNVNC 2026" is WRONG!
 {personality_hint}
 {style_prompt}
 
