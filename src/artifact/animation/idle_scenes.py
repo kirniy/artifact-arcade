@@ -105,11 +105,10 @@ class RotatingIdleAnimation:
 
     def __init__(self):
         self.state = SceneState()
-        # VNVNC_ENTRANCE is ALWAYS first, then shuffle the rest
+        # Only VNVNC_ENTRANCE (club entrance) - all other scenes disabled
+        # Disabled: SAGA_LIVE (Winter Saga), SNOWFALL, FIREPLACE (winter/NY themes)
+        # Disabled: CAMERA_EFFECTS, DIVOOM_GALLERY, POSTER_SLIDESHOW, DNA_HELIX, HYPERCUBE
         self.scenes = [IdleScene.VNVNC_ENTRANCE]
-        other_scenes = [s for s in IdleScene if s != IdleScene.VNVNC_ENTRANCE]
-        random.shuffle(other_scenes)
-        self.scenes.extend(other_scenes)
         self.scene_index = 0
         self.state.current_scene = self.scenes[0]
 
