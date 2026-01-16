@@ -61,7 +61,8 @@ ROAST_SYSTEM_PROMPT = """Ты - безбашенный комик с Roast Battl
 
 ФОРМАТ ОТВЕТА (СТРОГО!):
 ROAST: [3-5 предложений убойной прожарки с конкретными деталями С ФОТО]
-VIBE: [ОДНО слово: ДУШНИЛА/КРАШ/ЗУМЕР/БУМЕР/NPC/СИГМА/ЧИЛГАЙ/ТОКСИК/КРИНЖ/БАЗИРОВАННЫЙ/ВАНИЛЬКА/ХАОС]
+VIBE: [Креативная "роль" этого человека - 2-4 слова, типа звания или должности. Примеры: "Главный клоун вечеринки", "Эксперт по разочарованиям", "Профессор кринжа", "Офицер зоны комфорта", "Магистр душноты", "Министр самооправданий", "Капитан очевидность", "Директор по сну", "Генерал уныния", "Архитектор хаоса"]
+ICON: [Иконка для роли - ОДНО слово из списка: fire/star/crown/skull/ghost/robot/brain/gamepad/music/gift/bolt/gem/heart/eye/trophy]
 """
 
 class RoastMeMode(BaseMode):
@@ -91,7 +92,8 @@ class RoastMeMode(BaseMode):
         
         # Data
         self._roast_text: str = ""
-        self._vibe_score: str = ""
+        self._vibe_score: str = ""  # Creative role/title like "Главный клоун вечеринки"
+        self._vibe_icon: str = "star"  # Icon name for the role
         self._doodle_image: Optional[Caricature] = None
         
         # Animations
@@ -133,6 +135,7 @@ class RoastMeMode(BaseMode):
         self._photo_data = None
         self._roast_text = ""
         self._vibe_score = ""
+        self._vibe_icon = "star"
         self._doodle_image = None
         self._shake_amount = 0.0
         self._flash_alpha = 0.0
@@ -406,7 +409,7 @@ class RoastMeMode(BaseMode):
                     return self._parse_response(res)
                 else:
                     logger.error("Roast AI returned empty response!")
-                    return ("ИИ не смог тебя прожарить - видимо, ты слишком идеален. Или камера сломалась.", "ЗАГАДКА")
+                    return ("ИИ не смог тебя прожарить - видимо, ты слишком идеален. Или камера сломалась.", "Загадочная личность", "star")
 
             async def get_image():
                 logger.info("Starting caricature generation for roast...")
@@ -423,7 +426,7 @@ class RoastMeMode(BaseMode):
 
             # Advance to text generation phase
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_TEXT)
-            self._roast_text, self._vibe_score = await get_text()
+            self._roast_text, self._vibe_score, self._vibe_icon = await get_text()
 
             # Advance to image generation phase
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
@@ -448,10 +451,14 @@ class RoastMeMode(BaseMode):
             logger.error(f"AI Failure: {e}")
             self._roast_text = "Ты сломал мой ИИ своей красотой."
 
-    def _parse_response(self, text: str) -> Tuple[str, str]:
-        """Parse AI response, handling multi-line ROAST content."""
+    def _parse_response(self, text: str) -> Tuple[str, str, str]:
+        """Parse AI response, handling multi-line ROAST content.
+
+        Returns: (roast_text, vibe_role, icon_name)
+        """
         roast_lines = []
-        vibe = "СТРАННЫЙ"
+        vibe = "Загадочная личность"
+        icon = "star"  # Default icon
         in_roast = False
 
         for line in text.strip().split("\n"):
@@ -463,7 +470,17 @@ class RoastMeMode(BaseMode):
                     roast_lines.append(content)
             elif line.upper().startswith("VIBE:"):
                 in_roast = False
-                vibe = line[5:].strip().upper()
+                vibe = line[5:].strip()
+                # Remove quotes if present
+                vibe = vibe.strip('"\'')
+            elif line.upper().startswith("ICON:"):
+                in_roast = False
+                icon_raw = line[5:].strip().lower()
+                # Validate icon is in our list
+                valid_icons = {"fire", "star", "crown", "skull", "ghost", "robot", "brain",
+                              "gamepad", "music", "gift", "bolt", "gem", "heart", "eye", "trophy"}
+                if icon_raw in valid_icons:
+                    icon = icon_raw
             elif in_roast and line:
                 # Continue collecting roast text
                 roast_lines.append(line)
@@ -476,8 +493,8 @@ class RoastMeMode(BaseMode):
             clean_text = text.replace("**", "").replace("*", "").strip()
             roast = clean_text[:300] if len(clean_text) > 300 else clean_text
 
-        logger.info(f"Parsed roast: {roast[:100]}... vibe: {vibe}")
-        return roast, vibe
+        logger.info(f"Parsed roast: {roast[:100]}... vibe: {vibe}, icon: {icon}")
+        return roast, vibe, icon
 
     def _on_upload_complete(self, result: UploadResult) -> None:
         """Handle completion of S3 upload for QR sharing."""
@@ -515,6 +532,7 @@ class RoastMeMode(BaseMode):
                 "type": "roast",
                 "roast": self._roast_text,
                 "vibe": self._vibe_score,
+                "vibe_icon": self._vibe_icon,
                 "doodle": self._doodle_image.image_data if self._doodle_image else None,
                 "qr_url": self._qr_url,
                 "qr_image": self._qr_image,

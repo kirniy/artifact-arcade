@@ -193,6 +193,7 @@ def get_test_data(mode: str) -> dict:
             **base_data,
             "roast": "О, смотрите кто пришёл! Человек, который думает что умеет танцевать после двух пива. Твой стиль одежды кричит 'мама выбирала'!",
             "vibe": "Главный клоун вечеринки",
+            "vibe_icon": "crown",  # AI picks icon based on the role
             "doodle": create_test_image("ROAST", (280, 280)),
         },
         "quiz": {

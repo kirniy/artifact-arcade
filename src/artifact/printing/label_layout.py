@@ -77,6 +77,15 @@ class SpacerBlock:
 
 
 @dataclass
+class FlexSpacerBlock:
+    """Flexible spacer that fills remaining vertical space.
+
+    Used to push content (like footer) to bottom of label.
+    """
+    min_pixels: int = 10  # Minimum spacing even if no room
+
+
+@dataclass
 class QRCodeBlock:
     """QR code block for the label."""
     url: str
@@ -85,9 +94,99 @@ class QRCodeBlock:
 
 
 @dataclass
+class IconBlock:
+    """An icon from Font Awesome for the label."""
+    icon: str  # Icon name like "fire", "star", "gift"
+    size: int = 24
+    alignment: Alignment = Alignment.CENTER
+
+
+# Font Awesome 6 Unicode codepoints for common icons
+FA_ICONS = {
+    "fire": "\uf06d",
+    "star": "\uf005",
+    "star-half": "\uf089",
+    "gift": "\uf06b",
+    "trophy": "\uf091",
+    "gamepad": "\uf11b",
+    "dice": "\uf522",
+    "question": "\uf128",
+    "question-circle": "\uf059",
+    "skull": "\uf54c",
+    "skull-crossbones": "\uf714",
+    "glass-martini": "\uf000",
+    "cocktail": "\uf561",
+    "wine-glass": "\uf4e3",
+    "music": "\uf001",
+    "camera": "\uf030",
+    "video": "\uf03d",
+    "film": "\uf008",
+    "user-secret": "\uf21b",
+    "magic": "\uf0d0",
+    "hat-wizard": "\uf6e8",
+    "compact-disc": "\uf51f",
+    "microphone": "\uf130",
+    "crown": "\uf521",
+    "heart": "\uf004",
+    "bolt": "\uf0e7",
+    "gem": "\uf3a5",
+    "cube": "\uf1b2",
+    "square": "\uf0c8",
+    "circle": "\uf111",
+    "check": "\uf00c",
+    "times": "\uf00d",
+    "exclamation": "\uf12a",
+    "info": "\uf129",
+    "arrow-right": "\uf061",
+    "arrow-left": "\uf060",
+    "chevron-right": "\uf054",
+    "chevron-left": "\uf053",
+    "sparkles": "\uf890",  # FA 6 only
+    "wand-sparkles": "\uf72b",
+    "crystal-ball": "\uf72b",  # using wand as fallback
+    "ghost": "\uf6e2",
+    "robot": "\uf544",
+    "brain": "\uf5dc",
+    "eye": "\uf06e",
+    "comment": "\uf075",
+    "quote-left": "\uf10d",
+    "quote-right": "\uf10e",
+}
+
+
+@dataclass
+class HeaderRowBlock:
+    """Compact centered header with icon + title.
+
+    Layout: [icon TITLE] centered
+    """
+    title: str
+    icon: Optional[str] = None  # Font Awesome icon name
+    qr_url: Optional[str] = None  # Ignored now - QR goes in footer
+    qr_size: int = 80  # Ignored
+    title_size: int = 42  # Title font size
+    icon_size: int = 32  # Icon size
+
+
+@dataclass
+class FooterWithQRBlock:
+    """Two-column footer: text on left, QR on right.
+
+    Layout: [СКАЧАЙ:        ]  [QR]
+            [date           ]  [QR]
+            [VNVNC.RU       ]  [QR]
+    """
+    date_text: str
+    website: str = "VNVNC.RU"
+    qr_url: str = ""
+    qr_size: int = 120  # Large for thermal printer scannability
+    label_text: str = "СКАЧАЙ:"
+
+
+@dataclass
 class BoxBlock:
     """A framed box containing other elements."""
-    content_blocks: List[Union["TextBlock", "ImageBlock", "SpacerBlock"]] = field(default_factory=list)
+    content_blocks: List[Union["TextBlock", "ImageBlock", "SpacerBlock", "IconBlock"]] = field(default_factory=list)
     border_style: str = "solid"  # solid, dashed, double, rounded, ornate
     padding: int = 8
     corner_style: str = "square"  # square, rounded, ornate
@@ -98,7 +197,7 @@ class BoxBlock:
 @dataclass
 class LabelLayout:
     """Complete label layout definition."""
-    blocks: List[Union[TextBlock, ImageBlock, SeparatorBlock, SpacerBlock, QRCodeBlock, BoxBlock]] = field(default_factory=list)
+    blocks: List[Union[TextBlock, ImageBlock, SeparatorBlock, SpacerBlock, FlexSpacerBlock, QRCodeBlock, BoxBlock, IconBlock, HeaderRowBlock, FooterWithQRBlock]] = field(default_factory=list)
     margin_x: int = 16  # Horizontal margin in pixels
     margin_y: int = 20  # Vertical margin in pixels
     page_border: Optional[str] = None  # None, "solid", "double", "ornate", "stars"
@@ -136,6 +235,26 @@ class LabelLayout:
         ))
         return self
 
+    def add_icon(
+        self,
+        icon: str,
+        size: int = 24,
+        alignment: Alignment = Alignment.CENTER,
+    ) -> "LabelLayout":
+        """Add an icon from Font Awesome.
+
+        Args:
+            icon: Icon name (e.g., "fire", "star", "gift") from FA_ICONS
+            size: Icon size in pixels
+            alignment: Horizontal alignment
+        """
+        self.blocks.append(IconBlock(
+            icon=icon,
+            size=size,
+            alignment=alignment,
+        ))
+        return self
+
     def add_qr(
         self,
         url: str,
@@ -158,6 +277,38 @@ class LabelLayout:
     def add_space(self, pixels: int = 10) -> "LabelLayout":
         """Add vertical spacing."""
         self.blocks.append(SpacerBlock(pixels=pixels))
+        return self
+
+    def add_flex_space(self, min_pixels: int = 10) -> "LabelLayout":
+        """Add flexible spacing that fills remaining vertical space.
+
+        Use this to push footer content to the bottom of the label.
+        """
+        self.blocks.append(FlexSpacerBlock(min_pixels=min_pixels))
+        return self
+
+    def add_header_row(
+        self,
+        title: str,
+        icon: Optional[str] = None,
+        qr_url: Optional[str] = None,
+        qr_size: int = 70,
+        title_size: int = 48,
+        icon_size: int = 32,
+    ) -> "LabelLayout":
+        """Add a header row with title on left, optional QR on right.
+
+        Modern layout that puts QR code in the header to save space.
+        Example: [icon ПРОЖАРКА     [QR]]
+        """
+        self.blocks.append(HeaderRowBlock(
+            title=title,
+            icon=icon,
+            qr_url=qr_url,
+            qr_size=qr_size,
+            title_size=title_size,
+            icon_size=icon_size,
+        ))
         return self
 
     def add_box(
@@ -206,6 +357,32 @@ class LabelLayoutEngine:
         self.width = width
         self.height = height
         self._font_cache = {}
+        self._icon_font_cache = {}
+
+    def _get_icon_font(self, size: int):
+        """Get Font Awesome icon font for rendering icons."""
+        if size in self._icon_font_cache:
+            return self._icon_font_cache[size]
+
+        try:
+            from PIL import ImageFont
+            from pathlib import Path
+
+            # Find Font Awesome font file
+            fa_paths = [
+                Path(__file__).parent.parent.parent / "assets" / "fonts" / "fa-solid-900.ttf",
+                Path("/Users/kirniy/dev/modular-arcade/assets/fonts/fa-solid-900.ttf"),
+            ]
+
+            for path in fa_paths:
+                if path.exists():
+                    font = ImageFont.truetype(str(path), size)
+                    self._icon_font_cache[size] = font
+                    return font
+
+            return None
+        except Exception:
+            return None
 
     def _get_font(self, size: int, bold: bool = False):
         """Get a font for text rendering, with caching."""
@@ -322,6 +499,61 @@ class LabelLayoutEngine:
         else:
             return self._image_to_escpos_raster(img)
 
+    def _estimate_block_height(self, block, content_width: int, draw=None) -> int:
+        """Estimate the height a block will take when rendered."""
+        if isinstance(block, TextBlock):
+            font_size = block.size.value
+            font = self._get_font(font_size, block.bold)
+            if font and draw:
+                lines = self._wrap_text(block.text, font, draw, content_width)
+                return len(lines) * (font_size + 4)
+            # Rough estimate without font
+            chars_per_line = content_width // (font_size // 2)
+            lines = max(1, len(block.text) // chars_per_line + 1)
+            return lines * (font_size + 4)
+        elif isinstance(block, ImageBlock):
+            # Calculate actual height based on image aspect ratio and target width
+            if block.height:
+                return block.height
+            if block.width and block.image_data:
+                try:
+                    from PIL import Image
+                    import io
+                    if isinstance(block.image_data, Image.Image):
+                        img = block.image_data
+                    else:
+                        img = Image.open(io.BytesIO(block.image_data))
+                    aspect = img.height / img.width
+                    return int(block.width * aspect)
+                except Exception:
+                    pass
+            return block.width or 200  # Assume square if can't determine
+        elif isinstance(block, QRCodeBlock):
+            return block.size + 8
+        elif isinstance(block, SeparatorBlock):
+            return block.thickness + 12
+        elif isinstance(block, SpacerBlock):
+            return block.pixels
+        elif isinstance(block, IconBlock):
+            return block.size + 8
+        elif isinstance(block, BoxBlock):
+            # Estimate box content
+            inner_height = sum(
+                self._estimate_block_height(b, content_width - block.padding * 2, draw)
+                for b in block.content_blocks
+            )
+            return inner_height + block.padding * 2 + 20
+        elif isinstance(block, FlexSpacerBlock):
+            return block.min_pixels  # Will be expanded later
+        elif isinstance(block, HeaderRowBlock):
+            # Compact header height
+            return block.title_size + 8
+        elif isinstance(block, FooterWithQRBlock):
+            # Two-column footer height = max(QR size, text height) + separator + padding
+            text_height = 24 + 4 + 22 + 4 + 24  # 78px for text stack
+            return max(block.qr_size, text_height) + 10
+        return 0
+
     def render_to_image(self, layout: LabelLayout):
         """Render a label layout to a PIL Image.
 
@@ -342,9 +574,26 @@ class LabelLayoutEngine:
 
         # Calculate usable area
         content_width = self.width - (layout.margin_x * 2)
+        available_height = self.height - (layout.margin_y * 2)
+
+        # First pass: estimate total fixed height and count flex spacers
+        flex_spacers = []
+        fixed_height = 0
+        for i, block in enumerate(layout.blocks):
+            if isinstance(block, FlexSpacerBlock):
+                flex_spacers.append(i)
+                fixed_height += block.min_pixels
+            else:
+                fixed_height += self._estimate_block_height(block, content_width, draw)
+
+        # Calculate flex space to distribute
+        remaining_space = max(0, available_height - fixed_height)
+        flex_space_per_block = remaining_space // max(1, len(flex_spacers)) if flex_spacers else 0
+
+        # Second pass: render with calculated flex space
         y_pos = layout.margin_y
 
-        for block in layout.blocks:
+        for i, block in enumerate(layout.blocks):
             if y_pos >= self.height - layout.margin_y:
                 logger.warning("Label content exceeds available space")
                 break
@@ -369,8 +618,26 @@ class LabelLayoutEngine:
                 y_pos = self._render_box_block(
                     img, draw, block, layout.margin_x, y_pos, content_width
                 )
+            elif isinstance(block, IconBlock):
+                y_pos = self._render_icon_block(
+                    draw, block, layout.margin_x, y_pos, content_width
+                )
             elif isinstance(block, SpacerBlock):
                 y_pos += block.pixels
+            elif isinstance(block, FlexSpacerBlock):
+                # Add calculated flex space (only if there's room)
+                if flex_space_per_block > 0:
+                    y_pos += flex_space_per_block
+                else:
+                    y_pos += block.min_pixels
+            elif isinstance(block, HeaderRowBlock):
+                y_pos = self._render_header_row_block(
+                    img, draw, block, layout.margin_x, y_pos, content_width
+                )
+            elif isinstance(block, FooterWithQRBlock):
+                y_pos = self._render_footer_with_qr_block(
+                    img, draw, block, layout.margin_x, y_pos, content_width
+                )
 
         # Draw page border if specified
         if layout.page_border:
@@ -474,6 +741,199 @@ class LabelLayoutEngine:
             y_pos += line_height
 
         return y_pos
+
+    def _render_icon_block(
+        self,
+        draw,
+        block: IconBlock,
+        margin_x: int,
+        y_pos: int,
+        content_width: int,
+    ) -> int:
+        """Render a Font Awesome icon and return new y position."""
+        icon_font = self._get_icon_font(block.size)
+        if not icon_font:
+            # Fallback: skip icon if font not available
+            return y_pos + block.size + 4
+
+        # Get icon character from FA_ICONS mapping
+        icon_char = FA_ICONS.get(block.icon, "\uf111")  # Default to circle
+
+        # Get icon width for centering
+        try:
+            bbox = draw.textbbox((0, 0), icon_char, font=icon_font)
+            icon_width = bbox[2] - bbox[0]
+        except Exception:
+            icon_width = block.size
+
+        # Calculate x position based on alignment
+        if block.alignment == Alignment.CENTER:
+            x = margin_x + (content_width - icon_width) // 2
+        elif block.alignment == Alignment.RIGHT:
+            x = margin_x + content_width - icon_width
+        else:
+            x = margin_x
+
+        # Draw icon
+        draw.text((x, y_pos), icon_char, font=icon_font, fill=0)
+
+        return y_pos + block.size + 4
+
+    def _render_header_row_block(
+        self,
+        img,
+        draw,
+        block: HeaderRowBlock,
+        margin_x: int,
+        y_pos: int,
+        content_width: int,
+    ) -> int:
+        """Render compact centered header: [icon TITLE] centered."""
+        row_height = block.title_size + 8
+
+        # Calculate total width of icon + title for centering
+        total_width = 0
+        icon_width = 0
+
+        if block.icon:
+            icon_font = self._get_icon_font(block.icon_size)
+            if icon_font:
+                icon_char = FA_ICONS.get(block.icon, "\uf111")
+                try:
+                    bbox = draw.textbbox((0, 0), icon_char, font=icon_font)
+                    icon_width = bbox[2] - bbox[0]
+                except Exception:
+                    icon_width = block.icon_size
+                total_width += icon_width + 8  # icon + space
+
+        title_font = self._get_font(block.title_size, bold=True)
+        title_width = 0
+        if title_font:
+            try:
+                bbox = draw.textbbox((0, 0), block.title, font=title_font)
+                title_width = bbox[2] - bbox[0]
+            except Exception:
+                title_width = len(block.title) * (block.title_size // 2)
+            total_width += title_width
+
+        # Center the whole thing
+        start_x = margin_x + (content_width - total_width) // 2
+        current_x = start_x
+
+        # Draw icon
+        if block.icon and icon_width > 0:
+            icon_font = self._get_icon_font(block.icon_size)
+            icon_char = FA_ICONS.get(block.icon, "\uf111")
+            icon_y = y_pos + (row_height - block.icon_size) // 2
+            draw.text((current_x, icon_y), icon_char, font=icon_font, fill=0)
+            current_x += icon_width + 8
+
+        # Draw title
+        if title_font:
+            text_y = y_pos + (row_height - block.title_size) // 2
+            draw.text((current_x, text_y), block.title, font=title_font, fill=0)
+
+        return y_pos + row_height + 4
+
+    def _render_footer_with_qr_block(
+        self,
+        img,
+        draw,
+        block: FooterWithQRBlock,
+        margin_x: int,
+        y_pos: int,
+        content_width: int,
+    ) -> int:
+        """Render two-column footer: text on left, QR on right, both centered in their columns."""
+        try:
+            import qrcode
+            from PIL import Image as PILImage
+        except ImportError:
+            return y_pos
+
+        # Calculate available height (leave room for page border)
+        max_y = self.height - 8  # 8px margin for page border
+        available_height = max_y - y_pos - 8  # 8px for top separator + padding
+
+        # QR size - use requested size but clamp to available space
+        # Minimum 90px for scannability on thermal printer
+        qr_size = min(block.qr_size, available_height - 10)
+        qr_size = max(qr_size, 90)  # Ensure minimum scannable size
+
+        # Draw top separator line
+        draw.line([(margin_x, y_pos), (margin_x + content_width, y_pos)], fill=0, width=1)
+        y_pos += 6
+
+        # Calculate text heights (slightly smaller to fit)
+        text_total_height = 24 + 3 + 22 + 3 + 24  # label + gap + date + gap + website = 76px
+
+        # Row height is the larger of QR or text, clamped to available
+        row_height = min(max(qr_size, text_total_height), available_height)
+        row_start_y = y_pos
+
+        # Calculate column positions - split into two equal columns with dotted separator
+        center_x = margin_x + content_width // 2
+        left_col_start = margin_x
+        left_col_width = center_x - margin_x - 4  # 4px gap from center line
+        right_col_start = center_x + 4
+        right_col_width = margin_x + content_width - right_col_start
+
+        # LEFT SIDE: Text column - centered both vertically AND horizontally
+        text_start_y = row_start_y + (row_height - text_total_height) // 2
+        text_y = text_start_y
+
+        # Helper to center text in left column
+        def draw_centered_text(text: str, font, y: int, bold: bool = False):
+            if not font:
+                return
+            try:
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+            except Exception:
+                text_width = len(text) * 10
+            text_x = left_col_start + (left_col_width - text_width) // 2
+            draw.text((text_x, y), text, font=font, fill=0)
+
+        # "СКАЧАЙ:" label - centered
+        label_font = self._get_font(24, bold=True)
+        draw_centered_text(block.label_text, label_font, text_y)
+        text_y += 27
+
+        # Date - centered
+        date_font = self._get_font(22, bold=False)
+        draw_centered_text(block.date_text, date_font, text_y)
+        text_y += 25
+
+        # Website - centered
+        web_font = self._get_font(24, bold=True)
+        draw_centered_text(block.website, web_font, text_y)
+
+        # DOTTED VERTICAL SEPARATOR in center
+        dot_gap = 6
+        dot_y = row_start_y
+        while dot_y < row_start_y + row_height - 2:
+            draw.ellipse([(center_x - 1, dot_y), (center_x + 1, dot_y + 2)], fill=0)
+            dot_y += dot_gap
+
+        # RIGHT SIDE: QR code - centered both vertically AND horizontally in right column
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=4,  # Larger box size for better scannability
+            border=1,
+        )
+        qr.add_data(block.qr_url)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        qr_img = qr_img.convert('L').resize((qr_size, qr_size), PILImage.Resampling.NEAREST)
+
+        # Center QR horizontally in right column
+        qr_x = right_col_start + (right_col_width - qr_size) // 2
+        # Center QR vertically in row
+        qr_y = row_start_y + (row_height - qr_size) // 2
+        img.paste(qr_img, (qr_x, qr_y))
+
+        return row_start_y + row_height + 4  # Small padding after
 
     def _render_image_block(
         self,
