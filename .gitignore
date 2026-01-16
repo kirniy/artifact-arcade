@@ -64,3 +64,6 @@ vnvnc_ai_logs/
 # Runtime data (coupons, stats, control files)
 # This directory is created on Pi and should never be overwritten by git
 data/
+# Simulator app bundle (generated locally)
+ARTIFACT Simulator.app/
+.simulator-config

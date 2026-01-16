@@ -43,8 +43,10 @@ from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
 
-# Real printer support via environment variable
-REAL_PRINTER_ENABLED = os.environ.get("ARTIFACT_REAL_PRINTER", "0") == "1"
+
+def is_real_printer_enabled() -> bool:
+    """Check if real printer is enabled (checked at runtime, not import time)."""
+    return os.environ.get("ARTIFACT_REAL_PRINTER", "0") == "1"
 
 
 def setup_logging() -> None:
@@ -131,7 +133,7 @@ class ArtifactSimulator:
 
         # Real printer support (for testing from Mac)
         self._real_printer = None
-        if REAL_PRINTER_ENABLED:
+        if is_real_printer_enabled():
             self._setup_real_printer()
 
         # Wire up event handlers
@@ -255,7 +257,7 @@ class ArtifactSimulator:
         self.window.trigger_print(print_data)
 
         # Also print to real printer if enabled
-        if self._real_printer and REAL_PRINTER_ENABLED:
+        if self._real_printer and is_real_printer_enabled():
             asyncio.create_task(self._print_to_real_printer(print_data))
 
         # Play printer sound effect
@@ -367,7 +369,7 @@ def main() -> None:
     logger.info("  S  - Screenshot")
     logger.info("  Q  - Quit")
     logger.info("")
-    if REAL_PRINTER_ENABLED:
+    if is_real_printer_enabled():
         logger.info("** REAL PRINTER MODE ENABLED **")
         logger.info("   Print events will be sent to USB printer")
         logger.info("")
