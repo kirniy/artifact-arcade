@@ -17,10 +17,13 @@ _PICAMERA2_AVAILABLE = False
 
 try:
     from picamera2 import Picamera2
+    from libcamera import Transform
     _picamera2 = Picamera2
+    _Transform = Transform
     _PICAMERA2_AVAILABLE = True
     logger.info("picamera2 library available")
 except ImportError:
+    _Transform = None
     logger.warning("picamera2 not available - Pi camera won't work")
 
 
@@ -93,10 +96,12 @@ class PiCamera:
             # Configure camera
             # Use main stream for full resolution capture (RGB888)
             # Use lores stream for preview (must be YUV420, we convert to RGB later)
+            # Apply 180 degree rotation (camera is mounted upside down)
             config = self._camera.create_still_configuration(
                 main={"size": (self._width, self._height), "format": "RGB888"},
                 lores={"size": (self._preview_width, self._preview_height), "format": "YUV420"},
-                display="lores"
+                display="lores",
+                transform=_Transform(hflip=True, vflip=True) if _Transform else None
             )
             self._camera.configure(config)
 
