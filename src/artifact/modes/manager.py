@@ -262,7 +262,7 @@ MODE_COLORS = {
     # Currently active modes (in menu order)
     "fortune": (180, 100, 255),     # Mystic purple
     "ai_prophet": (0, 255, 180),    # Neon teal
-    "photobooth": (255, 80, 180),   # Hot pink
+    "photobooth": (139, 0, 0),      # BOILING ROOM deep red
     "roast": (255, 100, 30),        # Fire orange
     "squid_game": (255, 50, 80),    # Red light
     "quiz": (255, 220, 0),          # Gold

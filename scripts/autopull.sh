@@ -31,12 +31,29 @@ fi
 log "Updates found, pulling..."
 git pull origin main
 
-# Update VPN port if port file exists and sing-box config exists
-if [ -f "$VPN_PORT_FILE" ] && [ -f "$SINGBOX_CONFIG" ]; then
+# Update sing-box VPN config if a new config exists in repo
+REPO_VPN_CONFIG="$REPO_DIR/configs/vpn/sing-box-active.json"
+SINGBOX_BACKUP_DIR="$REPO_DIR/configs/vpn/backups"
+
+if [ -f "$REPO_VPN_CONFIG" ]; then
+    # Check if config actually changed
+    if ! diff -q "$REPO_VPN_CONFIG" "$SINGBOX_CONFIG" &>/dev/null 2>&1; then
+        log "New VPN config detected, updating sing-box..."
+        # Backup current config
+        mkdir -p "$SINGBOX_BACKUP_DIR"
+        BACKUP_NAME="sing-box-backup-$(date '+%Y%m%d-%H%M%S').json"
+        sudo cp "$SINGBOX_CONFIG" "$SINGBOX_BACKUP_DIR/$BACKUP_NAME" 2>/dev/null || true
+        log "Backed up old config to $SINGBOX_BACKUP_DIR/$BACKUP_NAME"
+        # Install new config
+        sudo cp "$REPO_VPN_CONFIG" "$SINGBOX_CONFIG"
+        log "VPN config replaced, restarting sing-box..."
+        sudo systemctl restart sing-box || log "Warning: Failed to restart sing-box"
+    fi
+elif [ -f "$VPN_PORT_FILE" ] && [ -f "$SINGBOX_CONFIG" ]; then
+    # Legacy: update port only
     NEW_PORT=$(cat "$VPN_PORT_FILE" | tr -d '[:space:]')
     if [ -n "$NEW_PORT" ]; then
         log "Updating sing-box port to $NEW_PORT..."
-        # Use jq to update the port in the outbound server config
         if command -v jq &> /dev/null; then
             sudo jq --argjson port "$NEW_PORT" \
                 '(.outbounds[] | select(.type == "vless" or .server != null) | .server_port) = $port' \

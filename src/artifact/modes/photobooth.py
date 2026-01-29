@@ -1,14 +1,17 @@
-"""Photobooth Mode - AI Brazil Photo Booth with QR sharing.
+"""Photobooth Mode - AI BOILING ROOM Photo Booth with QR sharing.
 
 Photo booth flow:
 1. Button press → Countdown (3-2-1)
 2. Camera flash → Take photo
-3. AI generates Brazil carnival-themed 2x2 photo booth grid
-4. Show preview → Print + QR code
+3. AI generates BOILING ROOM underground party-themed 2x2 photo booth grid
+4. Show preview → Upload to S3 gallery → QR code to gallery page
 
-Creates vibrant Brazilian carnival photo booth strips with
-festive colors and VNVNC branding.
+Creates raw, analog-style photo booth strips with red & black palette,
+chromatic aberration, and VNVNC branding. Full color (no thermal printing).
 """
+
+# When True, prints labels on thermal printer. When False, digital-only mode.
+PRINTING_ENABLED = False
 
 import logging
 import io
@@ -61,34 +64,34 @@ class PhotoboothState:
 
 
 class PhotoboothMode(BaseMode):
-    """AI Brazil Photo Booth - generates vibrant carnival photo booth grids.
+    """AI BOILING ROOM Photo Booth - generates underground party photo booth grids.
 
     Flow:
     1. Countdown timer with visual + audio feedback
     2. Photo capture
-    3. AI generates Brazil carnival-themed 2x2 photo booth grid
-    4. Upload to S3 for QR code sharing
-    5. Thermal printing of the AI-generated result
+    3. AI generates BOILING ROOM-themed 2x2 photo booth grid (red & black)
+    4. Upload to S3 gallery for sharing
+    5. Show unified gallery QR code
 
-    Brazilian flag colors:
-    - Green: (0, 155, 58)
-    - Yellow/Gold: (255, 223, 0)
-    - Blue: (0, 39, 118)
+    BOILING ROOM colors:
+    - Chrome Silver: (192, 192, 192)
+    - Deep Red: (139, 0, 0)
+    - Black: (0, 0, 0)
     """
 
     name = "photobooth"
     display_name = "ФОТО\nБУДКА"
-    description = "Карнавал начинается!"
+    description = "BOILING ROOM"
     icon = "camera"
     style = "arcade"
     requires_camera = True
     requires_ai = True
     estimated_duration = 30
 
-    # Brazilian flag colors
-    BRAZIL_GREEN = (0, 155, 58)
-    BRAZIL_YELLOW = (255, 223, 0)
-    BRAZIL_BLUE = (0, 39, 118)
+    # BOILING ROOM colors
+    THEME_CHROME = (192, 192, 192)
+    THEME_RED = (139, 0, 0)
+    THEME_BLACK = (0, 0, 0)
 
     BEEP_TIME = 0.2
     COUNTDOWN_SECONDS = 3
@@ -243,8 +246,9 @@ class PhotoboothMode(BaseMode):
                 self._state.countdown_timer = self.RESULT_DURATION
                 self.change_phase(ModePhase.RESULT)
 
-                # Start printing IMMEDIATELY when result appears
-                self._start_printing_now()
+                # Start printing IMMEDIATELY when result appears (if enabled)
+                if PRINTING_ENABLED:
+                    self._start_printing_now()
 
     def _do_flash_and_capture(self) -> None:
         """Flash, capture, and start AI generation."""
@@ -350,71 +354,32 @@ class PhotoboothMode(BaseMode):
             return None
 
     def _upload_ai_result_async(self) -> None:
-        """Upload rendered label with QR code for sharing.
+        """Upload AI-generated photo booth image for gallery sharing.
 
-        Flow:
-        1. Pre-generate short URL before upload (and store in state for print!)
-        2. Render complete label with footer + QR code
-        3. Upload the rendered label image
+        When PRINTING_ENABLED=False (digital-only mode):
+        - Uploads raw AI image directly (no label footer/QR baked in)
+        - Sets unified gallery QR code for display
 
-        This way, when users scan the QR, they see the full label design.
+        When PRINTING_ENABLED=True:
+        - Renders label with footer + QR, uploads the label preview
         """
-        # Get image for the label
+        # Get image for upload
         caricature_bytes = self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
 
         if not caricature_bytes:
             logger.warning("No image bytes available for upload")
             return
 
-        logger.info("Rendering label and uploading...")
+        logger.info("Uploading photo booth image...")
         self._state.is_uploading = True
 
-        try:
-            # 1. Pre-generate upload info with short URL
-            pre_info = pre_generate_upload_info("photobooth", "png")
-            logger.info(f"Pre-generated short URL: {pre_info.short_url}")
+        # Set unified gallery QR code (same for everyone)
+        gallery_url = "https://vnvnc.ru/gallery/photobooth"
+        self._state.qr_url = gallery_url
+        self._state.qr_image = generate_qr_image(gallery_url)
 
-            # IMPORTANT: Store URL and QR image in state NOW so print can use it!
-            self._state.qr_url = pre_info.short_url
-            self._state.qr_image = generate_qr_image(pre_info.short_url)
-
-            # 2. Render complete label with QR code pointing to itself
-            label_gen = LabelReceiptGenerator()
-            print_data = {
-                "caricature": caricature_bytes,
-                "photo": self._state.photo_bytes,
-                "qr_url": pre_info.short_url,
-                "short_url": pre_info.short_url,  # Explicitly pass for footer display
-                "date": datetime.now().strftime("%d.%m.%Y"),
-            }
-
-            # Generate the receipt which includes preview_image (PNG)
-            receipt = label_gen.generate_receipt("photobooth", print_data)
-            label_png = receipt.preview_image
-
-            if label_png:
-                # 3. Upload rendered label with pre-generated filename
-                self._uploader.upload_bytes(
-                    label_png,
-                    prefix="photobooth",
-                    extension="png",
-                    content_type="image/png",
-                    callback=self._on_upload_complete,
-                    pre_info=pre_info,
-                )
-            else:
-                # Fallback: upload raw image
-                logger.warning("Label render failed, uploading raw image")
-                self._uploader.upload_bytes(
-                    caricature_bytes,
-                    prefix="photobooth",
-                    extension="png",
-                    content_type="image/png",
-                    callback=self._on_upload_complete,
-                )
-        except Exception as e:
-            logger.error(f"Label render/upload failed: {e}")
-            # Fallback: upload raw image
+        if not PRINTING_ENABLED:
+            # Digital-only mode: upload raw AI image (clean, no footer)
             self._uploader.upload_bytes(
                 caricature_bytes,
                 prefix="photobooth",
@@ -422,6 +387,60 @@ class PhotoboothMode(BaseMode):
                 content_type="image/png",
                 callback=self._on_upload_complete,
             )
+            # Also upload the square version if available
+            if self._state.ai_display_bytes and self._state.ai_display_bytes != caricature_bytes:
+                self._uploader.upload_bytes(
+                    self._state.ai_display_bytes,
+                    prefix="photobooth-square",
+                    extension="png",
+                    content_type="image/png",
+                    callback=lambda r: logger.info(f"Square upload: {r.success}"),
+                )
+        else:
+            # Printing mode: render label with footer + QR
+            try:
+                pre_info = pre_generate_upload_info("photobooth", "png")
+                logger.info(f"Pre-generated short URL: {pre_info.short_url}")
+
+                label_gen = LabelReceiptGenerator()
+                print_data = {
+                    "caricature": caricature_bytes,
+                    "photo": self._state.photo_bytes,
+                    "qr_url": pre_info.short_url,
+                    "short_url": pre_info.short_url,
+                    "date": datetime.now().strftime("%d.%m.%Y"),
+                }
+
+                receipt = label_gen.generate_receipt("photobooth", print_data)
+                label_png = receipt.preview_image
+
+                if label_png:
+                    self._uploader.upload_bytes(
+                        label_png,
+                        prefix="photobooth",
+                        extension="png",
+                        content_type="image/png",
+                        callback=self._on_upload_complete,
+                        pre_info=pre_info,
+                    )
+                else:
+                    logger.warning("Label render failed, uploading raw image")
+                    self._uploader.upload_bytes(
+                        caricature_bytes,
+                        prefix="photobooth",
+                        extension="png",
+                        content_type="image/png",
+                        callback=self._on_upload_complete,
+                    )
+            except Exception as e:
+                logger.error(f"Label render/upload failed: {e}")
+                self._uploader.upload_bytes(
+                    caricature_bytes,
+                    prefix="photobooth",
+                    extension="png",
+                    content_type="image/png",
+                    callback=self._on_upload_complete,
+                )
 
     def _upload_photo_async(self) -> None:
         """Upload photo for QR sharing using shared AsyncUploader."""
@@ -547,14 +566,14 @@ class PhotoboothMode(BaseMode):
             self._render_ready(buffer)
 
     def _render_countdown(self, buffer: NDArray[np.uint8]) -> None:
-        """Render countdown number with Brazilian colors."""
-        # Dim camera background with green tint
+        """Render countdown number with BOILING ROOM colors."""
+        # Dim camera background with red tint
         buffer[:, :, :] = (buffer.astype(np.float32) * 0.3).astype(np.uint8)
-        buffer[:, :, 1] = np.minimum(buffer[:, :, 1].astype(np.uint16) + 20, 255).astype(np.uint8)
+        buffer[:, :, 0] = np.minimum(buffer[:, :, 0].astype(np.uint16) + 30, 255).astype(np.uint8)
 
-        # Big countdown number in Brazilian yellow
+        # Big countdown number in chrome
         num_str = str(self._state.countdown)
-        draw_centered_text(buffer, num_str, 40, self.BRAZIL_YELLOW, scale=5)
+        draw_centered_text(buffer, num_str, 40, self.THEME_CHROME, scale=5)
 
     def _render_generating(self, buffer: NDArray[np.uint8]) -> None:
         """Render Santa runner minigame while AI is generating, with captured photo as background."""
@@ -568,41 +587,42 @@ class PhotoboothMode(BaseMode):
             bar_y = 2
 
             # Semi-transparent dark background for progress bar
-            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, self.BRAZIL_BLUE)
+            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, self.THEME_RED)
 
             # Use the SmartProgressTracker's render method for the progress bar
             self._progress_tracker.render_progress_bar(
                 buffer, bar_x, bar_y, bar_w, bar_h,
-                bar_color=self.BRAZIL_YELLOW,
-                bg_color=self.BRAZIL_GREEN,
+                bar_color=self.THEME_CHROME,
+                bg_color=self.THEME_BLACK,
                 time_ms=self._time_in_phase
             )
 
             # Show compact status at bottom
             status_message = self._progress_tracker.get_message()
             # Semi-transparent dark strip for text
-            draw_rect(buffer, 0, 118, 128, 10, self.BRAZIL_GREEN)
-            draw_centered_text(buffer, status_message, 119, self.BRAZIL_YELLOW, scale=1)
+            draw_rect(buffer, 0, 118, 128, 10, self.THEME_BLACK)
+            draw_centered_text(buffer, status_message, 119, self.THEME_CHROME, scale=1)
 
         else:
             # Fallback to simple generating screen if no game
-            fill(buffer, self.BRAZIL_GREEN)
-            draw_centered_text(buffer, "CRIANDO...", 55, self.BRAZIL_YELLOW, scale=1)
+            fill(buffer, self.THEME_BLACK)
+            draw_centered_text(buffer, "ГЕНЕРАЦИЯ", 55, self.THEME_CHROME, scale=1)
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ready state with Brazilian flair."""
-        # If no camera (dark buffer), show Brazil theme background
+        """Render ready state."""
+        # If no camera (dark buffer), show theme background
         if np.mean(buffer) < 30:  # Buffer is nearly black = no camera
-            fill(buffer, self.BRAZIL_GREEN)
-            draw_centered_text(buffer, "BRAZIL", 40, self.BRAZIL_YELLOW, scale=2)
-            draw_centered_text(buffer, "ФОТОЗОНА", 70, (255, 255, 255), scale=1)
+            fill(buffer, self.THEME_BLACK)
+            draw_centered_text(buffer, "BOILING", 35, self.THEME_RED, scale=2)
+            draw_centered_text(buffer, "ROOM", 55, self.THEME_RED, scale=2)
+            draw_centered_text(buffer, "ФОТОБУДКА", 75, self.THEME_CHROME, scale=1)
 
         # Semi-transparent overlay for text
         buffer[-24:, :, :] = (buffer[-24:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
-        buffer[-24:, :, 1] = np.minimum(buffer[-24:, :, 1].astype(np.uint16) + 40, 255).astype(np.uint8)
+        buffer[-24:, :, 0] = np.minimum(buffer[-24:, :, 0].astype(np.uint16) + 40, 255).astype(np.uint8)
 
         # Instruction text
-        draw_centered_text(buffer, "ЖМИ", 115, self.BRAZIL_YELLOW, scale=1)
+        draw_centered_text(buffer, "ЖМИ", 115, self.THEME_CHROME, scale=1)
 
     def _render_result(self, buffer: NDArray[np.uint8]) -> None:
         """Render result screen - full screen AI photo or QR."""
@@ -614,14 +634,14 @@ class PhotoboothMode(BaseMode):
                 # Fallback to original photo if AI failed
                 np.copyto(buffer, self._state.photo_frame)
             else:
-                fill(buffer, self.BRAZIL_GREEN)
-                draw_centered_text(buffer, "FOTO", 55, self.BRAZIL_YELLOW, scale=1)
+                fill(buffer, self.THEME_BLACK)
+                draw_centered_text(buffer, "ФОТО", 55, self.THEME_CHROME, scale=1)
 
             # Small hint at bottom with green background
             buffer[-12:, :, 0] = 0
             buffer[-12:, :, 1] = 100
             buffer[-12:, :, 2] = 40
-            draw_centered_text(buffer, "< > QR", 118, self.BRAZIL_YELLOW, scale=1)
+            draw_centered_text(buffer, "< > QR", 118, self.THEME_CHROME, scale=1)
 
         elif self._state.result_view == "qr":
             # Full screen QR code
@@ -643,40 +663,40 @@ class PhotoboothMode(BaseMode):
                 y_offset = (128 - qr_h) // 2
                 buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
             elif self._state.is_uploading:
-                fill(buffer, self.BRAZIL_BLUE)
-                draw_centered_text(buffer, "UPLOAD", 50, self.BRAZIL_YELLOW, scale=1)
-                draw_centered_text(buffer, "QR...", 65, self.BRAZIL_YELLOW, scale=1)
+                fill(buffer, self.THEME_RED)
+                draw_centered_text(buffer, "UPLOAD", 50, self.THEME_CHROME, scale=1)
+                draw_centered_text(buffer, "QR...", 65, self.THEME_CHROME, scale=1)
             else:
-                fill(buffer, self.BRAZIL_BLUE)
-                draw_centered_text(buffer, "QR", 50, self.BRAZIL_YELLOW, scale=1)
-                draw_centered_text(buffer, "AGUARDE", 65, self.BRAZIL_YELLOW, scale=1)
+                fill(buffer, self.THEME_RED)
+                draw_centered_text(buffer, "QR", 50, self.THEME_CHROME, scale=1)
+                draw_centered_text(buffer, "ЖДИТЕ", 65, self.THEME_CHROME, scale=1)
 
             # Hint stays on ticker/LCD for full-screen QR
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display with Brazilian colors."""
-        fill(buffer, self.BRAZIL_GREEN)
+        """Render ticker display."""
+        fill(buffer, self.THEME_BLACK)
 
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             # Show countdown on ticker
             text = f"   {self._state.countdown}   "
-            draw_centered_text(buffer, text, 1, self.BRAZIL_YELLOW, scale=1)
+            draw_centered_text(buffer, text, 1, self.THEME_CHROME, scale=1)
         elif self._state.is_generating:
             # Use Santa Runner's ticker progress bar (cycles continuously)
             if self._santa_runner:
                 self._santa_runner.render_ticker(buffer, self._state.generation_progress, self._time_in_phase)
         elif self._state.show_result:
             if self._state.result_view == "qr":
-                draw_centered_text(buffer, "QR", 1, self.BRAZIL_YELLOW, scale=1)
+                draw_centered_text(buffer, "QR", 1, self.THEME_CHROME, scale=1)
             else:
-                draw_centered_text(buffer, "PRONTO", 1, self.BRAZIL_YELLOW, scale=1)
+                draw_centered_text(buffer, "ГОТОВО", 1, self.THEME_CHROME, scale=1)
         else:
-            draw_centered_text(buffer, "BRAZIL", 1, self.BRAZIL_YELLOW, scale=1)
+            draw_centered_text(buffer, "BOILING", 1, self.THEME_CHROME, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            return f"  BRAZIL: {self._state.countdown}   "[:16].ljust(16)
+            return f" BOILING: {self._state.countdown}   "[:16].ljust(16)
         elif self._state.show_result:
             return "    ГОТОВО!   "[:16]
         else:

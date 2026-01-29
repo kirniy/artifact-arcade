@@ -1,9 +1,8 @@
 """Artistic portrait generation service using Gemini/Imagen.
 
 Generates stylized artistic portraits based on user photos.
-All images are generated in BLACK AND WHITE to match the grayscale
-camera input (NoIR camera has purple tint in color mode) and for
-optimal thermal printer output.
+Most styles generate BLACK AND WHITE for thermal printer output.
+PHOTOBOOTH styles generate FULL COLOR for digital-only display and S3 gallery.
 
 Based on patterns from nano-banana-pro with adaptations for
 arcade fortune-telling use case.
@@ -56,8 +55,8 @@ class Caricature:
 
 # =============================================================================
 # STYLE PROMPTS - Each VISUALLY DISTINCT for different modes
-# BLACK AND WHITE for both LED display and thermal printer
-# (Camera captures grayscale to avoid NoIR purple tint)
+# Most styles: BLACK AND WHITE for thermal printer
+# PHOTOBOOTH styles: FULL COLOR for digital gallery
 # TEXT RULES: Russian language, ALL CAPS, VERY LARGE readable
 # NO example labels - model copies them literally
 # VARIETY: Each prompt has multiple variations to avoid repetition
@@ -190,131 +189,188 @@ Googie architecture vibes, optimistic tomorrow, stylized cool.
 Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
 ]
 
-# PHOTOBOOTH VARIATIONS - Brazil/Copacabana theme VERTICAL photo strip
-# OUTPUT: 9:16 VERTICAL aspect ratio for thermal label printing
+# PHOTOBOOTH VARIATIONS - BOILING ROOM underground DJ party theme VERTICAL photo strip
+# OUTPUT: 9:16 VERTICAL aspect ratio — FULL COLOR (red & black only)
+# STYLE: Chromatic aberration, super wide angle, film grain, analog textures
 PHOTOBOOTH_VARIATIONS = [
-    """BRAZIL PARTY PHOTO BOOTH - TALL VERTICAL STRIP (9:16)
+    """BOILING ROOM — UNDERGROUND DJ PARTY PHOTO BOOTH (TALL VERTICAL 9:16)
 
-Create a vibrant VERTICAL photo booth strip with 4 frames in a 2x2 grid.
-The image should be TALL (portrait orientation, 9:16 ratio).
+Create a raw, high-taste VERTICAL photo booth strip with 4 frames in a 2×2 grid.
+The image should be TALL (portrait orientation, 9:16 ratio). FULL COLOR — RED AND BLACK ONLY.
 
-TOP BANNER - ARCHING TEXT (CRITICAL - MUST BE IN ENGLISH!):
-At the TOP of the image, add stylized arching/curved text in Brazilian graffiti style:
-Main text: "SOUNDS LIKE: BRAZIL" - MUST BE IN ENGLISH, NOT TRANSLATED!
-Below it: "16.01—17.01" (the event dates)
-Make it bold, street-art inspired, with Brazilian colors!
-IMPORTANT: Keep "SOUNDS LIKE: BRAZIL" exactly as written - in ENGLISH letters!
+SHOT ON SUPER WIDE ANGLE LENS — barrel distortion, exaggerated perspective, faces slightly
+stretched at edges, intimate close-up feel like being RIGHT IN the crowd.
+
+TOP BANNER (CRITICAL — MUST BE IN ENGLISH!):
+Bold chrome/metallic 3D text in industrial style:
+Main text: "BOILING ROOM" — heavy, chrome-plated, metallic finish with subtle reflections
+Below it: "30.01—31.01" (event dates) in clean sans-serif, silver/white
+IMPORTANT: Keep "BOILING ROOM" exactly as written — in ENGLISH letters!
 
 PEOPLE: Capture EVERYONE from the reference photo!
-- Solo person → 4 different fun poses of the same person
+- Solo person → 4 different poses of the same person
 - Group → ALL people appear together in ALL 4 frames
-PRESERVE LIKENESS: Same face, hair, features in every frame - just different expressions!
+PRESERVE LIKENESS: Same face, hair, features in every frame — just different expressions!
 
-4 FRAMES: Each frame shows a DIFFERENT fun pose/expression - mix it up!
-Be creative with poses: smiles, silly faces, peace signs, dancing, samba poses,
-thumbs up, excited expressions, party energy - surprise us with the arrangement!
+4 FRAMES — each shows a DIFFERENT intensity:
+Frame 1: Arriving — cool confidence, slight smirk — deep black with faint red edge glow
+Frame 2: Locked in — eyes closed, feeling the bass — red wash flooding from one side
+Frame 3: Peak energy — hands up or shouting — harsh red strobe freeze-frame
+Frame 4: After hours — sweaty, euphoric, raw — dark red afterglow, intimate
 
-BRAZIL CARNIVAL THEME:
-- Tropical border: palm leaves, exotic flowers, carnival feathers
-- Colors: Brazilian green, yellow, blue - Copacabana beach vibes!
-- Rio carnival energy, samba atmosphere
+MANDATORY VISUAL TREATMENT:
+- CHROMATIC ABERRATION on every frame — RGB channel split on edges, red/cyan fringing
+  especially visible on high-contrast edges of faces and text
+- SUPER WIDE ANGLE distortion — barrel lens effect, slightly warped perspectives
+- Heavy FILM GRAIN — thick analog noise like Kodak Tri-X pushed to 3200 ISO
+- TEXTURE: scratches, dust particles, halation blooming around bright red light sources
+- Deep crushed blacks — shadow detail deliberately lost, pure darkness in backgrounds
+- ONLY RED AND BLACK — the entire image uses ONLY deep crimson red (#8B0000 to #FF0000)
+  and pure black (#000000). No other colors. No blue, no amber, no purple, no white backgrounds.
+  Skin tones rendered in red/black tonal range.
 
-BRANDING: "VNVNC" banner at the BOTTOM of the strip (ONE time only, NOT in each frame).
-Tropical party style lettering.
+DEPTH & ATMOSPHERE:
+- Thick volumetric smoke/haze — red-lit from behind, creating layers of depth
+- Bokeh from out-of-focus red lights — large soft circles in background
+- Halation — red light blooming and bleeding around edges of bright areas
+- The feeling of HEAT — dense, humid, underground, bodies close together
 
-Professional photo booth quality. VERTICAL 9:16 aspect ratio!""",
+FRAME BORDERS: Thin chrome/silver metallic lines. Or no borders — let frames bleed together.
 
-    """COPACABANA PHOTO BOOTH STRIP - VERTICAL FORMAT (9:16)
+BRANDING: "VNVNC" at the BOTTOM in metallic silver text (ONE time only).
 
-Generate a FUN photo booth strip in TALL/VERTICAL orientation (9:16 ratio).
-Layout: 4 photo frames in a 2x2 grid filling the vertical space.
+Shot like a legendary concert photographer. 9:16 VERTICAL. RED AND BLACK ONLY!""",
 
-TOP HEADER - BRAZILIAN GRAFFITI STYLE (CRITICAL - ENGLISH TEXT!):
-Above the photo frames, add an arching/curved banner text:
-"SOUNDS LIKE: BRAZIL" in bold graffiti/street-art lettering - KEEP IN ENGLISH!
-"16.01—17.01" as smaller date text below
-Use Brazilian flag colors (green, yellow, blue) for the text!
-IMPORTANT: Do NOT translate "SOUNDS LIKE: BRAZIL" - it must stay in ENGLISH!
+    """BOILING ROOM — RAW ANALOG PHOTO BOOTH (VERTICAL 9:16)
 
-CRITICAL - PRESERVE ALL PEOPLE:
+Generate a gritty, textured photo booth strip in TALL/VERTICAL orientation (9:16 ratio).
+Layout: 4 photo frames in a 2×2 grid. COLOR PALETTE: EXCLUSIVELY RED AND BLACK.
+
+LENS: SUPER WIDE ANGLE — 14-18mm equivalent. Exaggerated perspective distortion,
+subjects feel impossibly close. Barrel distortion warps edges of each frame.
+
+TOP HEADER — CHROME INDUSTRIAL STYLE (CRITICAL — ENGLISH TEXT!):
+"BOILING ROOM" in bold chrome/steel lettering with reflective highlights
+"30.01—31.01" as smaller date text below in silver
+IMPORTANT: Do NOT translate "BOILING ROOM" — it must stay in ENGLISH!
+
+CRITICAL — PRESERVE ALL PEOPLE:
 - Count everyone in the reference photo
 - EVERY person must appear in ALL 4 frames
-- Same faces, same hair, same clothes - different expressions!
+- Same faces, same hair, same clothes — different expressions!
 
-4 FRAMES WITH VARIETY: Get creative with the poses!
-Mix of: silly faces, genuine smiles, dancing moves, samba poses, peace signs,
-excited expressions, party vibes, celebration energy.
-Each frame should feel different and fun - no boring repetition!
+4 FRAMES WITH VARIETY — raw underground energy:
+Mix of: intense stares into lens, head-bobbing with eyes closed,
+hands reaching toward camera, dancing with abandon, sweaty euphoria.
+All lit with RED ONLY — different intensities and angles of red light.
 
-TROPICAL BRAZIL DECORATIONS:
-- Border: Palm trees, tropical flowers, carnival feathers
-- Colors: Green, yellow, blue (Brazilian flag colors)
-- Copacabana beach party atmosphere!
+MANDATORY PHOTOGRAPHIC EFFECTS:
+- CHROMATIC ABERRATION: visible RGB split on all high-contrast edges.
+  Red and cyan channel displacement, especially around faces and text.
+  This is NOT subtle — it should be clearly visible as a stylistic choice.
+- FILM GRAIN: coarse, gritty, like high-ISO analog film (ISO 3200+)
+- LENS ARTIFACTS: barrel distortion, slight vignetting, halation blooms
+- TEXTURE OVERLAYS: subtle scratches, dust specks, light leaks in red
+- MOTION BLUR on some elements — frozen chaos, decisive moments
 
-BRANDING: Single "VNVNC" banner at the very bottom (below all frames).
+STRICT COLOR RULE:
+ONLY RED (#8B0000 through #FF0000) AND BLACK (#000000).
+No other hues whatsoever. Skin rendered in red monochrome.
+Red light sources, red smoke, red reflections. Everything else is BLACK.
+Think: darkroom safelight photography, infrared surveillance, heat vision.
+
+DEPTH: Layered smoke creating z-depth. Background figures as dark silhouettes.
+Foreground subjects sharp (mostly), backgrounds dissolving into red haze.
+
+BRANDING: Single "VNVNC" in metallic silver at the very bottom.
 Do NOT put text inside individual photo frames!
 
-High quality, joyful aesthetic. TALL VERTICAL 9:16 format!""",
+Analog concert photography meets infrared surveillance. 9:16 format! RED & BLACK!""",
 
-    """RIO CARNIVAL PHOTO BOOTH - VERTICAL STRIP (9:16)
+    """BOILING ROOM — HEAT VISION PHOTO BOOTH (VERTICAL 9:16)
 
-Create a VERTICAL (tall) photo booth strip with 4 fun frames in 2x2 layout.
+Create a VERTICAL (tall) photo booth strip with 4 frames in 2×2 layout.
+RED AND BLACK EXCLUSIVELY — like thermal imaging meets concert photography.
 
-EVENT TITLE AT TOP (CRITICAL - ENGLISH TEXT REQUIRED!):
-Arching/curved text at the very top in graffiti/street-art Brazilian style:
-"SOUNDS LIKE: BRAZIL" - bold, colorful, graffiti letters - MUST BE IN ENGLISH!
-"16.01—17.01" - event dates below the main title
-Make the text pop with green, yellow, blue colors!
-IMPORTANT: "SOUNDS LIKE: BRAZIL" must remain in ENGLISH - do NOT translate!
+SUPER WIDE ANGLE LENS EFFECT throughout — 16mm equivalent, barrel distortion,
+faces and bodies slightly warped at frame edges, extreme proximity feel.
+
+EVENT TITLE AT TOP (CRITICAL — ENGLISH TEXT REQUIRED!):
+"BOILING ROOM" — 3D chrome lettering with industrial weight, steel reflections
+"30.01—31.01" — clean silver date text below
+IMPORTANT: "BOILING ROOM" must remain in ENGLISH — do NOT translate!
 
 PEOPLE HANDLING:
-- Single person: Show them in 4 different playful poses
+- Single person: Show them in 4 different underground party poses
 - Multiple people: Include the ENTIRE GROUP in each of the 4 frames
 IMPORTANT: Everyone's likeness must be recognizable in ALL frames!
 
-4 FRAMES - CREATIVE FREEDOM:
-Each frame should have a different vibe - you choose the arrangement!
-Ideas: big smiles, goofy faces, dance moves, peace signs, samba poses,
-excited jumping, thumbs up, party energy, celebration!
-Make each frame feel unique and fun!
+4 FRAMES — ESCALATING INTENSITY:
+Frame 1: Subtle — mostly black, face barely emerging from darkness, faint red rim light
+Frame 2: Building — red light intensifying, half the face lit, dramatic chiaroscuro
+Frame 3: Full blast — drenched in red, high energy pose, maximum intensity
+Frame 4: Aftermath — red afterglow fading, sweaty texture visible, raw and real
 
-BRAZIL THEME:
-- Tropical frame border with palm leaves, exotic flowers, feathers
-- Brazilian colors: green, yellow, blue accents
-- Rio de Janeiro carnival energy!
+PHOTOGRAPHIC TREATMENT (ALL MANDATORY):
+- CHROMATIC ABERRATION: Heavy RGB channel displacement on edges. Red/cyan split
+  visible on face contours, text edges, frame borders. A deliberate analog artifact
+  that adds rawness and depth — NOT a cheap filter, but authentic lens behavior.
+- WIDE ANGLE DISTORTION: Barrel effect from ultra-wide lens. Subjects' features
+  slightly exaggerated by proximity. Creates intimacy and visual tension.
+- FILM GRAIN: Coarse, visible grain structure. Like Ilford HP5 pushed three stops.
+  Grain should be apparent even in the red areas, adding tactile texture.
+- HALATION: Red light sources bloom and bleed beyond their boundaries.
+  Creates a dreamy, otherworldly quality in the brightest red areas.
+- DUST & SCRATCHES: Subtle physical texture — the image feels TOUCHED, analog.
+- DEPTH OF FIELD: Shallow — backgrounds and frame edges go soft.
 
-BRANDING: "VNVNC" as ONE banner text at the bottom of the entire image.
-NOT inside each photo - just one at the very bottom!
+COLOR: RED AND BLACK. NOTHING ELSE.
+Deep blood red (#6B0000) through bright scarlet (#FF1A1A) and pure black.
+ALL tones mapped to this range. Skin = warm red tones. Shadows = black.
+No blue, no yellow, no green, no white, no purple. ONLY RED AND BLACK.
 
-Professional photo booth quality. 9:16 VERTICAL (TALL) aspect ratio!""",
+BORDERS: Minimal chrome hairlines or none — frames can bleed into each other.
+
+BRANDING: "VNVNC" as ONE line at the bottom in silver chrome text.
+
+Visually stunning, gallery-quality. 9:16 VERTICAL. RED AND BLACK ONLY!""",
 ]
 
-# PHOTOBOOTH SQUARE VARIATIONS - Same Brazil theme but 1:1 for LED display
+# PHOTOBOOTH SQUARE VARIATIONS - BOILING ROOM theme 1:1 for LED display
 # OUTPUT: 1:1 SQUARE aspect ratio for 128x128 LED display preview
+# STYLE: Red & black only, chromatic aberration, wide angle, analog texture
 PHOTOBOOTH_SQUARE_VARIATIONS = [
-    """BRAZIL PARTY PHOTO BOOTH - SQUARE FORMAT (1:1)
+    """BOILING ROOM — UNDERGROUND DJ PARTY PHOTO BOOTH (SQUARE 1:1)
 
-Create a vibrant photo booth grid with 4 frames in a 2x2 layout.
-The image should be SQUARE (1:1 aspect ratio).
+Create a raw, textured photo booth grid with 4 frames in a 2×2 layout.
+The image should be SQUARE (1:1 aspect ratio). RED AND BLACK ONLY.
+
+SUPER WIDE ANGLE LENS — barrel distortion, exaggerated perspective.
 
 PEOPLE: Capture EVERYONE from the reference!
-- Solo → 4 fun poses of the same person
+- Solo → 4 different poses of the same person
 - Group → ALL people in ALL 4 frames
 PRESERVE LIKENESS in every frame!
 
-4 FRAMES WITH VARIETY - get creative with the poses!
-Mix of: silly faces, genuine smiles, peace signs, dancing, samba poses,
-excited expressions, party vibes, celebration energy.
-Each frame should feel different and fun!
+4 FRAMES — escalating red intensity:
+Frame 1: Mostly dark, face emerging from shadows, faint red rim light
+Frame 2: Half-lit in red, dramatic chiaroscuro, attitude pose
+Frame 3: Full red strobe, maximum energy, hands up or shouting
+Frame 4: Red afterglow, sweaty, euphoric, raw and real
 
-BRAZIL CARNIVAL THEME:
-- Tropical border: palm leaves, flowers, feathers
-- Colors: Brazilian green, yellow, blue
-- Rio carnival vibes!
+MANDATORY EFFECTS:
+- CHROMATIC ABERRATION: RGB channel split on edges, red/cyan fringing
+- FILM GRAIN: coarse analog noise, ISO 3200+ texture
+- HALATION: red light sources blooming beyond their boundaries
+- WIDE ANGLE DISTORTION: barrel lens effect on each frame
+- Deep crushed blacks, texture, dust particles
 
-BRANDING: "VNVNC" banner at the bottom (ONE time only).
+COLOR: ONLY RED (#6B0000 to #FF1A1A) AND BLACK (#000000). Nothing else.
+Skin tones in red monochrome. No blue, no amber, no purple, no white.
 
-Professional photo booth quality. SQUARE 1:1 aspect ratio!""",
+BRANDING: "VNVNC" in metallic silver at the bottom (ONE time only).
+
+Raw analog quality. SQUARE 1:1 aspect ratio! RED AND BLACK ONLY!""",
 ]
 
 # GUESS VARIATIONS - Detective investigation board
@@ -814,14 +870,25 @@ Express their personality through the art - confident people get powerful poses,
 introverts get serene expressions, risk-takers get dynamic energy, etc.
 """
 
+            # Determine if this style should be full color (photobooth) or B&W (thermal print styles)
+            is_color_style = style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_SQUARE)
+
+            if is_color_style:
+                color_instruction = """- FULL COLOR — RED AND BLACK ONLY palette
+- Chromatic aberration on edges, super wide angle distortion, heavy film grain
+- Shot like raw analog concert photography — textured, deep, authentic
+- High quality artistic illustration, NOT pixel art, NOT photorealistic"""
+            else:
+                color_instruction = """- BLACK AND WHITE ONLY - pure black ink on white background, high contrast
+- NO colors, NO grayscale shading - just black and white like a thermal print
+- High quality artistic illustration, NOT pixel art, NOT photorealistic"""
+
             prompt = f"""Create an artistic portrait OF THIS EXACT PERSON from the reference photo.
 
 CRITICAL REQUIREMENTS:
 - This must capture THE PERSON IN THE PHOTO - their likeness is essential
 - Recognize their distinctive features and incorporate them naturally
-- BLACK AND WHITE ONLY - pure black ink on white background, high contrast
-- NO colors, NO grayscale shading - just black and white like a thermal print
-- High quality artistic illustration, NOT pixel art, NOT photorealistic
+{color_instruction}
 - TEXT LANGUAGE RULES (CRITICAL!!!):
   * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C
   * NEVER translate or transliterate VNVNC to Russian (НЕ писать ВНВНЦ или что-то подобное!)
@@ -841,18 +908,24 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Send photo directly to Gemini 3 Pro Image Preview
             # The model understands to use the photo as reference
+            image_style = (
+                "Raw analog concert photography, red and black only, chromatic aberration, film grain, wide angle distortion"
+                if is_color_style
+                else "Black and white illustration, high contrast ink drawing, thermal printer style"
+            )
+
             image_data = await self._client.generate_image(
                 prompt=prompt,
                 reference_photo=reference_photo,
                 photo_mime_type="image/jpeg",
                 aspect_ratio=aspect_ratio,
                 image_size="1K",  # Use 1K resolution
-                style="Black and white illustration, high contrast ink drawing, thermal printer style",
+                style=image_style,
             )
 
             if image_data:
-                # Process and ensure B&W output
-                processed = await self._process_for_display(image_data, size)
+                # Process for display — color styles skip grayscale conversion
+                processed = await self._process_for_display(image_data, size, color=is_color_style)
                 return Caricature(
                     image_data=processed,
                     style=style,
@@ -892,18 +965,20 @@ Output should be optimized for thermal printer (pure black and white, high contr
         self,
         image_data: bytes,
         target_size: Tuple[int, int],
+        color: bool = False,
     ) -> bytes:
-        """Process the generated image for display (convert to grayscale).
+        """Process the generated image for display.
 
-        Converts to grayscale and resizes while maintaining aspect ratio.
-        This ensures consistent B&W output even if Gemini returns color.
+        For B&W styles: converts to grayscale and resizes.
+        For color styles: keeps full color, just resizes.
 
         Args:
             image_data: Original image bytes
             target_size: Target dimensions
+            color: If True, keep full color (photobooth). If False, convert to grayscale.
 
         Returns:
-            Processed image bytes (grayscale as RGB for compatibility)
+            Processed image bytes (RGB)
         """
         try:
             from PIL import Image
@@ -911,11 +986,11 @@ Output should be optimized for thermal printer (pure black and white, high contr
             # Load image
             img = Image.open(BytesIO(image_data))
 
-            # Convert to grayscale first
-            img = img.convert("L")
+            if not color:
+                # Convert to grayscale for B&W styles (thermal printer)
+                img = img.convert("L")
 
-            # Convert back to RGB (grayscale values in all 3 channels)
-            # This ensures compatibility with displays expecting RGB
+            # Ensure RGB for display compatibility
             img = img.convert("RGB")
 
             # Resize maintaining aspect ratio

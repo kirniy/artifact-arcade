@@ -185,14 +185,14 @@ class ArtifactSimulator:
         # Check for API key
         has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
 
-        # Register modes in order: Photobooth -> Roast -> rest
-        # ФОТОБУДКА - Photo booth (FIRST!) - Brazil theme party
+        # Register modes — BOILING ROOM party (photobooth only)
+        # ФОТОБУДКА - Photo booth (ONLY active mode)
         self.mode_manager.register_mode(PhotoboothMode)
         logger.info("📸 PHOTOBOOTH registered as #1")
 
-        # ПРОЖАРКА - Roast mode (SECOND)
-        self.mode_manager.register_mode(RoastMeMode)
-        logger.info("🔥 ROAST MODE registered as #2")
+        # ПРОЖАРКА - Roast mode (DISABLED for BOILING ROOM)
+        # self.mode_manager.register_mode(RoastMeMode)
+        # logger.info("🔥 ROAST MODE registered as #2")
 
         # КВИЗ - Quiz (DISABLED for Brazil party)
         # self.mode_manager.register_mode(QuizMode)

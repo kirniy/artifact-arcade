@@ -101,14 +101,14 @@ async def run_hardware() -> None:
     # Check for API key
     has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
 
-    # Register modes in order: Photobooth -> Roast -> rest
-    # ФОТОБУДКА - Photo booth (FIRST!) - Brazil theme party
+    # Register modes in order — BOILING ROOM party (photobooth only)
+    # ФОТОБУДКА - Photo booth (ONLY active mode)
     mode_manager.register_mode(PhotoboothMode)
     logger.info("📸 PHOTOBOOTH registered as #1")
 
-    # ПРОЖАРКА - Roast mode (SECOND)
-    mode_manager.register_mode(RoastMeMode)
-    logger.info("🔥 ROAST MODE registered as #2")
+    # ПРОЖАРКА - Roast mode (DISABLED for BOILING ROOM)
+    # mode_manager.register_mode(RoastMeMode)
+    # logger.info("🔥 ROAST MODE registered as #2")
 
     # КВИЗ - Quiz (DISABLED for Brazil party)
     # mode_manager.register_mode(QuizMode)
