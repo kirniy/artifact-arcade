@@ -15,12 +15,14 @@ PRINTING_ENABLED = False
 
 import logging
 import io
+import os
 import asyncio
 from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime
 
 import numpy as np
+from PIL import Image as PILImage
 from numpy.typing import NDArray
 
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
@@ -108,6 +110,42 @@ class PhotoboothMode(BaseMode):
         self._progress_tracker = SmartProgressTracker(mode_theme="photobooth")
         self._santa_runner: Optional[SantaRunner] = None
         self._audio = get_audio_engine()
+        self._logo_frame: Optional[NDArray[np.uint8]] = None
+        self._load_logo()
+
+    def _load_logo(self) -> None:
+        """Load BOILING ROOM logo for display overlay."""
+        try:
+            logo_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..", "assets", "images", "boilingroom.png"
+            )
+            logo_path = os.path.normpath(logo_path)
+            if os.path.exists(logo_path):
+                img = PILImage.open(logo_path).convert("RGBA")
+                # Resize to 80x80 for 128x128 display
+                img = img.resize((80, 80), PILImage.Resampling.LANCZOS)
+                self._logo_rgba = np.array(img, dtype=np.uint8)
+                logger.info("Loaded BOILING ROOM logo")
+            else:
+                logger.warning(f"Logo not found: {logo_path}")
+                self._logo_rgba = None
+        except Exception as e:
+            logger.warning(f"Failed to load logo: {e}")
+            self._logo_rgba = None
+
+    def _blit_logo(self, buffer: NDArray[np.uint8], x: int, y: int) -> None:
+        """Blit RGBA logo onto buffer with alpha compositing."""
+        if self._logo_rgba is None:
+            return
+        h, w = self._logo_rgba.shape[:2]
+        # Clip to buffer bounds
+        y1, y2 = max(0, y), min(128, y + h)
+        x1, x2 = max(0, x), min(128, x + w)
+        sy, sx = y1 - y, x1 - x
+        alpha = self._logo_rgba[sy:sy+(y2-y1), sx:sx+(x2-x1), 3:4].astype(np.float32) / 255.0
+        rgb = self._logo_rgba[sy:sy+(y2-y1), sx:sx+(x2-x1), :3].astype(np.float32)
+        bg = buffer[y1:y2, x1:x2].astype(np.float32)
+        buffer[y1:y2, x1:x2] = (rgb * alpha + bg * (1.0 - alpha)).astype(np.uint8)
 
     def on_enter(self) -> None:
         """Initialize mode."""
@@ -610,12 +648,26 @@ class PhotoboothMode(BaseMode):
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
         """Render ready state."""
-        # If no camera (dark buffer), show theme background
+        # If no camera (dark buffer), show theme background with logo
         if np.mean(buffer) < 30:  # Buffer is nearly black = no camera
             fill(buffer, self.THEME_BLACK)
-            draw_centered_text(buffer, "BOILING", 35, self.THEME_RED, scale=2)
-            draw_centered_text(buffer, "ROOM", 55, self.THEME_RED, scale=2)
-            draw_centered_text(buffer, "ФОТОБУДКА", 75, self.THEME_CHROME, scale=1)
+            # Center the BOILING ROOM logo
+            self._blit_logo(buffer, 24, 10)
+            draw_centered_text(buffer, "ФОТОБУДКА", 100, self.THEME_CHROME, scale=1)
+        else:
+            # Camera preview: overlay small logo in top-right corner
+            if self._logo_rgba is not None:
+                # Draw a smaller version (40x40) on camera preview
+                try:
+                    small = PILImage.fromarray(self._logo_rgba).resize((32, 32), PILImage.Resampling.LANCZOS)
+                    small_arr = np.array(small, dtype=np.uint8)
+                    alpha = small_arr[:, :, 3:4].astype(np.float32) / 255.0
+                    rgb = small_arr[:, :, :3].astype(np.float32)
+                    y1, x1 = 2, 128 - 34
+                    bg = buffer[y1:y1+32, x1:x1+32].astype(np.float32)
+                    buffer[y1:y1+32, x1:x1+32] = (rgb * alpha + bg * (1.0 - alpha)).astype(np.uint8)
+                except Exception:
+                    pass
 
         # Semi-transparent overlay for text
         buffer[-24:, :, :] = (buffer[-24:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
