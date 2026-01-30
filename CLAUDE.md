@@ -706,6 +706,13 @@ All modes that generate images or audio use Selectel S3 Object Storage for shari
 | Public URL | `https://e6aaa51f-863a-439e-9b6e-69991ff0ad6e.selstorage.ru` |
 | AWS Profile | `selectel` (configured in ~/.aws/credentials) |
 
+### Web Gallery Integration
+Photos uploaded by the arcade are listed on the website at `https://vnvnc.ru/gallery/photobooth`.
+Since Selectel S3 doesn't support anonymous bucket listing, a Yandex Cloud Function
+(`gateway-photobooth`, ID: `d4e9qen6fqkbhpicd5cs`) lists objects using signed S3 requests.
+The website calls `https://d5d621jmge79dusl8rkh.kf69zffa.apigw.yandexcloud.net/api/photobooth/list`
+which returns JSON with photo URLs. Source: `vnvnc-modern/yandex-functions/gateway-photobooth.js`.
+
 ### Modes with QR Sharing
 - **photobooth**: Photo uploads → QR on display
 - **ai_prophet**: Caricature uploads → QR on display + receipt
