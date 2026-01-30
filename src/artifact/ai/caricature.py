@@ -193,184 +193,171 @@ Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
 # OUTPUT: 9:16 VERTICAL aspect ratio — FULL COLOR (red & black only)
 # STYLE: Chromatic aberration, super wide angle, film grain, analog textures
 PHOTOBOOTH_VARIATIONS = [
-    """BOILING ROOM — UNDERGROUND DJ PARTY PHOTO BOOTH (TALL VERTICAL 9:16)
+    """BOILING ROOM — VECTOR ART PHOTO BOOTH (VERTICAL 9:16)
 
-Create a raw, high-taste VERTICAL photo booth strip with 4 frames in a 2×2 grid.
-The image should be TALL (portrait orientation, 9:16 ratio). FULL COLOR — RED AND BLACK ONLY.
+Create a VERTICAL photo booth strip (9:16 ratio) with 4 drawings in a 2×2 grid.
 
-SHOT ON SUPER WIDE ANGLE LENS — barrel distortion, exaggerated perspective, faces slightly
-stretched at edges, intimate close-up feel like being RIGHT IN the crowd.
+ART STYLE — VECTOR / SKETCH ILLUSTRATION (NOT A PHOTO!):
+- Each frame is a STYLISH VECTOR-STYLE DRAWING / ILLUSTRATION of the person
+- Bold clean lines, flat color fills, graphic novel / poster art quality
+- Think: Shepard Fairey, Alphonse Mucha meets modern vector art, screen print aesthetic
+- Strong graphic shapes, high contrast, confident ink strokes
+- NOT photorealistic — this is an ILLUSTRATION, a cool artistic interpretation
+- Capture the person's likeness and distinctive features in vector art style
 
-TOP BANNER (CRITICAL — MUST BE IN ENGLISH!):
-Bold chrome/metallic 3D text in industrial style:
-Main text: "BOILING ROOM" — heavy, chrome-plated, metallic finish with subtle reflections
-Below it: "30.01—31.01" (event dates) in clean sans-serif, silver/white
-IMPORTANT: Keep "BOILING ROOM" exactly as written — in ENGLISH letters!
+DARK TEXTURED PAPER — THE ENTIRE BACKGROUND:
+- The paper/background is DARK — black or very dark charcoal with visible texture
+- Heavy paper grain, rough matte black cardstock feel, tactile and moody
+- Borders between frames are DARK textured paper — not white, not cream
+- The whole strip feels like it's printed on expensive dark art paper
+- Ink and color sit ON TOP of the dark surface — like screen printing on black paper
+- Visible paper fiber, subtle noise, rough tactile quality throughout
 
-PEOPLE: Capture EVERYONE from the reference photo!
-- Solo person → 4 different poses of the same person
-- Group → ALL people appear together in ALL 4 frames
-PRESERVE LIKENESS: Same face, hair, features in every frame — just different expressions!
+ONLY THE PERSON FROM THE REFERENCE — NOBODY ELSE:
+- ONLY the person(s) from the reference photo, NOBODY else in any frame
+- Same person in all 4 frames but with DIFFERENT expressions and poses each time
+- Background within each frame: dark with red/neon accents, smoke, club atmosphere
 
-4 FRAMES — each shows a DIFFERENT intensity:
-Frame 1: Arriving — cool confidence, slight smirk — deep black with faint red edge glow
-Frame 2: Locked in — eyes closed, feeling the bass — red wash flooding from one side
-Frame 3: Peak energy — hands up or shouting — harsh red strobe freeze-frame
-Frame 4: After hours — sweaty, euphoric, raw — dark red afterglow, intimate
+COLOR PALETTE: Red, black, white, and skin tones only. Red neon glows, white highlights.
+Person looks ATTRACTIVE and cool — stylish, confident, flattering artistic interpretation.
+NOT sweaty. NOT gross. Clean and stylish vector art.
 
-MANDATORY VISUAL TREATMENT:
-- CHROMATIC ABERRATION on every frame — RGB channel split on edges, red/cyan fringing
-  especially visible on high-contrast edges of faces and text
-- SUPER WIDE ANGLE distortion — barrel lens effect, slightly warped perspectives
-- Heavy FILM GRAIN — thick analog noise like Kodak Tri-X pushed to 3200 ISO
-- TEXTURE: scratches, dust particles, halation blooming around bright red light sources
-- Deep crushed blacks — shadow detail deliberately lost, pure darkness in backgrounds
-- ONLY RED AND BLACK — the entire image uses ONLY deep crimson red (#8B0000 to #FF0000)
-  and pure black (#000000). No other colors. No blue, no amber, no purple, no white backgrounds.
-  Skin tones rendered in red/black tonal range.
+4 FRAMES — same person, different vibes:
+Frame 1: Cool confident look, slight smile, red neon glow behind
+Frame 2: Laughing or big smile, head tilted, dynamic line work
+Frame 3: Arms up or hands near face, vibing, eyes closed, red backlight glow
+Frame 4: Different angle — looking to side or over shoulder, moody red accent lighting
 
-DEPTH & ATMOSPHERE:
-- Thick volumetric smoke/haze — red-lit from behind, creating layers of depth
-- Bokeh from out-of-focus red lights — large soft circles in background
-- Halation — red light blooming and bleeding around edges of bright areas
-- The feeling of HEAT — dense, humid, underground, bodies close together
+LENS FEEL: SUPER WIDE ANGLE (14-18mm) distortion in the drawing — exaggerated perspective.
+EFFECTS: Halftone dots, screen print texture, bold outlines, graphic poster quality.
 
-FRAME BORDERS: Thin chrome/silver metallic lines. Or no borders — let frames bleed together.
+TOP: "BOILING ROOM" bold graphic text (ENGLISH!), "30.01—31.01" below.
+BOTTOM: "VNVNC" — tall condensed white letters inside thin red rectangular border.
 
-BRANDING: "VNVNC" at the BOTTOM in metallic silver text (ONE time only).
+9:16 VERTICAL. Vector/sketch style drawings on DARK textured paper!""",
 
-Shot like a legendary concert photographer. 9:16 VERTICAL. RED AND BLACK ONLY!""",
+    """BOILING ROOM — SKETCH ART BOOTH (VERTICAL 9:16)
 
-    """BOILING ROOM — RAW ANALOG PHOTO BOOTH (VERTICAL 9:16)
+Generate a VERTICAL (9:16) photo booth strip — 4 illustrations in a 2×2 grid.
 
-Generate a gritty, textured photo booth strip in TALL/VERTICAL orientation (9:16 ratio).
-Layout: 4 photo frames in a 2×2 grid. COLOR PALETTE: EXCLUSIVELY RED AND BLACK.
+ART STYLE — BOLD SKETCH / VECTOR ILLUSTRATION:
+- NOT a photograph — each frame is a stylish DRAWING of the person
+- Clean vector lines, bold ink strokes, flat graphic color fills
+- Screen print / risograph / poster art aesthetic
+- High contrast, strong silhouettes, graphic and punchy
+- Capture the person's LIKENESS — recognizable features rendered as cool illustration
+- Think: concert poster art, editorial illustration, modern graphic novel
 
-LENS: SUPER WIDE ANGLE — 14-18mm equivalent. Exaggerated perspective distortion,
-subjects feel impossibly close. Barrel distortion warps edges of each frame.
+DARK TEXTURED PAPER SURFACE:
+- Background paper is BLACK or very dark — like printing on black cardstock
+- Heavy visible paper texture: grain, fiber, rough matte surface
+- Dark borders and gaps between all 4 frames — dark paper visible everywhere
+- Art sits ON the dark surface — colors pop against the dark background
+- Feels like a limited-edition screen print on premium dark stock
+- Text and logos also look printed/stamped on the dark paper
 
-TOP HEADER — CHROME INDUSTRIAL STYLE (CRITICAL — ENGLISH TEXT!):
-"BOILING ROOM" in bold chrome/steel lettering with reflective highlights
-"30.01—31.01" as smaller date text below in silver
-IMPORTANT: Do NOT translate "BOILING ROOM" — it must stay in ENGLISH!
+ONLY THE PERSON FROM THE REFERENCE — NO OTHER PEOPLE:
+- ABSOLUTELY NO other people — just the reference person, ALONE
+- Same person in all 4 frames with DIFFERENT expressions and poses
+- Background within frames: dark with red/neon graphic elements, smoke shapes
 
-CRITICAL — PRESERVE ALL PEOPLE:
-- Count everyone in the reference photo
-- EVERY person must appear in ALL 4 frames
-- Same faces, same hair, same clothes — different expressions!
+LOOK: Person rendered as ATTRACTIVE and cool — flattering artistic style.
+COLOR: Red, white, black. Skin rendered with warmth but stylized. Red neon accents.
+NOT sweaty. NOT dark/murky faces. Bold, well-defined, stylish illustration.
 
-4 FRAMES WITH VARIETY — raw underground energy:
-Mix of: intense stares into lens, head-bobbing with eyes closed,
-hands reaching toward camera, dancing with abandon, sweaty euphoria.
-All lit with RED ONLY — different intensities and angles of red light.
+4 FRAMES — same person, 4 different moments:
+Frame 1: Looking at viewer, confident, red glow behind, bold line work
+Frame 2: Genuine smile or laugh, dynamic pose, graphic energy
+Frame 3: Vibing — eyes closed, head back, feeling the music, red backlight shapes
+Frame 4: Profile or three-quarter view, moody red rim light, mysterious
 
-MANDATORY PHOTOGRAPHIC EFFECTS:
-- CHROMATIC ABERRATION: visible RGB split on all high-contrast edges.
-  Red and cyan channel displacement, especially around faces and text.
-  This is NOT subtle — it should be clearly visible as a stylistic choice.
-- FILM GRAIN: coarse, gritty, like high-ISO analog film (ISO 3200+)
-- LENS ARTIFACTS: barrel distortion, slight vignetting, halation blooms
-- TEXTURE OVERLAYS: subtle scratches, dust specks, light leaks in red
-- MOTION BLUR on some elements — frozen chaos, decisive moments
+PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in the drawing.
+EFFECTS: Halftone, screen print texture, bold outlines, limited color palette.
 
-STRICT COLOR RULE:
-ONLY RED (#8B0000 through #FF0000) AND BLACK (#000000).
-No other hues whatsoever. Skin rendered in red monochrome.
-Red light sources, red smoke, red reflections. Everything else is BLACK.
-Think: darkroom safelight photography, infrared surveillance, heat vision.
+TOP: "BOILING ROOM" bold text (ENGLISH!), "30.01—31.01" below.
+BOTTOM: "VNVNC" — tall condensed white letters in thin red rectangular border.
 
-DEPTH: Layered smoke creating z-depth. Background figures as dark silhouettes.
-Foreground subjects sharp (mostly), backgrounds dissolving into red haze.
+9:16 VERTICAL. Sketch/vector illustrations on DARK textured paper!""",
 
-BRANDING: Single "VNVNC" in metallic silver at the very bottom.
-Do NOT put text inside individual photo frames!
+    """BOILING ROOM — GRAPHIC ART BOOTH (VERTICAL 9:16)
 
-Analog concert photography meets infrared surveillance. 9:16 format! RED & BLACK!""",
+Create a VERTICAL (9:16) photo booth strip with 4 illustrations in 2×2 layout.
 
-    """BOILING ROOM — HEAT VISION PHOTO BOOTH (VERTICAL 9:16)
+ART STYLE — GRAPHIC VECTOR ILLUSTRATION:
+- Each frame is a VECTOR-STYLE ARTWORK of the person — NOT a photograph
+- Bold graphic lines, clean shapes, flat fills with subtle gradients
+- Aesthetic: mix of pop art, screen print, editorial illustration
+- Strong outlines, confident strokes, high contrast, punchy composition
+- Person's face and features are RECOGNIZABLE — artistic but accurate likeness
+- Cool, modern, the kind of art you'd frame on your wall
 
-Create a VERTICAL (tall) photo booth strip with 4 frames in 2×2 layout.
-RED AND BLACK EXCLUSIVELY — like thermal imaging meets concert photography.
+DARK TEXTURED PAPER — PREMIUM FEEL:
+- ENTIRE background/paper is DARK — black or deep charcoal
+- Rich paper texture: visible grain, matte finish, rough fiber, tactile
+- Dark gaps between frames show the paper surface — no white borders
+- Art is printed ON dark paper — colors and whites pop dramatically
+- Feels like a limited run art print on heavy dark stock
+- All text looks screen-printed or letterpress-stamped on the dark surface
 
-SUPER WIDE ANGLE LENS EFFECT throughout — 16mm equivalent, barrel distortion,
-faces and bodies slightly warped at frame edges, extreme proximity feel.
+ONLY THE PERSON FROM REFERENCE — ZERO OTHER PEOPLE:
+- NO crowd, NO strangers, NO silhouettes — ONLY the reference person
+- Person is ALONE in each frame with dark + red graphic background elements
+- Same person, 4 DIFFERENT expressions and poses — vary the energy
 
-EVENT TITLE AT TOP (CRITICAL — ENGLISH TEXT REQUIRED!):
-"BOILING ROOM" — 3D chrome lettering with industrial weight, steel reflections
-"30.01—31.01" — clean silver date text below
-IMPORTANT: "BOILING ROOM" must remain in ENGLISH — do NOT translate!
+STYLE: Person looks ATTRACTIVE — cool, stylish, confident in the illustration.
+COLOR: Red, black, white primary palette. Warm skin tones (stylized but natural).
+Red neon glows and accents. NOT sweaty. NOT grimy. Clean, bold, aspirational art.
 
-PEOPLE HANDLING:
-- Single person: Show them in 4 different underground party poses
-- Multiple people: Include the ENTIRE GROUP in each of the 4 frames
-IMPORTANT: Everyone's likeness must be recognizable in ALL frames!
+4 FRAMES — different expressions and angles:
+Frame 1: Direct look, confident half-smile, red glow shapes behind
+Frame 2: Candid laugh, dynamic composition, bold graphic energy
+Frame 3: Music vibe — eyes closed, peaceful or ecstatic, red backlight shapes
+Frame 4: Profile or angled view, moody red accent, atmospheric
 
-4 FRAMES — ESCALATING INTENSITY:
-Frame 1: Subtle — mostly black, face barely emerging from darkness, faint red rim light
-Frame 2: Building — red light intensifying, half the face lit, dramatic chiaroscuro
-Frame 3: Full blast — drenched in red, high energy pose, maximum intensity
-Frame 4: Aftermath — red afterglow fading, sweaty texture visible, raw and real
+PERSPECTIVE: SUPER WIDE ANGLE distortion in the illustration — barrel distortion feel.
+EFFECTS: Halftone dots, screen print registration marks, bold outlines, graphic texture.
 
-PHOTOGRAPHIC TREATMENT (ALL MANDATORY):
-- CHROMATIC ABERRATION: Heavy RGB channel displacement on edges. Red/cyan split
-  visible on face contours, text edges, frame borders. A deliberate analog artifact
-  that adds rawness and depth — NOT a cheap filter, but authentic lens behavior.
-- WIDE ANGLE DISTORTION: Barrel effect from ultra-wide lens. Subjects' features
-  slightly exaggerated by proximity. Creates intimacy and visual tension.
-- FILM GRAIN: Coarse, visible grain structure. Like Ilford HP5 pushed three stops.
-  Grain should be apparent even in the red areas, adding tactile texture.
-- HALATION: Red light sources bloom and bleed beyond their boundaries.
-  Creates a dreamy, otherworldly quality in the brightest red areas.
-- DUST & SCRATCHES: Subtle physical texture — the image feels TOUCHED, analog.
-- DEPTH OF FIELD: Shallow — backgrounds and frame edges go soft.
+TOP: "BOILING ROOM" — bold graphic text (ENGLISH!), "30.01—31.01" below.
+BOTTOM: "VNVNC" — tall condensed white letters inside thin red rectangular border.
 
-COLOR: RED AND BLACK. NOTHING ELSE.
-Deep blood red (#6B0000) through bright scarlet (#FF1A1A) and pure black.
-ALL tones mapped to this range. Skin = warm red tones. Shadows = black.
-No blue, no yellow, no green, no white, no purple. ONLY RED AND BLACK.
-
-BORDERS: Minimal chrome hairlines or none — frames can bleed into each other.
-
-BRANDING: "VNVNC" as ONE line at the bottom in silver chrome text.
-
-Visually stunning, gallery-quality. 9:16 VERTICAL. RED AND BLACK ONLY!""",
+9:16 VERTICAL. Vector/graphic art on DARK textured paper!""",
 ]
 
 # PHOTOBOOTH SQUARE VARIATIONS - BOILING ROOM theme 1:1 for LED display
 # OUTPUT: 1:1 SQUARE aspect ratio for 128x128 LED display preview
 # STYLE: Red & black only, chromatic aberration, wide angle, analog texture
 PHOTOBOOTH_SQUARE_VARIATIONS = [
-    """BOILING ROOM — UNDERGROUND DJ PARTY PHOTO BOOTH (SQUARE 1:1)
+    """BOILING ROOM — VECTOR ART BOOTH (SQUARE 1:1)
 
-Create a raw, textured photo booth grid with 4 frames in a 2×2 layout.
-The image should be SQUARE (1:1 aspect ratio). RED AND BLACK ONLY.
+Create a SQUARE (1:1) photo booth grid with 4 vector-style drawings in a 2×2 layout.
 
-SUPER WIDE ANGLE LENS — barrel distortion, exaggerated perspective.
+ART STYLE: VECTOR / SKETCH ILLUSTRATION — NOT a photo. Bold lines, flat color fills,
+screen print / poster art aesthetic. Capture the person's likeness as cool illustration.
+High contrast, strong graphic shapes, modern editorial art quality.
 
-PEOPLE: Capture EVERYONE from the reference!
-- Solo → 4 different poses of the same person
-- Group → ALL people in ALL 4 frames
-PRESERVE LIKENESS in every frame!
+DARK TEXTURED PAPER: Background is BLACK/dark charcoal with heavy paper grain texture.
+Dark borders between frames. Art printed ON dark paper — colors pop against black.
+Feels like a limited-edition screen print on premium dark stock.
 
-4 FRAMES — escalating red intensity:
-Frame 1: Mostly dark, face emerging from shadows, faint red rim light
-Frame 2: Half-lit in red, dramatic chiaroscuro, attitude pose
-Frame 3: Full red strobe, maximum energy, hands up or shouting
-Frame 4: Red afterglow, sweaty, euphoric, raw and real
+ONLY THE PERSON FROM THE REFERENCE — NO OTHER PEOPLE:
+- Just the person, ALONE. No strangers, no crowd, no silhouettes.
+- Same person, 4 DIFFERENT expressions and poses.
 
-MANDATORY EFFECTS:
-- CHROMATIC ABERRATION: RGB channel split on edges, red/cyan fringing
-- FILM GRAIN: coarse analog noise, ISO 3200+ texture
-- HALATION: red light sources blooming beyond their boundaries
-- WIDE ANGLE DISTORTION: barrel lens effect on each frame
-- Deep crushed blacks, texture, dust particles
+Person looks ATTRACTIVE and cool in the illustration. NOT sweaty. Clean, stylish, bold art.
+COLOR: Red, black, white. Warm skin tones (stylized). Red neon accents and glows.
 
-COLOR: ONLY RED (#6B0000 to #FF1A1A) AND BLACK (#000000). Nothing else.
-Skin tones in red monochrome. No blue, no amber, no purple, no white.
+4 FRAMES — different expressions:
+Frame 1: Confident look, slight smile, red glow shapes behind
+Frame 2: Laughing, dynamic, bold graphic energy
+Frame 3: Vibing — eyes closed, feeling music, red backlight shapes
+Frame 4: Different angle, moody red accent lighting
 
-BRANDING: "VNVNC" in metallic silver at the bottom (ONE time only).
+PERSPECTIVE: SUPER WIDE ANGLE distortion feel in the drawing.
+EFFECTS: Halftone, screen print texture, bold outlines.
 
-Raw analog quality. SQUARE 1:1 aspect ratio! RED AND BLACK ONLY!""",
+BRANDING: "VNVNC" — tall condensed white letters in thin red rectangular border.
+
+SQUARE 1:1. Vector/sketch art on DARK textured paper!""",
 ]
 
 # GUESS VARIATIONS - Detective investigation board

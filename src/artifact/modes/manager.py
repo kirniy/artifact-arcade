@@ -1494,23 +1494,8 @@ class ModeManager:
         pulse = 0.7 + 0.3 * math.sin(t * 4)
         glow_color = tuple(int(c * pulse) for c in mode_color)
 
-        # === STEP 2: SEMI-TRANSPARENT CENTER PANEL FOR TEXT ===
-        # Darken center area slightly for text readability - VECTORIZED
-        import numpy as np
+        # Text area bounds (used for layout, no background panel)
         panel_y1, panel_y2 = 36, 96
-        panel_x1, panel_x2 = 4, 124  # Wider panel to fit long names like ФОТОБУДКА
-
-        # Create distance masks for rounded corners
-        y_coords = np.arange(panel_y1, panel_y2)[:, np.newaxis]
-        x_coords = np.arange(panel_x1, panel_x2)[np.newaxis, :]
-        dist_x = np.abs(x_coords - 64) / 56  # Adjusted for wider panel
-        dist_y = np.abs(y_coords - 65) / 25
-        inside_mask = (dist_x <= 1) & (dist_y <= 1)
-
-        # Apply darkening where inside mask is True
-        panel_slice = buffer[panel_y1:panel_y2, panel_x1:panel_x2]
-        darkened = (panel_slice * 0.4).astype(np.uint8)
-        panel_slice[:] = np.where(inside_mask[:, :, np.newaxis], darkened, panel_slice)
 
         # === STEP 2.5: VNVNC TEXT LOGO (above mode name) ===
         # Simple text rendering - more reliable than image logo on 128x128 screen

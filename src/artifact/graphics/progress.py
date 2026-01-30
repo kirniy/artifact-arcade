@@ -334,8 +334,15 @@ class SmartProgressTracker:
         # Background
         draw_rect(buffer, x, y, width, height, bg_color)
 
-        # Progress fill with pulse effect
+        # Use looping animation instead of actual progress (unless complete)
         progress = self.get_progress()
+        if progress < 1.0:
+            cycle = (time_ms % 3000.0) / 3000.0
+            if cycle < 0.5:
+                progress = 2 * cycle * cycle
+            else:
+                t2 = cycle - 0.5
+                progress = 0.5 + (1 - (1 - 2 * t2) * (1 - 2 * t2)) * 0.5
         fill_width = int(width * progress)
 
         if fill_width > 0:
