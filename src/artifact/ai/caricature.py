@@ -924,13 +924,25 @@ UNIQUENESS TOKEN: {uniqueness_token}
             )
 
             if image_data:
-                # Process for display — color styles skip grayscale conversion
-                processed = await self._process_for_display(image_data, size, color=is_color_style)
+                # For photobooth styles, keep full resolution from Gemini (uploaded to S3 gallery)
+                # Only downscale for non-photobooth styles (thermal printer / LED display)
+                if is_color_style:
+                    # Keep original resolution, just ensure PNG format
+                    from PIL import Image
+                    img = Image.open(BytesIO(image_data))
+                    img = img.convert("RGB")
+                    output = BytesIO()
+                    img.save(output, format="PNG")
+                    processed = output.getvalue()
+                    actual_w, actual_h = img.size
+                else:
+                    processed = await self._process_for_display(image_data, size, color=False)
+                    actual_w, actual_h = size
                 return Caricature(
                     image_data=processed,
                     style=style,
-                    width=size[0],
-                    height=size[1],
+                    width=actual_w,
+                    height=actual_h,
                     format="png",
                 )
 
