@@ -98,7 +98,8 @@ class CameraService:
         self._hand_bbox_time: float = 0.0
 
         # Black and white mode - Pi Camera Module 3 NoIR has purple tint
-        self._grayscale_enabled = True
+        # DISABLED: Now using color camera
+        self._grayscale_enabled = False
 
         logger.info("CameraService initialized")
 

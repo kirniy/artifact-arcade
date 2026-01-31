@@ -3922,21 +3922,21 @@ class RotatingIdleAnimation:
         # Unified rotating texts for all idle modes (horizontal scroll for longer ones)
         texts = [
             "VNVNC",
-            "SOUNDS LIKE:",
-            "BRAZIL",
-            "16.01-17.01",
+            "VNVNC.RU",
+            "BOILING",
+            "31.01",
             "ФОТОБУДКА",
             "VNVNC <3",
         ]
 
-        # Colors cycle with texts - Brazil carnival palette
+        # Colors cycle with texts - VNVNC red/chrome palette
         colors = [
-            (0, 155, 58),      # Brazilian green
-            (255, 223, 0),     # Brazilian yellow
-            (0, 39, 118),      # Brazilian blue
+            (192, 192, 192),   # Chrome
+            (139, 0, 0),       # Deep red
+            (255, 50, 50),     # Bright red
             (255, 180, 0),     # Gold/orange
-            (0, 200, 100),     # Bright green
-            (255, 255, 100),   # Light yellow
+            (192, 192, 192),   # Chrome
+            (255, 100, 100),   # Light red
         ]
 
         # Timing: 3 seconds per text, with 0.3s transition
@@ -3979,8 +3979,8 @@ class RotatingIdleAnimation:
         texts = {
             IdleScene.VNVNC_ENTRANCE: ["  ДОБРО       ", " ПОЖАЛОВАТЬ  ", " НАЖМИ СТАРТ "],
             IdleScene.CAMERA_EFFECTS: ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "],
-            IdleScene.DIVOOM_GALLERY: ["SOUNDS LIKE:", "  BRAZIL    ", " НАЖМИ СТАРТ "],
-            IdleScene.SAGA_LIVE: ["SOUNDS LIKE:", "  BRAZIL    ", " НАЖМИ СТАРТ "],
+            IdleScene.DIVOOM_GALLERY: ["   VNVNC    ", "  VNVNC.RU  ", " НАЖМИ СТАРТ "],
+            IdleScene.SAGA_LIVE: ["   VNVNC    ", "  VNVNC.RU  ", " НАЖМИ СТАРТ "],
             IdleScene.POSTER_SLIDESHOW: ["   АФИШИ    ", "  СОБЫТИЙ   ", " НАЖМИ СТАРТ "],
             IdleScene.DNA_HELIX: ["   СПИРАЛЬ  ", "   ЖИЗНИ    ", " НАЖМИ СТАРТ "],
             IdleScene.SNOWFALL: ["   ЗИМНЯЯ   ", "   СКАЗКА   ", " НАЖМИ СТАРТ "],

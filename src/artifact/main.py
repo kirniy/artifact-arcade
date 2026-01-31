@@ -110,7 +110,7 @@ async def run_hardware() -> None:
     # mode_manager.register_mode(RoastMeMode)
     # logger.info("🔥 ROAST MODE registered as #2")
 
-    # КВИЗ - Quiz (DISABLED for Brazil party)
+    # КВИЗ - Quiz (DISABLED for BOILING ROOM)
     # mode_manager.register_mode(QuizMode)
 
     # Time-based mode activation (Bad Santa only on Jan 9 after 5pm Moscow)
@@ -142,10 +142,10 @@ async def run_hardware() -> None:
     #     mode_manager.register_mode(AIProphetMode)
     #     logger.info("AI Prophet mode enabled (API key found)")
 
-    # КТО Я? - AI guessing "Who Am I?" (DISABLED for Brazil party)
+    # КТО Я? - AI guessing "Who Am I?" (DISABLED for BOILING ROOM)
     # mode_manager.register_mode(GuessMeMode)
 
-    # КАЛЬМАР - Squid game (red light/green light) (DISABLED for Brazil party)
+    # КАЛЬМАР - Squid game (red light/green light) (DISABLED for BOILING ROOM)
     # mode_manager.register_mode(SquidGameMode)
 
     # БАШНЯ - Tower stack (DISABLED)
