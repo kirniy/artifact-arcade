@@ -231,7 +231,7 @@ Frame 4: Different angle — looking to side or over shoulder, moody red accent 
 LENS FEEL: SUPER WIDE ANGLE (14-18mm) distortion in the drawing — exaggerated perspective.
 EFFECTS: Halftone dots, screen print texture, bold outlines, graphic poster quality.
 
-TOP: "BOILING ROOM" bold graphic text (ENGLISH!), "30.01—31.01" below.
+TOP: "BOILING ROOM" bold graphic text (ENGLISH!), "31.01" below.
 BOTTOM: "VNVNC" — tall condensed white letters inside thin red rectangular border.
 
 9:16 VERTICAL. Vector/sketch style drawings on DARK textured paper!""",
@@ -274,7 +274,7 @@ Frame 4: Profile or three-quarter view, moody red rim light, mysterious
 PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in the drawing.
 EFFECTS: Halftone, screen print texture, bold outlines, limited color palette.
 
-TOP: "BOILING ROOM" bold text (ENGLISH!), "30.01—31.01" below.
+TOP: "BOILING ROOM" bold text (ENGLISH!), "31.01" below.
 BOTTOM: "VNVNC" — tall condensed white letters in thin red rectangular border.
 
 9:16 VERTICAL. Sketch/vector illustrations on DARK textured paper!""",
@@ -317,7 +317,7 @@ Frame 4: Profile or angled view, moody red accent, atmospheric
 PERSPECTIVE: SUPER WIDE ANGLE distortion in the illustration — barrel distortion feel.
 EFFECTS: Halftone dots, screen print registration marks, bold outlines, graphic texture.
 
-TOP: "BOILING ROOM" — bold graphic text (ENGLISH!), "30.01—31.01" below.
+TOP: "BOILING ROOM" — bold graphic text (ENGLISH!), "31.01" below.
 BOTTOM: "VNVNC" — tall condensed white letters inside thin red rectangular border.
 
 9:16 VERTICAL. Vector/graphic art on DARK textured paper!""",
