@@ -197,15 +197,20 @@ PHOTOBOOTH_VARIATIONS = [
 
 Create a VERTICAL photo booth strip (9:16 ratio) with 4 drawings in a 2×2 grid.
 
+CRITICAL TEXT RULES:
+- ONLY these texts allowed: "BOILING ROOM", "31.01", "VNVNC"
+- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
+- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin red rectangular border
+
 ART STYLE — VECTOR / SKETCH ILLUSTRATION (NOT A PHOTO!):
-- Each frame is a STYLISH VECTOR-STYLE DRAWING / ILLUSTRATION of the person
+- Each frame is a STYLISH PINTEREST-WORTHY DRAWING / ILLUSTRATION of the person
 - Bold clean lines, flat color fills, graphic novel / poster art quality
 - Think: Shepard Fairey, Alphonse Mucha meets modern vector art, screen print aesthetic
 - Strong graphic shapes, high contrast, confident ink strokes
 - NOT photorealistic — this is an ILLUSTRATION, a cool artistic interpretation
-- Capture the person's likeness and distinctive features in vector art style
+- Capture the person's likeness and distinctive features 
 
-DARK TEXTURED PAPER — THE ENTIRE BACKGROUND:
+PRINTED FULL BLEED ON DARK TEXTURED POLAROID PAPER — THE ENTIRE BACKGROUND:
 - The paper/background is DARK — black or very dark charcoal with visible texture
 - Heavy paper grain, rough matte black cardstock feel, tactile and moody
 - Borders between frames are DARK textured paper — not white, not cream
@@ -240,13 +245,18 @@ BOTTOM: "VNVNC" — tall condensed white letters inside thin red rectangular bor
 
 Generate a VERTICAL (9:16) photo booth strip — 4 illustrations in a 2×2 grid.
 
+CRITICAL TEXT RULES:
+- ONLY these texts allowed: "BOILING ROOM", "31.01", "VNVNC"
+- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
+- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin red rectangular border
+
 ART STYLE — BOLD SKETCH / VECTOR ILLUSTRATION:
 - NOT a photograph — each frame is a stylish DRAWING of the person
 - Clean vector lines, bold ink strokes, flat graphic color fills
 - Screen print / risograph / poster art aesthetic
 - High contrast, strong silhouettes, graphic and punchy
-- Capture the person's LIKENESS — recognizable features rendered as cool illustration
-- Think: concert poster art, editorial illustration, modern graphic novel
+
+CAMERA: EXTREME WIDE ANGLE (12-16mm) distortion in EVERY frame — fisheye-like barrel distortion, dramatic close-ups!
 
 DARK TEXTURED PAPER SURFACE:
 - Background paper is BLACK or very dark — like printing on black cardstock
@@ -275,7 +285,7 @@ PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in 
 EFFECTS: Halftone, screen print texture, bold outlines, limited color palette.
 
 TOP: "BOILING ROOM" bold text (ENGLISH!), "31.01" below.
-BOTTOM: "VNVNC" — tall condensed white letters in thin red rectangular border.
+BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters in thin red rectangular border.
 
 9:16 VERTICAL. Sketch/vector illustrations on DARK textured paper!""",
 
@@ -283,13 +293,18 @@ BOTTOM: "VNVNC" — tall condensed white letters in thin red rectangular border.
 
 Create a VERTICAL (9:16) photo booth strip with 4 illustrations in 2×2 layout.
 
+CRITICAL TEXT RULES:
+- ONLY these texts allowed: "BOILING ROOM", "31.01", "VNVNC"
+- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
+- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin red rectangular border
+
 ART STYLE — GRAPHIC VECTOR ILLUSTRATION:
 - Each frame is a VECTOR-STYLE ARTWORK of the person — NOT a photograph
 - Bold graphic lines, clean shapes, flat fills with subtle gradients
 - Aesthetic: mix of pop art, screen print, editorial illustration
 - Strong outlines, confident strokes, high contrast, punchy composition
-- Person's face and features are RECOGNIZABLE — artistic but accurate likeness
-- Cool, modern, the kind of art you'd frame on your wall
+
+CAMERA: EXTREME WIDE ANGLE (12-16mm) distortion in ALL frames — barrel distortion, exaggerated depth, close-up drama!
 
 DARK TEXTURED PAPER — PREMIUM FEEL:
 - ENTIRE background/paper is DARK — black or deep charcoal
@@ -318,7 +333,7 @@ PERSPECTIVE: SUPER WIDE ANGLE distortion in the illustration — barrel distorti
 EFFECTS: Halftone dots, screen print registration marks, bold outlines, graphic texture.
 
 TOP: "BOILING ROOM" — bold graphic text (ENGLISH!), "31.01" below.
-BOTTOM: "VNVNC" — tall condensed white letters inside thin red rectangular border.
+BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters inside thin red rectangular border.
 
 9:16 VERTICAL. Vector/graphic art on DARK textured paper!""",
 ]
