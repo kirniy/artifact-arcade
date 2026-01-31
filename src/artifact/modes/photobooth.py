@@ -60,6 +60,7 @@ class PhotoboothState:
     is_uploading: bool = False
     is_generating: bool = False  # AI generation in progress
     flash_timer: float = 0.0
+    pre_flash_timer: float = 0.0  # Flash BEFORE capture to light up subjects
     show_result: bool = False
     result_view: str = "photo"  # "photo" or "qr"
     generation_progress: float = 0.0  # 0.0 to 1.0
@@ -240,9 +241,17 @@ class PhotoboothMode(BaseMode):
                     self._state.countdown -= 1
                     self._state.countdown_timer = 1.0
                 else:
-                    # Countdown finished - take photo!
-                    self._do_flash_and_capture()
+                    # Countdown finished - start pre-flash to light up subjects!
+                    self._state.countdown = 0
+                    self._state.pre_flash_timer = 0.25  # Flash screen for 250ms before capture
             return
+        
+        # Handle pre-flash (flash to light up subjects before capture)
+        if self._state.pre_flash_timer > 0:
+            self._state.pre_flash_timer -= delta_ms / 1000.0
+            if self._state.pre_flash_timer <= 0:
+                # Now capture with lit-up subjects!
+                self._do_flash_and_capture()
 
         # Handle AI generation progress
         if self._state.is_generating:
@@ -573,6 +582,11 @@ class PhotoboothMode(BaseMode):
 
     def render_main(self, buffer: NDArray[np.uint8]) -> None:
         """Render main display."""
+        # Pre-flash: bright white screen to light up subjects BEFORE capture
+        if self._state.pre_flash_timer > 0:
+            fill(buffer, (255, 255, 255))
+            return
+            
         if self._state.flash_timer > 0:
             # Flash effect (from flashOn)
             fill(buffer, (255, 255, 255))
