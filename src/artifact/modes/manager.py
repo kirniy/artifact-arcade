@@ -1620,22 +1620,22 @@ class ModeManager:
                 x_indices = (np.arange(128) * old_w // 128).clip(0, old_w - 1)
                 frame = frame[y_indices[:, np.newaxis], x_indices]
 
-        # Keep original color, apply light tint
-        # (Previously converted to grayscale - now preserving colors)
-
-        # Light mode-colored overlay on camera (preserving original colors)
-        # Blend camera with mode color at 30% opacity
-        overlay_strength = 0.3
-        pulse = 0.85 + 0.15 * math.sin(t * 2)
+        # 100% camera visibility - copy frame directly
+        h, w = 128, 128
+        buffer[:h, :w] = frame
         
-        # Apply subtle tint while keeping camera visible
-        for c in range(3):
-            tint = [r, g, b][c] / 255.0 * pulse
-            buffer[:h, :w, c] = np.clip(
-                frame[:, :, c] * (1 - overlay_strength) + 
-                frame[:, :, c] * tint * overlay_strength * 1.5,
-                0, 255
-            ).astype(np.uint8)
+        # Add thin colored border for mode identity
+        r, g, b = mode_color
+        pulse = 0.7 + 0.3 * math.sin(t * 2)
+        border_color = (int(r * pulse), int(g * pulse), int(b * pulse))
+        # Top and bottom borders (3px)
+        for i in range(3):
+            buffer[i, :] = border_color
+            buffer[h - 1 - i, :] = border_color
+        # Left and right borders (3px)
+        for i in range(3):
+            buffer[:, i] = border_color
+            buffer[:, w - 1 - i] = border_color
 
     def _apply_dither_effect(self, buffer, frame, t: float) -> None:
         """Apply Bayer ordered dithering to camera frame - VECTORIZED."""

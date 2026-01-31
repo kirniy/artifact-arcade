@@ -605,12 +605,19 @@ class PhotoboothMode(BaseMode):
 
     def _render_countdown(self, buffer: NDArray[np.uint8]) -> None:
         """Render countdown number with BOILING ROOM colors."""
-        # Dim camera background with subtle red tint (60% brightness for visibility)
-        buffer[:, :, :] = (buffer.astype(np.float32) * 0.6).astype(np.uint8)
-        buffer[:, :, 0] = np.minimum(buffer[:, :, 0].astype(np.uint16) + 20, 255).astype(np.uint8)
+        # Keep camera at 100% visibility - just add subtle red tint to edges
+        # Add thin red vignette border for branding without obscuring camera
+        buffer[:4, :, 0] = np.minimum(buffer[:4, :, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
+        buffer[-4:, :, 0] = np.minimum(buffer[-4:, :, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
+        buffer[:, :4, 0] = np.minimum(buffer[:, :4, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
+        buffer[:, -4:, 0] = np.minimum(buffer[:, -4:, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
 
-        # Big countdown number in chrome
+        # Big countdown number in chrome with black outline for visibility
         num_str = str(self._state.countdown)
+        for ox in [-2, -1, 0, 1, 2]:
+            for oy in [-2, -1, 0, 1, 2]:
+                if ox != 0 or oy != 0:
+                    draw_centered_text(buffer, num_str, 40 + oy, self.THEME_BLACK, scale=5)
         draw_centered_text(buffer, num_str, 40, self.THEME_CHROME, scale=5)
 
     def _render_generating(self, buffer: NDArray[np.uint8]) -> None:
@@ -638,13 +645,16 @@ class PhotoboothMode(BaseMode):
             # Show compact status at bottom
             status_message = self._progress_tracker.get_message()
             # Semi-transparent dark strip for text
-            draw_rect(buffer, 0, 118, 128, 10, self.THEME_BLACK)
-            draw_centered_text(buffer, status_message, 119, self.THEME_CHROME, scale=1)
+            draw_rect(buffer, 0, 104, 128, 24, self.THEME_BLACK)
+            draw_centered_text(buffer, status_message, 106, self.THEME_CHROME, scale=1)
+            # Website message
+            draw_centered_text(buffer, "ФОТО НА САЙТЕ", 116, self.THEME_RED, scale=1)
 
         else:
             # Fallback to simple generating screen if no game
             fill(buffer, self.THEME_BLACK)
-            draw_centered_text(buffer, "ГЕНЕРАЦИЯ", 55, self.THEME_CHROME, scale=1)
+            draw_centered_text(buffer, "ГЕНЕРАЦИЯ", 50, self.THEME_CHROME, scale=1)
+            draw_centered_text(buffer, "ФОТО НА САЙТЕ", 65, self.THEME_RED, scale=1)
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
         """Render ready state."""
@@ -689,11 +699,11 @@ class PhotoboothMode(BaseMode):
                 fill(buffer, self.THEME_BLACK)
                 draw_centered_text(buffer, "ФОТО", 55, self.THEME_CHROME, scale=1)
 
-            # Small hint at bottom with green background
-            buffer[-12:, :, 0] = 0
-            buffer[-12:, :, 1] = 100
-            buffer[-12:, :, 2] = 40
-            draw_centered_text(buffer, "< > QR", 118, self.THEME_CHROME, scale=1)
+            # Message and hint at bottom with dark background
+            buffer[-20:, :, :] = (buffer[-20:, :, :].astype(np.float32) * 0.3).astype(np.uint8)
+            buffer[-20:, :, 0] = np.minimum(buffer[-20:, :, 0].astype(np.uint16) + 30, 255).astype(np.uint8)
+            draw_centered_text(buffer, "ФОТО НА VNVNC.RU", 110, self.THEME_CHROME, scale=1)
+            draw_centered_text(buffer, "< > QR", 120, (100, 200, 100), scale=1)
 
         elif self._state.result_view == "qr":
             # Full screen QR code
