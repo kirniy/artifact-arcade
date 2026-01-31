@@ -243,7 +243,7 @@ class PhotoboothMode(BaseMode):
                 else:
                     # Countdown finished - start pre-flash to light up subjects!
                     self._state.countdown = 0
-                    self._state.pre_flash_timer = 0.25  # Flash screen for 250ms before capture
+                    self._state.pre_flash_timer = 0.15  # Flash screen for 150ms before capture (reduced)
             return
         
         # Handle pre-flash (flash to light up subjects before capture)
@@ -584,12 +584,12 @@ class PhotoboothMode(BaseMode):
         """Render main display."""
         # Pre-flash: bright white screen to light up subjects BEFORE capture
         if self._state.pre_flash_timer > 0:
-            fill(buffer, (255, 255, 255))
+            fill(buffer, (160, 160, 170))  # Dimmer flash to avoid overexposure
             return
             
         if self._state.flash_timer > 0:
             # Flash effect (from flashOn)
-            fill(buffer, (255, 255, 255))
+            fill(buffer, (160, 160, 170))
             return
 
         if self._state.is_generating:
