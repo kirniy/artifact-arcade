@@ -164,13 +164,18 @@ class AILogger:
             with open(img_filepath, "wb") as f:
                 f.write(image_data)
 
-            # Save reference photo if provided
+            # Save reference photo if provided (deduplicated by hash)
             ref_filename = None
             if reference_photo:
-                ref_filename = f"{category}_{entry_id}_ref.jpg"
+                import hashlib
+                photo_hash = hashlib.md5(reference_photo).hexdigest()[:12]
+                ref_filename = f"ref_{photo_hash}.jpg"
                 ref_filepath = day_dir / "images" / ref_filename
-                with open(ref_filepath, "wb") as f:
-                    f.write(reference_photo)
+                
+                # Only save if it doesn't exist yet
+                if not ref_filepath.exists():
+                    with open(ref_filepath, "wb") as f:
+                        f.write(reference_photo)
 
             # Save metadata
             meta_entry = {
