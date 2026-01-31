@@ -71,7 +71,7 @@ class CameraService:
 
         # Resolution settings
         self._preview_resolution = (128, 128)  # For display
-        self._full_resolution = (640, 480)     # For AI/printing
+        self._full_resolution = (1280, 720)    # For AI/printing (higher quality)
 
         # Performance tracking
         self._fps: float = 0
