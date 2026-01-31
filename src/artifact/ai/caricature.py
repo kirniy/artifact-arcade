@@ -218,9 +218,9 @@ PRINTED FULL BLEED ON DARK TEXTURED POLAROID PAPER — THE ENTIRE BACKGROUND:
 - Ink and color sit ON TOP of the dark surface — like screen printing on black paper
 - Visible paper fiber, subtle noise, rough tactile quality throughout
 
-ONLY THE PERSON FROM THE REFERENCE — NOBODY ELSE:
-- ONLY the person(s) from the reference photo, NOBODY else in any frame
-- Same person in all 4 frames but with DIFFERENT expressions and poses each time
+ALL PEOPLE FROM THE REFERENCE PHOTO:
+- Include EVERYONE visible in the reference photo — if it's a group, draw the WHOLE GROUP
+- Same people in all 4 frames but with DIFFERENT expressions and poses each time
 - Background within each frame: dark with red/neon accents, smoke, club atmosphere
 
 COLOR PALETTE: Red, black, white, and skin tones only. Red neon glows, white highlights.
@@ -255,6 +255,7 @@ ART STYLE — BOLD SKETCH / VECTOR ILLUSTRATION:
 - Clean vector lines, bold ink strokes, flat graphic color fills
 - Screen print / risograph / poster art aesthetic
 - High contrast, strong silhouettes, graphic and punchy
+- Capture the person's LIKENESS — recognizable features rendered as cool illustration
 
 CAMERA: EXTREME WIDE ANGLE (12-16mm) distortion in EVERY frame — fisheye-like barrel distortion, dramatic close-ups!
 
@@ -266,9 +267,9 @@ DARK TEXTURED PAPER SURFACE:
 - Feels like a limited-edition screen print on premium dark stock
 - Text and logos also look printed/stamped on the dark paper
 
-ONLY THE PERSON FROM THE REFERENCE — NO OTHER PEOPLE:
-- ABSOLUTELY NO other people — just the reference person, ALONE
-- Same person in all 4 frames with DIFFERENT expressions and poses
+ALL PEOPLE FROM THE REFERENCE PHOTO:
+- Include EVERYONE visible in the reference photo — if it's a group, draw the WHOLE GROUP together
+- Same people in all 4 frames with DIFFERENT expressions and poses
 - Background within frames: dark with red/neon graphic elements, smoke shapes
 
 LOOK: Person rendered as ATTRACTIVE and cool — flattering artistic style.
@@ -303,8 +304,8 @@ ART STYLE — GRAPHIC VECTOR ILLUSTRATION:
 - Bold graphic lines, clean shapes, flat fills with subtle gradients
 - Aesthetic: mix of pop art, screen print, editorial illustration
 - Strong outlines, confident strokes, high contrast, punchy composition
+- Person's face and features are RECOGNIZABLE — artistic but accurate likeness
 
-CAMERA: EXTREME WIDE ANGLE (12-16mm) distortion in ALL frames — barrel distortion, exaggerated depth, close-up drama!
 
 DARK TEXTURED PAPER — PREMIUM FEEL:
 - ENTIRE background/paper is DARK — black or deep charcoal
@@ -314,10 +315,10 @@ DARK TEXTURED PAPER — PREMIUM FEEL:
 - Feels like a limited run art print on heavy dark stock
 - All text looks screen-printed or letterpress-stamped on the dark surface
 
-ONLY THE PERSON FROM REFERENCE — ZERO OTHER PEOPLE:
-- NO crowd, NO strangers, NO silhouettes — ONLY the reference person
-- Person is ALONE in each frame with dark + red graphic background elements
-- Same person, 4 DIFFERENT expressions and poses — vary the energy
+ALL PEOPLE FROM REFERENCE PHOTO:
+- Include EVERYONE visible in the reference — if it's a group, draw the WHOLE GROUP
+- All people together in each frame with dark + red graphic background elements
+- Same people, 4 DIFFERENT expressions and poses — vary the energy
 
 STYLE: Person looks ATTRACTIVE — cool, stylish, confident in the illustration.
 COLOR: Red, black, white primary palette. Warm skin tones (stylized but natural).
@@ -354,9 +355,9 @@ DARK TEXTURED PAPER: Background is BLACK/dark charcoal with heavy paper grain te
 Dark borders between frames. Art printed ON dark paper — colors pop against black.
 Feels like a limited-edition screen print on premium dark stock.
 
-ONLY THE PERSON FROM THE REFERENCE — NO OTHER PEOPLE:
-- Just the person, ALONE. No strangers, no crowd, no silhouettes.
-- Same person, 4 DIFFERENT expressions and poses.
+ALL PEOPLE FROM THE REFERENCE PHOTO:
+- Include EVERYONE visible in the reference — if it's a group, draw the WHOLE GROUP
+- Same people, 4 DIFFERENT expressions and poses.
 
 Person looks ATTRACTIVE and cool in the illustration. NOT sweaty. Clean, stylish, bold art.
 COLOR: Red, black, white. Warm skin tones (stylized). Red neon accents and glows.
