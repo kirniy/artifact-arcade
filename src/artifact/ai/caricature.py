@@ -219,7 +219,7 @@ PRINTED FULL BLEED ON DARK TEXTURED POLAROID PAPER — THE ENTIRE BACKGROUND:
 - Visible paper fiber, subtle noise, rough tactile quality throughout
 
 ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include EVERYONE visible in the reference photo — if it's a group, draw the WHOLE GROUP
+- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
 - Same people in all 4 frames but with DIFFERENT expressions and poses each time
 - Background within each frame: dark with red/neon accents, smoke, club atmosphere
 
@@ -268,7 +268,7 @@ DARK TEXTURED PAPER SURFACE:
 - Text and logos also look printed/stamped on the dark paper
 
 ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include EVERYONE visible in the reference photo — if it's a group, draw the WHOLE GROUP together
+- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
 - Same people in all 4 frames with DIFFERENT expressions and poses
 - Background within frames: dark with red/neon graphic elements, smoke shapes
 
@@ -316,7 +316,7 @@ DARK TEXTURED PAPER — PREMIUM FEEL:
 - All text looks screen-printed or letterpress-stamped on the dark surface
 
 ALL PEOPLE FROM REFERENCE PHOTO:
-- Include EVERYONE visible in the reference — if it's a group, draw the WHOLE GROUP
+- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP
 - All people together in each frame with dark + red graphic background elements
 - Same people, 4 DIFFERENT expressions and poses — vary the energy
 
@@ -356,7 +356,7 @@ Dark borders between frames. Art printed ON dark paper — colors pop against bl
 Feels like a limited-edition screen print on premium dark stock.
 
 ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include EVERYONE visible in the reference — if it's a group, draw the WHOLE GROUP
+- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP
 - Same people, 4 DIFFERENT expressions and poses.
 
 Person looks ATTRACTIVE and cool in the illustration. NOT sweaty. Clean, stylish, bold art.
