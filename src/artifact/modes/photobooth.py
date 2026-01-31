@@ -605,9 +605,9 @@ class PhotoboothMode(BaseMode):
 
     def _render_countdown(self, buffer: NDArray[np.uint8]) -> None:
         """Render countdown number with BOILING ROOM colors."""
-        # Dim camera background with red tint
-        buffer[:, :, :] = (buffer.astype(np.float32) * 0.3).astype(np.uint8)
-        buffer[:, :, 0] = np.minimum(buffer[:, :, 0].astype(np.uint16) + 30, 255).astype(np.uint8)
+        # Dim camera background with subtle red tint (60% brightness for visibility)
+        buffer[:, :, :] = (buffer.astype(np.float32) * 0.6).astype(np.uint8)
+        buffer[:, :, 0] = np.minimum(buffer[:, :, 0].astype(np.uint16) + 20, 255).astype(np.uint8)
 
         # Big countdown number in chrome
         num_str = str(self._state.countdown)

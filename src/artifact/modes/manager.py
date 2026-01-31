@@ -1620,35 +1620,22 @@ class ModeManager:
                 x_indices = (np.arange(128) * old_w // 128).clip(0, old_w - 1)
                 frame = frame[y_indices[:, np.newaxis], x_indices]
 
-        # Convert to grayscale for silhouette
-        gray = np.mean(frame, axis=2)
+        # Keep original color, apply light tint
+        # (Previously converted to grayscale - now preserving colors)
 
-        # Apply smooth color tint based on mode color
-        # Bright areas get the mode color, dark areas stay dark
-        h, w = 128, 128
-        r, g, b = mode_color
-
-        # Normalize brightness
-        brightness = gray / 255.0
-
-        # Smooth gradient - mode color for bright areas
+        # Light mode-colored overlay on camera (preserving original colors)
+        # Blend camera with mode color at 30% opacity
+        overlay_strength = 0.3
         pulse = 0.85 + 0.15 * math.sin(t * 2)
-        tinted_r = (brightness * r * pulse).astype(np.uint8)
-        tinted_g = (brightness * g * pulse).astype(np.uint8)
-        tinted_b = (brightness * b * pulse).astype(np.uint8)
-
-        # Dark background tint (complement of mode color, very dark)
-        bg_r = int(r * 0.1)
-        bg_g = int(g * 0.1)
-        bg_b = int(b * 0.1)
-
-        # Blend: dark areas get dark tint, bright areas get mode color
-        threshold = 0.3
-        blend = np.clip((brightness - threshold) / (1.0 - threshold), 0, 1)
-
-        buffer[:h, :w, 0] = (bg_r * (1 - blend) + tinted_r * blend).astype(np.uint8)
-        buffer[:h, :w, 1] = (bg_g * (1 - blend) + tinted_g * blend).astype(np.uint8)
-        buffer[:h, :w, 2] = (bg_b * (1 - blend) + tinted_b * blend).astype(np.uint8)
+        
+        # Apply subtle tint while keeping camera visible
+        for c in range(3):
+            tint = [r, g, b][c] / 255.0 * pulse
+            buffer[:h, :w, c] = np.clip(
+                frame[:, :, c] * (1 - overlay_strength) + 
+                frame[:, :, c] * tint * overlay_strength * 1.5,
+                0, 255
+            ).astype(np.uint8)
 
     def _apply_dither_effect(self, buffer, frame, t: float) -> None:
         """Apply Bayer ordered dithering to camera frame - VECTORIZED."""
