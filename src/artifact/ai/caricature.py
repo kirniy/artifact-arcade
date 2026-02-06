@@ -387,203 +387,193 @@ SQUARE 1:1. Vector/sketch art on DARK textured paper!""",
 # DATES: 06.02-07.02
 
 TRIPVENICE_VARIATIONS = [
-    """TRIP:VENICE — 3D CARNIVAL PHOTO BOOTH (VERTICAL 9:16)
+    """TRIP:VENICE — VECTOR ART PHOTO BOOTH (VERTICAL 9:16)
 
-Create a VERTICAL photo booth strip (9:16 ratio) with 4 images in a 2×2 grid.
+Create a VERTICAL photo booth strip (9:16 ratio) with 4 drawings in a 2×2 grid.
 
 CRITICAL TEXT RULES:
 - ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC"
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words anywhere else
+- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
 - "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
 
-ART STYLE — HIGH-QUALITY 3D RENDER (SIMS-STYLE):
-- Each frame is a stylized 3D CHARACTER RENDER of the person — like The Sims 4 or Pixar-quality
-- Smooth surfaces, subtle subsurface scattering on skin, stylized but recognizable features
-- NOT photorealistic — this is a polished 3D game character interpretation
-- Clean geometry, soft shadows, cinematic lighting
-- Capture the person's LIKENESS as a beautiful 3D character
+ART STYLE — VECTOR / FLAT ILLUSTRATION (NOT A PHOTO!):
+- Each frame is a STYLISH PINTEREST-WORTHY FLAT VECTOR DRAWING of the person
+- Bold clean lines, flat color fills, graphic novel / poster art quality
+- Think: Shepard Fairey, modern vector art, screen print aesthetic
+- Strong graphic shapes, high contrast, confident ink strokes
+- NOT photorealistic — this is a FLAT VECTOR ILLUSTRATION, cool artistic interpretation
+- Capture the person's likeness and distinctive features in flat vector style
 
 VENETIAN CARNIVAL THEME:
-- Elaborate Venetian masquerade masks — Colombina, Bauta, Medico della Peste (plague doctor)
-- Ornate gold filigree decorations, feathers, jewels on masks
-- Rich fabrics: velvet, brocade, silk in deep burgundy, gold, black, purple
-- Carnival atmosphere: mystery, elegance, dark romance
-- Background: dark Venice at night, canals, gondolas, carnival lights, fog
+- Rich colors: GOLD, BURGUNDY, deep purple, black, cream accents
+- Carnival atmosphere: elegance, mystery, dark romance, Venice at night
+- Background within frames: dark with gold/burgundy accents, carnival lights, fog
 
-PRINTED ON DARK TEXTURED PAPER — THE ENTIRE BACKGROUND:
-- Paper/background is DARK — deep purple-black with visible texture
-- Heavy paper grain, rough matte black cardstock feel
-- Borders between frames are DARK textured paper
-- Art sits ON the dark surface — 3D renders glow against darkness
-- Feels like premium art prints from a mysterious carnival
+PRINTED FULL BLEED ON DARK TEXTURED POLAROID PAPER — THE ENTIRE BACKGROUND:
+- The paper/background is DARK — black or very dark charcoal with visible texture
+- Heavy paper grain, rough matte black cardstock feel, tactile and moody
+- Borders between frames are DARK textured paper — not white, not cream
+- Ink and color sit ON TOP of the dark surface — like screen printing on black paper
 
 ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include all MAIN SUBJECTS — if group photo, render the WHOLE GROUP as 3D characters
-- Same people in all 4 frames with DIFFERENT poses, masks, expressions
-- Each wearing different elaborate carnival masks or mask positions
+- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
+- Same people in all 4 frames but with DIFFERENT expressions and poses each time
 
-COLOR PALETTE: Gold, burgundy, black, purple, white accents. Warm skin tones (3D rendered).
-Person looks STUNNING and mysterious — elegant, alluring, Venetian nobility energy.
-NOT creepy. Glamorous, mysterious, beautiful 3D art.
+COLOR PALETTE: Gold, burgundy, black, purple, white accents. Warm skin tones (stylized flat).
+Person looks ATTRACTIVE and elegant — stylish, confident, flattering artistic interpretation.
+NOT sweaty. NOT gross. Clean and stylish vector art.
 
-4 FRAMES — same person, different carnival moments:
-Frame 1: Holding ornate mask to face, mysterious gaze, gold candlelight glow
-Frame 2: Mask lifted/tilted, genuine smile revealed, carnival lights behind
-Frame 3: Profile view with elaborate feathered mask, Venice canal background
-Frame 4: Looking over shoulder, plague doctor mask nearby, fog and mystery
+4 FRAMES — same person, 2 WITH MASKS and 2 WITHOUT MASKS:
+Frame 1: NO MASK — Cool confident look, slight smile, gold carnival glow behind
+Frame 2: WITH ORNATE VENETIAN MASK — mysterious gaze through gilded mask, feathers and gold filigree
+Frame 3: NO MASK — Laughing or big smile, head tilted, dynamic line work, confetti
+Frame 4: WITH DIFFERENT MASK — holding mask to side of face, one eye visible, mysterious and alluring
 
-LIGHTING: Warm candlelight, golden hour, dramatic chiaroscuro like Venetian paintings.
-EFFECTS: Soft depth of field, volumetric fog, particle effects (confetti, sparkles).
+LENS FEEL: SUPER WIDE ANGLE (14-18mm) distortion in the drawing — exaggerated perspective.
+EFFECTS: Halftone dots, screen print texture, bold outlines, graphic poster quality.
 
-TOP: "TRIP:VENICE" bold ornate text (ENGLISH!), "06.02-07.02" below in elegant script.
+TOP: "TRIP:VENICE" bold graphic text (ENGLISH!), "06.02-07.02" below.
 BOTTOM: "VNVNC" — tall condensed white letters inside thin gold rectangular border.
 
-9:16 VERTICAL. High-quality 3D Sims-style renders on DARK textured paper!""",
+9:16 VERTICAL. Vector/flat style drawings on DARK textured paper!""",
 
-    """TRIP:VENICE — CARNIVAL 3D PORTRAIT BOOTH (VERTICAL 9:16)
+    """TRIP:VENICE — FLAT VECTOR BOOTH (VERTICAL 9:16)
 
-Generate a VERTICAL (9:16) photo booth strip — 4 stunning 3D renders in a 2×2 grid.
+Generate a VERTICAL (9:16) photo booth strip — 4 flat vector illustrations in a 2×2 grid.
 
 CRITICAL TEXT RULES:
 - ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC"
-- NO OTHER TEXT WHATSOEVER
+- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
 - "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
 
-ART STYLE — PREMIUM 3D CHARACTER ART:
-- The Sims 4 / Fortnite / Pixar quality 3D character rendering
-- Stylized proportions — slightly larger eyes, smooth idealized features
-- Beautiful subsurface scattering skin, perfect hair rendering
-- NOT a photograph — a gorgeous 3D game character interpretation
-- Person is RECOGNIZABLE but elevated to stunning 3D avatar
+ART STYLE — BOLD FLAT VECTOR ILLUSTRATION:
+- NOT a photograph — each frame is a stylish FLAT VECTOR DRAWING of the person
+- Clean vector lines, bold ink strokes, flat graphic color fills
+- Screen print / risograph / poster art aesthetic — PINTEREST-WORTHY quality
+- High contrast, strong silhouettes, graphic and punchy
+- Capture the person's LIKENESS — recognizable features rendered as cool flat illustration
 
-VENETIAN MASQUERADE SETTING:
-- Traditional Venetian carnival masks: gilded, jeweled, feathered
-- Period-appropriate carnival costumes: ruffs, capes, tricorn hats
-- Venice carnival night setting: masked ball, palazzo interior, canal views
-- Atmosphere: mysterious romance, intrigue, dark elegance
-- Carnival di Venezia energy — the most beautiful party in the world
+CAMERA: EXTREME WIDE ANGLE (12-16mm) distortion in EVERY frame — fisheye-like, dramatic close-ups!
+
+VENETIAN CARNIVAL COLORS:
+- GOLD (primary accent), BURGUNDY (secondary), deep purple, black, cream
+- Ornate Venetian mask designs: Colombina, Bauta, gilded filigree, feathers, jewels
+- Venice carnival night energy: masked ball, mystery, elegance
 
 DARK TEXTURED PAPER SURFACE:
-- ENTIRE background is DARK — rich purple-black
-- Visible paper texture: grain, fiber, matte finish
-- Dark gaps between frames show textured paper
-- 3D renders appear to float on premium dark stock
-- Luxurious limited-edition art print feeling
+- Background paper is BLACK or very dark — like printing on black cardstock
+- Heavy visible paper texture: grain, fiber, rough matte surface
+- Dark borders and gaps between all 4 frames — dark paper visible everywhere
+- Art sits ON the dark surface — colors pop against the dark background
 
-ALL PEOPLE FROM REFERENCE PHOTO:
-- Include EVERYONE from the photo as 3D characters
-- Same people, 4 DIFFERENT mask styles and poses
-- Each frame has unique carnival costume elements
+ALL PEOPLE FROM THE REFERENCE PHOTO:
+- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
+- Same people in all 4 frames with DIFFERENT expressions and poses
 
-AESTHETIC: Person looks GORGEOUS — mysterious, elegant, alluring.
-COLOR: Gold, burgundy, deep purple, black, cream accents. Warm glowing skin.
-NOT scary or unsettling. Beautiful, glamorous, romantic 3D art.
+LOOK: Person rendered as ATTRACTIVE and elegant — flattering artistic style.
+COLOR: Gold, burgundy, deep purple, black, cream. Warm stylized skin tones.
+NOT sweaty. NOT dark/murky faces. Bold, well-defined, stylish flat illustration.
 
-4 FRAMES — carnival masquerade moments:
-Frame 1: Eyes through ornate mask, candlelit, golden glow
-Frame 2: Mask removed to side, charming smile, confetti falling
-Frame 3: Three-quarter view, elaborate costume, Venice backdrop
-Frame 4: Dramatic pose, cape swirl, mysterious masked ball energy
+4 FRAMES — same person, 2 WITH MASKS and 2 WITHOUT MASKS:
+Frame 1: WITH ORNATE MASK — eyes through elegant Venetian mask, mysterious gaze, gold candlelight glow
+Frame 2: NO MASK — genuine smile or laugh, dynamic pose, festive confetti, gold accents
+Frame 3: WITH DIFFERENT MASK — profile view with feathered carnival mask, Venice canal background shapes
+Frame 4: NO MASK — confident look, head tilted, vibing, carnival lights behind, attractive and cool
 
-LIGHTING: Golden candlelight, warm theatrical, Renaissance painting inspired.
-EFFECTS: Soft bokeh, golden particles, subtle fog, cinematic depth.
+PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in the drawing.
+EFFECTS: Halftone, screen print texture, bold outlines, limited color palette.
 
-TOP: "TRIP:VENICE" in ornate carnival-style lettering, "06.02-07.02" below.
-BOTTOM: "VNVNC" — tall condensed white letters in thin gold rectangular border.
+TOP: "TRIP:VENICE" bold text (ENGLISH!), "06.02-07.02" below.
+BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters in thin gold rectangular border.
 
-9:16 VERTICAL. Stunning 3D character art on DARK textured paper!""",
+9:16 VERTICAL. Flat vector illustrations on DARK textured paper!""",
 
-    """TRIP:VENICE — MASQUERADE 3D BOOTH (VERTICAL 9:16)
+    """TRIP:VENICE — GRAPHIC VECTOR BOOTH (VERTICAL 9:16)
 
-Create a VERTICAL (9:16) photo booth strip with 4 high-quality 3D portraits in 2×2 layout.
+Create a VERTICAL (9:16) photo booth strip with 4 flat vector illustrations in 2×2 layout.
 
 CRITICAL TEXT RULES:
 - ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC"
-- NO OTHER TEXT — no captions, labels, or words anywhere else
-- "VNVNC" in TALL CONDENSED IMPACT-STYLE FONT — white letters, thin gold border
+- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
+- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
 
-ART STYLE — CINEMATIC 3D GAME CHARACTER:
-- AAA video game quality character rendering — think Unreal Engine 5 stylized
-- Beautiful idealized 3D avatar of the person — Sims/Disney/Pixar aesthetic
-- Perfect lighting, soft shadows, gorgeous materials
-- Stylized but RECOGNIZABLE likeness — captures their essence as 3D art
-- NOT photorealistic, NOT uncanny valley — beautifully stylized
+ART STYLE — GRAPHIC FLAT VECTOR ILLUSTRATION:
+- Each frame is a FLAT VECTOR-STYLE ARTWORK of the person — NOT a photograph
+- Bold graphic lines, clean shapes, flat fills with minimal gradients
+- Aesthetic: mix of pop art, screen print, editorial illustration — PINTEREST-WORTHY
+- Strong outlines, confident strokes, high contrast, punchy composition
+- Person's face and features are RECOGNIZABLE — artistic but accurate likeness
 
-CARNIVAL DI VENEZIA THEME:
-- Iconic Venetian masks: Volto, Pantalone, Arlecchino, Moretta
-- Sumptuous carnival attire: brocade, velvet, lace, gold embroidery
-- Venice setting: Grand Canal, Piazza San Marco, mysterious alleyways
-- Atmosphere: enchantment, mystery, forbidden romance, masked intrigue
-- The magic of Venice carnival — where anyone can become anyone
+VENETIAN CARNIVAL MASQUERADE:
+- Traditional Venetian masks: gilded, jeweled, feathered masterpieces
+- Rich carnival palette: GOLD, BURGUNDY, deep purple, black, ivory
+- Venice at night: masked ball energy, palazzo silhouettes, canal reflections, mystery
 
-PRINTED ON DARK LUXURY PAPER:
-- Background paper is RICH DARK — almost black with purple undertones
-- Visible premium paper texture: heavy stock, matte, tactile
-- Dark borders between all frames
-- 3D renders glow against the dark surface
-- Feels like collectible art cards from a secret carnival
+DARK TEXTURED PAPER — PREMIUM FEEL:
+- ENTIRE background/paper is DARK — black or deep charcoal
+- Rich paper texture: visible grain, matte finish, rough fiber, tactile
+- Dark gaps between frames show the paper surface — no white borders
+- Art is printed ON dark paper — colors and whites pop dramatically
 
-ALL PEOPLE FROM THE REFERENCE:
-- Transform EVERYONE in the photo to gorgeous 3D characters
-- Same group, 4 DIFFERENT carnival scenarios
-- Varying masks, costumes, poses across frames
+ALL PEOPLE FROM REFERENCE PHOTO:
+- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP
+- All people together in each frame with dark + gold/burgundy graphic background elements
+- Same people, 4 DIFFERENT expressions and poses — vary the energy
 
-LOOK: Person rendered as BEAUTIFUL — mysterious, regal, captivating.
-PALETTE: Venetian gold, deep red wine, midnight purple, black, ivory.
-Gorgeous 3D skin with warm subsurface glow. NOT creepy. Elegant and alluring.
+STYLE: Person looks ATTRACTIVE — elegant, stylish, confident in the illustration.
+COLOR: Gold, burgundy, purple, black, cream primary palette. Warm skin tones (stylized).
+NOT sweaty. NOT grimy. Clean, bold, aspirational flat vector art.
 
-4 FRAMES — masquerade ball moments:
-Frame 1: Full face through intricate mask, eyes sparkling, candlelight
-Frame 2: Playful mask gesture, smile visible, festive energy
-Frame 3: Elegant profile, elaborate headdress/mask, palazzo background
-Frame 4: Mysterious glance, partial mask, fog and carnival lights
+4 FRAMES — 2 WITH VENETIAN MASKS, 2 WITHOUT MASKS:
+Frame 1: NO MASK — direct look, confident half-smile, gold glow shapes behind, attractive
+Frame 2: WITH ORNATE MASK — mysterious through gilded Venetian mask, eyes sparkling, candlelight accents
+Frame 3: NO MASK — candid laugh, dynamic composition, confetti shapes, festive carnival energy
+Frame 4: WITH DIFFERENT MASK — holding elaborate mask beside face, one eye revealed, seductive and mysterious
 
-LIGHTING: Warm golden hour, Venetian palazzo candlelight, dramatic but flattering.
-EFFECTS: Volumetric light, golden dust particles, soft background blur.
+PERSPECTIVE: SUPER WIDE ANGLE distortion in the illustration — barrel distortion feel.
+EFFECTS: Halftone dots, screen print registration marks, bold outlines, graphic texture.
 
-TOP: "TRIP:VENICE" decorative carnival font, "06.02-07.02" elegant script below.
-BOTTOM: "VNVNC" — tall condensed white in thin gold rectangular border.
+TOP: "TRIP:VENICE" — bold graphic text (ENGLISH!), "06.02-07.02" below.
+BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters inside thin gold rectangular border.
 
-9:16 VERTICAL. Premium 3D character portraits on DARK textured paper!""",
+9:16 VERTICAL. Flat vector/graphic art on DARK textured paper!""",
 ]
 
 # TRIP:VENICE SQUARE VARIATIONS - 1:1 for LED display
 TRIPVENICE_SQUARE_VARIATIONS = [
-    """TRIP:VENICE — 3D CARNIVAL BOOTH (SQUARE 1:1)
+    """TRIP:VENICE — FLAT VECTOR BOOTH (SQUARE 1:1)
 
-Create a SQUARE (1:1) photo booth grid with 4 stunning 3D character renders in a 2×2 layout.
+Create a SQUARE (1:1) photo booth grid with 4 flat vector illustrations in a 2×2 layout.
 
-ART STYLE: HIGH-QUALITY 3D RENDER — The Sims 4 / Pixar quality. Stylized but recognizable
-likeness. Beautiful subsurface skin, perfect lighting, gorgeous materials.
-NOT photorealistic — a beautiful 3D game character interpretation.
+ART STYLE: FLAT VECTOR ILLUSTRATION — PINTEREST-WORTHY quality. Bold clean lines, flat color fills,
+screen print / poster art aesthetic. NOT photorealistic — stylish flat vector illustration.
+Capture the person's likeness and distinctive features in flat graphic style.
 
-VENETIAN CARNIVAL THEME: Elaborate masquerade masks (Colombina, Bauta, Medico della Peste),
-gold filigree, feathers, velvet, brocade. Venice at night: canals, fog, carnival lights.
-Mysterious, elegant, dark romantic atmosphere.
+VENETIAN CARNIVAL THEME: Ornate Venetian masks (Colombina, Bauta) with gold filigree, feathers, jewels.
+Venice at night: carnival lights, masked ball energy, mystery and elegance.
+Rich colors: GOLD, BURGUNDY, deep purple, black, cream accents.
 
-DARK TEXTURED PAPER: Background is RICH DARK purple-black with paper grain texture.
-Dark borders between frames. 3D renders glow against the dark surface.
-Premium art print feeling.
+DARK TEXTURED PAPER: Background is BLACK or dark charcoal with paper grain texture.
+Dark borders between frames. Colors pop against the dark surface. Premium art print feeling.
 
 ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Transform everyone to gorgeous 3D characters with carnival masks
-- Same people, 4 DIFFERENT mask styles and poses
+- Draw everyone as stylish flat vector illustrations
+- Same people, 4 DIFFERENT expressions — 2 WITH MASKS, 2 WITHOUT MASKS
 
-Person looks STUNNING and mysterious — elegant, alluring, Venetian nobility.
-COLOR: Gold, burgundy, purple, black, warm skin tones. NOT creepy. Glamorous and beautiful.
+Person looks ATTRACTIVE and elegant — stylish, confident, flattering flat vector art.
+COLOR: Gold, burgundy, purple, black, cream. Warm stylized skin. NOT sweaty. Clean and stylish.
 
-4 FRAMES — different carnival moments:
-Frame 1: Ornate mask held to face, mysterious gaze, golden candlelight
-Frame 2: Mask tilted, genuine smile, carnival lights
-Frame 3: Profile with elaborate feathered mask, Venice backdrop
-Frame 4: Looking over shoulder, plague doctor mask nearby, fog
+4 FRAMES — 2 WITH MASKS, 2 WITHOUT MASKS:
+Frame 1: NO MASK — confident look, slight smile, gold carnival glow shapes behind
+Frame 2: WITH ORNATE MASK — mysterious gaze through gilded Venetian mask, candlelight accents
+Frame 3: NO MASK — laughing, dynamic pose, festive confetti shapes
+Frame 4: WITH DIFFERENT MASK — holding mask beside face, one eye visible, seductive and mysterious
 
-LIGHTING: Warm candlelight, golden hour, chiaroscuro.
-EFFECTS: Soft depth of field, fog, sparkle particles.
+PERSPECTIVE: Super wide angle distortion feel. EFFECTS: Halftone, screen print texture, bold outlines.
 
 BRANDING: "VNVNC" — tall condensed white letters in thin gold rectangular border.
 
-SQUARE 1:1. High-quality 3D Sims-style renders on DARK textured paper!""",
+SQUARE 1:1. Flat vector illustrations on DARK textured paper!""",
 ]
 
 # GUESS VARIATIONS - Detective investigation board
