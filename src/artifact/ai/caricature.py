@@ -387,223 +387,181 @@ SQUARE 1:1. Vector/sketch art on DARK textured paper!""",
 # DATES: 06.02-07.02
 
 TRIPVENICE_VARIATIONS = [
-    """TRIP:VENICE — VECTOR ART PHOTO BOOTH (VERTICAL 9:16)
+    """TRIP:VENICE — FLAT VECTOR PHOTO BOOTH (VERTICAL 9:16)
 
-Create a VERTICAL photo booth strip (9:16 ratio) with 4 drawings in a 2×2 grid.
+Create a VERTICAL photo booth strip (9:16 ratio) with 4 illustrations in a 2×2 grid.
 
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC"
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
+TEXT RULES:
+- ONLY allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC"
+- NO OTHER TEXT — no captions, no labels, no words anywhere else
+- "VNVNC" in tall condensed white letters inside thin gold border
 
-ART STYLE — VECTOR / FLAT ILLUSTRATION (NOT A PHOTO!):
-- Each frame is a STYLISH PINTEREST-WORTHY FLAT VECTOR DRAWING of the person
-- Bold clean lines, flat color fills, graphic novel / poster art quality
-- Think: Shepard Fairey, modern vector art, screen print aesthetic
-- Strong graphic shapes, high contrast, confident ink strokes
-- NOT photorealistic — this is a FLAT VECTOR ILLUSTRATION, cool artistic interpretation
-- Capture the person's likeness and distinctive features in flat vector style
+STYLE — PINTEREST-WORTHY FLAT VECTOR ART:
+- Stylish flat vector illustration — NOT a photograph, NOT 3D
+- Bold clean lines, flat color fills, modern poster art quality
+- Cool, fashionable, aspirational — like a high-end fashion illustration
+- Person looks ATTRACTIVE, STYLISH, CONFIDENT — never creepy or weird
+- Capture likeness but make them look their BEST
 
-VENETIAN CARNIVAL THEME:
-- Rich colors: GOLD, RED VELVET, deep purple, black, cream accents
-- Carnival atmosphere: elegance, mystery, dark romance, Venice at night
-- Background within frames: dark with gold/red velvet accents, carnival lights, fog
+COLOR PALETTE:
+- GOLD (primary), RED VELVET (secondary), deep purple, black, cream
+- Warm flattering skin tones — glowing and healthy looking
+- NOT muddy, NOT dark faces, NOT sweaty
 
-PRINTED FULL BLEED ON DARK TEXTURED POLAROID PAPER — THE ENTIRE BACKGROUND:
-- The paper/background is DARK — black or very dark charcoal with visible texture
-- Heavy paper grain, rough matte black cardstock feel, tactile and moody
-- Borders between frames are DARK textured paper — not white, not cream
-- Ink and color sit ON TOP of the dark surface — like screen printing on black paper
+VENETIAN CARNIVAL VIBES:
+- Ornate Venetian masks with golden filigree, feathers, jewels
+- Elegant mystery, dark romance, Venice at night energy
+- Carnival lights, palazzo silhouettes in background
 
-DEPTH AND LAYERING EFFECTS:
-- Multiple visual layers creating depth — foreground, middle, background
-- Background elements: Venice palazzo silhouettes, canal reflections, carnival lights in fog
-- Middle layer: confetti, sparkles, floating feathers, golden particles
-- Foreground: the person rendered crisp and detailed
-- Atmospheric perspective — background elements softer and muted
+DEPTH AND LAYERS:
+- Background: misty Venice silhouettes, canal reflections, soft carnival lights
+- Middle: floating confetti, golden sparkles, feathers
+- Foreground: person crisp and vibrant
 
-ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
-- Same people in all 4 frames but with DIFFERENT expressions and poses each time
+DARK TEXTURED PAPER:
+- Background is BLACK with visible paper grain texture
+- Dark borders between frames — premium art print feel
 
-COLOR PALETTE: Gold, red velvet, black, purple, white accents. Warm skin tones (stylized flat).
-Person looks ATTRACTIVE and elegant — stylish, confident, flattering artistic interpretation.
-NOT sweaty. NOT gross. Clean and stylish vector art.
+PEOPLE:
+- Draw everyone from the reference photo
+- Same people in all 4 frames, DIFFERENT cool poses each time
+- 2 frames WITH Venetian masks, 2 frames WITHOUT masks
+- Make them look fashionable and having fun
 
-4 FRAMES — same person, 2 WITH MASKS and 2 WITHOUT MASKS:
-Frame 1: NO MASKS — Cool confident look, slight smile, gold carnival glow behind
-Frame 2: WITH VENETIAN MASKS — mysterious gaze through gilded mask, feathers and gold filigree
-Frame 3: NO MASKS — Laughing or big smile, head tilted, dynamic line work, confetti
-Frame 4: with same mask / masks
+TOP: "TRIP:VENICE" bold text, "06.02-07.02" below
+BOTTOM: "VNVNC" white condensed letters in gold border
 
-LENS FEEL: SUPER WIDE ANGLE (14-18mm) distortion in the drawing — exaggerated perspective.
-EFFECTS: Halftone dots, screen print texture, bold outlines, graphic poster quality.
+9:16 VERTICAL. Stylish, Pinterest-worthy, flat vector art!""",
 
-TOP: "TRIP:VENICE" bold graphic text (ENGLISH!), "06.02-07.02" below.
-BOTTOM: "VNVNC" — tall condensed white letters inside thin gold rectangular border.
+    """TRIP:VENICE — STYLISH VECTOR BOOTH (VERTICAL 9:16)
 
-9:16 VERTICAL. Vector/flat style drawings on DARK textured paper!""",
+VERTICAL (9:16) photo booth strip — 4 flat vector illustrations in 2×2 grid.
 
-    """TRIP:VENICE — FLAT VECTOR BOOTH (VERTICAL 9:16)
+TEXT: Only "TRIP:VENICE", "06.02-07.02", "VNVNC" allowed. Nothing else.
+"VNVNC" = tall condensed white letters in thin gold rectangular border.
 
-Generate a VERTICAL (9:16) photo booth strip — 4 flat vector illustrations in a 2×2 grid.
+STYLE — COOL FLAT VECTOR ART:
+- Pinterest-worthy flat illustration — fashionable and stylish
+- Bold lines, flat colors, modern poster aesthetic
+- Person looks GORGEOUS — attractive, confident, never weird or creepy
+- Like a fashion magazine illustration meets screen print art
 
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC" in one color and as normal text
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
+COLORS:
+- GOLD and RED VELVET primary accents
+- Deep purple, black, cream supporting colors
+- Warm glowing skin tones — flattering and vibrant
 
-ART STYLE — BOLD FLAT VECTOR ILLUSTRATION:
-- NOT a photograph — each frame is a stylish FLAT VECTOR DRAWING of the person
-- Clean vector lines, bold ink strokes, flat graphic color fills
-- Screen print / risograph / poster art aesthetic — PINTEREST-WORTHY quality
-- High contrast, strong silhouettes, graphic and punchy
-- Capture the person's LIKENESS — recognizable features rendered as cool flat illustration
+VENETIAN CARNIVAL:
+- Elegant Venetian masks — gilded, feathered, jeweled
+- Venice at night atmosphere — mystery and romance
+- Carnival celebration energy
 
-CAMERA: EXTREME WIDE ANGLE (12-16mm) distortion in EVERY frame — fisheye-like, dramatic close-ups!
+DEPTH:
+- Layered composition with background, middle, foreground
+- Soft misty carnival background, floating confetti middle layer
+- Person sharp and detailed in front
 
-VENETIAN CARNIVAL COLORS:
-- GOLD (primary accent), BURGUNDY (secondary), deep purple, black, cream
-- Ornate Venetian mask designs: Colombina, Bauta, gilded filigree, feathers, jewels
-- Venice carnival night energy: masked ball, mystery, elegance
+DARK PAPER TEXTURE:
+- Black textured paper background with visible grain
+- Dark gaps between frames
 
-DARK TEXTURED PAPER SURFACE:
-- Background paper is BLACK or very dark — like printing on black cardstock
-- Heavy visible paper texture: grain, fiber, rough matte surface
-- Dark borders and gaps between all 4 frames — dark paper visible everywhere
-- Art sits ON the dark surface — colors pop against the dark background
+PEOPLE:
+- Include everyone from photo — draw the whole group if multiple people  
+- 4 different poses — mix of masked and unmasked looks
+- Make them look cool, stylish, having an amazing time
 
-ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
-- Same people in all 4 frames with DIFFERENT expressions and poses
+Header: "TRIP:VENICE" + "06.02-07.02"
+Footer: "VNVNC" in gold-bordered white text
 
-LOOK: Person rendered as ATTRACTIVE and elegant — flattering artistic style.
-COLOR: Gold, red velvet, deep purple, black, cream. Warm stylized skin tones.
-NOT sweaty. NOT dark/murky faces. Bold, well-defined, stylish flat illustration.
+9:16 VERTICAL. Stylish flat vector on dark textured paper!""",
 
-4 FRAMES — same person, 2 WITH MASKS and 2 WITHOUT MASKS:
-Frame 1: WITH ORNATE MASK — eyes through elegant Venetian mask, mysterious gaze, gold candlelight glow
-Frame 2: NO MASK — genuine smile or laugh, dynamic pose, festive confetti, gold accents
-Frame 3: WITH DIFFERENT MASK — profile view with feathered carnival mask, Venice canal background shapes
-Frame 4: NO MASK — AI HAS CREATIVE FREEDOM for pose and expression — be creative!
+    """TRIP:VENICE — VECTOR ART BOOTH (VERTICAL 9:16)
 
-PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in the drawing.
-EFFECTS: Halftone, screen print texture, bold outlines, limited color palette.
+VERTICAL (9:16) photo booth — 4 flat vector frames in 2×2 layout.
 
-TOP: "TRIP:VENICE" bold text (ENGLISH!), "06.02-07.02" below.
-BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters in thin gold rectangular border.
+TEXT ONLY: "TRIP:VENICE", "06.02-07.02", "VNVNC" — nothing else anywhere.
 
-9:16 VERTICAL. Flat vector illustrations on DARK textured paper!""",
+STYLE — FASHIONABLE FLAT VECTOR:
+- Pinterest aesthetic — cool, stylish, aspirational
+- Flat colors, bold outlines, modern screen print look
+- Person rendered BEAUTIFULLY — attractive and confident
+- NOT creepy, NOT weird, NOT dark muddy faces
+- Fashion illustration meets poster art quality
 
-    """TRIP:VENICE — GRAPHIC VECTOR BOOTH (VERTICAL 9:16)
+COLOR SCHEME:
+- GOLD + RED VELVET as main accent colors
+- Purple, black, cream, ivory supporting
+- Skin: warm, glowing, flattering tones
 
-Create a VERTICAL (9:16) photo booth strip with 4 flat vector illustrations in 2×2 layout.
+VENICE CARNIVAL MOOD:
+- Ornate masks with gold details, feathers, gems
+- Mysterious elegant night atmosphere
+- Candlelight warmth, carnival magic
 
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC"
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
+VISUAL DEPTH:
+- Background layer: Venice palazzo shapes, canal lights in fog
+- Middle layer: sparkles, confetti, floating feathers
+- Foreground: person rendered crisp and vibrant
 
-ART STYLE — GRAPHIC FLAT VECTOR ILLUSTRATION:
-- Each frame is a FLAT VECTOR-STYLE ARTWORK of the person — NOT a photograph
-- Bold graphic lines, clean shapes, flat fills with minimal gradients
-- Aesthetic: mix of pop art, screen print, editorial illustration — PINTEREST-WORTHY
-- Strong outlines, confident strokes, high contrast, punchy composition
-- Person's face and features are RECOGNIZABLE — artistic but accurate likeness
+PAPER:
+- Dark black textured paper background
+- Visible grain, premium print feel
 
-VENETIAN CARNIVAL MASQUERADE:
-- Traditional Venetian masks: gilded, jeweled, feathered masterpieces
-- Rich carnival palette: GOLD, RED VELVET, deep purple, black, ivory
-- Venice at night: masked ball energy, palazzo silhouettes, canal reflections, mystery
+SUBJECTS:
+- Draw everyone in the reference photo together
+- 4 frames with different cool poses
+- Mix of with-mask and without-mask shots
+- Everyone looks stylish and happy
 
-DARK TEXTURED PAPER — PREMIUM FEEL:
-- ENTIRE background/paper is DARK — black or deep charcoal
-- Rich paper texture: visible grain, matte finish, rough fiber, tactile
-- Dark gaps between frames show the paper surface — no white borders
-- Art is printed ON dark paper — colors and whites pop dramatically
+"TRIP:VENICE" + "06.02-07.02" at top
+"VNVNC" in gold-framed white text at bottom
 
-ALL PEOPLE FROM REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP
-- All people together in each frame with dark + gold/red velvet graphic background elements
-- Same people, 4 DIFFERENT expressions and poses — vary the energy
-
-STYLE: Person looks ATTRACTIVE — elegant, stylish, confident in the illustration.
-COLOR: Gold, red velvet, purple, black, cream primary palette. Warm skin tones (stylized).
-NOT sweaty. NOT grimy. Clean, bold, aspirational flat vector art.
-
-4 FRAMES — 2 WITH VENETIAN MASKS, 2 WITHOUT MASKS:
-Frame 1: NO MASK — direct look, confident half-smile, gold glow shapes behind, attractive
-Frame 2: WITH ORNATE MASK — mysterious through gilded Venetian mask, eyes sparkling, candlelight accents
-Frame 3: NO MASK — candid laugh, dynamic composition, confetti shapes, festive carnival energy
-Frame 4: WITH MASK — AI HAS CREATIVE FREEDOM for pose, expression, and mask style — surprise us!
-
-PERSPECTIVE: SUPER WIDE ANGLE distortion in the illustration — barrel distortion feel.
-EFFECTS: Halftone dots, screen print registration marks, bold outlines, graphic texture.
-
-TOP: "TRIP:VENICE" — bold graphic text (ENGLISH!), "06.02-07.02" below.
-BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters inside thin gold rectangular border.
-
-9:16 VERTICAL. Flat vector/graphic art on DARK textured paper!""",
+9:16 VERTICAL. Stylish, Pinterest-worthy flat vector art!""",
 ]
 
 # TRIP:VENICE SQUARE VARIATIONS - 1:1 for LED display
 TRIPVENICE_SQUARE_VARIATIONS = [
     """TRIP:VENICE — FLAT VECTOR BOOTH (SQUARE 1:1)
 
-Create a SQUARE (1:1) photo booth grid with 4 flat vector illustrations in a 2×2 layout.
+SQUARE (1:1) photo booth grid — 4 flat vector illustrations in 2×2 layout.
 
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC" in one color and as normal text
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
+TEXT: Only "TRIP:VENICE", "06.02-07.02", "VNVNC" allowed. Nothing else.
+"VNVNC" = tall condensed white letters in thin gold rectangular border.
 
-ART STYLE — BOLD FLAT VECTOR ILLUSTRATION:
-- Each frame is a STYLISH PINTEREST-WORTHY FLAT VECTOR DRAWING of the person
-- Bold clean lines, flat color fills, graphic novel / poster art quality
-- Think: Shepard Fairey, modern vector art, screen print aesthetic
-- Strong graphic shapes, high contrast, confident ink strokes
-- NOT photorealistic — this is a FLAT VECTOR ILLUSTRATION, cool artistic interpretation
-- Capture the person's likeness and distinctive features in flat vector style
+STYLE — PINTEREST-WORTHY FLAT VECTOR:
+- Stylish flat vector illustration — fashionable and cool
+- Bold lines, flat colors, modern poster aesthetic
+- Person looks GORGEOUS — attractive, confident, stylish
+- NOT creepy, NOT weird, NOT dark muddy faces
+- Like fashion illustration meets screen print art
 
-VENETIAN CARNIVAL THEME:
-- Rich colors: GOLD, RED VELVET, deep purple, black, cream accents
-- Ornate Venetian masks (Colombina, Bauta) with gold filigree, feathers, jewels
-- Venice carnival night energy: masked ball, mystery and elegance
+COLORS:
+- GOLD + RED VELVET primary accents
+- Purple, black, cream supporting colors
+- Warm glowing skin — flattering and vibrant
 
-DEPTH AND LAYERING EFFECTS:
-- Multiple visual layers creating depth — foreground, middle, background
-- Background elements: Venice palazzo silhouettes, canal reflections, carnival lights in fog
-- Middle layer: confetti, sparkles, floating feathers, golden particles
-- Foreground: the person rendered crisp and detailed
-- Atmospheric perspective — background elements softer and muted
-- Subtle vignette effect drawing focus to center
+VENETIAN CARNIVAL:
+- Elegant Venetian masks — gilded, feathered, jeweled
+- Venice at night energy — mystery and elegance
 
-DARK TEXTURED PAPER SURFACE:
-- Background paper is BLACK or very dark — like printing on black cardstock
-- Heavy visible paper texture: grain, fiber, rough matte surface
-- Dark borders and gaps between all 4 frames — dark paper visible everywhere
-- Art sits ON the dark surface — colors pop against the dark background
+DEPTH:
+- Background: misty Venice shapes, soft carnival lights
+- Middle: floating confetti, sparkles, feathers
+- Foreground: person crisp and vibrant
 
-ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
-- Same people in all 4 frames with DIFFERENT expressions and poses
+PAPER:
+- Black textured paper background with visible grain
+- Dark gaps between frames
 
-LOOK: Person rendered as ATTRACTIVE and elegant — flattering artistic style.
-COLOR: Gold, red velvet, deep purple, black, cream. Warm stylized skin tones.
-NOT sweaty. NOT dark/murky faces. Bold, well-defined, stylish flat illustration.
+PEOPLE:
+- Draw everyone from reference photo together
+- 4 frames with different cool poses
+- Mix of masked and unmasked looks
+- Everyone looks stylish and having fun
 
-4 FRAMES — same person, 2 WITH MASKS and 2 WITHOUT MASKS:
-Frame 1: NO MASKS — Cool confident look, slight smile, gold carnival glow behind
-Frame 2: WITH VENETIAN MASKS — mysterious gaze through gilded mask, feathers and gold filigree
-Frame 3: NO MASKS — Laughing or big smile, head tilted, dynamic line work, confetti
-Frame 4: with same mask / masks
+"VNVNC" in gold-bordered white text
 
-PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in the drawing.
-EFFECTS: Halftone, screen print texture, bold outlines, depth layering, atmospheric haze.
-
-BRANDING: "VNVNC" — tall condensed white letters in thin gold rectangular border.
-
-SQUARE 1:1. Flat vector illustrations with DEPTH LAYERING on DARK textured paper!""",
+SQUARE 1:1. Stylish, Pinterest-worthy flat vector!""",
 ]
 
 # GUESS VARIATIONS - Detective investigation board
