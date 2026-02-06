@@ -1,13 +1,14 @@
-"""Photobooth Mode - AI BOILING ROOM Photo Booth with QR sharing.
+"""Photobooth Mode - AI Photo Booth with QR sharing.
 
 Photo booth flow:
 1. Button press → Countdown (3-2-1)
 2. Camera flash → Take photo
-3. AI generates BOILING ROOM underground party-themed 2x2 photo booth grid
+3. AI generates themed 2x2 photo booth grid
 4. Show preview → Upload to S3 gallery → QR code to gallery page
 
-Creates raw, analog-style photo booth strips with red & black palette,
-chromatic aberration, and VNVNC branding. Full color (no thermal printing).
+Supports multiple themes (set PHOTOBOOTH_THEME env var):
+- boilingroom: Raw analog concert photography, red & black palette
+- tripvenice: 3D Sims-style Venetian carnival, gold & burgundy palette
 """
 
 # When True, prints labels on thermal printer. When False, digital-only mode.
@@ -36,6 +37,7 @@ from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.animation.santa_runner import SantaRunner
 from artifact.audio.engine import get_audio_engine
 from artifact.printing.label_receipt import LabelReceiptGenerator
+from artifact.modes.photobooth_themes import get_current_theme, PhotoboothTheme
 
 logger = logging.getLogger(__name__)
 
@@ -67,34 +69,27 @@ class PhotoboothState:
 
 
 class PhotoboothMode(BaseMode):
-    """AI BOILING ROOM Photo Booth - generates underground party photo booth grids.
+    """AI Photo Booth - generates themed photo booth grids.
+
+    Supports multiple themes via PHOTOBOOTH_THEME environment variable:
+    - boilingroom: BOILING ROOM underground party (red & black)
+    - tripvenice: TRIP:VENICE carnival masquerade (gold & burgundy, 3D style)
 
     Flow:
     1. Countdown timer with visual + audio feedback
     2. Photo capture
-    3. AI generates BOILING ROOM-themed 2x2 photo booth grid (red & black)
+    3. AI generates themed 2x2 photo booth grid
     4. Upload to S3 gallery for sharing
     5. Show unified gallery QR code
-
-    BOILING ROOM colors:
-    - Chrome Silver: (192, 192, 192)
-    - Deep Red: (139, 0, 0)
-    - Black: (0, 0, 0)
     """
 
     name = "photobooth"
     display_name = "ФОТО\nБУДКА"
-    description = "BOILING ROOM"
     icon = "camera"
     style = "arcade"
     requires_camera = True
     requires_ai = True
     estimated_duration = 30
-
-    # BOILING ROOM colors
-    THEME_CHROME = (192, 192, 192)
-    THEME_RED = (139, 0, 0)
-    THEME_BLACK = (0, 0, 0)
 
     BEEP_TIME = 0.2
     COUNTDOWN_SECONDS = 3
@@ -112,13 +107,24 @@ class PhotoboothMode(BaseMode):
         self._santa_runner: Optional[SantaRunner] = None
         self._audio = get_audio_engine()
         self._logo_frame: Optional[NDArray[np.uint8]] = None
+
+        # Load theme configuration
+        self._theme: PhotoboothTheme = get_current_theme()
+        logger.info(f"Photobooth using theme: {self._theme.id} ({self._theme.event_name})")
+
+        # Theme-derived properties
+        self.description = self._theme.description
+        self.THEME_CHROME = self._theme.theme_chrome
+        self.THEME_RED = self._theme.theme_red
+        self.THEME_BLACK = self._theme.theme_black
+
         self._load_logo()
 
     def _load_logo(self) -> None:
-        """Load BOILING ROOM logo for display overlay."""
+        """Load theme logo for display overlay."""
         try:
             logo_path = os.path.join(
-                os.path.dirname(__file__), "..", "..", "..", "assets", "images", "boilingroom.png"
+                os.path.dirname(__file__), "..", "..", "..", "assets", "images", self._theme.logo_filename
             )
             logo_path = os.path.normpath(logo_path)
             if os.path.exists(logo_path):
@@ -126,7 +132,7 @@ class PhotoboothMode(BaseMode):
                 # Resize to 80x80 for 128x128 display
                 img = img.resize((80, 80), PILImage.Resampling.LANCZOS)
                 self._logo_rgba = np.array(img, dtype=np.uint8)
-                logger.info("Loaded BOILING ROOM logo")
+                logger.info(f"Loaded {self._theme.id} logo: {self._theme.logo_filename}")
             else:
                 logger.warning(f"Logo not found: {logo_path}")
                 self._logo_rgba = None
@@ -317,8 +323,8 @@ class PhotoboothMode(BaseMode):
             self._santa_runner = SantaRunner()
             self._santa_runner.reset()
 
-            self._ai_task = asyncio.create_task(self._generate_christmas_grid())
-            logger.info("Starting AI Christmas photo booth generation")
+            self._ai_task = asyncio.create_task(self._generate_photobooth_grid())
+            logger.info(f"Starting AI photo booth generation ({self._theme.event_name})")
 
             self.change_phase(ModePhase.PROCESSING)
         else:
@@ -340,8 +346,28 @@ class PhotoboothMode(BaseMode):
         except Exception:
             return None
 
-    async def _generate_christmas_grid(self) -> Optional[tuple]:
+    def _get_caricature_styles(self) -> tuple:
+        """Get the CaricatureStyle enums for current theme.
+
+        Returns:
+            Tuple of (display_style, label_style) for 1:1 and 9:16 formats
+        """
+        if self._theme.ai_style_key == "tripvenice":
+            return (
+                CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,  # 1:1 square for display
+                CaricatureStyle.PHOTOBOOTH_VENICE,  # 9:16 vertical for label
+            )
+        else:
+            # Default to boilingroom styles
+            return (
+                CaricatureStyle.PHOTOBOOTH_SQUARE,  # 1:1 square for display
+                CaricatureStyle.PHOTOBOOTH,  # 9:16 vertical for label
+            )
+
+    async def _generate_photobooth_grid(self) -> Optional[tuple]:
         """Generate AI photo booth images from captured photo.
+
+        Uses theme-specific CaricatureStyle for generation.
 
         Generates TWO images:
         - 1:1 square for LED display (128x128)
@@ -355,20 +381,18 @@ class PhotoboothMode(BaseMode):
             return None
 
         try:
-            logger.info("Calling CaricatureService for photo booth generation (2 images)")
+            display_style, label_style = self._get_caricature_styles()
+            logger.info(f"Generating photo booth with theme {self._theme.id}: {display_style.value}, {label_style.value}")
 
             # Generate both images in parallel for speed
-            # 1. Square for display (use PHOTOBOOTH_SQUARE style variant)
-            # 2. Vertical for label (uses PHOTOBOOTH style with 9:16)
-
             display_task = self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
-                style=CaricatureStyle.PHOTOBOOTH_SQUARE,  # 1:1 square for display
+                style=display_style,  # 1:1 square for display
             )
 
             label_task = self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
-                style=CaricatureStyle.PHOTOBOOTH,  # 9:16 vertical for label
+                style=label_style,  # 9:16 vertical for label
             )
 
             # Wait for both to complete
@@ -618,9 +642,9 @@ class PhotoboothMode(BaseMode):
             self._render_ready(buffer)
 
     def _render_countdown(self, buffer: NDArray[np.uint8]) -> None:
-        """Render countdown number with BOILING ROOM colors."""
-        # Keep camera at 100% visibility - just add subtle red tint to edges
-        # Add thin red vignette border for branding without obscuring camera
+        """Render countdown number with theme colors."""
+        # Keep camera at 100% visibility - just add subtle tint to edges
+        # Add thin vignette border for branding without obscuring camera
         buffer[:4, :, 0] = np.minimum(buffer[:4, :, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
         buffer[-4:, :, 0] = np.minimum(buffer[-4:, :, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
         buffer[:, :4, 0] = np.minimum(buffer[:, :4, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
@@ -675,7 +699,7 @@ class PhotoboothMode(BaseMode):
         # If no camera (dark buffer), show theme background with logo
         if np.mean(buffer) < 30:  # Buffer is nearly black = no camera
             fill(buffer, self.THEME_BLACK)
-            # Center the BOILING ROOM logo
+            # Center the theme logo
             self._blit_logo(buffer, 24, 10)
             draw_centered_text(buffer, "ФОТОБУДКА", 100, self.THEME_CHROME, scale=1)
         else:
@@ -767,12 +791,12 @@ class PhotoboothMode(BaseMode):
             else:
                 draw_centered_text(buffer, "ГОТОВО", 1, self.THEME_CHROME, scale=1)
         else:
-            draw_centered_text(buffer, "BOILING", 1, self.THEME_CHROME, scale=1)
+            draw_centered_text(buffer, self._theme.ticker_idle, 1, self.THEME_CHROME, scale=1)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            return f" BOILING: {self._state.countdown}   "[:16].ljust(16)
+            return f" {self._theme.lcd_prefix}: {self._state.countdown}   "[:16].ljust(16)
         elif self._state.show_result:
             return "    ГОТОВО!   "[:16]
         else:
