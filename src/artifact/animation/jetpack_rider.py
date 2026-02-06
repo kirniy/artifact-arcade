@@ -65,6 +65,16 @@ class JetpackRider:
         self._logo: Optional[NDArray] = None  # RGBA 128x128
         self._logo_rgb: Optional[NDArray] = None
         self._logo_alpha: Optional[NDArray] = None
+        # Get theme for background color
+        from artifact.modes.photobooth_themes import get_current_theme
+        self._theme = get_current_theme()
+        # Venice = white background, Boiling Room = dark background
+        if self._theme.id == "tripvenice":
+            self.BG = (255, 255, 255)  # White for Venice
+            self.CYAN = (218, 165, 32)  # Gold particles
+            self.MAGENTA = (128, 0, 32)  # Burgundy
+        else:
+            self.BG = (6, 3, 15)  # Dark for Boiling Room
         self._load_logo()
         self._init_ambient()
 
