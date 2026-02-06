@@ -424,10 +424,10 @@ Person looks ATTRACTIVE and elegant — stylish, confident, flattering artistic 
 NOT sweaty. NOT gross. Clean and stylish vector art.
 
 4 FRAMES — same person, 2 WITH MASKS and 2 WITHOUT MASKS:
-Frame 1: NO MASK — Cool confident look, slight smile, gold carnival glow behind
-Frame 2: WITH ORNATE VENETIAN MASK — mysterious gaze through gilded mask, feathers and gold filigree
-Frame 3: NO MASK — Laughing or big smile, head tilted, dynamic line work, confetti
-Frame 4: WITH DIFFERENT MASK — holding mask to side of face, one eye visible, mysterious and alluring
+Frame 1: NO MASKS — Cool confident look, slight smile, gold carnival glow behind
+Frame 2: WITH VENETIAN MASKS — mysterious gaze through gilded mask, feathers and gold filigree
+Frame 3: NO MASKS — Laughing or big smile, head tilted, dynamic line work, confetti
+Frame 4: with same mask / masks
 
 LENS FEEL: SUPER WIDE ANGLE (14-18mm) distortion in the drawing — exaggerated perspective.
 EFFECTS: Halftone dots, screen print texture, bold outlines, graphic poster quality.
@@ -442,7 +442,7 @@ BOTTOM: "VNVNC" — tall condensed white letters inside thin gold rectangular bo
 Generate a VERTICAL (9:16) photo booth strip — 4 flat vector illustrations in a 2×2 grid.
 
 CRITICAL TEXT RULES:
-- ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC"
+- ONLY these texts allowed: "TRIP:VENICE", "06.02-07.02", "VNVNC" in one color and as normal text
 - NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
 - "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin gold rectangular border
 
@@ -478,7 +478,7 @@ NOT sweaty. NOT dark/murky faces. Bold, well-defined, stylish flat illustration.
 Frame 1: WITH ORNATE MASK — eyes through elegant Venetian mask, mysterious gaze, gold candlelight glow
 Frame 2: NO MASK — genuine smile or laugh, dynamic pose, festive confetti, gold accents
 Frame 3: WITH DIFFERENT MASK — profile view with feathered carnival mask, Venice canal background shapes
-Frame 4: NO MASK — confident look, head tilted, vibing, carnival lights behind, attractive and cool
+Frame 4: NO MASK — AI HAS CREATIVE FREEDOM for pose and expression — be creative!
 
 PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in the drawing.
 EFFECTS: Halftone, screen print texture, bold outlines, limited color palette.
@@ -528,7 +528,7 @@ NOT sweaty. NOT grimy. Clean, bold, aspirational flat vector art.
 Frame 1: NO MASK — direct look, confident half-smile, gold glow shapes behind, attractive
 Frame 2: WITH ORNATE MASK — mysterious through gilded Venetian mask, eyes sparkling, candlelight accents
 Frame 3: NO MASK — candid laugh, dynamic composition, confetti shapes, festive carnival energy
-Frame 4: WITH DIFFERENT MASK — holding elaborate mask beside face, one eye revealed, seductive and mysterious
+Frame 4: WITH MASK — AI HAS CREATIVE FREEDOM for pose, expression, and mask style — surprise us!
 
 PERSPECTIVE: SUPER WIDE ANGLE distortion in the illustration — barrel distortion feel.
 EFFECTS: Halftone dots, screen print registration marks, bold outlines, graphic texture.
@@ -567,7 +567,7 @@ COLOR: Gold, burgundy, purple, black, cream. Warm stylized skin. NOT sweaty. Cle
 Frame 1: NO MASK — confident look, slight smile, gold carnival glow shapes behind
 Frame 2: WITH ORNATE MASK — mysterious gaze through gilded Venetian mask, candlelight accents
 Frame 3: NO MASK — laughing, dynamic pose, festive confetti shapes
-Frame 4: WITH DIFFERENT MASK — holding mask beside face, one eye visible, seductive and mysterious
+Frame 4: WITH MASK — AI HAS CREATIVE FREEDOM for pose, expression, and mask style — surprise us!
 
 PERSPECTIVE: Super wide angle distortion feel. EFFECTS: Halftone, screen print texture, bold outlines.
 
