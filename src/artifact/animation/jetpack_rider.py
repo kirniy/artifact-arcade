@@ -71,10 +71,15 @@ class JetpackRider:
     def _load_logo(self):
         if PILImage is None:
             return
+        # Get logo filename from current theme
+        from artifact.modes.photobooth_themes import get_current_theme
+        theme = get_current_theme()
+        logo_filename = theme.logo_filename  # e.g., "tripvenice.png" or "boilingroom.png"
+        
         # Try multiple paths
         candidates = [
-            os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "images", "boilingroom.png"),
-            os.path.join(os.path.dirname(__file__), "..", "..", "..", "boilingroom.png"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "images", logo_filename),
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", logo_filename),
         ]
         for path in candidates:
             path = os.path.normpath(path)

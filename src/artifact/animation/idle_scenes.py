@@ -3919,12 +3919,16 @@ class RotatingIdleAnimation:
             draw_centered_text(buffer, date_text, 0, color, scale=1)
             return
 
+        # Get current theme for dynamic ticker text
+        from artifact.modes.photobooth_themes import get_current_theme
+        theme = get_current_theme()
+        
         # Unified rotating texts for all idle modes (horizontal scroll for longer ones)
         texts = [
             "VNVNC",
             "VNVNC.RU",
-            "BOILING",
-            "31.01",
+            theme.ticker_idle,  # Dynamic from theme: VENICE, BOILING, etc.
+            theme.event_date,   # Dynamic from theme: 06.02-07.02, 31.01, etc.
             "ФОТОБУДКА",
             "VNVNC <3",
         ]
