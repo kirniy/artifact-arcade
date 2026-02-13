@@ -583,8 +583,9 @@ CARD LAYOUT (top to bottom):
 1. HEADER SECTION (top ~25%):
    - Cream/ivory background for the whole card
    - Thin rounded pink border around the entire card with rounded corners
-   - Big bubbly 3D pink puffy letters reading "LOVE IN THE AIR" on ONE LINE, left to right
-   - "IN THE" is the SAME bubbly 3D style but slightly smaller, sitting BETWEEN "LOVE" and "AIR"
+   - Big bubbly 3D pink puffy letters: "LOVE IN THE AIR" — all four words on ONE single line
+   - All words same bubbly 3D pink style, "IN THE" slightly smaller than "LOVE" and "AIR"
+   - DO NOT repeat "in the" or any words — the header is EXACTLY four words: LOVE IN THE AIR
    - Small decorative curly ornaments (flourishes) on either side
    - "VNVNC  13.02-14.02" in small dark text centered below
    - A thin horizontal line separating header from portrait
@@ -614,7 +615,7 @@ ART STYLE — MUST MATCH EXACTLY:
 - Clean, polished, professional illustration quality
 
 TEXT RULES:
-- "LOVE IN THE AIR" header: English, bubbly 3D pink puffy letters, ALL ON ONE LINE
+- "LOVE IN THE AIR" header: EXACTLY these 4 words, ONE LINE ONLY, bubbly 3D pink puffy letters. NEVER duplicate or repeat any word.
 - Bottom banner: RUSSIAN only, max 5 words, dark rose cursive
 - "VNVNC" always in English
 - NO "Love is..." in English, NO long text anywhere
