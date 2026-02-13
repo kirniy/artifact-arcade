@@ -601,8 +601,8 @@ CARD LAYOUT (top to bottom):
    - Hearts and romantic elements float ON TOP of the scene, not replacing the background
 
 3. FOOTER SECTION (bottom ~20%):
-   - Pink/blush banner ribbon with short RUSSIAN text in dark rose cursive:
-     Choose ONE: "Любовь витает в воздухе" / "Любовь — это ты" / "Вместе навсегда"
+   - Pink/blush banner ribbon with RUSSIAN text in dark rose cursive:
+     ALWAYS use: "Любовь витает в воздухе" (this is the ONLY text allowed here)
    - Below the banner: "VNVNC" on the left, "13.02-14.02" on the right, small dark text
 
 ART STYLE — MUST MATCH EXACTLY:
@@ -621,7 +621,10 @@ TEXT RULES:
 - NO year in header (just "VNVNC  13.02-14.02")
 
 ALL PEOPLE AND SURROUNDINGS FROM REFERENCE PHOTO:
-- Draw everyone visible — couples together, groups together
+- Draw everyone visible — friends together, groups together
+- Do NOT assume people are couples. Friends, groups, solo — draw them as they are
+- Only draw people as a romantic couple if it's obviously a man and woman in a romantic pose
+- Male friends together = friends, NOT a couple. Female friends = friends, NOT a couple.
 - Capture real likeness — recognizable features
 - Everyone looks their best, warm and natural
 - INCLUDE the venue/background from the photo — illustrate the actual surroundings behind them
@@ -647,7 +650,8 @@ BACKGROUND: Include the actual surroundings/venue from the reference photo behin
 
 PEOPLE:
 - Everyone from reference photo, normal proportions
-- Couples together, looking warm and natural
+- Do NOT assume people are couples — draw friends as friends, groups as groups
+- Only portray as romantic couple if obviously a man and woman in romantic pose
 - Capture real likeness — recognizable
 
 TEXT: Only small "VNVNC" somewhere. No other text.
