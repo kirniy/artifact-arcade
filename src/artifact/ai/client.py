@@ -80,7 +80,35 @@ class GeminiClient:
         self._client_beta = None  # v1beta client for image generation
         self._initialized = True
 
-        logger.info("GeminiClient initialized")
+        # Build list of API keys for rotation on 429 errors
+        self._api_keys: List[str] = [k for k in [
+            config.api_key,
+            os.environ.get("GEMINI_API_KEY_BACKUP", ""),
+        ] if k]
+        self._current_key_index = 0
+
+        logger.info(f"GeminiClient initialized ({len(self._api_keys)} API key(s))")
+
+    def _rotate_api_key(self) -> bool:
+        """Rotate to next API key on 429 errors. Returns True if rotated."""
+        if len(self._api_keys) <= 1:
+            return False
+        self._current_key_index = (self._current_key_index + 1) % len(self._api_keys)
+        new_key = self._api_keys[self._current_key_index]
+        self.config = GeminiConfig(
+            api_key=new_key,
+            timeout=self.config.timeout,
+            max_retries=self.config.max_retries,
+            retry_delay=self.config.retry_delay,
+            thinking_budget=self.config.thinking_budget,
+            temperature=self.config.temperature,
+            max_output_tokens=self.config.max_output_tokens,
+        )
+        # Force client re-initialization with new key
+        self._client = None
+        self._client_beta = None
+        logger.info(f"Rotated to API key {self._current_key_index + 1}/{len(self._api_keys)}")
+        return True
 
     async def _ensure_client(self, api_version: str = "v1") -> bool:
         """Ensure the API client is initialized.
@@ -198,7 +226,15 @@ class GeminiClient:
                 except asyncio.TimeoutError:
                     logger.warning(f"Timeout on attempt {attempt + 1}")
                 except Exception as e:
-                    if "503" in str(e) or "overloaded" in str(e).lower():
+                    err = str(e)
+                    if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                        if self._rotate_api_key():
+                            logger.info("Retrying text gen with backup API key")
+                            self._client = None
+                            await self._ensure_client("v1")
+                            await asyncio.sleep(self.config.retry_delay)
+                            continue
+                    if "503" in err or "overloaded" in err.lower():
                         logger.warning(f"Service overloaded, retry {attempt + 1}")
                         await asyncio.sleep(self.config.retry_delay * (attempt + 1))
                     else:
@@ -397,6 +433,16 @@ class GeminiClient:
                             if not response.ok:
                                 error_text = await response.text()
                                 logger.error(f"API error {response.status}: {error_text}")
+                                if response.status == 429 and self._rotate_api_key():
+                                    logger.info("Retrying with backup API key")
+                                    # Rebuild endpoint with new key
+                                    endpoint = (
+                                        f"https://generativelanguage.googleapis.com/v1beta/models/"
+                                        f"{GeminiModel.IMAGEN.value}:generateContent"
+                                        f"?key={self.config.api_key}"
+                                    )
+                                    await asyncio.sleep(self.config.retry_delay)
+                                    continue
                                 if attempt < self.config.max_retries - 1:
                                     await asyncio.sleep(self.config.retry_delay * (attempt + 1))
                                     continue
