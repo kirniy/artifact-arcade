@@ -10,6 +10,7 @@ Defines themes for different party events. Each theme has:
 Switch themes by setting PHOTOBOOTH_THEME environment variable:
 - "boilingroom" (default)
 - "tripvenice"
+- "loveintheair"
 """
 
 import os
@@ -78,15 +79,34 @@ TRIPVENICE_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: LOVE IN THE AIR (February 13-14, 2026)
+# =============================================================================
+LOVEINTHEAIR_THEME = PhotoboothTheme(
+    id="loveintheair",
+    event_name="LOVE IN THE AIR",
+    event_date="13.02-14.02",
+    logo_filename="loveintheair.png",
+    theme_chrome=(219, 112, 147),  # Pink - romantic rose pink
+    theme_red=(178, 34, 34),  # Deep rose red
+    theme_black=(60, 20, 40),  # Dark burgundy-purple
+    ticker_idle="LOVE",
+    lcd_prefix="LOVE",
+    description="LOVE IN THE AIR",
+    ai_style_key="loveintheair",
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
     "boilingroom": BOILINGROOM_THEME,
     "tripvenice": TRIPVENICE_THEME,
+    "loveintheair": LOVEINTHEAIR_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "tripvenice"
+DEFAULT_THEME = "loveintheair"
 
 
 def get_current_theme() -> PhotoboothTheme:

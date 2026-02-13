@@ -40,6 +40,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_SQUARE = "photobooth_square"  # 1:1 square photo booth for LED display
     PHOTOBOOTH_VENICE = "photobooth_venice"  # 9:16 vertical - TRIP:VENICE carnival theme
     PHOTOBOOTH_VENICE_SQUARE = "photobooth_venice_square"  # 1:1 square - TRIP:VENICE theme
+    PHOTOBOOTH_LOVEINTHEAIR = "photobooth_loveintheair"  # 9:16 vertical - Valentine's theme
+    PHOTOBOOTH_LOVEINTHEAIR_SQUARE = "photobooth_loveintheair_square"  # 1:1 square - Valentine's theme
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -564,6 +566,96 @@ PEOPLE:
 SQUARE 1:1. Stylish, Pinterest-worthy flat vector!""",
 ]
 
+# =============================================================================
+# LOVE IN THE AIR PHOTOBOOTH VARIATIONS - Valentine's Day romantic theme
+# =============================================================================
+# OUTPUT: 9:16 VERTICAL aspect ratio - for label printing / S3 gallery
+# STYLE: Warm illustrated Valentine's card — clean linework, soft colors
+# DATES: 13.02-14.02
+# NOTE: ONE prompt only — no variations, exact style match required
+
+LOVEINTHEAIR_VARIATIONS = [
+    """LOVE IN THE AIR — VALENTINE PORTRAIT CARD (VERTICAL 9:16)
+
+Create a VERTICAL (9:16) Valentine's portrait card. Follow this EXACT layout and style:
+
+CARD LAYOUT (top to bottom):
+1. HEADER SECTION (top ~25%):
+   - Cream/ivory background for the whole card
+   - Thin rounded pink border around the entire card with rounded corners
+   - Big bubbly 3D pink puffy letters: "LOVE" and "AIR" on first line, large and bold
+   - "in the" in smaller dark rose cursive script between/below them
+   - Small decorative curly ornaments (flourishes) on either side of "in the"
+   - "VNVNC  13.02-14.02" in small dark text centered below
+   - A thin horizontal line separating header from portrait
+
+2. PORTRAIT SECTION (middle ~55%):
+   - Inside a rounded rectangle with thin pink border
+   - Person drawn in warm illustrated style — clean bold outlines, flat warm colors
+   - Normal adult proportions, attractive, capturing their real likeness
+   - Warm natural skin tones, clean hair rendering
+   - Casual clothing as in their photo
+   - IMPORTANT: Include the SURROUNDINGS/BACKGROUND from the reference photo behind the person
+     (venue interior, bar, dance floor, friends nearby — whatever is visible in the photo)
+   - Scattered around them: small red/pink hearts, a red rose, a love letter envelope with heart seal
+   - Hearts and romantic elements float ON TOP of the scene, not replacing the background
+
+3. FOOTER SECTION (bottom ~20%):
+   - Pink/blush banner ribbon with short RUSSIAN text in dark rose cursive:
+     Choose ONE: "Любовь витает в воздухе" / "Любовь — это ты" / "Вместе навсегда"
+   - Below the banner: "VNVNC" on the left, "13.02-14.02" on the right, small dark text
+
+ART STYLE — MUST MATCH EXACTLY:
+- Warm illustrated portrait — like a modern greeting card or webtoon portrait
+- Clean bold outlines with flat warm color fills
+- Slightly stylized but NORMAL proportions — NOT chibi, NOT anime, NOT exaggerated
+- Warm soft palette: cream, blush pink, rose, coral, warm skin tones
+- Person looks attractive and natural, like a skilled illustrator drew them
+- Clean, polished, professional illustration quality
+
+TEXT RULES:
+- "LOVE AIR in the" header: English, bubbly 3D pink puffy letters
+- Bottom banner: RUSSIAN only, max 5 words, dark rose cursive
+- "VNVNC" always in English
+- NO "Love is..." in English, NO long text anywhere
+- NO year in header (just "VNVNC  13.02-14.02")
+
+ALL PEOPLE AND SURROUNDINGS FROM REFERENCE PHOTO:
+- Draw everyone visible — couples together, groups together
+- Capture real likeness — recognizable features
+- Everyone looks their best, warm and natural
+- INCLUDE the venue/background from the photo — illustrate the actual surroundings behind them
+
+9:16 VERTICAL format.""",
+]
+
+# LOVE IN THE AIR SQUARE VARIATIONS - 1:1 for LED display
+# NOTE: ONE prompt only — same style as vertical, adapted for square
+LOVEINTHEAIR_SQUARE_VARIATIONS = [
+    """LOVE IN THE AIR — VALENTINE PORTRAIT (SQUARE 1:1)
+
+SQUARE (1:1) Valentine's portrait — same style as the vertical card.
+
+Warm illustrated portrait with clean bold outlines and flat warm colors.
+Slightly stylized but NORMAL adult proportions — NOT chibi, NOT anime.
+Like a modern greeting card illustration — polished, warm, attractive.
+
+COLORS: Cream/ivory tones, blush pink, rose, coral, warm skin tones.
+Small scattered hearts and rose petals floating on top of the scene.
+
+BACKGROUND: Include the actual surroundings/venue from the reference photo behind the person.
+
+PEOPLE:
+- Everyone from reference photo, normal proportions
+- Couples together, looking warm and natural
+- Capture real likeness — recognizable
+
+TEXT: Only small "VNVNC" somewhere. No other text.
+
+SQUARE 1:1 format.""",
+]
+
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -974,6 +1066,16 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE: "TRIPVENICE_SQUARE_VARIATION",  # 1:1 for display
 
     # =========================================================================
+    # PHOTOBOOTH LOVE IN THE AIR MODE - 9:16 vertical Valentine's theme
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR: "LOVEINTHEAIR_VARIATION",  # 9:16 for label
+
+    # =========================================================================
+    # PHOTOBOOTH LOVE IN THE AIR SQUARE MODE - 1:1 square Valentine's for LED
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE: "LOVEINTHEAIR_SQUARE_VARIATION",  # 1:1 for display
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -1046,6 +1148,8 @@ class CaricatureService:
                 "PHOTOBOOTH_SQUARE_VARIATION": PHOTOBOOTH_SQUARE_VARIATIONS,
                 "TRIPVENICE_VARIATION": TRIPVENICE_VARIATIONS,
                 "TRIPVENICE_SQUARE_VARIATION": TRIPVENICE_SQUARE_VARIATIONS,
+                "LOVEINTHEAIR_VARIATION": LOVEINTHEAIR_VARIATIONS,
+                "LOVEINTHEAIR_SQUARE_VARIATION": LOVEINTHEAIR_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -1079,13 +1183,24 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_VENICE,
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,
+                CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,
             )
             is_venice_style = style in (
                 CaricatureStyle.PHOTOBOOTH_VENICE,
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,
             )
+            is_loveintheair_style = style in (
+                CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,
+                CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,
+            )
 
-            if is_venice_style:
+            if is_loveintheair_style:
+                color_instruction = """- FULL COLOR — CREAM, BLUSH PINK, ROSE, CORAL, WARM SKIN TONES palette
+- Warm illustrated portrait style — clean bold outlines, flat warm color fills
+- Valentine's Day card with hearts, roses, love letters
+- Modern greeting card / webtoon portrait quality, polished and attractive"""
+            elif is_venice_style:
                 color_instruction = """- FULL COLOR — GOLD, BURGUNDY, PURPLE, BLACK palette
 - High-quality 3D rendered characters like The Sims 4 or Pixar
 - Venetian carnival atmosphere with masks, candles, fog
@@ -1121,14 +1236,16 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Determine aspect ratio based on style
             # Photobooth uses 9:16 vertical format for better label layout
-            if style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_VENICE):
+            if style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_VENICE, CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR):
                 aspect_ratio = "9:16"
             else:
                 aspect_ratio = "1:1"
 
             # Send photo directly to Gemini 3 Pro Image Preview
             # The model understands to use the photo as reference
-            if is_venice_style:
+            if is_loveintheair_style:
+                image_style = "Warm illustrated Valentine's card portrait, clean bold outlines, flat warm colors, cream and blush pink, hearts and roses, modern greeting card style"
+            elif is_venice_style:
                 image_style = "High-quality 3D Sims-style character render, Venetian carnival masks, gold and burgundy, cinematic lighting, dark atmosphere"
             elif is_color_style:
                 image_style = "Raw analog concert photography, red and black only, chromatic aberration, film grain, wide angle distortion"

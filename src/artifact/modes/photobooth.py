@@ -352,7 +352,12 @@ class PhotoboothMode(BaseMode):
         Returns:
             Tuple of (display_style, label_style) for 1:1 and 9:16 formats
         """
-        if self._theme.ai_style_key == "tripvenice":
+        if self._theme.ai_style_key == "loveintheair":
+            return (
+                CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,  # 1:1 square for display
+                CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,  # 9:16 vertical for label
+            )
+        elif self._theme.ai_style_key == "tripvenice":
             return (
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_VENICE,  # 9:16 vertical for label
