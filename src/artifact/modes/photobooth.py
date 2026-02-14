@@ -28,8 +28,8 @@ from numpy.typing import NDArray
 
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
-from artifact.graphics.primitives import fill, draw_rect
-from artifact.graphics.text_utils import draw_centered_text
+from artifact.graphics.primitives import fill, draw_rect, draw_line
+from artifact.graphics.text_utils import draw_centered_text, draw_text
 from artifact.utils.camera_service import camera_service
 from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
@@ -742,11 +742,20 @@ class PhotoboothMode(BaseMode):
                 fill(buffer, self.THEME_BLACK)
                 draw_centered_text(buffer, "ФОТО", 55, self.THEME_CHROME, scale=1)
 
-            # Message and hint at bottom with dark background
-            buffer[-20:, :, :] = (buffer[-20:, :, :].astype(np.float32) * 0.3).astype(np.uint8)
-            buffer[-20:, :, 0] = np.minimum(buffer[-20:, :, 0].astype(np.uint16) + 30, 255).astype(np.uint8)
-            draw_centered_text(buffer, "ФОТО НА VNVNC.RU", 110, self.THEME_CHROME, scale=1)
-            draw_centered_text(buffer, "< > QR", 120, (100, 200, 100), scale=1)
+            # Download hint overlay at bottom
+            buffer[-28:, :, :] = (buffer[-28:, :, :].astype(np.float32) * 0.3).astype(np.uint8)
+            buffer[-28:, :, 0] = np.minimum(buffer[-28:, :, 0].astype(np.uint16) + 30, 255).astype(np.uint8)
+
+            # Diagonal arrow pointing down-left (↙)
+            arrow_color = self.THEME_CHROME
+            ax, ay = 10, 108  # Arrow tip position (bottom-left area)
+            draw_line(buffer, ax + 12, ay - 10, ax, ay, arrow_color)  # Shaft
+            draw_line(buffer, ax, ay, ax + 4, ay - 2, arrow_color)    # Arrowhead bottom
+            draw_line(buffer, ax, ay, ax + 2, ay - 5, arrow_color)    # Arrowhead left
+
+            draw_text(buffer, "СКАЧАЙ ФОТО", 24, 104, self.THEME_CHROME, scale=1)
+            draw_text(buffer, "НА САЙТЕ", 24, 114, (200, 180, 255), scale=1)
+            draw_centered_text(buffer, "< > QR", 124, (100, 200, 100), scale=1)
 
         elif self._state.result_view == "qr":
             # Full screen QR code

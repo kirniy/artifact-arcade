@@ -593,13 +593,13 @@ CARD LAYOUT (top to bottom):
 2. PORTRAIT SECTION (middle ~55%):
    - Inside a rounded rectangle with thin pink border
    - Person drawn in warm illustrated style — clean bold outlines, flat warm colors
-   - Normal adult proportions, attractive, capturing their real likeness
-   - Warm natural skin tones, clean hair rendering
-   - Casual clothing as in their photo
-   - IMPORTANT: Include the SURROUNDINGS/BACKGROUND from the reference photo behind the person
-     (venue interior, bar, dance floor, friends nearby — whatever is visible in the photo)
+   - CRITICAL LIKENESS: The person MUST look like THEMSELVES — same face shape, same hairstyle, same hair color, same facial features, same glasses if worn, same clothing. This is a portrait of THEM, not a generic person.
+   - Normal adult proportions, attractive but RECOGNIZABLE as the actual person in the photo
+   - Warm natural skin tones, clean hair rendering matching their real hair
+   - EXACT same clothing as in their photo — same colors, same style
+   - CRITICAL BACKGROUND: Draw the ACTUAL background from the reference photo — the real venue, real walls, real furniture, real lighting. This is a nightclub/bar, NOT a coffee shop, NOT a park, NOT a random place. Draw what you SEE in the photo behind them.
    - Scattered around them: small red/pink hearts, a red rose, a love letter envelope with heart seal
-   - Hearts and romantic elements float ON TOP of the scene, not replacing the background
+   - Hearts and romantic elements float ON TOP of the real scene, not replacing the background
 
 3. FOOTER SECTION (bottom ~20%):
    - Pink/blush banner ribbon with RUSSIAN text in dark rose cursive:
@@ -626,9 +626,8 @@ ALL PEOPLE AND SURROUNDINGS FROM REFERENCE PHOTO:
 - Do NOT assume people are couples. Friends, groups, solo — draw them as they are
 - Only draw people as a romantic couple if it's obviously a man and woman in a romantic pose
 - Male friends together = friends, NOT a couple. Female friends = friends, NOT a couple.
-- Capture real likeness — recognizable features
-- Everyone looks their best, warm and natural
-- INCLUDE the venue/background from the photo — illustrate the actual surroundings behind them
+- LIKENESS IS EVERYTHING: Each person must be RECOGNIZABLE — same face, same hair, same features, same clothes. Do not generalize or beautify beyond recognition.
+- The background MUST be the REAL venue from the photo — a nightclub/bar interior. NEVER replace it with a coffee shop, park, bedroom, or any imagined location. Draw what is actually visible behind them.
 
 9:16 VERTICAL format.""",
 ]
@@ -647,13 +646,13 @@ Like a modern greeting card illustration — polished, warm, attractive.
 COLORS: Cream/ivory tones, blush pink, rose, coral, warm skin tones.
 Small scattered hearts and rose petals floating on top of the scene.
 
-BACKGROUND: Include the actual surroundings/venue from the reference photo behind the person.
+BACKGROUND: Draw the ACTUAL background from the reference photo — the real venue (nightclub/bar), real walls, real furniture. NEVER replace with a coffee shop, park, or imagined location. Draw what you SEE.
 
 PEOPLE:
 - Everyone from reference photo, normal proportions
 - Do NOT assume people are couples — draw friends as friends, groups as groups
 - Only portray as romantic couple if obviously a man and woman in romantic pose
-- Capture real likeness — recognizable
+- LIKENESS IS CRITICAL: Same face, same hair, same clothing, same features — person must be RECOGNIZABLE as themselves
 
 TEXT: Only small "VNVNC" somewhere. No other text.
 
