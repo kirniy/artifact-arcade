@@ -8,9 +8,10 @@ Defines themes for different party events. Each theme has:
 - AI prompt variations
 
 Switch themes by setting PHOTOBOOTH_THEME environment variable:
-- "boilingroom" (default)
+- "boilingroom"
 - "tripvenice"
 - "loveintheair"
+- "malchishnik" (default)
 """
 
 import os
@@ -97,16 +98,35 @@ LOVEINTHEAIR_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: МАЛЬЧИШНИК (February 20-22, 2026)
+# =============================================================================
+MALCHISHNIK_THEME = PhotoboothTheme(
+    id="malchishnik",
+    event_name="МАЛЬЧИШНИК",
+    event_date="20.02-22.02",
+    logo_filename="malchishnik.png",
+    theme_chrome=(210, 170, 60),   # Dirty amber gold — old film, disposable camera
+    theme_red=(180, 35, 35),       # Blood red — Hangover chaos
+    theme_black=(12, 8, 5),        # Near-black — nightclub darkness
+    ticker_idle="BACHELORS",       # 9 Latin chars — fits 48px ticker
+    lcd_prefix="МАЛЬЧИ",          # 6 Cyrillic chars — fits LCD countdown
+    description="МАЛЬЧИШНИК",
+    ai_style_key="malchishnik",
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
     "boilingroom": BOILINGROOM_THEME,
     "tripvenice": TRIPVENICE_THEME,
     "loveintheair": LOVEINTHEAIR_THEME,
+    "malchishnik": MALCHISHNIK_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "loveintheair"
+DEFAULT_THEME = "malchishnik"
 
 
 def get_current_theme() -> PhotoboothTheme:

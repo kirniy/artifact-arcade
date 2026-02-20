@@ -42,6 +42,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_VENICE_SQUARE = "photobooth_venice_square"  # 1:1 square - TRIP:VENICE theme
     PHOTOBOOTH_LOVEINTHEAIR = "photobooth_loveintheair"  # 9:16 vertical - Valentine's theme
     PHOTOBOOTH_LOVEINTHEAIR_SQUARE = "photobooth_loveintheair_square"  # 1:1 square - Valentine's theme
+    PHOTOBOOTH_MALCHISHNIK = "photobooth_malchishnik"  # 9:16 vertical - Hangover bachelor party theme
+    PHOTOBOOTH_MALCHISHNIK_SQUARE = "photobooth_malchishnik_square"  # 1:1 square - Hangover bachelor party theme
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -660,6 +662,171 @@ SQUARE 1:1 format.""",
 ]
 
 
+# =============================================================================
+# МАЛЬЧИШНИК PHOTOBOOTH VARIATIONS — Hangover bachelor party theme
+# =============================================================================
+# OUTPUT: 9:16 VERTICAL aspect ratio — for label printing / S3 gallery
+# STYLE: Disposable camera / Polaroid film shot — analog grain, blown flash
+# DATES: 20.02-22.02  VENUE: Конюшенная 2В  BRAND: VNVNC.RU
+# NOTE: Moscow time is passed via personality_context and must appear in caption
+
+MALCHISHNIK_VARIATIONS = [
+    """МАЛЬЧИШНИК — FILM POLAROID PARTY PHOTO (VERTICAL 9:16)
+
+A POLAROID taken by someone drunk at 3am. Shot on a disposable KODAK FunSaver —
+grainy, flash-blown, slightly tilted, full analog soul.
+
+POLAROID FRAME LAYOUT (vertical, white borders all sides):
+
+TOP LABEL — bold rubber-stamp block letters across the top white border:
+  "МАЛЬЧИШНИК"
+
+PHOTO AREA (~75% of height):
+  Person(s) from reference photo in full chaos mode — drunk smiles,
+  arms around each other, wild eyes, someone mid-shout or mid-laugh.
+  Classic Hangover movie energy: photographic evidence from the night.
+  Nightclub/bar interior behind them — dark walls, colored lights,
+  drinks on a table, smoke, neon reflections.
+  DRAW THE ACTUAL PEOPLE from the reference photo with real features.
+  Flash hits center hard — faces slightly bleached, background darker.
+  Slight Dutch angle (frame tilted 2-5 degrees). Possible red-eye.
+  Motion blur at edges from camera shake. Very "caught in the act" energy.
+
+ANALOG FILM IMPERFECTIONS:
+  Heavy film grain across the whole image.
+  Warm pushed colors — yellows and ambers boosted, slight green in shadows.
+  Light leaks on one or two edges (orange/red burn creeping in).
+  Slight chemical staining — faint magenta or cyan patches.
+  Center overexposed (flash), corners slightly vignette-dark.
+
+BOTTOM CAPTION STRIP (white Polaroid area, handwritten ink):
+  Left side:   "VNVNC.RU"
+  Right side:  "[time from personality context] МСК"
+  Center row:  "20.02–22.02  ·  Конюшенная 2В"
+
+OVERALL FEELING: This photo is undeniable evidence of a legendary night.
+The kind you find in your pocket three days later wondering what happened.
+
+VERTICAL 9:16 format.""",
+
+    """МАЛЬЧИШНИК — DISPOSABLE CAMERA FOUND FOOTAGE (VERTICAL 9:16)
+
+Imagine this photo printed from a disposable camera that was left on a bar
+and shot by five different people throughout the night. This is frame 23.
+
+POLAROID FRAME (white border, thick at bottom):
+
+TOP STAMP: "МАЛЬЧИШНИК" — heavy stencil font, slightly imperfect ink
+
+PHOTO:
+  Group or solo shot — person from reference photo deep in party mode.
+  Close-up, slightly off-center — nobody posed for this, it just happened.
+  Expression: genuine chaos. Could be laughing, yelling, toasting, confused.
+  Real venue behind them: nightclub/bar with moody colored lighting.
+  DRAW THE REAL PERSON — same face, same hair, same clothes from the photo.
+  If multiple people in reference, all appear together in glorious disorder.
+
+FILM LOOK:
+  Fujifilm Superia 400 aesthetic — slightly cooler than Kodak, more grain.
+  Blown highlights in the center from cheap flash, dark murky edges.
+  Color shift toward magenta in midtones.
+  Slight horizontal scan lines from bad development.
+  One small light leak on the upper-right corner (red-orange glow).
+
+CAPTION AREA (bottom white strip, messy handwritten style):
+  "VNVNC.RU" — left                    "[time from personality context] МСК" — right
+  "20.02–22.02  Конюшенная 2В" — centered below
+
+VIBE: The Hangover. If you were there, you know. If you weren't — look at this.
+
+VERTICAL 9:16 format.""",
+
+    """МАЛЬЧИШНИК — ANALOG EVIDENCE PHOTO (VERTICAL 9:16)
+
+Police evidence photo but make it fashion. Or rather — party evidence.
+Someone's gonna show their kids this photo and say "I was young."
+
+POLAROID LAYOUT (white frame border):
+
+TOP HEADER on white border: "МАЛЬЧИШНИК" — block stamp letters
+
+PHOTO ZONE (main image):
+  Person from reference photo mid-celebration — maximum energy moment.
+  They look like they've been awake for 18 hours and are proud of it.
+  Behind them: real nightclub interior. Dark, smoky, colored spotlights,
+  drinks, other people blurred in the background.
+  ABSOLUTE LIKENESS — draw the exact person from the photo.
+  Same face structure, same hair, same clothes. Make them recognizable.
+  The camera caught them at their most alive and most chaotic.
+
+ANALOG QUALITY:
+  Overexposed highlights (especially faces hit by flash).
+  Kodak Gold 200 warmth — golden amber tones dominating.
+  Scratchy film grain — thick, visible, beautiful.
+  Slight vignette at all four corners.
+  Color fringing (chromatic aberration) at high-contrast edges.
+  One light streak across a corner — accidental but iconic.
+
+BOTTOM CAPTION (white Polaroid strip, handwritten):
+  "VNVNC.RU" · "[time from personality context] МСК"
+  "20.02–22.02  ·  Конюшенная 2В"
+
+FEELING: The morning after. But the photo from the night before.
+
+VERTICAL 9:16 format.""",
+]
+
+# МАЛЬЧИШНИК SQUARE VARIATIONS — 1:1 for LED display
+MALCHISHNIK_SQUARE_VARIATIONS = [
+    """МАЛЬЧИШНИК — DISPOSABLE CAMERA PARTY SHOT (SQUARE 1:1)
+
+Raw disposable camera energy. Shot by someone who definitely shouldn't
+have been holding a camera. Kodak FunSaver or similar.
+
+SQUARE POLAROID (thin white border all sides):
+
+PHOTO (fills most of frame):
+  Person(s) from reference photo in full party chaos.
+  Flash-blown faces, drunk energy, genuine emotion.
+  Real nightclub/bar behind them — colored lights, dark walls.
+  DRAW THE ACTUAL PEOPLE from the photo — real faces, real clothes.
+  Everyone visible appears. Classic Hangover-movie group shot energy.
+
+ANALOG LOOK:
+  Heavy film grain. Blown flash center. Warm amber/yellow color push.
+  Slight motion blur at edges. Film vignette corners.
+  Chemical color shift — slightly warm/overcooked.
+
+CORNER STAMP (small, bottom-right area of frame):
+  "МАЛЬЧИШНИК" on top line
+  "VNVNC.RU  20.02–22.02" on bottom line
+
+Not photorealistic — illustrated analog photography aesthetic.
+SQUARE 1:1 format.""",
+
+    """МАЛЬЧИШНИК — FILM PHOTO MOMENT (SQUARE 1:1)
+
+That one photo from the night that makes everyone say "send it to me."
+
+SQUARE FRAME:
+  Person from reference in their finest chaotic moment.
+  Genuine expression — laughing, surprised, toasting, lost in it.
+  Nightclub atmosphere behind them — authentic venue, moody lighting.
+  REAL LIKENESS — must look like the actual person from the photo.
+
+FILM AESTHETIC:
+  Fujifilm disposable look. Grainy, pushed warm, slightly overexposed.
+  Strong center flash bloom. Slight red-eye possible.
+  Film edge burn (orange at corners). Chemical grain texture.
+
+BRANDING (integrated into film border, small):
+  "МАЛЬЧИШНИК  20.02–22.02"
+  "VNVNC.RU  Конюшенная 2В"
+
+SQUARE 1:1 format.""",
+]
+
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -1080,6 +1247,16 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE: "LOVEINTHEAIR_SQUARE_VARIATION",  # 1:1 for display
 
     # =========================================================================
+    # PHOTOBOOTH МАЛЬЧИШНИК MODE - 9:16 vertical Hangover bachelor party theme
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_MALCHISHNIK: "MALCHISHNIK_VARIATION",  # 9:16 for label
+
+    # =========================================================================
+    # PHOTOBOOTH МАЛЬЧИШНИК SQUARE MODE - 1:1 square bachelor party for LED
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE: "MALCHISHNIK_SQUARE_VARIATION",  # 1:1 for display
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -1154,6 +1331,8 @@ class CaricatureService:
                 "TRIPVENICE_SQUARE_VARIATION": TRIPVENICE_SQUARE_VARIATIONS,
                 "LOVEINTHEAIR_VARIATION": LOVEINTHEAIR_VARIATIONS,
                 "LOVEINTHEAIR_SQUARE_VARIATION": LOVEINTHEAIR_SQUARE_VARIATIONS,
+                "MALCHISHNIK_VARIATION": MALCHISHNIK_VARIATIONS,
+                "MALCHISHNIK_SQUARE_VARIATION": MALCHISHNIK_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -1189,6 +1368,8 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,
+                CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,
             )
             is_venice_style = style in (
                 CaricatureStyle.PHOTOBOOTH_VENICE,
@@ -1198,8 +1379,17 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,
             )
+            is_malchishnik_style = style in (
+                CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,
+                CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,
+            )
 
-            if is_loveintheair_style:
+            if is_malchishnik_style:
+                color_instruction = """- FULL COLOR — analog film palette: pushed warm yellows/ambers, boosted reds, slight green in shadows
+- Disposable camera / Polaroid aesthetic — heavy film grain, blown center flash, chemical color shift
+- Overexposed highlights, underexposed dark corners, light leaks at edges (orange/red burn)
+- Authentic party photography feel — NOT photorealistic, illustrated analog photography"""
+            elif is_loveintheair_style:
                 color_instruction = """- FULL COLOR — CREAM, BLUSH PINK, ROSE, CORAL, WARM SKIN TONES palette
 - Warm illustrated portrait style — clean bold outlines, flat warm color fills
 - Valentine's Day card with hearts, roses, love letters
@@ -1240,14 +1430,16 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Determine aspect ratio based on style
             # Photobooth uses 9:16 vertical format for better label layout
-            if style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_VENICE, CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR):
+            if style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_VENICE, CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR, CaricatureStyle.PHOTOBOOTH_MALCHISHNIK):
                 aspect_ratio = "9:16"
             else:
                 aspect_ratio = "1:1"
 
             # Send photo directly to Gemini 3 Pro Image Preview
             # The model understands to use the photo as reference
-            if is_loveintheair_style:
+            if is_malchishnik_style:
+                image_style = "Analog disposable camera photography, Polaroid film photo, heavy film grain, blown flash, warm pushed colors, party chaos, Hangover movie aesthetic"
+            elif is_loveintheair_style:
                 image_style = "Warm illustrated Valentine's card portrait, clean bold outlines, flat warm colors, cream and blush pink, hearts and roses, modern greeting card style"
             elif is_venice_style:
                 image_style = "High-quality 3D Sims-style character render, Venetian carnival masks, gold and burgundy, cinematic lighting, dark atmosphere"

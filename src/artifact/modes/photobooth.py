@@ -20,7 +20,7 @@ import os
 import asyncio
 from typing import Optional
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import numpy as np
 from PIL import Image as PILImage
@@ -352,7 +352,12 @@ class PhotoboothMode(BaseMode):
         Returns:
             Tuple of (display_style, label_style) for 1:1 and 9:16 formats
         """
-        if self._theme.ai_style_key == "loveintheair":
+        if self._theme.ai_style_key == "malchishnik":
+            return (
+                CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,  # 1:1 square for display
+                CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,  # 9:16 vertical for label
+            )
+        elif self._theme.ai_style_key == "loveintheair":
             return (
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,  # 9:16 vertical for label
@@ -389,15 +394,28 @@ class PhotoboothMode(BaseMode):
             display_style, label_style = self._get_caricature_styles()
             logger.info(f"Generating photo booth with theme {self._theme.id}: {display_style.value}, {label_style.value}")
 
+            # For malchishnik theme, pass Moscow time so it appears in the Polaroid caption
+            personality_context = None
+            if self._theme.ai_style_key == "malchishnik":
+                moscow_tz = timezone(timedelta(hours=3))
+                moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
+                personality_context = (
+                    f"Photo taken at {moscow_time} Moscow time. "
+                    f"Include exactly '{moscow_time} МСК' in the handwritten caption "
+                    f"area at the bottom of the Polaroid."
+                )
+
             # Generate both images in parallel for speed
             display_task = self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
                 style=display_style,  # 1:1 square for display
+                personality_context=personality_context,
             )
 
             label_task = self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
                 style=label_style,  # 9:16 vertical for label
+                personality_context=personality_context,
             )
 
             # Wait for both to complete
