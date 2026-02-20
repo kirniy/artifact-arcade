@@ -671,157 +671,171 @@ SQUARE 1:1 format.""",
 # NOTE: Moscow time is passed via personality_context and must appear in caption
 
 MALCHISHNIK_VARIATIONS = [
-    """МАЛЬЧИШНИК — FILM POLAROID PARTY PHOTO (VERTICAL 9:16)
+    """МАЛЬЧИШНИК — POLAROID PARTY PHOTO (VERTICAL 9:16)
 
-A POLAROID taken by someone drunk at 3am. Shot on a disposable KODAK FunSaver —
-grainy, flash-blown, slightly tilted, full analog soul.
+LIKENESS IS THE MOST IMPORTANT THING IN THIS IMAGE.
+Draw the person from the reference photo with their exact face shape, exact hairstyle,
+exact hair color, exact facial features, exact clothing. They MUST be recognizable as
+themselves. Do not generalize, beautify beyond recognition, or change their appearance.
+If multiple people are in the reference photo, draw all of them — exactly as they look.
 
-POLAROID FRAME LAYOUT (vertical, white borders all sides):
+POLAROID FRAME (vertical, thick white border at bottom, thin on sides and top):
 
-TOP LABEL — bold rubber-stamp block letters across the top white border:
-  "МАЛЬЧИШНИК"
+TOP WHITE BORDER — bold block stamp letters only:
+  МАЛЬЧИШНИК
 
 PHOTO AREA (~75% of height):
-  Person(s) from reference photo in full chaos mode — drunk smiles,
-  arms around each other, wild eyes, someone mid-shout or mid-laugh.
-  Classic Hangover movie energy: photographic evidence from the night.
-  Nightclub/bar interior behind them — dark walls, colored lights,
-  drinks on a table, smoke, neon reflections.
-  DRAW THE ACTUAL PEOPLE from the reference photo with real features.
-  Flash hits center hard — faces slightly bleached, background darker.
-  Slight Dutch angle (frame tilted 2-5 degrees). Possible red-eye.
-  Motion blur at edges from camera shake. Very "caught in the act" energy.
+  The person(s) caught mid-party — genuine chaos, wild energy, real expressions.
+  Arms around each other, laughing hard, yelling, toasting — unposed, candid.
+  Real nightclub/bar behind them: dark walls, colored stage lighting, drinks on table,
+  people blurred in background. Draw the ACTUAL venue from the photo.
+  Strong center flash: faces slightly bleached, background darker.
+  Frame tilted 2–4 degrees. Slight motion blur at edges.
+  NO TEXT of any kind inside the photo area.
 
-ANALOG FILM IMPERFECTIONS:
-  Heavy film grain across the whole image.
-  Warm pushed colors — yellows and ambers boosted, slight green in shadows.
-  Light leaks on one or two edges (orange/red burn creeping in).
-  Slight chemical staining — faint magenta or cyan patches.
-  Center overexposed (flash), corners slightly vignette-dark.
+FILM LOOK:
+  Heavy grain throughout. Warm pushed colors — ambers and yellows boosted.
+  Light leak creeping in from one edge (orange-red glow). Vignette at corners.
+  Overexposed center highlights, slightly underexposed dark edges.
 
-BOTTOM CAPTION STRIP (white Polaroid area, handwritten ink):
-  Left side:   "VNVNC.RU"
-  Right side:  "[time from personality context] МСК"
-  Center row:  "20.02–22.02  ·  Конюшенная 2В"
+BOTTOM WHITE STRIP (handwritten ink, small neat lettering, nothing else):
+  Left:   VNVNC.RU
+  Right:  [time from personality context] МСК
+  Below:  20.02–22.02  ·  Конюшенная 2В
 
-OVERALL FEELING: This photo is undeniable evidence of a legendary night.
-The kind you find in your pocket three days later wondering what happened.
+TEXT RULES — CRITICAL:
+  ONLY the text listed above is allowed anywhere in the image.
+  ZERO extra labels, annotations, brand names, watermarks, or decorations.
+  VNVNC.RU is plain handwritten text — no rectangle, no box, no logo treatment.
+  No film brand names, no camera brand names, nothing else.
 
 VERTICAL 9:16 format.""",
 
     """МАЛЬЧИШНИК — DISPOSABLE CAMERA FOUND FOOTAGE (VERTICAL 9:16)
 
-Imagine this photo printed from a disposable camera that was left on a bar
-and shot by five different people throughout the night. This is frame 23.
+LIKENESS FIRST — MOST CRITICAL REQUIREMENT:
+The person in the reference photo must be drawn with EXACT likeness.
+Same face, same nose, same eyes, same jaw, same hairstyle, same hair color,
+same clothing. This is a portrait of THEM, not a generic party person.
+If there are multiple people in the reference photo, draw ALL of them as they are.
 
 POLAROID FRAME (white border, thick at bottom):
 
-TOP STAMP: "МАЛЬЧИШНИК" — heavy stencil font, slightly imperfect ink
+TOP WHITE BORDER — stamp-style text only:
+  МАЛЬЧИШНИК
 
 PHOTO:
-  Group or solo shot — person from reference photo deep in party mode.
-  Close-up, slightly off-center — nobody posed for this, it just happened.
-  Expression: genuine chaos. Could be laughing, yelling, toasting, confused.
-  Real venue behind them: nightclub/bar with moody colored lighting.
-  DRAW THE REAL PERSON — same face, same hair, same clothes from the photo.
-  If multiple people in reference, all appear together in glorious disorder.
+  Someone left this camera on the bar. This is the result.
+  Person(s) deep in party mode — close-up, slightly off-center, unposed.
+  Expression: genuine chaos. Laughing, yelling, mid-toast, eyes half-closed.
+  Real nightclub/bar interior behind them — moody colored lighting, dark walls.
+  Nobody is posing. This moment was captured, not staged.
+  Flash blown center, dark murky edges, slight color shift toward magenta.
+  Light leak in one corner (red-orange). Heavy grain. Slight scan-line texture.
+  NO TEXT inside the photo area — none at all.
 
-FILM LOOK:
-  Fujifilm Superia 400 aesthetic — slightly cooler than Kodak, more grain.
-  Blown highlights in the center from cheap flash, dark murky edges.
-  Color shift toward magenta in midtones.
-  Slight horizontal scan lines from bad development.
-  One small light leak on the upper-right corner (red-orange glow).
+BOTTOM WHITE STRIP (messy but legible handwriting, nothing else):
+  VNVNC.RU  (plain text, left side)
+  [time from personality context] МСК  (plain text, right side)
+  20.02–22.02  Конюшенная 2В  (plain text, centered below)
 
-CAPTION AREA (bottom white strip, messy handwritten style):
-  "VNVNC.RU" — left                    "[time from personality context] МСК" — right
-  "20.02–22.02  Конюшенная 2В" — centered below
-
-VIBE: The Hangover. If you were there, you know. If you weren't — look at this.
+TEXT RULES — CRITICAL:
+  ONLY the above text exists anywhere in the image. Nothing else.
+  No film names, no camera brands, no extra words, no stickers, no stamps.
+  VNVNC.RU is plain handwritten text — no borders, no logo, no box around it.
 
 VERTICAL 9:16 format.""",
 
     """МАЛЬЧИШНИК — ANALOG EVIDENCE PHOTO (VERTICAL 9:16)
 
-Police evidence photo but make it fashion. Or rather — party evidence.
-Someone's gonna show their kids this photo and say "I was young."
+MOST IMPORTANT: PRESERVE THE EXACT LIKENESS OF EVERY PERSON.
+Study the reference photo carefully. Draw each person with their real face structure,
+real hairstyle, real hair color, real features, real clothes. They must look like
+themselves — recognizable, not a generic illustration of "a party person."
+Everyone visible in the reference photo appears here.
 
-POLAROID LAYOUT (white frame border):
+POLAROID FRAME (white border all sides):
 
-TOP HEADER on white border: "МАЛЬЧИШНИК" — block stamp letters
+TOP WHITE BORDER — block letters only:
+  МАЛЬЧИШНИК
 
-PHOTO ZONE (main image):
-  Person from reference photo mid-celebration — maximum energy moment.
+PHOTO ZONE:
+  The exact person(s) from the reference photo at peak party energy.
   They look like they've been awake for 18 hours and are proud of it.
-  Behind them: real nightclub interior. Dark, smoky, colored spotlights,
-  drinks, other people blurred in the background.
-  ABSOLUTE LIKENESS — draw the exact person from the photo.
-  Same face structure, same hair, same clothes. Make them recognizable.
-  The camera caught them at their most alive and most chaotic.
+  Real nightclub interior behind them — dark, smoky, colored spotlights,
+  drinks, other people blurred in background.
+  The camera caught them at their most alive and chaotic moment.
+  Flash overexposure on faces. Warm amber-gold color push throughout.
+  Film grain — thick, visible. Vignette corners. Color fringing at edges.
+  One light streak crossing a corner. Frame tilted slightly.
+  ZERO text inside the photo area.
 
-ANALOG QUALITY:
-  Overexposed highlights (especially faces hit by flash).
-  Kodak Gold 200 warmth — golden amber tones dominating.
-  Scratchy film grain — thick, visible, beautiful.
-  Slight vignette at all four corners.
-  Color fringing (chromatic aberration) at high-contrast edges.
-  One light streak across a corner — accidental but iconic.
+BOTTOM WHITE STRIP (handwritten, small, only these words):
+  VNVNC.RU  (plain text left)    [time from personality context] МСК  (plain text right)
+  20.02–22.02  ·  Конюшенная 2В  (plain text centered)
 
-BOTTOM CAPTION (white Polaroid strip, handwritten):
-  "VNVNC.RU" · "[time from personality context] МСК"
-  "20.02–22.02  ·  Конюшенная 2В"
-
-FEELING: The morning after. But the photo from the night before.
+TEXT RULES — CRITICAL:
+  These are the only words allowed anywhere in the entire image.
+  No extra text, no labels, no watermarks, no film brand names, nothing.
+  VNVNC.RU is just plain handwritten text, not a logo or boxed element.
 
 VERTICAL 9:16 format.""",
 ]
 
 # МАЛЬЧИШНИК SQUARE VARIATIONS — 1:1 for LED display
 MALCHISHNIK_SQUARE_VARIATIONS = [
-    """МАЛЬЧИШНИК — DISPOSABLE CAMERA PARTY SHOT (SQUARE 1:1)
+    """МАЛЬЧИШНИК — POLAROID PARTY SHOT (SQUARE 1:1)
 
-Raw disposable camera energy. Shot by someone who definitely shouldn't
-have been holding a camera. Kodak FunSaver or similar.
+LIKENESS IS THE #1 PRIORITY.
+Draw the person(s) from the reference photo with their exact face, exact hair,
+exact features, exact clothing. They must be recognizable as themselves.
+If multiple people are in the photo, draw all of them as they look.
 
 SQUARE POLAROID (thin white border all sides):
 
 PHOTO (fills most of frame):
-  Person(s) from reference photo in full party chaos.
-  Flash-blown faces, drunk energy, genuine emotion.
+  Person(s) caught in genuine party chaos — flash-blown faces, wild energy.
   Real nightclub/bar behind them — colored lights, dark walls.
-  DRAW THE ACTUAL PEOPLE from the photo — real faces, real clothes.
-  Everyone visible appears. Classic Hangover-movie group shot energy.
+  Warm analog film look: amber/yellow push, heavy grain, blown flash center.
+  Motion blur at edges, vignette corners, slight color shift.
+  NO TEXT anywhere inside the photo area.
 
-ANALOG LOOK:
-  Heavy film grain. Blown flash center. Warm amber/yellow color push.
-  Slight motion blur at edges. Film vignette corners.
-  Chemical color shift — slightly warm/overcooked.
+BOTTOM WHITE STRIP (small handwritten text only):
+  МАЛЬЧИШНИК
+  VNVNC.RU  ·  20.02–22.02  ·  Конюшенная 2В
 
-CORNER STAMP (small, bottom-right area of frame):
-  "МАЛЬЧИШНИК" on top line
-  "VNVNC.RU  20.02–22.02" on bottom line
+TEXT RULES:
+  Only the text above exists in the image. Nothing else anywhere.
+  VNVNC.RU is plain text — no box, no border, no logo treatment.
 
-Not photorealistic — illustrated analog photography aesthetic.
 SQUARE 1:1 format.""",
 
     """МАЛЬЧИШНИК — FILM PHOTO MOMENT (SQUARE 1:1)
 
 That one photo from the night that makes everyone say "send it to me."
 
+LIKENESS IS EVERYTHING:
+Draw the exact person from the reference photo — real face, real hair, real clothes.
+Must be recognizable as them, not a generic party illustration.
+
 SQUARE FRAME:
-  Person from reference in their finest chaotic moment.
-  Genuine expression — laughing, surprised, toasting, lost in it.
-  Nightclub atmosphere behind them — authentic venue, moody lighting.
-  REAL LIKENESS — must look like the actual person from the photo.
+  Person in their finest chaotic moment — laughing, surprised, toasting.
+  Real nightclub atmosphere behind them — authentic venue, moody colored lighting.
+  Analog film look: warm pushed colors, grain, blown flash, vignette.
+  NO TEXT inside the photo area at all.
+
+BOTTOM WHITE STRIP (handwritten small text only):
+  МАЛЬЧИШНИК
+  VNVNC.RU  ·  20.02–22.02  ·  Конюшенная 2В
+
+TEXT RULES:
+  Only these words appear anywhere in the image. Nothing else.
+  Plain handwritten text — no logos, no boxes, no decorations.
 
 FILM AESTHETIC:
-  Fujifilm disposable look. Grainy, pushed warm, slightly overexposed.
-  Strong center flash bloom. Slight red-eye possible.
-  Film edge burn (orange at corners). Chemical grain texture.
-
-BRANDING (integrated into film border, small):
-  "МАЛЬЧИШНИК  20.02–22.02"
-  "VNVNC.RU  Конюшенная 2В"
+  Warm pushed colors — amber/yellow tones, heavy grain, blown flash center.
+  Film edge burn (orange at corners). Slight vignette. Overexposed highlights.
+  NO TEXT inside the photo area.
 
 SQUARE 1:1 format.""",
 ]
