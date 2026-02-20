@@ -773,7 +773,6 @@ class PhotoboothMode(BaseMode):
 
             draw_text(buffer, "СКАЧАЙ ФОТО", 24, 104, self.THEME_CHROME, scale=1)
             draw_text(buffer, "НА САЙТЕ", 24, 114, (200, 180, 255), scale=1)
-            draw_centered_text(buffer, "< > QR", 124, (100, 200, 100), scale=1)
 
         elif self._state.result_view == "qr":
             # Full screen QR code

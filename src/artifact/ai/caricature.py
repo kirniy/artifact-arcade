@@ -671,171 +671,66 @@ SQUARE 1:1 format.""",
 # NOTE: Moscow time is passed via personality_context and must appear in caption
 
 MALCHISHNIK_VARIATIONS = [
-    """МАЛЬЧИШНИК — POLAROID PARTY PHOTO (VERTICAL 9:16)
+    """МАЛЬЧИШНИК — POLAROID PHOTO (VERTICAL 9:16)
 
-LIKENESS IS THE MOST IMPORTANT THING IN THIS IMAGE.
-Draw the person from the reference photo with their exact face shape, exact hairstyle,
-exact hair color, exact facial features, exact clothing. They MUST be recognizable as
-themselves. Do not generalize, beautify beyond recognition, or change their appearance.
-If multiple people are in the reference photo, draw all of them — exactly as they look.
+CRITICAL: LIKENESS IS THE TOP PRIORITY.
+Create a Polaroid photo of THESE EXACT PEOPLE from the reference photo. 
+Maintain their exact faces, hairstyles, and clothing. No generic party characters.
+If multiple people are in the reference photo, include all of them exactly as they are.
 
-POLAROID FRAME (vertical, thick white border at bottom, thin on sides and top):
+AESTHETIC:
+- Hangover movie style: chaotic party energy, unposed, candid nightclub moment.
+- Authentic Polaroid: thick white border at bottom, thin on sides/top.
+- Lighting: Strong center flash, dark murky background, nightclub colored lights.
+- Film Look: Heavy grain, warm amber/yellow tones, light leaks, vintage shift.
+- NO TEXT inside the photo area.
 
-TOP WHITE BORDER — bold block stamp letters only:
-  МАЛЬЧИШНИК
-
-PHOTO AREA (~75% of height):
-  The person(s) caught mid-party — genuine chaos, wild energy, real expressions.
-  Arms around each other, laughing hard, yelling, toasting — unposed, candid.
-  Real nightclub/bar behind them: dark walls, colored stage lighting, drinks on table,
-  people blurred in background. Draw the ACTUAL venue from the photo.
-  Strong center flash: faces slightly bleached, background darker.
-  Frame tilted 2–4 degrees. Slight motion blur at edges.
-  NO TEXT of any kind inside the photo area.
-
-FILM LOOK:
-  Heavy grain throughout. Warm pushed colors — ambers and yellows boosted.
-  Light leak creeping in from one edge (orange-red glow). Vignette at corners.
-  Overexposed center highlights, slightly underexposed dark edges.
-
-BOTTOM WHITE STRIP (handwritten ink, small neat lettering, nothing else):
+BOTTOM WHITE STRIP (handwritten ink):
   Left:   VNVNC.RU
   Right:  [time from personality context] МСК
-  Below:  20.02–22.02  ·  Конюшенная 2В
-
-TEXT RULES — CRITICAL:
-  ONLY the text listed above is allowed anywhere in the image.
-  ZERO extra labels, annotations, brand names, watermarks, or decorations.
-  VNVNC.RU is plain handwritten text — no rectangle, no box, no logo treatment.
-  No film brand names, no camera brand names, nothing else.
+  Below:  20.02–22.02 · Конюшенная 2В
 
 VERTICAL 9:16 format.""",
 
-    """МАЛЬЧИШНИК — DISPOSABLE CAMERA FOUND FOOTAGE (VERTICAL 9:16)
+    """МАЛЬЧИШНИК — CANDID PARTY SNAPSHOT (VERTICAL 9:16)
 
-LIKENESS FIRST — MOST CRITICAL REQUIREMENT:
-The person in the reference photo must be drawn with EXACT likeness.
-Same face, same nose, same eyes, same jaw, same hairstyle, same hair color,
-same clothing. This is a portrait of THEM, not a generic party person.
-If there are multiple people in the reference photo, draw ALL of them as they are.
+LIKENESS FIRST:
+This must be THIS EXACT person (or people) from the reference photo.
+Same face, same hair, same nose, same clothes. Recognize them instantly.
+Everyone in the reference photo must appear in this Polaroid.
 
-POLAROID FRAME (white border, thick at bottom):
+STYLE:
+- Chaotic party energy, unposed, mid-laugh or mid-toast.
+- Real nightclub environment behind them.
+- Polaroid frame with white borders (thick at bottom).
+- Heavy film grain, blown flash, warm amber color push.
+- NO TEXT in the photo area.
 
-TOP WHITE BORDER — stamp-style text only:
-  МАЛЬЧИШНИК
-
-PHOTO:
-  Someone left this camera on the bar. This is the result.
-  Person(s) deep in party mode — close-up, slightly off-center, unposed.
-  Expression: genuine chaos. Laughing, yelling, mid-toast, eyes half-closed.
-  Real nightclub/bar interior behind them — moody colored lighting, dark walls.
-  Nobody is posing. This moment was captured, not staged.
-  Flash blown center, dark murky edges, slight color shift toward magenta.
-  Light leak in one corner (red-orange). Heavy grain. Slight scan-line texture.
-  NO TEXT inside the photo area — none at all.
-
-BOTTOM WHITE STRIP (messy but legible handwriting, nothing else):
-  VNVNC.RU  (plain text, left side)
-  [time from personality context] МСК  (plain text, right side)
-  20.02–22.02  Конюшенная 2В  (plain text, centered below)
-
-TEXT RULES — CRITICAL:
-  ONLY the above text exists anywhere in the image. Nothing else.
-  No film names, no camera brands, no extra words, no stickers, no stamps.
-  VNVNC.RU is plain handwritten text — no borders, no logo, no box around it.
-
-VERTICAL 9:16 format.""",
-
-    """МАЛЬЧИШНИК — ANALOG EVIDENCE PHOTO (VERTICAL 9:16)
-
-MOST IMPORTANT: PRESERVE THE EXACT LIKENESS OF EVERY PERSON.
-Study the reference photo carefully. Draw each person with their real face structure,
-real hairstyle, real hair color, real features, real clothes. They must look like
-themselves — recognizable, not a generic illustration of "a party person."
-Everyone visible in the reference photo appears here.
-
-POLAROID FRAME (white border all sides):
-
-TOP WHITE BORDER — block letters only:
-  МАЛЬЧИШНИК
-
-PHOTO ZONE:
-  The exact person(s) from the reference photo at peak party energy.
-  They look like they've been awake for 18 hours and are proud of it.
-  Real nightclub interior behind them — dark, smoky, colored spotlights,
-  drinks, other people blurred in background.
-  The camera caught them at their most alive and chaotic moment.
-  Flash overexposure on faces. Warm amber-gold color push throughout.
-  Film grain — thick, visible. Vignette corners. Color fringing at edges.
-  One light streak crossing a corner. Frame tilted slightly.
-  ZERO text inside the photo area.
-
-BOTTOM WHITE STRIP (handwritten, small, only these words):
-  VNVNC.RU  (plain text left)    [time from personality context] МСК  (plain text right)
-  20.02–22.02  ·  Конюшенная 2В  (plain text centered)
-
-TEXT RULES — CRITICAL:
-  These are the only words allowed anywhere in the entire image.
-  No extra text, no labels, no watermarks, no film brand names, nothing.
-  VNVNC.RU is just plain handwritten text, not a logo or boxed element.
+BOTTOM WHITE STRIP (handwritten):
+  VNVNC.RU (left)  [time from personality context] МСК (right)
+  20.02–22.02 Конюшенная 2В (below)
 
 VERTICAL 9:16 format.""",
 ]
 
 # МАЛЬЧИШНИК SQUARE VARIATIONS — 1:1 for LED display
 MALCHISHNIK_SQUARE_VARIATIONS = [
-    """МАЛЬЧИШНИК — POLAROID PARTY SHOT (SQUARE 1:1)
+    """МАЛЬЧИШНИК — SQUARE POLAROID (1:1)
 
-LIKENESS IS THE #1 PRIORITY.
-Draw the person(s) from the reference photo with their exact face, exact hair,
-exact features, exact clothing. They must be recognizable as themselves.
-If multiple people are in the photo, draw all of them as they look.
+LIKENESS IS ESSENTIAL:
+Capture THESE EXACT PEOPLE from the reference photo. 
+Exact same facial features, hair, and clothes. They must look like themselves.
+Include everyone from the reference image.
 
-SQUARE POLAROID (thin white border all sides):
+STYLE:
+- Hangover party vibe: chaotic, candid, unposed.
+- High flash, dark background, warm analog film grain.
+- White Polaroid border on all sides.
+- NO TEXT inside the photo area.
 
-PHOTO (fills most of frame):
-  Person(s) caught in genuine party chaos — flash-blown faces, wild energy.
-  Real nightclub/bar behind them — colored lights, dark walls.
-  Warm analog film look: amber/yellow push, heavy grain, blown flash center.
-  Motion blur at edges, vignette corners, slight color shift.
-  NO TEXT anywhere inside the photo area.
-
-BOTTOM WHITE STRIP (small handwritten text only):
+BOTTOM WHITE STRIP (handwritten):
   МАЛЬЧИШНИК
-  VNVNC.RU  ·  20.02–22.02  ·  Конюшенная 2В
-
-TEXT RULES:
-  Only the text above exists in the image. Nothing else anywhere.
-  VNVNC.RU is plain text — no box, no border, no logo treatment.
-
-SQUARE 1:1 format.""",
-
-    """МАЛЬЧИШНИК — FILM PHOTO MOMENT (SQUARE 1:1)
-
-That one photo from the night that makes everyone say "send it to me."
-
-LIKENESS IS EVERYTHING:
-Draw the exact person from the reference photo — real face, real hair, real clothes.
-Must be recognizable as them, not a generic party illustration.
-
-SQUARE FRAME:
-  Person in their finest chaotic moment — laughing, surprised, toasting.
-  Real nightclub atmosphere behind them — authentic venue, moody colored lighting.
-  Analog film look: warm pushed colors, grain, blown flash, vignette.
-  NO TEXT inside the photo area at all.
-
-BOTTOM WHITE STRIP (handwritten small text only):
-  МАЛЬЧИШНИК
-  VNVNC.RU  ·  20.02–22.02  ·  Конюшенная 2В
-
-TEXT RULES:
-  Only these words appear anywhere in the image. Nothing else.
-  Plain handwritten text — no logos, no boxes, no decorations.
-
-FILM AESTHETIC:
-  Warm pushed colors — amber/yellow tones, heavy grain, blown flash center.
-  Film edge burn (orange at corners). Slight vignette. Overexposed highlights.
-  NO TEXT inside the photo area.
+  VNVNC.RU · 20.02–22.02 · Конюшенная 2В
 
 SQUARE 1:1 format.""",
 ]
@@ -1402,7 +1297,7 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 color_instruction = """- FULL COLOR — analog film palette: pushed warm yellows/ambers, boosted reds, slight green in shadows
 - Disposable camera / Polaroid aesthetic — heavy film grain, blown center flash, chemical color shift
 - Overexposed highlights, underexposed dark corners, light leaks at edges (orange/red burn)
-- Authentic party photography feel — NOT photorealistic, illustrated analog photography"""
+- Authentic party photography feel — High likeness, real people, NOT an illustration"""
             elif is_loveintheair_style:
                 color_instruction = """- FULL COLOR — CREAM, BLUSH PINK, ROSE, CORAL, WARM SKIN TONES palette
 - Warm illustrated portrait style — clean bold outlines, flat warm color fills
