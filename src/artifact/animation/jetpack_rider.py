@@ -68,13 +68,17 @@ class JetpackRider:
         # Get theme for background color
         from artifact.modes.photobooth_themes import get_current_theme
         self._theme = get_current_theme()
-        # Venice = white background, Boiling Room = dark background
+        # Set ambient colors per theme
         if self._theme.id == "tripvenice":
             self.BG = (255, 255, 255)  # White for Venice
             self.CYAN = (218, 165, 32)  # Gold particles
             self.MAGENTA = (128, 0, 32)  # Burgundy
+        elif self._theme.id == "malchishnik":
+            self.BG = (12, 8, 5)       # Near-black — nightclub darkness
+            self.CYAN = (210, 170, 60)  # Dirty amber gold — analog film
+            self.MAGENTA = (180, 35, 35)  # Blood red — Hangover chaos
         else:
-            self.BG = (6, 3, 15)  # Dark for Boiling Room
+            self.BG = (6, 3, 15)  # Dark for Boiling Room / default
         self._load_logo()
         self._init_ambient()
 
