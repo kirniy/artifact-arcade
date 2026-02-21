@@ -319,9 +319,13 @@ class PhotoboothMode(BaseMode):
             self._progress_tracker.start()
             self._progress_tracker.advance_to_phase(ProgressPhase.GENERATING_IMAGE)
 
-            # Initialize Santa runner minigame for the waiting screen
-            self._santa_runner = SantaRunner()
-            self._santa_runner.reset()
+            # Initialize loading animation for the waiting screen
+            try:
+                self._santa_runner = SantaRunner()
+                self._santa_runner.reset()
+            except Exception as e:
+                logger.warning(f"Failed to create loading animation: {e}")
+                self._santa_runner = None
 
             self._ai_task = asyncio.create_task(self._generate_photobooth_grid())
             logger.info(f"Starting AI photo booth generation ({self._theme.event_name})")

@@ -89,8 +89,8 @@ class JetpackRider:
         from artifact.modes.photobooth_themes import get_current_theme
         theme = get_current_theme()
         logo_filename = theme.logo_filename  # e.g., "tripvenice.png" or "boilingroom.png"
-        
-        # Try multiple paths
+
+        # Try multiple paths (assets/images first, then root fallback)
         candidates = [
             os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "images", logo_filename),
             os.path.join(os.path.dirname(__file__), "..", "..", "..", logo_filename),
@@ -98,13 +98,19 @@ class JetpackRider:
         for path in candidates:
             path = os.path.normpath(path)
             if os.path.exists(path):
-                img = PILImage.open(path).convert("RGBA")
-                img = img.resize((128, 128), PILImage.Resampling.LANCZOS)
-                arr = np.array(img, dtype=np.uint8)
-                self._logo = arr
-                self._logo_rgb = arr[:, :, :3].astype(np.float32)
-                self._logo_alpha = arr[:, :, 3].astype(np.float32) / 255.0
-                break
+                try:
+                    img = PILImage.open(path).convert("RGBA")
+                    img = img.resize((128, 128), PILImage.Resampling.LANCZOS)
+                    arr = np.array(img, dtype=np.uint8)
+                    self._logo = arr
+                    self._logo_rgb = arr[:, :, :3].astype(np.float32)
+                    self._logo_alpha = arr[:, :, 3].astype(np.float32) / 255.0
+                    break
+                except Exception as e:
+                    # Log warning and try next candidate path
+                    import logging
+                    logging.getLogger(__name__).warning(f"Failed to load logo from {path}: {e}")
+                    continue
 
     def _init_ambient(self):
         for _ in range(15):
