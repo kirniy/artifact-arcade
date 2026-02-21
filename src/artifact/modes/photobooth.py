@@ -13,6 +13,7 @@ Supports multiple themes (set PHOTOBOOTH_THEME env var):
 
 # When True, prints labels on thermal printer. When False, digital-only mode.
 PRINTING_ENABLED = False
+USE_AI_GENERATION = False  # Toggle AI generation vs local Polaroid fallback
 
 import logging
 import io
@@ -327,8 +328,12 @@ class PhotoboothMode(BaseMode):
                 logger.warning(f"Failed to create loading animation: {e}")
                 self._santa_runner = None
 
-            self._ai_task = asyncio.create_task(self._generate_photobooth_grid())
-            logger.info(f"Starting AI photo booth generation ({self._theme.event_name})")
+            if USE_AI_GENERATION:
+                self._ai_task = asyncio.create_task(self._generate_photobooth_grid())
+                logger.info(f"Starting AI photo booth generation ({self._theme.event_name})")
+            else:
+                self._ai_task = asyncio.create_task(self._generate_local_polaroid())
+                logger.info("Starting local Polaroid generation fallback")
 
             self.change_phase(ModePhase.PROCESSING)
         else:
@@ -377,6 +382,108 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH,  # 9:16 vertical for label
             )
+
+    async def _generate_local_polaroid(self) -> Optional[tuple]:
+        """Generate a local Polaroid-style image from the captured photo."""
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            import io
+            from datetime import datetime, timezone, timedelta
+            import urllib.request
+            
+            if not self._state.photo_bytes:
+                return None
+                
+            photo = Image.open(io.BytesIO(self._state.photo_bytes))
+            
+            # Target dimensions (9:16 aspect ratio)
+            canvas_w, canvas_h = 900, 1600
+            canvas = Image.new('RGB', (canvas_w, canvas_h), '#FDFDFB') # Off-white Polaroid paper
+            
+            # Target photo size (maintain aspect ratio 3:4)
+            margin = 55
+            target_photo_w = canvas_w - (2 * margin)
+            target_photo_h = int(target_photo_w * (4/3))
+            
+            photo_aspect = photo.width / photo.height
+            if photo_aspect > (3/4):
+                new_w = int(photo.height * (3/4))
+                offset = (photo.width - new_w) // 2
+                photo = photo.crop((offset, 0, offset + new_w, photo.height))
+            elif photo_aspect < (3/4):
+                new_h = int(photo.width * (4/3))
+                offset = (photo.height - new_h) // 2
+                photo = photo.crop((0, offset, photo.width, offset + new_h))
+                
+            photo = photo.resize((target_photo_w, target_photo_h), Image.Resampling.LANCZOS)
+            canvas.paste(photo, (margin, margin))
+            
+            draw = ImageDraw.Draw(canvas)
+            
+            try:
+                font_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "fonts", "Caveat-Bold.ttf")
+                font_path = os.path.normpath(font_path)
+                font_size = 110
+                
+                # Fetch font if it doesn't exist
+                if not os.path.exists(font_path):
+                    os.makedirs(os.path.dirname(font_path), exist_ok=True)
+                    urllib.request.urlretrieve('https://github.com/google/fonts/raw/main/ofl/caveat/Caveat-Bold.ttf', font_path)
+                    
+                font = ImageFont.truetype(font_path, font_size)
+            except Exception as e:
+                logger.warning(f"Could not load custom font, using default: {e}")
+                font = ImageFont.load_default()
+                
+            def get_text_width(f, t):
+                if hasattr(f, 'getbbox'): return f.getbbox(t)[2] - f.getbbox(t)[0]
+                elif hasattr(f, 'getlength'): return int(f.getlength(t))
+                return f.getsize(t)[0]
+
+            moscow_tz = timezone(timedelta(hours=3))
+            moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
+            
+            text_y_row1 = margin + target_photo_h + 100
+            text_y_row2 = text_y_row1 + 130
+            text_color = "#202022"  # Marker ink
+            
+            # Left text: VNVNC.RU
+            draw.text((margin + 20, text_y_row1), "VNVNC.RU", font=font, fill=text_color)
+            
+            # Right text: Time
+            time_w = get_text_width(font, moscow_time)
+            draw.text((canvas_w - margin - 20 - time_w, text_y_row1), moscow_time, font=font, fill=text_color)
+            
+            # Bottom row left: 20.02-22.02
+            date_str = "20.02-22.02"
+            draw.text((margin + 20, text_y_row2), date_str, font=font, fill=text_color)
+            
+            # Bottom row right: Конюшенная 2В
+            venue_str = "КОНЮШЕННАЯ 2В"
+            venue_w = get_text_width(font, venue_str)
+            draw.text((canvas_w - margin - 20 - venue_w, text_y_row2), venue_str, font=font, fill=text_color)
+            
+            buf = io.BytesIO()
+            canvas.save(buf, format="PNG")
+            label_bytes = buf.getvalue()
+            
+            # Instead of cropping, pad the 9:16 image to 1:1 for the display
+            display_canvas = Image.new('RGB', (canvas_h, canvas_h), '#000000') # 1600x1600 black background
+            offset_x = (canvas_h - canvas_w) // 2
+            display_canvas.paste(canvas, (offset_x, 0))
+            
+            display_buf = io.BytesIO()
+            display_canvas.save(display_buf, format="PNG")
+            display_bytes = display_buf.getvalue()
+            
+            # Artificial delay for user experience
+            await asyncio.sleep(2.0)
+            
+            return (display_bytes, label_bytes)
+            
+        except Exception as e:
+            logger.error(f"Local Polaroid generation failed: {e}")
+            return None
 
     async def _generate_photobooth_grid(self) -> Optional[tuple]:
         """Generate AI photo booth image from captured photo.
