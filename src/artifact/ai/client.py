@@ -40,7 +40,7 @@ class GeminiConfig:
     """Configuration for Gemini client."""
 
     api_key: str
-    timeout: float = 300.0  # 5 minute timeout
+    timeout: float = 60.0  # 60 second timeout
     max_retries: int = 3
     retry_delay: float = 1.0
     thinking_budget: int = 1024  # Tokens for thinking
