@@ -249,7 +249,7 @@ class PhotoboothMode(BaseMode):
                 else:
                     # Countdown finished - start pre-flash to light up subjects!
                     self._state.countdown = 0
-                    self._state.pre_flash_timer = 0.25  # Flash screen for 250ms before capture
+                    self._state.pre_flash_timer = 0.15  # Flash screen for 150ms before capture
             return
         
         # Handle pre-flash (flash to light up subjects before capture)
@@ -635,12 +635,12 @@ class PhotoboothMode(BaseMode):
         """Render main display."""
         # Pre-flash: bright white screen to light up subjects BEFORE capture
         if self._state.pre_flash_timer > 0:
-            fill(buffer, (255, 255, 255))  # Full white flash to illuminate subjects
+            fill(buffer, (160, 160, 170))  # Dimmer flash to avoid overexposure
             return
             
         if self._state.flash_timer > 0:
             # Flash effect (from flashOn)
-            fill(buffer, (255, 255, 255))
+            fill(buffer, (160, 160, 170))
             return
 
         if self._state.is_generating:
@@ -713,13 +713,13 @@ class PhotoboothMode(BaseMode):
             draw_rect(buffer, 0, 104, 128, 24, self.THEME_BLACK)
             draw_centered_text(buffer, status_message, 106, self.THEME_CHROME, scale=1)
             # Website message
-            draw_centered_text(buffer, "ФОТО НА САЙТЕ", 116, self.THEME_RED, scale=1)
+            draw_centered_text(buffer, "ФОТО БУДЕТ НА САЙТЕ", 116, self.THEME_RED, scale=1)
 
         else:
             # Fallback to simple generating screen if no game
             fill(buffer, self.THEME_BLACK)
             draw_centered_text(buffer, "ГЕНЕРАЦИЯ", 50, self.THEME_CHROME, scale=1)
-            draw_centered_text(buffer, "ФОТО НА САЙТЕ", 65, self.THEME_RED, scale=1)
+            draw_centered_text(buffer, "ФОТО БУДЕТ НА САЙТЕ", 65, self.THEME_RED, scale=1)
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
         """Render ready state."""
