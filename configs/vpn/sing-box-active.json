@@ -18,9 +18,9 @@
     {
       "type": "vless",
       "tag": "vless-out",
-      "server": "147.93.18.252",
+      "server": "151.245.92.201",
       "server_port": 2087,
-      "uuid": "68bd73e8-c534-4c84-aa40-5512301e7c7e",
+      "uuid": "eef4c2de-b6c4-4f8f-ace2-75134488f9b7",
       "flow": "xtls-rprx-vision",
       "tls": {
         "enabled": true,
@@ -31,8 +31,8 @@
         },
         "reality": {
           "enabled": true,
-          "public_key": "GpdxGNhwitm49YU0hOhH8ePZLaoMFPkFgI-ClaJASQs",
-          "short_id": "0e67974dcea86c12"
+          "public_key": "SWCOxWKqY4eI7-2vBk_GbBPA_E-QtcDdZ8DvKWUvThg",
+          "short_id": "57562b9f29f072f9"
         }
       }
     },
