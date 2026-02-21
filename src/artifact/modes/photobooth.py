@@ -249,7 +249,7 @@ class PhotoboothMode(BaseMode):
                 else:
                     # Countdown finished - start pre-flash to light up subjects!
                     self._state.countdown = 0
-                    self._state.pre_flash_timer = 0.15  # Flash screen for 150ms before capture (reduced)
+                    self._state.pre_flash_timer = 0.25  # Flash screen for 250ms before capture
             return
         
         # Handle pre-flash (flash to light up subjects before capture)
@@ -635,12 +635,12 @@ class PhotoboothMode(BaseMode):
         """Render main display."""
         # Pre-flash: bright white screen to light up subjects BEFORE capture
         if self._state.pre_flash_timer > 0:
-            fill(buffer, (160, 160, 170))  # Dimmer flash to avoid overexposure
+            fill(buffer, (255, 255, 255))  # Full white flash to illuminate subjects
             return
             
         if self._state.flash_timer > 0:
             # Flash effect (from flashOn)
-            fill(buffer, (160, 160, 170))
+            fill(buffer, (255, 255, 255))
             return
 
         if self._state.is_generating:
@@ -723,26 +723,18 @@ class PhotoboothMode(BaseMode):
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
         """Render ready state."""
-        # If no camera (dark buffer), show theme background with logo
-        if np.mean(buffer) < 30:  # Buffer is nearly black = no camera
-            fill(buffer, self.THEME_BLACK)
-            # Center the theme logo
-            self._blit_logo(buffer, 24, 10)
-            draw_centered_text(buffer, "ФОТОБУДКА", 100, self.THEME_CHROME, scale=1)
-        else:
-            # Camera preview: overlay small logo in top-right corner
-            if self._logo_rgba is not None:
-                # Draw a smaller version (40x40) on camera preview
-                try:
-                    small = PILImage.fromarray(self._logo_rgba).resize((32, 32), PILImage.Resampling.LANCZOS)
-                    small_arr = np.array(small, dtype=np.uint8)
-                    alpha = small_arr[:, :, 3:4].astype(np.float32) / 255.0
-                    rgb = small_arr[:, :, :3].astype(np.float32)
-                    y1, x1 = 2, 128 - 34
-                    bg = buffer[y1:y1+32, x1:x1+32].astype(np.float32)
-                    buffer[y1:y1+32, x1:x1+32] = (rgb * alpha + bg * (1.0 - alpha)).astype(np.uint8)
-                except Exception:
-                    pass
+        # Always show camera preview with small logo overlay
+        if self._logo_rgba is not None:
+            try:
+                small = PILImage.fromarray(self._logo_rgba).resize((32, 32), PILImage.Resampling.LANCZOS)
+                small_arr = np.array(small, dtype=np.uint8)
+                alpha = small_arr[:, :, 3:4].astype(np.float32) / 255.0
+                rgb = small_arr[:, :, :3].astype(np.float32)
+                y1, x1 = 2, 128 - 34
+                bg = buffer[y1:y1+32, x1:x1+32].astype(np.float32)
+                buffer[y1:y1+32, x1:x1+32] = (rgb * alpha + bg * (1.0 - alpha)).astype(np.uint8)
+            except Exception:
+                pass
 
         # Semi-transparent overlay for text
         buffer[-24:, :, :] = (buffer[-24:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
