@@ -379,13 +379,10 @@ class PhotoboothMode(BaseMode):
             )
 
     async def _generate_photobooth_grid(self) -> Optional[tuple]:
-        """Generate AI photo booth images from captured photo.
+        """Generate AI photo booth image from captured photo.
 
-        Uses theme-specific CaricatureStyle for generation.
-
-        Generates TWO images:
-        - 1:1 square for LED display (128x128)
-        - 9:16 vertical for label printing
+        Generates ONE image in 9:16 vertical (label) format.
+        A center-cropped 1:1 version is created for the LED display.
 
         Returns:
             Tuple of (display_bytes, label_bytes) or None on error
@@ -396,7 +393,7 @@ class PhotoboothMode(BaseMode):
 
         try:
             display_style, label_style = self._get_caricature_styles()
-            logger.info(f"Generating photo booth with theme {self._theme.id}: {display_style.value}, {label_style.value}")
+            logger.info(f"Generating photo booth with theme {self._theme.id}: {label_style.value}")
 
             # For malchishnik theme, pass Moscow time so it appears in the Polaroid caption
             personality_context = None
@@ -409,47 +406,50 @@ class PhotoboothMode(BaseMode):
                     f"area at the bottom of the Polaroid."
                 )
 
-            # Generate both images in parallel for speed
-            display_task = self._caricature_service.generate_caricature(
+            # Generate only the label (9:16) image
+            label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
-                style=display_style,  # 1:1 square for display
+                style=label_style,  # 9:16 vertical
                 personality_context=personality_context,
             )
-
-            label_task = self._caricature_service.generate_caricature(
-                reference_photo=self._state.photo_bytes,
-                style=label_style,  # 9:16 vertical for label
-                personality_context=personality_context,
-            )
-
-            # Wait for both to complete
-            display_result, label_result = await asyncio.gather(display_task, label_task)
-
-            display_bytes = None
-            label_bytes = None
-
-            if display_result and display_result.image_data:
-                display_bytes = display_result.image_data
-                logger.info(f"Display image generated: {len(display_bytes)} bytes")
-            else:
-                logger.warning("Display image generation failed, will use original photo")
 
             if label_result and label_result.image_data:
                 label_bytes = label_result.image_data
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
-            else:
-                logger.warning("Label image generation failed, will use display image")
-                label_bytes = display_bytes  # Fallback to display image
 
-            if display_bytes or label_bytes:
+                # Create center-cropped 1:1 version for LED display
+                display_bytes = self._crop_to_square(label_bytes)
+
                 return (display_bytes, label_bytes)
             else:
-                logger.error("Both AI generations failed")
+                logger.error("AI image generation failed")
                 return None
 
         except Exception as e:
             logger.error(f"AI photo booth generation failed: {e}")
             return None
+
+    def _crop_to_square(self, image_bytes: bytes) -> bytes:
+        """Center-crop a 9:16 image to 1:1 square for LED display."""
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(image_bytes))
+            w, h = img.size
+
+            # Center-crop to square
+            if w < h:
+                offset = (h - w) // 2
+                img = img.crop((0, offset, w, offset + w))
+            elif h < w:
+                offset = (w - h) // 2
+                img = img.crop((offset, 0, offset + h, h))
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to crop to square: {e}")
+            return image_bytes
 
     def _upload_ai_result_async(self) -> None:
         """Upload AI-generated photo booth image for gallery sharing.
@@ -485,15 +485,6 @@ class PhotoboothMode(BaseMode):
                 content_type="image/png",
                 callback=self._on_upload_complete,
             )
-            # Also upload the square version if available
-            if self._state.ai_display_bytes and self._state.ai_display_bytes != caricature_bytes:
-                self._uploader.upload_bytes(
-                    self._state.ai_display_bytes,
-                    prefix="photobooth-square",
-                    extension="png",
-                    content_type="image/png",
-                    callback=lambda r: logger.info(f"Square upload: {r.success}"),
-                )
         else:
             # Printing mode: render label with footer + QR
             try:
