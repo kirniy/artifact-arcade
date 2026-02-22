@@ -1,17 +1,20 @@
 #!/bin/bash
 # SNIPER.SH - Aggressively try to connect to Pi and fix networking
 #
-# PRIMARY NETWORK (office_64 is DOWN):
-#   VNVNC (backup WiFi, pw: vnvnc2018)
+# SITUATION: office_64 is DOWN, need to switch Pi to VNVNC
 #
-# Run this script from Mac connected to VNVNC
+# STRATEGY:
+#   1. Try VNVNC first (Pi might already be there or auto-switched)
+#   2. If not found, try office_64 (local access might still work even if no internet)
+#   3. Once connected, force Pi to VNVNC
 
 PASSWORD="qaz123"
 
 # Commands to run once connected - fix all networking and switch to VNVNC
 FIX_COMMANDS='
 echo "=== SNIPER CONNECTED at $(date) ==="
-echo "Connected from: $(hostname -I 2>/dev/null || echo unknown)"
+echo "Current WiFi: $(iwgetid -r 2>/dev/null || echo unknown)"
+echo "IP: $(hostname -I 2>/dev/null || echo unknown)"
 
 # Kill all VPN stuff
 sudo systemctl stop sing-box 2>/dev/null
@@ -20,6 +23,7 @@ sudo systemctl stop xray-proxy 2>/dev/null
 sudo systemctl disable xray-proxy 2>/dev/null
 sudo systemctl stop tun2socks 2>/dev/null
 sudo systemctl disable tun2socks 2>/dev/null
+sudo systemctl stop amneziawg 2>/dev/null
 
 # Kill the broken persist-venue-route service
 sudo systemctl stop persist-venue-route.service 2>/dev/null
@@ -30,45 +34,58 @@ sudo systemctl daemon-reload
 # Remove any manual IP hacks
 sudo ip addr del 192.168.2.150/24 dev wlan0 2>/dev/null
 
-# Fix DNS - this was broken!
+# Fix DNS
 echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
 echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
 
-# SWITCH TO VNVNC WIFI (office_64 is DOWN!)
+# SWITCH TO VNVNC WIFI
 echo ""
 echo "=== SWITCHING TO VNVNC WIFI ==="
+
+# Delete office_64 to prevent reconnection
 sudo nmcli connection delete "office_64" 2>/dev/null || true
-sudo nmcli device wifi connect "VNVNC" password "vnvnc2018" 2>/dev/null || {
-    echo "Wifi connect failed, trying rescan..."
-    sudo nmcli device wifi rescan
+
+# Check if already on VNVNC
+CURRENT_WIFI=$(iwgetid -r 2>/dev/null)
+if [ "$CURRENT_WIFI" = "VNVNC" ]; then
+    echo "Already on VNVNC!"
+else
+    echo "Connecting to VNVNC..."
+    sudo nmcli device wifi rescan 2>/dev/null
     sleep 2
-    sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
-}
+    sudo nmcli device wifi connect "VNVNC" password "vnvnc2018" || {
+        echo "First attempt failed, retrying..."
+        sleep 3
+        sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
+    }
+fi
 
 # Wait for connection
 sleep 5
 
+# Restart networking
+sudo systemctl restart NetworkManager
+sleep 3
+
 # Show status
 echo ""
-echo "=== CURRENT WIFI ==="
-iwgetid -r 2>/dev/null || echo "unknown"
+echo "=== FINAL STATUS ==="
+echo "WiFi: $(iwgetid -r 2>/dev/null || echo DISCONNECTED)"
+ip addr show wlan0 2>/dev/null | grep -E "inet " || echo "No IP on wlan0"
 echo ""
-echo "=== NETWORK STATUS ==="
-ip addr show wlan0 | grep -E "inet |state"
+echo "Routes:"
+ip route | head -3
 echo ""
-echo "=== ROUTES ==="
-ip route | head -5
+echo "Internet test:"
+ping -c 2 8.8.8.8 2>&1 | tail -2
 echo ""
-echo "=== DNS ==="
-cat /etc/resolv.conf | grep nameserver
-echo ""
-echo "=== INTERNET TEST ==="
-ping -c 2 8.8.8.8 2>&1 | tail -3
-echo ""
-echo "=== TAILSCALE ==="
+
+# Restart Tailscale
 sudo systemctl restart tailscaled
 sleep 3
-tailscale status 2>&1 | head -5
+echo "Tailscale:"
+tailscale status 2>&1 | head -3
+
 echo ""
 echo "=== SNIPER SUCCESS! ==="
 '
@@ -76,12 +93,14 @@ echo "=== SNIPER SUCCESS! ==="
 echo "╔═══════════════════════════════════════════════════════════════╗"
 echo "║  SNIPER - Hunting for Pi                                      ║"
 echo "║                                                               ║"
-echo "║  TARGET: Switch Pi to VNVNC WiFi (office_64 is DOWN)          ║"
+echo "║  SITUATION: office_64 is DOWN                                 ║"
 echo "║                                                               ║"
-echo "║  STEP 1: Connect YOUR Mac to VNVNC (pw: vnvnc2018)            ║"
-echo "║  STEP 2: Run this script                                      ║"
+echo "║  STRATEGY:                                                    ║"
+echo "║    Round 1: Connect Mac to VNVNC, run sniper                  ║"
+echo "║    Round 2: If not found, connect Mac to office_64, run again ║"
+echo "║             (local SSH might work even if no internet)        ║"
 echo "║                                                               ║"
-echo "║  Press Ctrl+C once you see SUCCESS                            ║"
+echo "║  Once found, Pi will be switched to VNVNC automatically       ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -95,42 +114,43 @@ fi
 CURRENT_IP=$(ipconfig getifaddr en0 2>/dev/null)
 if [ -z "$CURRENT_IP" ]; then
     echo "WARNING: Can't detect Mac's IP. Make sure you're on WiFi."
-    SUBNET="192.168"
+    SUBNET="192.168.1"
 else
     SUBNET=$(echo "$CURRENT_IP" | cut -d. -f1-3)
-    echo "Mac IP: $CURRENT_IP (scanning $SUBNET.x)"
+    echo "Mac IP: $CURRENT_IP"
+    echo "Scanning: $SUBNET.x + known office_64 IPs"
 fi
 echo ""
 
-# Build IP list based on current subnet
+# Build IP list
 IPS=(
-    "artifact.local"           # mDNS (works across subnets sometimes)
-    "$SUBNET.1"                # Often router, but try anyway
+    "artifact.local"           # mDNS
 )
 
-# Add common IPs in current subnet
-for i in {2..30} {100..110} {150..160} {200..210}; do
+# Add IPs in current subnet
+for i in {2..50} {100..120} {150..160} {200..220}; do
     IPS+=("$SUBNET.$i")
 done
 
-# Also try the known office_64 IPs in case Pi is still there
+# Also try known office_64 IPs (in case Pi is there)
 IPS+=(
     "192.168.2.12"
     "192.168.2.14"
     "192.168.2.16"
     "192.168.2.21"
+    "192.168.2.100"
     "192.168.2.150"
 )
 
 attempt=0
 while true; do
     attempt=$((attempt + 1))
-    echo "[Attempt $attempt] Scanning..."
+    echo "[Attempt $attempt] Scanning ${#IPS[@]} addresses..."
 
     for ip in "${IPS[@]}"; do
-        # Quick port check first (faster than full SSH timeout)
+        # Quick port check (1 second timeout)
         if nc -z -w1 "$ip" 22 2>/dev/null; then
-            echo "  Found SSH on $ip - trying to connect..."
+            echo "  → Found SSH on $ip - connecting..."
 
             result=$(sshpass -p "$PASSWORD" ssh \
                 -o ConnectTimeout=5 \
@@ -143,19 +163,28 @@ while true; do
                 echo ""
                 echo "$result"
                 echo ""
+                # Extract new IP from output
+                NEW_IP=$(echo "$result" | grep "inet " | grep -oE "192\.[0-9]+\.[0-9]+\.[0-9]+" | head -1)
                 echo "╔═══════════════════════════════════════════════════════════════╗"
-                echo "║  SUCCESS! Connected via $ip"
-                echo "║  Pi should be on VNVNC now. Try:"
-                echo "║    ssh kirniy@artifact.local"
-                echo "║    ssh kirniy@<new-ip-shown-above>"
+                echo "║  SUCCESS!                                                     ║"
+                echo "║                                                               ║"
+                echo "║  Pi is now on VNVNC WiFi                                      ║"
+                echo "║  New IP: ${NEW_IP:-check output above}                        ║"
+                echo "║                                                               ║"
+                echo "║  Next steps:                                                  ║"
+                echo "║    1. Connect YOUR Mac to VNVNC (if not already)              ║"
+                echo "║    2. ssh kirniy@${NEW_IP:-artifact.local}                    ║"
+                echo "║    3. Run: ./scripts/setup-amneziawg.sh                       ║"
                 echo "╚═══════════════════════════════════════════════════════════════╝"
                 exit 0
             else
-                echo "  Connected but command failed. Output:"
-                echo "$result" | head -10
+                echo "  Connected but something failed:"
+                echo "$result" | head -15
+                echo ""
             fi
         fi
     done
 
-    sleep 2
+    echo "  No Pi found this round. Retrying in 3s..."
+    sleep 3
 done
