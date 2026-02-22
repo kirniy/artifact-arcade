@@ -871,7 +871,7 @@ class PhotoboothMode(BaseMode):
                 draw_line(buffer, ax + offset, ay, ax - 2 + offset, ay - 6, arrow_color)   # Arrowhead top
 
             draw_text(buffer, "СКАНИРУЙ КОД", 4, 102, self.THEME_CHROME, scale=1)
-            draw_text(buffer, "2-3 МИН ОБНОВИ", 4, 110, (200, 180, 255), scale=1)
+            draw_text(buffer, "ЧЕРЕЗ 2-3 МИН ОБНОВИ", 4, 110, (200, 180, 255), scale=1)
             draw_text(buffer, "НАЙДЕШЬ ФОТО", 4, 118, (200, 180, 255), scale=1)
 
         elif self._state.result_view == "qr":
