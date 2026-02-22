@@ -1,276 +1,396 @@
 # ARTIFACT Pi Recovery Plan - February 23, 2026
 
-## The Situation
-
-- Pi is at the venue, cannot physically access it
-- Network is fucked - another agent created `persist-venue-route.service` that keeps messing with routing
-- **DNS was broken** - this caused Tailscale to fail even with sing-box off
-- sing-box TUN mode was destroying routing tables
-- Another agent may have tried to switch Pi to "VNVNC" WiFi - Pi could be on either network
-- Need to connect remotely and fix everything
-
-## Two Possible WiFi Networks
-
-| Network | Password | Subnet |
-|---------|----------|--------|
-| office_64 | (none?) | 192.168.2.x |
-| VNVNC | vnvnc2018 | unknown |
-
-**The Pi might be on either one.** Try both.
+**CRITICAL: Do NOT spend more than 15 minutes on any single step. If stuck, move to fallback.**
 
 ---
 
-## PHASE 1: Get Connected (Do This First)
+## BEFORE YOU START
 
-### Option A: Sniper Script (BEST OPTION)
+### Known Issues From Last Night:
+1. **Camera fell** - now physically fixed, but caused black screen (wasted debugging time)
+2. **DNS was broken** - Tailscale couldn't resolve anything
+3. **sing-box destroyed routing** - auto_route hijacked everything
+4. **persist-venue-route.service** - rogue service kept messing with routes
+5. **Another agent tried switching WiFi** - Pi might be on wrong network
 
-The Pi might be on `office_64` OR `VNVNC`. Try both:
+### WiFi Networks Available:
+| Network | Password | Subnet | Notes |
+|---------|----------|--------|-------|
+| office_64 | (open?) | 192.168.2.x | Main venue WiFi |
+| VNVNC | vnvnc2018 | unknown | Backup option |
+| Renaissance | (home) | - | Not available at venue |
 
-**Step 1: Connect Mac to office_64**
+---
+
+## PHASE 0: QUICK SANITY CHECK (2 minutes max)
+
+Before doing anything complex, try the obvious:
+
+```bash
+# From your Mac, try all these:
+ping artifact.local
+ssh kirniy@artifact.local
+tailscale ping artifact
+```
+
+If any of these work, skip to PHASE 2.
+
+---
+
+## PHASE 1: FIND THE PI (15 minutes max)
+
+### Step 1A: Try office_64 first
+Connect your Mac to `office_64`, then:
 ```bash
 cd ~/dev/artifact-arcade
 ./sniper.sh
 ```
+Wait up to 3 minutes for "SNIPER SUCCESS!"
 
-Wait 1-2 minutes. If no success...
-
-**Step 2: Connect Mac to VNVNC (password: vnvnc2018)**
+### Step 1B: Try VNVNC
+If office_64 didn't work, connect Mac to `VNVNC` (password: `vnvnc2018`):
 ```bash
 ./sniper.sh
 ```
 
-The sniper script:
-1. Scans the current subnet for SSH
-2. Disables broken `persist-venue-route.service`
-3. **Fixes DNS** (was broken - set to 8.8.8.8)
-4. Configures BOTH WiFi networks on the Pi
-5. Restarts NetworkManager and Tailscale
-
-**Watch for "SNIPER SUCCESS!" then Ctrl+C to stop.**
-
-### Option B: Tailscale (if Pi briefly connects)
-
-Tailscale might connect for a few seconds. Be ready:
-
+### Step 1C: Manual network scan
+If sniper doesn't find it:
 ```bash
-# Keep trying in a loop
-while true; do
-    ssh kirniy@100.102.241.21 "echo CONNECTED" && break
-    sleep 1
-done
+# Get your Mac's current IP
+ipconfig getifaddr en0
+
+# Scan the subnet (replace with your subnet)
+nmap -sn 192.168.1.0/24 2>/dev/null | grep -B2 "Raspberry\|DC:A6:32\|artifact"
+
+# Or use arp
+arp -a | grep -i "dc:a6:32\|raspberry"
 ```
 
-Replace `100.102.241.21` with Pi's Tailscale IP (check `tailscale status` on your Mac).
+### Step 1D: If nothing works
+The Pi might be:
+- Crashed/frozen → Need physical power cycle (can't do remotely)
+- On a different network → Try other available WiFi networks
+- WiFi chip dead → Need physical access
 
-### Option C: mDNS (if network is stable)
-
-```bash
-ssh kirniy@artifact.local
-```
-
-### Option D: Network Scan
-
-```bash
-# Find Pi on local network
-arp -a | grep -i "dc:a6:32\|raspberry\|e4:5f:01"
-
-# Or use nmap
-nmap -sn 192.168.2.0/24 | grep -B2 "Raspberry\|DC:A6:32"
-```
+**DECISION POINT:** If you can't connect after 15 minutes, the Pi needs physical intervention. Call someone who can power cycle it.
 
 ---
 
-## PHASE 2: Emergency Stabilization (Once Connected)
+## PHASE 2: GET LOGS FIRST (5 minutes)
 
-**Run these commands IMMEDIATELY after connecting:**
+**IMMEDIATELY after connecting, before fixing anything, grab logs:**
 
 ```bash
-# 1. KILL everything that's breaking networking
-sudo systemctl stop sing-box
-sudo systemctl disable sing-box
+# Save this entire output to understand what happened
+ssh kirniy@<IP> 'bash -s' << 'GETLOGS'
+echo "=== TIMESTAMP ==="
+date
+
+echo ""
+echo "=== CURRENT WIFI ==="
+iwgetid -r 2>/dev/null || echo "not connected"
+
+echo ""
+echo "=== IP ADDRESSES ==="
+ip addr show wlan0 | grep -E "inet |state"
+
+echo ""
+echo "=== ROUTING TABLE ==="
+ip route
+
+echo ""
+echo "=== DNS CONFIG ==="
+cat /etc/resolv.conf
+
+echo ""
+echo "=== ACTIVE SERVICES ==="
+systemctl list-units --state=running | grep -E "sing-box|xray|tun2socks|persist|artifact|tailscale|network"
+
+echo ""
+echo "=== RECENT NETWORK ERRORS ==="
+journalctl -u NetworkManager --since "1 hour ago" --no-pager | tail -30
+
+echo ""
+echo "=== RECENT TAILSCALE ERRORS ==="
+journalctl -u tailscaled --since "1 hour ago" --no-pager | tail -30
+
+echo ""
+echo "=== RECENT ARTIFACT ERRORS ==="
+journalctl -u artifact --since "1 hour ago" --no-pager | tail -50
+
+echo ""
+echo "=== CAMERA STATUS ==="
+rpicam-hello --list-cameras 2>&1 | head -10
+
+echo ""
+echo "=== INTERNET CONNECTIVITY ==="
+ping -c 2 8.8.8.8 2>&1
+ping -c 2 google.com 2>&1
+
+echo ""
+echo "=== PROXY TEST (if xray running) ==="
+curl -s --connect-timeout 5 --proxy socks5://127.0.0.1:10808 https://google.com >/dev/null 2>&1 && echo "PROXY WORKS" || echo "PROXY FAILED OR NOT RUNNING"
+GETLOGS
+```
+
+**SAVE THIS OUTPUT.** It tells you exactly what's broken.
+
+---
+
+## PHASE 3: STABILIZE NETWORK (10 minutes max)
+
+### Step 3A: Kill everything bad
+```bash
+# Stop all VPN/routing stuff
+sudo systemctl stop sing-box 2>/dev/null
+sudo systemctl disable sing-box 2>/dev/null
+sudo systemctl stop xray-proxy 2>/dev/null
+sudo systemctl stop tun2socks 2>/dev/null
 sudo systemctl stop persist-venue-route.service 2>/dev/null
 sudo systemctl disable persist-venue-route.service 2>/dev/null
 sudo rm -f /etc/systemd/system/persist-venue-route.service
 
-# 2. Remove any fucked routing hacks
+# Remove IP hacks
 sudo ip addr del 192.168.2.150/24 dev wlan0 2>/dev/null
+sudo ip route del default via 192.168.2.1 src 192.168.2.150 2>/dev/null
 
-# 3. Reset NetworkManager to sane state
+# Reload systemd
+sudo systemctl daemon-reload
+```
+
+### Step 3B: Fix DNS (CRITICAL)
+```bash
+# This was the main problem last night!
+echo -e "nameserver 8.8.8.8\nnameserver 1.1.1.1" | sudo tee /etc/resolv.conf
+
+# Verify
+cat /etc/resolv.conf
+```
+
+### Step 3C: Restart networking
+```bash
 sudo systemctl restart NetworkManager
-
-# 4. Wait for DHCP
 sleep 5
 
-# 5. Check we have internet
-ping -c 3 8.8.8.8
+# Check we have internet
+ping -c 3 8.8.8.8 && echo "INTERNET OK" || echo "NO INTERNET"
+ping -c 3 google.com && echo "DNS OK" || echo "DNS BROKEN"
+```
 
-# 6. Restart Tailscale
+### Step 3D: Restart Tailscale
+```bash
 sudo systemctl restart tailscaled
 sleep 5
 tailscale status
 ```
 
-**If internet works but Tailscale doesn't connect:**
+**DECISION POINT:** If internet doesn't work here, try switching to a different WiFi network:
 ```bash
-# Check if DNS is broken
-cat /etc/resolv.conf
+# List available networks
+nmcli device wifi list
 
-# Force DNS to work
-echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
-
-# Try Tailscale again
-sudo systemctl restart tailscaled
+# Connect to a different one
+sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
 ```
 
 ---
 
-## PHASE 3: Verify Stability
+## PHASE 4: VERIFY STABILITY (5 minutes)
 
-Before doing anything else, make sure networking is stable:
+**Don't proceed until this passes:**
 
 ```bash
-# Watch for 2 minutes - should stay connected
-watch -n 5 'echo "=== $(date) ==="; ip addr show wlan0 | grep inet; ip route | head -3; tailscale status | head -3'
+# Run this and wait 2 minutes - it should stay connected
+for i in {1..24}; do
+    echo "=== Check $i/24 ($(date +%H:%M:%S)) ==="
+    ping -c 1 8.8.8.8 >/dev/null && echo "Internet: OK" || echo "Internet: FAIL"
+    ping -c 1 google.com >/dev/null && echo "DNS: OK" || echo "DNS: FAIL"
+    tailscale status >/dev/null 2>&1 && echo "Tailscale: OK" || echo "Tailscale: FAIL"
+    echo ""
+    sleep 5
+done
 ```
 
-If it keeps disconnecting, the venue WiFi itself might be unstable. In that case:
-- Just use local polaroid mode (no AI)
-- Skip VPN setup entirely
+If it keeps failing, **STOP** and use fallback mode (no AI).
 
 ---
 
-## PHASE 4: Set Up Robust VPN (xray + tun2socks)
+## PHASE 5: SETUP VPN (10 minutes)
 
-This mirrors exactly what works on your Mac with Amnezia. **Everything is in the git repo - just run the script.**
-
-### ONE COMMAND SETUP:
-
-```bash
-cd ~/modular-arcade
-./scripts/setup-xray-vpn.sh
-```
-
-This script:
-1. **Completely removes sing-box** (stops, disables, purges)
-2. Removes `persist-venue-route.service` and IP hacks
-3. Fixes DNS (8.8.8.8, 1.1.1.1)
-4. Installs xray and tun2socks
-5. Configures xray with your Netherlands server
-6. Creates and starts `xray-proxy.service`
-7. Tests the proxy
-
-### After running the script:
-
-```bash
-# Verify xray is running
-systemctl status xray-proxy
-
-# Test proxy works
-curl --proxy socks5://127.0.0.1:10808 https://www.google.com
-
-# Test Gemini API
-curl --proxy socks5://127.0.0.1:10808 https://generativelanguage.googleapis.com/
-```
-
-### Optional: Full TUN mode (routes ALL traffic through VPN)
-
-Only do this if SOCKS-only mode doesn't work:
-
-```bash
-sudo systemctl enable --now tun2socks
-```
-
-⚠️ **WARNING**: TUN mode routes ALL traffic through VPN. If VPN fails, you lose SSH access!
-
----
-
-## PHASE 5: Update Artifact App
-
-Pull latest code and restart:
+Only do this if Phase 4 passed.
 
 ```bash
 cd ~/modular-arcade
 git pull
 
-# Install new dependency
-.venv/bin/pip install aiohttp-socks
-
-# Restart artifact
-sudo systemctl restart artifact
-
-# Check logs
-journalctl -u artifact -f
+# Run the setup script
+./scripts/setup-xray-vpn.sh
 ```
 
----
+The script will:
+1. Remove sing-box completely
+2. Install xray
+3. Configure SOCKS proxy on localhost:10808
+4. Test the connection
 
-## PHASE 6: Test Everything
-
+### Verify it works:
 ```bash
-# 1. Check xray proxy is running
+# Check service is running
 systemctl status xray-proxy
 
-# 2. Check Gemini API is reachable
-curl --proxy socks5://127.0.0.1:10808 \
-  "https://generativelanguage.googleapis.com/" -I
+# Test proxy
+curl --proxy socks5://127.0.0.1:10808 https://www.google.com -I 2>&1 | head -5
 
-# 3. Check Tailscale is stable
-tailscale status
-
-# 4. Check artifact is running
-systemctl status artifact
-
-# 5. Test photobooth manually (if possible)
+# Test Gemini API specifically
+curl --proxy socks5://127.0.0.1:10808 https://generativelanguage.googleapis.com/ -I 2>&1 | head -5
 ```
 
 ---
 
-## FALLBACK: Local Mode Only
-
-If NOTHING works with VPN, just disable AI and use local polaroid:
+## PHASE 6: UPDATE AND RESTART APP (5 minutes)
 
 ```bash
-# Edit the service to disable proxy
+cd ~/modular-arcade
+
+# Install dependencies
+.venv/bin/pip install aiohttp-socks
+
+# Copy updated service file
+sudo cp scripts/artifact.service /etc/systemd/system/
+sudo systemctl daemon-reload
+
+# Restart
+sudo systemctl restart artifact
+
+# Watch logs for 1 minute
+timeout 60 journalctl -u artifact -f || true
+```
+
+---
+
+## PHASE 7: FINAL VERIFICATION
+
+```bash
+echo "=== FINAL STATUS ==="
+echo ""
+echo "Services:"
+systemctl is-active xray-proxy && echo "  xray-proxy: RUNNING" || echo "  xray-proxy: STOPPED"
+systemctl is-active artifact && echo "  artifact: RUNNING" || echo "  artifact: STOPPED"
+systemctl is-active tailscaled && echo "  tailscaled: RUNNING" || echo "  tailscaled: STOPPED"
+
+echo ""
+echo "Network:"
+ping -c 1 8.8.8.8 >/dev/null && echo "  Internet: OK" || echo "  Internet: FAIL"
+curl -s --proxy socks5://127.0.0.1:10808 https://google.com >/dev/null && echo "  VPN Proxy: OK" || echo "  VPN Proxy: FAIL"
+
+echo ""
+echo "Camera:"
+rpicam-hello --list-cameras 2>&1 | grep -q "imx708" && echo "  Camera: DETECTED" || echo "  Camera: NOT FOUND"
+```
+
+---
+
+## FALLBACK: LOCAL MODE (No AI)
+
+If VPN absolutely won't work, just disable AI:
+
+```bash
+# Disable proxy
 sudo sed -i 's/GEMINI_USE_PROXY=true/GEMINI_USE_PROXY=false/' /etc/systemd/system/artifact.service
 sudo systemctl daemon-reload
 sudo systemctl restart artifact
 ```
 
-The photobooth will work perfectly with local polaroid generation - no AI needed.
+The machine will work perfectly with local polaroid generation. No internet needed for photos.
 
 ---
 
-## Quick Reference
+## FALLBACK: DIFFERENT WIFI
 
-| What | Command |
-|------|---------|
-| SSH via Tailscale | `ssh kirniy@100.x.x.x` |
+If current WiFi is garbage, try another:
+
+```bash
+# See what's available
+nmcli device wifi list
+
+# Connect to VNVNC
+sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
+
+# Or forget bad network and let it auto-connect to another
+sudo nmcli connection delete "office_64"
+```
+
+---
+
+## EMERGENCY: NOTHING WORKS
+
+If you absolutely cannot connect:
+
+1. **Power cycle** - Someone needs to physically unplug and replug the Pi
+2. **Ethernet** - If there's an ethernet port available, plug it in (Pi will get DHCP)
+3. **HDMI + Keyboard** - Connect display and keyboard to see what's on screen
+4. **SD Card** - Pull SD card, mount on another computer, fix config files
+
+---
+
+## QUICK REFERENCE
+
+| Action | Command |
+|--------|---------|
+| SSH via Tailscale | `ssh kirniy@artifact` or `ssh kirniy@100.x.x.x` |
 | SSH via local IP | `ssh kirniy@192.168.2.x` |
 | Pi password | `qaz123` |
+| Find Pi on network | `./sniper.sh` |
 | Setup VPN | `./scripts/setup-xray-vpn.sh` |
-| Check xray | `systemctl status xray-proxy` |
 | Check logs | `journalctl -u artifact -f` |
-| Restart artifact | `sudo systemctl restart artifact` |
+| Restart app | `sudo systemctl restart artifact` |
 | Test proxy | `curl --proxy socks5://127.0.0.1:10808 https://google.com` |
+| Check camera | `rpicam-hello --list-cameras` |
+| List WiFi | `nmcli device wifi list` |
+| Switch WiFi | `sudo nmcli device wifi connect "SSID" password "PASS"` |
 
 ---
 
-## What Went Wrong (For Future Reference)
+## WHAT WENT WRONG (Post-Mortem)
 
-1. **sing-box TUN mode with `auto_route: true`** - hijacked entire routing table, broke everything when VPN hiccuped
+### Issue 1: Camera fell (physical)
+- Caused black screen, wasted time debugging software
+- **Fix**: Check physical connections first next time
 
-2. **Another agent created `persist-venue-route.service`** - kept fucking with routes, causing instability
+### Issue 2: DNS corrupted
+- sing-box hijacked DNS, never recovered
+- Tailscale couldn't resolve controlplane.tailscale.com
+- **Fix**: Always set DNS to 8.8.8.8 explicitly
 
-3. **DNS got corrupted** - Tailscale couldn't resolve controlplane.tailscale.com, causing disconnects even with sing-box OFF
+### Issue 3: sing-box auto_route
+- `auto_route: true` hijacked entire routing table
+- When VPN failed, ALL traffic blackholed
+- **Fix**: Use SOCKS proxy mode, not TUN
 
-4. **IP address hacks (.150)** - manually adding secondary IPs confused NetworkManager
+### Issue 4: Rogue services
+- Another agent created `persist-venue-route.service`
+- Kept overwriting routing fixes
+- **Fix**: Check for and remove unexpected services
 
-5. **Another agent tried switching to VNVNC WiFi** - may have left Pi in limbo between networks
+### Issue 5: IP hacks
+- Manually adding .150 IP confused NetworkManager
+- DHCP and manual IPs conflicting
+- **Fix**: Let DHCP do its job, don't add manual IPs
 
-6. **All eggs in one basket** - when VPN broke, EVERYTHING broke including Tailscale
+---
 
-**The fix**:
-- Fix DNS first (8.8.8.8, 1.1.1.1)
-- Remove all rogue services
-- Use SOCKS proxy mode (not TUN), only route Gemini traffic through VPN
-- Configure both WiFi networks so Pi can fall back
+## TIME BUDGET
+
+| Phase | Max Time | If Exceeded |
+|-------|----------|-------------|
+| Phase 0: Sanity check | 2 min | Move to Phase 1 |
+| Phase 1: Find Pi | 15 min | Need physical access |
+| Phase 2: Get logs | 5 min | Just proceed |
+| Phase 3: Stabilize | 10 min | Try different WiFi |
+| Phase 4: Verify | 5 min | Use fallback mode |
+| Phase 5: VPN setup | 10 min | Use fallback mode |
+| Phase 6: Update app | 5 min | Check logs |
+| Phase 7: Final check | 2 min | Done |
+| **TOTAL** | **~55 min** | |
+
+**If total exceeds 1 hour, use fallback mode and call it done.**
