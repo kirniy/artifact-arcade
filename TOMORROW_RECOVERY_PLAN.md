@@ -284,24 +284,30 @@ ping -c 1 8.8.8.8 >/dev/null && echo "  Internet: OK" || echo "  Internet: FAIL"
 curl -s --proxy socks5://127.0.0.1:10808 https://google.com >/dev/null && echo "  VPN Proxy: OK" || echo "  VPN Proxy: FAIL"
 
 echo ""
+echo "S3 Upload (CRITICAL - photos must upload):"
+curl -s --connect-timeout 5 https://s3.ru-7.storage.selcloud.ru >/dev/null && echo "  S3 Endpoint: OK" || echo "  S3 Endpoint: FAIL"
+
+echo ""
 echo "Camera:"
 rpicam-hello --list-cameras 2>&1 | grep -q "imx708" && echo "  Camera: DETECTED" || echo "  Camera: NOT FOUND"
 ```
 
+**CRITICAL:** S3 must work for photos to upload. If S3 fails, photos won't have QR codes.
+
 ---
 
-## FALLBACK: LOCAL MODE (No AI)
+## FALLBACK: LOCAL MODE (No AI, but S3 still works)
 
-If VPN absolutely won't work, just disable AI:
+If VPN won't work but internet is fine, disable AI only:
 
 ```bash
-# Disable proxy
+# Disable proxy (Gemini won't work, but S3 uploads will)
 sudo sed -i 's/GEMINI_USE_PROXY=true/GEMINI_USE_PROXY=false/' /etc/systemd/system/artifact.service
 sudo systemctl daemon-reload
 sudo systemctl restart artifact
 ```
 
-The machine will work perfectly with local polaroid generation. No internet needed for photos.
+**Important:** Local mode still needs internet for S3 uploads. Photos must still upload and QR codes must work. This is just to avoid AI-related failures - the photobooth still functions for clients.
 
 ---
 
@@ -324,12 +330,14 @@ sudo nmcli connection delete "office_64"
 
 ## EMERGENCY: NOTHING WORKS
 
-If you absolutely cannot connect:
+If you absolutely cannot connect remotely:
 
-1. **Power cycle** - Someone needs to physically unplug and replug the Pi
-2. **Ethernet** - If there's an ethernet port available, plug it in (Pi will get DHCP)
-3. **HDMI + Keyboard** - Connect display and keyboard to see what's on screen
-4. **SD Card** - Pull SD card, mount on another computer, fix config files
+1. **Power cycle** - Ask someone at venue to unplug and replug the Pi (wait 30 sec between)
+2. **Ethernet** - If there's an ethernet port near the machine, ask someone to plug it in
+3. **Different outlet** - Sometimes power issues; try a different outlet
+4. **Wait and retry** - Venue WiFi might be temporarily down; try again in 30 minutes
+
+**Note:** Physical access to internals (HDMI, keyboard, SD card) is NOT possible without opening the machine.
 
 ---
 
