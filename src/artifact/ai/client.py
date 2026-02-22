@@ -15,6 +15,18 @@ from artifact.ai.logging import get_ai_logger
 
 logger = logging.getLogger(__name__)
 
+# Proxy configuration for bypassing network restrictions (Roskomnadzor etc)
+# Set by environment or defaults to local xray SOCKS5 proxy
+PROXY_URL = os.environ.get("GEMINI_PROXY", "socks5://127.0.0.1:10808")
+USE_PROXY = os.environ.get("GEMINI_USE_PROXY", "").lower() in ("1", "true", "yes")
+
+# If proxy is enabled, set environment variables for HTTP libraries
+# This affects httpx, urllib3, requests, aiohttp, etc.
+if USE_PROXY:
+    os.environ["ALL_PROXY"] = PROXY_URL
+    os.environ["HTTPS_PROXY"] = PROXY_URL
+    os.environ["HTTP_PROXY"] = PROXY_URL
+
 
 class GeminiModel(Enum):
     """Available Gemini models."""
@@ -87,7 +99,10 @@ class GeminiClient:
         ] if k]
         self._current_key_index = 0
 
-        logger.info(f"GeminiClient initialized ({len(self._api_keys)} API key(s))")
+        if USE_PROXY:
+            logger.info(f"GeminiClient initialized ({len(self._api_keys)} API key(s)), proxy: {PROXY_URL}")
+        else:
+            logger.info(f"GeminiClient initialized ({len(self._api_keys)} API key(s)), no proxy")
 
     def _rotate_api_key(self) -> bool:
         """Rotate to next API key on 429 errors. Returns True if rotated."""
@@ -415,7 +430,17 @@ class GeminiClient:
 
             for attempt in range(self.config.max_retries):
                 try:
-                    async with aiohttp.ClientSession() as session:
+                    # Set up connector - use SOCKS5 proxy if enabled
+                    connector = None
+                    if USE_PROXY:
+                        try:
+                            from aiohttp_socks import ProxyConnector
+                            connector = ProxyConnector.from_url(PROXY_URL)
+                            logger.debug(f"Using proxy: {PROXY_URL}")
+                        except ImportError:
+                            logger.warning("aiohttp_socks not installed, proxy disabled")
+
+                    async with aiohttp.ClientSession(connector=connector) as session:
                         async with session.post(
                             endpoint,
                             json=payload,

@@ -1,7 +1,7 @@
 [Unit]
 Description=ARTIFACT Arcade Machine
-After=network.target graphical.target artifact-audio.service
-Wants=graphical.target artifact-audio.service
+After=network.target graphical.target artifact-audio.service xray-proxy.service
+Wants=graphical.target artifact-audio.service xray-proxy.service
 
 [Service]
 Type=notify
@@ -11,6 +11,10 @@ Environment=ARTIFACT_ENV=hardware
 Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
 # Printer: USB connection
 Environment=ARTIFACT_PRINTER_PORT=/dev/usb/lp0
+# Proxy for Gemini API (bypasses Roskomnadzor blocks)
+# Requires xray-proxy.service running (SOCKS5 on localhost:10808)
+Environment=GEMINI_USE_PROXY=true
+Environment=GEMINI_PROXY=socks5://127.0.0.1:10808
 # Audio: Use ALSA driver with card 2 (3.5mm headphones)
 Environment=SDL_AUDIODRIVER=alsa
 Environment=AUDIODEV=hw:2,0

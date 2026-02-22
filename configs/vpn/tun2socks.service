@@ -1,0 +1,33 @@
+[Unit]
+Description=TUN to SOCKS5 (routes all traffic through xray)
+After=xray-proxy.service
+Requires=xray-proxy.service
+
+[Service]
+Type=simple
+
+# Create TUN interface
+ExecStartPre=/sbin/ip tuntap add mode tun dev tun0
+ExecStartPre=/sbin/ip addr add 10.33.0.2/8 dev tun0
+ExecStartPre=/sbin/ip link set dev tun0 up
+
+# Route VPN server DIRECT (not through tunnel!) - critical!
+ExecStartPre=/bin/bash -c 'ip route add 151.245.92.201 via $(ip route | grep "default via" | head -1 | awk "{print \\$3}") 2>/dev/null || true'
+
+# Route everything else through tun0 (0/1 + 128/1 trick)
+ExecStartPre=/sbin/ip route add 0.0.0.0/1 dev tun0
+ExecStartPre=/sbin/ip route add 128.0.0.0/1 dev tun0
+
+# Start tun2socks
+ExecStart=/usr/local/bin/tun2socks -device tun0 -proxy socks5://127.0.0.1:10808
+
+# Cleanup on stop
+ExecStopPost=/sbin/ip route del 0.0.0.0/1 dev tun0 2>/dev/null || true
+ExecStopPost=/sbin/ip route del 128.0.0.0/1 dev tun0 2>/dev/null || true
+ExecStopPost=/sbin/ip link del tun0 2>/dev/null || true
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
