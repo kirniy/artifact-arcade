@@ -6,19 +6,16 @@
 
 ## BEFORE YOU START
 
-### Known Issues From Last Night:
-1. **Camera fell** - now physically fixed, but caused black screen (wasted debugging time)
-2. **DNS was broken** - Tailscale couldn't resolve anything
-3. **sing-box destroyed routing** - auto_route hijacked everything
-4. **persist-venue-route.service** - rogue service kept messing with routes
-5. **Another agent tried switching WiFi** - Pi might be on wrong network
+### Today's Changes:
+1. **office_64 WiFi is DOWN** - Use VNVNC instead (pw: vnvnc2018)
+2. **AmneziaWG 2.0** - Replacing xray/sing-box with native kernel module VPN
+3. **No more SOCKS proxy** - AmneziaWG routes ALL traffic through VPN
 
-### WiFi Networks Available:
-| Network | Password | Subnet | Notes |
-|---------|----------|--------|-------|
-| office_64 | (open?) | 192.168.2.x | Main venue WiFi |
-| VNVNC | vnvnc2018 | unknown | Backup option |
-| Renaissance | (home) | - | Not available at venue |
+### WiFi Network:
+| Network | Password | Notes |
+|---------|----------|-------|
+| VNVNC | vnvnc2018 | PRIMARY - use this! |
+| office_64 | - | DOWN, don't use |
 
 ---
 
@@ -27,7 +24,7 @@
 Before doing anything complex, try the obvious:
 
 ```bash
-# From your Mac, try all these:
+# From your Mac (connected to VNVNC!), try:
 ping artifact.local
 ssh kirniy@artifact.local
 tailscale ping artifact
@@ -39,21 +36,16 @@ If any of these work, skip to PHASE 2.
 
 ## PHASE 1: FIND THE PI (15 minutes max)
 
-### Step 1A: Try office_64 first
-Connect your Mac to `office_64`, then:
+### Step 1A: Connect Mac to VNVNC first!
 ```bash
+# On Mac, connect to VNVNC WiFi (password: vnvnc2018)
+# Then run sniper:
 cd ~/dev/artifact-arcade
 ./sniper.sh
 ```
 Wait up to 3 minutes for "SNIPER SUCCESS!"
 
-### Step 1B: Try VNVNC
-If office_64 didn't work, connect Mac to `VNVNC` (password: `vnvnc2018`):
-```bash
-./sniper.sh
-```
-
-### Step 1C: Manual network scan
+### Step 1B: Manual network scan
 If sniper doesn't find it:
 ```bash
 # Get your Mac's current IP
@@ -66,10 +58,10 @@ nmap -sn 192.168.1.0/24 2>/dev/null | grep -B2 "Raspberry\|DC:A6:32\|artifact"
 arp -a | grep -i "dc:a6:32\|raspberry"
 ```
 
-### Step 1D: If nothing works
+### Step 1C: If nothing works
 The Pi might be:
 - Crashed/frozen → Need physical power cycle (can't do remotely)
-- On a different network → Try other available WiFi networks
+- Still on office_64 → It won't respond if that network is down
 - WiFi chip dead → Need physical access
 
 **DECISION POINT:** If you can't connect after 15 minutes, the Pi needs physical intervention. Call someone who can power cycle it.
@@ -104,7 +96,7 @@ cat /etc/resolv.conf
 
 echo ""
 echo "=== ACTIVE SERVICES ==="
-systemctl list-units --state=running | grep -E "sing-box|xray|tun2socks|persist|artifact|tailscale|network"
+systemctl list-units --state=running | grep -E "sing-box|xray|tun2socks|amneziawg|persist|artifact|tailscale|network"
 
 echo ""
 echo "=== RECENT NETWORK ERRORS ==="
@@ -126,10 +118,6 @@ echo ""
 echo "=== INTERNET CONNECTIVITY ==="
 ping -c 2 8.8.8.8 2>&1
 ping -c 2 google.com 2>&1
-
-echo ""
-echo "=== PROXY TEST (if xray running) ==="
-curl -s --connect-timeout 5 --proxy socks5://127.0.0.1:10808 https://google.com >/dev/null 2>&1 && echo "PROXY WORKS" || echo "PROXY FAILED OR NOT RUNNING"
 GETLOGS
 ```
 
@@ -137,28 +125,23 @@ GETLOGS
 
 ---
 
-## PHASE 3: STABILIZE NETWORK (10 minutes max)
+## PHASE 3: SWITCH TO VNVNC WIFI (5 minutes)
 
-### Step 3A: Kill everything bad
+### Step 3A: Force switch to VNVNC
 ```bash
-# Stop all VPN/routing stuff
-sudo systemctl stop sing-box 2>/dev/null
-sudo systemctl disable sing-box 2>/dev/null
-sudo systemctl stop xray-proxy 2>/dev/null
-sudo systemctl stop tun2socks 2>/dev/null
-sudo systemctl stop persist-venue-route.service 2>/dev/null
-sudo systemctl disable persist-venue-route.service 2>/dev/null
-sudo rm -f /etc/systemd/system/persist-venue-route.service
+# Remove office_64 and connect to VNVNC
+sudo nmcli connection delete "office_64" 2>/dev/null || true
+sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
 
-# Remove IP hacks
-sudo ip addr del 192.168.2.150/24 dev wlan0 2>/dev/null
-sudo ip route del default via 192.168.2.1 src 192.168.2.150 2>/dev/null
+# Wait for connection
+sleep 5
 
-# Reload systemd
-sudo systemctl daemon-reload
+# Verify
+iwgetid -r  # Should show "VNVNC"
+ip addr show wlan0 | grep inet
 ```
 
-### Step 3B: Fix DNS (CRITICAL)
+### Step 3B: Fix DNS
 ```bash
 # This was the main problem last night!
 echo -e "nameserver 8.8.8.8\nnameserver 1.1.1.1" | sudo tee /etc/resolv.conf
@@ -167,82 +150,84 @@ echo -e "nameserver 8.8.8.8\nnameserver 1.1.1.1" | sudo tee /etc/resolv.conf
 cat /etc/resolv.conf
 ```
 
-### Step 3C: Restart networking
+### Step 3C: Verify basic connectivity
 ```bash
-sudo systemctl restart NetworkManager
-sleep 5
-
-# Check we have internet
 ping -c 3 8.8.8.8 && echo "INTERNET OK" || echo "NO INTERNET"
 ping -c 3 google.com && echo "DNS OK" || echo "DNS BROKEN"
 ```
 
-### Step 3D: Restart Tailscale
+---
+
+## PHASE 4: CLEAN UP OLD VPN STUFF (5 minutes)
+
+### Step 4A: Kill everything bad
+```bash
+# Stop all old VPN/routing stuff
+sudo systemctl stop sing-box 2>/dev/null
+sudo systemctl disable sing-box 2>/dev/null
+sudo systemctl stop xray-proxy 2>/dev/null
+sudo systemctl disable xray-proxy 2>/dev/null
+sudo systemctl stop tun2socks 2>/dev/null
+sudo systemctl disable tun2socks 2>/dev/null
+sudo systemctl stop persist-venue-route.service 2>/dev/null
+sudo systemctl disable persist-venue-route.service 2>/dev/null
+sudo rm -f /etc/systemd/system/persist-venue-route.service
+
+# Remove IP hacks
+sudo ip addr del 192.168.2.150/24 dev wlan0 2>/dev/null
+
+# Reload systemd
+sudo systemctl daemon-reload
+```
+
+### Step 4B: Restart Tailscale
 ```bash
 sudo systemctl restart tailscaled
 sleep 5
 tailscale status
 ```
 
-**DECISION POINT:** If internet doesn't work here, try switching to a different WiFi network:
-```bash
-# List available networks
-nmcli device wifi list
-
-# Connect to a different one
-sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
-```
-
 ---
 
-## PHASE 4: VERIFY STABILITY (5 minutes)
+## PHASE 5: SETUP AMNEZIAWG (15 minutes)
 
-**Don't proceed until this passes:**
-
-```bash
-# Run this and wait 2 minutes - it should stay connected
-for i in {1..24}; do
-    echo "=== Check $i/24 ($(date +%H:%M:%S)) ==="
-    ping -c 1 8.8.8.8 >/dev/null && echo "Internet: OK" || echo "Internet: FAIL"
-    ping -c 1 google.com >/dev/null && echo "DNS: OK" || echo "DNS: FAIL"
-    tailscale status >/dev/null 2>&1 && echo "Tailscale: OK" || echo "Tailscale: FAIL"
-    echo ""
-    sleep 5
-done
-```
-
-If it keeps failing, **STOP** and use fallback mode (no AI).
-
----
-
-## PHASE 5: SETUP VPN (10 minutes)
-
-Only do this if Phase 4 passed.
+Only do this if internet works!
 
 ```bash
 cd ~/modular-arcade
 git pull
 
 # Run the setup script
-./scripts/setup-xray-vpn.sh
+./scripts/setup-amneziawg.sh
 ```
 
 The script will:
-1. Remove sing-box completely
-2. Install xray
-3. Configure SOCKS proxy on localhost:10808
-4. Test the connection
+1. Remove old VPN stuff (xray, sing-box)
+2. Install AmneziaWG kernel module
+3. Install awg-quick tools
+4. Configure the VPN
+5. Start the VPN
+6. Test connectivity
 
 ### Verify it works:
 ```bash
-# Check service is running
-systemctl status xray-proxy
+# Check interface is up
+ip link show awg0
 
-# Test proxy
-curl --proxy socks5://127.0.0.1:10808 https://www.google.com -I 2>&1 | head -5
+# Check VPN status
+sudo awg show
 
-# Test Gemini API specifically
-curl --proxy socks5://127.0.0.1:10808 https://generativelanguage.googleapis.com/ -I 2>&1 | head -5
+# Test Gemini API (the whole point!)
+curl -s --connect-timeout 10 https://generativelanguage.googleapis.com/ && echo "GEMINI REACHABLE!"
+```
+
+### If setup script fails (kernel module issues):
+```bash
+# Try reboot first
+sudo reboot
+
+# After reboot, try again
+./scripts/setup-amneziawg.sh
 ```
 
 ---
@@ -252,11 +237,8 @@ curl --proxy socks5://127.0.0.1:10808 https://generativelanguage.googleapis.com/
 ```bash
 cd ~/modular-arcade
 
-# Install dependencies
-.venv/bin/pip install aiohttp-socks
-
-# Copy updated service file
-sudo cp scripts/artifact.service /etc/systemd/system/
+# Copy the NEW service file (no proxy needed with AmneziaWG!)
+sudo cp configs/vpn/artifact-amneziawg.service /etc/systemd/system/artifact.service
 sudo systemctl daemon-reload
 
 # Restart
@@ -274,18 +256,22 @@ timeout 60 journalctl -u artifact -f || true
 echo "=== FINAL STATUS ==="
 echo ""
 echo "Services:"
-systemctl is-active xray-proxy && echo "  xray-proxy: RUNNING" || echo "  xray-proxy: STOPPED"
+systemctl is-active amneziawg && echo "  amneziawg: RUNNING" || echo "  amneziawg: STOPPED"
 systemctl is-active artifact && echo "  artifact: RUNNING" || echo "  artifact: STOPPED"
 systemctl is-active tailscaled && echo "  tailscaled: RUNNING" || echo "  tailscaled: STOPPED"
 
 echo ""
 echo "Network:"
 ping -c 1 8.8.8.8 >/dev/null && echo "  Internet: OK" || echo "  Internet: FAIL"
-curl -s --proxy socks5://127.0.0.1:10808 https://google.com >/dev/null && echo "  VPN Proxy: OK" || echo "  VPN Proxy: FAIL"
+ip link show awg0 >/dev/null 2>&1 && echo "  VPN Interface: UP" || echo "  VPN Interface: DOWN"
 
 echo ""
 echo "S3 Upload (CRITICAL - photos must upload):"
 curl -s --connect-timeout 5 https://s3.ru-7.storage.selcloud.ru >/dev/null && echo "  S3 Endpoint: OK" || echo "  S3 Endpoint: FAIL"
+
+echo ""
+echo "Gemini API (for AI features):"
+curl -s --connect-timeout 5 https://generativelanguage.googleapis.com/ >/dev/null && echo "  Gemini API: OK" || echo "  Gemini API: BLOCKED"
 
 echo ""
 echo "Camera:"
@@ -298,46 +284,22 @@ rpicam-hello --list-cameras 2>&1 | grep -q "imx708" && echo "  Camera: DETECTED"
 
 ## FALLBACK: LOCAL MODE (No AI, but S3 still works)
 
-If VPN won't work but internet is fine, disable AI only:
+If AmneziaWG won't work but internet is fine, disable AI:
 
 ```bash
-# Disable proxy (Gemini won't work, but S3 uploads will)
+# Use old service file (proxy mode disabled)
 sudo sed -i 's/GEMINI_USE_PROXY=true/GEMINI_USE_PROXY=false/' /etc/systemd/system/artifact.service
+
+# Stop AmneziaWG if it's causing issues
+sudo systemctl stop amneziawg
+sudo systemctl disable amneziawg
+
+# Restart app
 sudo systemctl daemon-reload
 sudo systemctl restart artifact
 ```
 
-**Important:** Local mode still needs internet for S3 uploads. Photos must still upload and QR codes must work. This is just to avoid AI-related failures - the photobooth still functions for clients.
-
----
-
-## FALLBACK: DIFFERENT WIFI
-
-If current WiFi is garbage, try another:
-
-```bash
-# See what's available
-nmcli device wifi list
-
-# Connect to VNVNC
-sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
-
-# Or forget bad network and let it auto-connect to another
-sudo nmcli connection delete "office_64"
-```
-
----
-
-## EMERGENCY: NOTHING WORKS
-
-If you absolutely cannot connect remotely:
-
-1. **Power cycle** - Ask someone at venue to unplug and replug the Pi (wait 30 sec between)
-2. **Ethernet** - If there's an ethernet port near the machine, ask someone to plug it in
-3. **Different outlet** - Sometimes power issues; try a different outlet
-4. **Wait and retry** - Venue WiFi might be temporarily down; try again in 30 minutes
-
-**Note:** Physical access to internals (HDMI, keyboard, SD card) is NOT possible without opening the machine.
+**Important:** Local mode still needs internet for S3 uploads. Photos must still upload and QR codes must work.
 
 ---
 
@@ -346,44 +308,17 @@ If you absolutely cannot connect remotely:
 | Action | Command |
 |--------|---------|
 | SSH via Tailscale | `ssh kirniy@artifact` or `ssh kirniy@100.x.x.x` |
-| SSH via local IP | `ssh kirniy@192.168.2.x` |
+| SSH via local IP | `ssh kirniy@<IP>` |
 | Pi password | `qaz123` |
 | Find Pi on network | `./sniper.sh` |
-| Setup VPN | `./scripts/setup-xray-vpn.sh` |
+| Setup AmneziaWG | `./scripts/setup-amneziawg.sh` |
+| Check VPN status | `sudo awg show` |
 | Check logs | `journalctl -u artifact -f` |
 | Restart app | `sudo systemctl restart artifact` |
-| Test proxy | `curl --proxy socks5://127.0.0.1:10808 https://google.com` |
+| Restart VPN | `sudo systemctl restart amneziawg` |
 | Check camera | `rpicam-hello --list-cameras` |
 | List WiFi | `nmcli device wifi list` |
-| Switch WiFi | `sudo nmcli device wifi connect "SSID" password "PASS"` |
-
----
-
-## WHAT WENT WRONG (Post-Mortem)
-
-### Issue 1: Camera fell (physical)
-- Caused black screen, wasted time debugging software
-- **Fix**: Check physical connections first next time
-
-### Issue 2: DNS corrupted
-- sing-box hijacked DNS, never recovered
-- Tailscale couldn't resolve controlplane.tailscale.com
-- **Fix**: Always set DNS to 8.8.8.8 explicitly
-
-### Issue 3: sing-box auto_route
-- `auto_route: true` hijacked entire routing table
-- When VPN failed, ALL traffic blackholed
-- **Fix**: Use SOCKS proxy mode, not TUN
-
-### Issue 4: Rogue services
-- Another agent created `persist-venue-route.service`
-- Kept overwriting routing fixes
-- **Fix**: Check for and remove unexpected services
-
-### Issue 5: IP hacks
-- Manually adding .150 IP confused NetworkManager
-- DHCP and manual IPs conflicting
-- **Fix**: Let DHCP do its job, don't add manual IPs
+| Connect WiFi | `sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"` |
 
 ---
 
@@ -394,11 +329,37 @@ If you absolutely cannot connect remotely:
 | Phase 0: Sanity check | 2 min | Move to Phase 1 |
 | Phase 1: Find Pi | 15 min | Need physical access |
 | Phase 2: Get logs | 5 min | Just proceed |
-| Phase 3: Stabilize | 10 min | Try different WiFi |
-| Phase 4: Verify | 5 min | Use fallback mode |
-| Phase 5: VPN setup | 10 min | Use fallback mode |
+| Phase 3: Switch WiFi | 5 min | Check cabling |
+| Phase 4: Clean up | 5 min | Just proceed |
+| Phase 5: AmneziaWG setup | 15 min | Use fallback mode |
 | Phase 6: Update app | 5 min | Check logs |
 | Phase 7: Final check | 2 min | Done |
 | **TOTAL** | **~55 min** | |
 
 **If total exceeds 1 hour, use fallback mode and call it done.**
+
+---
+
+## WHAT'S NEW TODAY
+
+### AmneziaWG vs xray/sing-box
+
+| Feature | sing-box (old) | xray (yesterday) | AmneziaWG (today) |
+|---------|---------------|-----------------|-------------------|
+| Type | TUN mode | SOCKS proxy | WireGuard fork |
+| Speed | Slow | Medium | Native WireGuard |
+| Routing | Hijacks ALL traffic | Only proxied apps | Routes ALL traffic |
+| Risk | SSH dies if VPN dies | Safer | SSH works via Tailscale |
+| DPI bypass | Reality | Reality | Custom obfuscation |
+| Protocol | VLESS | VLESS | WireGuard + junk packets |
+
+### Why AmneziaWG is better:
+1. **Kernel module** = native WireGuard speeds
+2. **Different obfuscation** = better DPI bypass (works well in Russia)
+3. **Simpler** = no SOCKS proxy configuration needed
+4. **All traffic encrypted** = S3 and Gemini both go through VPN
+
+### New files:
+- `configs/vpn/amneziawg.conf` - VPN config
+- `configs/vpn/artifact-amneziawg.service` - Updated service file
+- `scripts/setup-amneziawg.sh` - One-command setup

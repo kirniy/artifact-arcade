@@ -1,22 +1,25 @@
 #!/bin/bash
 # SNIPER.SH - Aggressively try to connect to Pi and fix networking
 #
-# TWO POSSIBLE NETWORKS:
-#   1. office_64 (venue WiFi) - 192.168.2.x subnet
-#   2. VNVNC (backup WiFi, pw: vnvnc2018) - unknown subnet
+# PRIMARY NETWORK (office_64 is DOWN):
+#   VNVNC (backup WiFi, pw: vnvnc2018)
 #
-# Run this script, then switch YOUR MAC between networks to find the Pi
+# Run this script from Mac connected to VNVNC
 
 PASSWORD="qaz123"
 
-# Commands to run once connected - fix all the networking bullshit
+# Commands to run once connected - fix all networking and switch to VNVNC
 FIX_COMMANDS='
 echo "=== SNIPER CONNECTED at $(date) ==="
 echo "Connected from: $(hostname -I 2>/dev/null || echo unknown)"
 
-# Kill sing-box
+# Kill all VPN stuff
 sudo systemctl stop sing-box 2>/dev/null
 sudo systemctl disable sing-box 2>/dev/null
+sudo systemctl stop xray-proxy 2>/dev/null
+sudo systemctl disable xray-proxy 2>/dev/null
+sudo systemctl stop tun2socks 2>/dev/null
+sudo systemctl disable tun2socks 2>/dev/null
 
 # Kill the broken persist-venue-route service
 sudo systemctl stop persist-venue-route.service 2>/dev/null
@@ -31,19 +34,19 @@ sudo ip addr del 192.168.2.150/24 dev wlan0 2>/dev/null
 echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
 echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
 
-# Make sure BOTH WiFi networks are configured
-sudo nmcli connection delete "VNVNC" 2>/dev/null
-sudo nmcli connection delete "office_64" 2>/dev/null
-sudo nmcli device wifi connect "VNVNC" password "vnvnc2018" 2>/dev/null || true
-sudo nmcli device wifi connect "office_64" password "" 2>/dev/null || true
+# SWITCH TO VNVNC WIFI (office_64 is DOWN!)
+echo ""
+echo "=== SWITCHING TO VNVNC WIFI ==="
+sudo nmcli connection delete "office_64" 2>/dev/null || true
+sudo nmcli device wifi connect "VNVNC" password "vnvnc2018" 2>/dev/null || {
+    echo "Wifi connect failed, trying rescan..."
+    sudo nmcli device wifi rescan
+    sleep 2
+    sudo nmcli device wifi connect "VNVNC" password "vnvnc2018"
+}
 
-# Reset NetworkManager
-sudo systemctl restart NetworkManager
-sleep 3
-
-# Restart Tailscale
-sudo systemctl restart tailscaled
-sleep 3
+# Wait for connection
+sleep 5
 
 # Show status
 echo ""
@@ -59,7 +62,12 @@ echo ""
 echo "=== DNS ==="
 cat /etc/resolv.conf | grep nameserver
 echo ""
+echo "=== INTERNET TEST ==="
+ping -c 2 8.8.8.8 2>&1 | tail -3
+echo ""
 echo "=== TAILSCALE ==="
+sudo systemctl restart tailscaled
+sleep 3
 tailscale status 2>&1 | head -5
 echo ""
 echo "=== SNIPER SUCCESS! ==="
@@ -68,13 +76,10 @@ echo "=== SNIPER SUCCESS! ==="
 echo "╔═══════════════════════════════════════════════════════════════╗"
 echo "║  SNIPER - Hunting for Pi                                      ║"
 echo "║                                                               ║"
-echo "║  The Pi might be on:                                          ║"
-echo "║    - office_64 (192.168.2.x)                                  ║"
-echo "║    - VNVNC (unknown subnet, pw: vnvnc2018)                    ║"
+echo "║  TARGET: Switch Pi to VNVNC WiFi (office_64 is DOWN)          ║"
 echo "║                                                               ║"
-echo "║  TRY BOTH:                                                    ║"
-echo "║    1. Connect Mac to office_64, run this script               ║"
-echo "║    2. If no luck, connect Mac to VNVNC, run again             ║"
+echo "║  STEP 1: Connect YOUR Mac to VNVNC (pw: vnvnc2018)            ║"
+echo "║  STEP 2: Run this script                                      ║"
 echo "║                                                               ║"
 echo "║  Press Ctrl+C once you see SUCCESS                            ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
@@ -108,7 +113,7 @@ for i in {2..30} {100..110} {150..160} {200..210}; do
     IPS+=("$SUBNET.$i")
 done
 
-# Also try the known office_64 IPs regardless of current network
+# Also try the known office_64 IPs in case Pi is still there
 IPS+=(
     "192.168.2.12"
     "192.168.2.14"
@@ -138,11 +143,12 @@ while true; do
                 echo ""
                 echo "$result"
                 echo ""
-                echo "╔═══════════════════════════════════════════════════════════╗"
+                echo "╔═══════════════════════════════════════════════════════════════╗"
                 echo "║  SUCCESS! Connected via $ip"
-                echo "║  Pi should be stable now. Try:"
-                echo "║    ssh kirniy@$ip"
-                echo "╚═══════════════════════════════════════════════════════════╝"
+                echo "║  Pi should be on VNVNC now. Try:"
+                echo "║    ssh kirniy@artifact.local"
+                echo "║    ssh kirniy@<new-ip-shown-above>"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
                 exit 0
             else
                 echo "  Connected but command failed. Output:"

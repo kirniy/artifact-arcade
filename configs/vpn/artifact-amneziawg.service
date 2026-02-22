@@ -1,0 +1,32 @@
+[Unit]
+Description=ARTIFACT Arcade Machine
+After=network.target graphical.target artifact-audio.service amneziawg.service
+Wants=graphical.target artifact-audio.service amneziawg.service
+
+[Service]
+Type=notify
+User=root
+WorkingDirectory=/home/kirniy/modular-arcade
+Environment=ARTIFACT_ENV=hardware
+Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+# Printer: USB connection
+Environment=ARTIFACT_PRINTER_PORT=/dev/usb/lp0
+# NO PROXY NEEDED! AmneziaWG routes all traffic through VPN automatically
+# Environment=GEMINI_USE_PROXY=false
+# Audio: Use ALSA driver with card 2 (3.5mm headphones)
+Environment=SDL_AUDIODRIVER=alsa
+Environment=AUDIODEV=hw:2,0
+# Let pygame auto-detect kmsdrm - do NOT set SDL_VIDEODRIVER explicitly!
+# Kill desktop compositor FIRST so pygame can access DRM
+ExecStartPre=/bin/bash -c 'killall -9 labwc wf-panel-pi 2>/dev/null || true'
+# Give time for display to be released
+ExecStartPre=/bin/sleep 2
+ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.main
+# Watchdog: auto-restart if frozen for 30 seconds
+WatchdogSec=30
+# Always restart on any failure/freeze
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
