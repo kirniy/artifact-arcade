@@ -674,21 +674,26 @@ MALCHISHNIK_VARIATIONS = [
     """МАЛЬЧИШНИК — POLAROID PHOTO (VERTICAL 9:16)
 
 CRITICAL: LIKENESS IS THE TOP PRIORITY.
-Create a Polaroid photo of THESE EXACT PEOPLE from the reference photo. 
+Create a Polaroid photo of THESE EXACT PEOPLE from the reference photo.
 Maintain their exact faces, hairstyles, and clothing. No generic party characters.
 If multiple people are in the reference photo, include all of them exactly as they are.
 
-AESTHETIC:
-- Hangover movie style: chaotic party energy, unposed, candid nightclub moment.
-- Authentic Polaroid: thick white border at bottom, thin on sides/top.
-- Lighting: Strong center flash, dark murky background, nightclub colored lights.
-- Film Look: Heavy grain, warm amber/yellow tones, light leaks, vintage shift.
-- NO TEXT inside the photo area.
+AESTHETIC — HANGOVER MOVIE STYLE:
+- CHAOTIC party energy: people caught mid-action, unposed, candid nightclub moment
+- Add FUN CHAOS around the frame: marker doodles, scribbles, hearts, stars, arrows, squiggles
+- Handwritten text on the white strip in messy marker style
+- Someone might be making a silly face, someone drinking, someone hugging
+- Authentic Polaroid: thick white border at bottom with room for doodles
+- Lighting: Strong center flash, dark murky background, colored club lights
+- Film Look: Heavy grain, warm amber/yellow tones, light leaks, vintage shift
+- NO TEXT inside the photo area, only on the white strip
 
-BOTTOM WHITE STRIP (handwritten ink):
-  Left:   VNVNC.RU
-  Right:  [time from personality context] МСК
-  Below:  20.02–22.02 · Конюшенная 2В
+MARKER DOODLES ON WHITE STRIP:
+- Add fun hand-drawn elements: hearts, stars, arrows, smiley faces, question marks
+- Write "VNVNC.RU" in messy marker handwriting on the left
+- Write the time (from personality context) on the right
+- "20.02–22.02 · Конюшенная 2В" scribbled below
+- Make it look like friends decorated it with markers!
 
 VERTICAL 9:16 format.""",
 
@@ -699,16 +704,48 @@ This must be THIS EXACT person (or people) from the reference photo.
 Same face, same hair, same nose, same clothes. Recognize them instantly.
 Everyone in the reference photo must appear in this Polaroid.
 
-STYLE:
-- Chaotic party energy, unposed, mid-laugh or mid-toast.
-- Real nightclub environment behind them.
-- Polaroid frame with white borders (thick at bottom).
-- Heavy film grain, blown flash, warm amber color push.
-- NO TEXT in the photo area.
+STYLE — WILD HANGOVER PARTY VIBES:
+- Chaotic party energy: mid-laugh, mid-toast, mid-hug, caught off-guard
+- Real nightclub environment behind them with colored lights
+- Polaroid frame with white borders (thick at bottom for doodles)
+- Add RANDOM FUN OBJECTS if fitting: drinks in hands, party props, weird angles
+- Heavy film grain, blown flash, warm amber color push
+- Someone's eyes half-closed, someone photobombing, pure chaos energy
 
-BOTTOM WHITE STRIP (handwritten):
-  VNVNC.RU (left)  [time from personality context] МСК (right)
-  20.02–22.02 Конюшенная 2В (below)
+MARKER DOODLES ON WHITE STRIP (handwritten messy style):
+- Add arrows, hearts, stars, squiggles, exclamation marks around the edges
+- "VNVNC.RU" on the left in marker
+- Time (from context) on the right
+- "20.02–22.02 Конюшенная 2В" scribbled below
+- Random doodles: lightning bolts, crowns, devil horns drawn on someone
+- Make it look decorated by drunk friends with sharpies!
+
+VERTICAL 9:16 format.""",
+
+    """МАЛЬЧИШНИК — LEGENDARY NIGHT POLAROID (VERTICAL 9:16)
+
+CRITICAL LIKENESS:
+These must be THE EXACT PEOPLE from the reference photo. Same faces, hair, clothes.
+Include everyone visible in the original photo.
+
+HANGOVER MOVIE ENERGY:
+- Capture the CHAOS of a legendary bachelor party night
+- Unposed, candid, caught-in-the-moment shots
+- Wild expressions: laughing, shouting, making faces, doing shots
+- Background: club lights, smoke, disco balls, pure party atmosphere
+- Film effects: heavy grain, flash overexposure, warm pushed colors, light leaks
+
+POLAROID STYLE:
+- Classic Polaroid with thick white border at bottom
+- Edges might be slightly bent/worn from being passed around
+- White strip decorated with marker doodles and scribbles
+
+MARKER MADNESS ON WHITE STRIP:
+- "VNVNC.RU" written in drunk handwriting
+- Time scribbled on the right
+- "20.02-22.02 · Конюшенная 2В" below
+- Random doodles everywhere: stars, hearts, arrows, "ЭТО БЫЛО ЭПИЧНО!", devil horns on people
+- Make it look like everyone signed and decorated it!
 
 VERTICAL 9:16 format.""",
 ]
@@ -718,19 +755,41 @@ MALCHISHNIK_SQUARE_VARIATIONS = [
     """МАЛЬЧИШНИК — SQUARE POLAROID (1:1)
 
 LIKENESS IS ESSENTIAL:
-Capture THESE EXACT PEOPLE from the reference photo. 
+Capture THESE EXACT PEOPLE from the reference photo.
 Exact same facial features, hair, and clothes. They must look like themselves.
 Include everyone from the reference image.
 
-STYLE:
-- Hangover party vibe: chaotic, candid, unposed.
-- High flash, dark background, warm analog film grain.
-- White Polaroid border on all sides.
-- NO TEXT inside the photo area.
+HANGOVER STYLE:
+- Chaotic party vibe: candid, unposed, caught mid-action
+- Someone laughing, someone making a face, pure chaos energy
+- High flash, dark murky background, club colored lights
+- Warm analog film grain, light leaks, overexposed highlights
+- White Polaroid border on all sides
 
-BOTTOM WHITE STRIP (handwritten):
-  МАЛЬЧИШНИК
-  VNVNC.RU · 20.02–22.02 · Конюшенная 2В
+MARKER DOODLES ON WHITE STRIP:
+- "МАЛЬЧИШНИК" in messy marker handwriting
+- "VNVNC.RU · 20.02–22.02" scribbled below
+- Add fun doodles: hearts, stars, arrows, squiggles, smiley faces
+- Make it look decorated by friends!
+
+SQUARE 1:1 format.""",
+
+    """МАЛЬЧИШНИК — EPIC NIGHT SQUARE (1:1)
+
+CRITICAL LIKENESS:
+This must be THE EXACT PEOPLE from the photo. Same faces, same features.
+
+WILD PARTY ENERGY:
+- Hangover movie chaos: mid-toast, mid-hug, photobomb
+- Unposed, candid, legendary moment captured
+- Club atmosphere: colored lights, smoke, party vibes
+- Film look: heavy grain, blown flash, warm amber tones
+
+POLAROID STYLE:
+- Square with white borders, thick at bottom for doodles
+- Marker scribbles all around: "МАЛЬЧИШНИК", stars, arrows
+- "VNVNC.RU · 20.02–22.02" in drunk handwriting
+- Random doodles: devil horns on someone, hearts, "ЭПИЧНО!"
 
 SQUARE 1:1 format.""",
 ]

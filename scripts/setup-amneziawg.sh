@@ -177,15 +177,34 @@ fi
 echo ""
 
 # =============================================================================
+# PHASE 5.5: BUILD AWG TOOLS FROM SOURCE (for AWG 2.0 support)
+# =============================================================================
+echo "=== PHASE 5.5: Building AWG tools from source for AWG 2.0 support ==="
+
+cd /tmp
+rm -rf amneziawg-tools 2>/dev/null || true
+git clone https://github.com/amnezia-vpn/amneziawg-tools.git
+cd amneziawg-tools/src
+make clean
+make
+sudo make install
+cd /tmp
+rm -rf amneziawg-tools
+
+echo "AWG tools built from source"
+echo ""
+
+# =============================================================================
 # PHASE 6: INSTALL CONFIG
 # =============================================================================
 echo "=== PHASE 6: Installing VPN config ==="
 
-sudo mkdir -p /etc/amneziawg
-sudo cp "$PROJECT_DIR/configs/vpn/amneziawg.conf" /etc/amneziawg/awg0.conf
-sudo chmod 600 /etc/amneziawg/awg0.conf
+# awg-quick looks for configs in /etc/amnezia/amneziawg/
+sudo mkdir -p /etc/amnezia/amneziawg
+sudo cp "$PROJECT_DIR/configs/vpn/awg0.conf" /etc/amnezia/amneziawg/awg0.conf
+sudo chmod 600 /etc/amnezia/amneziawg/awg0.conf
 
-echo "Config installed to /etc/amneziawg/awg0.conf"
+echo "Config installed to /etc/amnezia/amneziawg/awg0.conf"
 echo ""
 
 # =============================================================================
@@ -193,24 +212,46 @@ echo ""
 # =============================================================================
 echo "=== PHASE 7: Creating systemd service ==="
 
-sudo tee /etc/systemd/system/amneziawg.service > /dev/null <<'EOF'
+# Use awg-quick@ template service
+sudo tee /etc/systemd/system/awg-quick@.service > /dev/null <<'EOF'
 [Unit]
-Description=AmneziaWG VPN (awg0)
+Description=AmneziaWG Quick VPN (%i)
 After=network-online.target
 Wants=network-online.target
+Before=artifact.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/awg-quick up /etc/amneziawg/awg0.conf
-ExecStop=/usr/bin/awg-quick down /etc/amneziawg/awg0.conf
+ExecStart=/usr/bin/awg-quick up %i
+ExecStop=/usr/bin/awg-quick down %i
+Environment=WG_QUICK_USERSPACE_IMPLEMENTATION=amneziawg-go
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+# Disable and mask old sing-box if exists
+if systemctl is-enabled sing-box &>/dev/null; then
+    echo "Disabling old sing-box..."
+    sudo systemctl stop sing-box 2>/dev/null || true
+    sudo systemctl disable sing-box
+    sudo systemctl mask sing-box
+fi
+
 sudo systemctl daemon-reload
 echo "Systemd service created"
+echo ""
+
+# =============================================================================
+# PHASE 7.5: CONFIGURE TAILSCALE DNS
+# =============================================================================
+echo "=== PHASE 7.5: Configuring Tailscale ==="
+
+if command -v tailscale &>/dev/null; then
+    echo "Disabling Tailscale DNS management (using 8.8.8.8 instead)..."
+    sudo tailscale set --accept-dns=false
+fi
 echo ""
 
 # =============================================================================
@@ -219,19 +260,19 @@ echo ""
 echo "=== PHASE 8: Starting VPN ==="
 
 # Don't auto-enable - we need to test first
-sudo systemctl start amneziawg || {
+sudo systemctl start awg-quick@awg0 || {
     echo ""
     echo "⚠ VPN failed to start. Checking logs..."
-    sudo journalctl -u amneziawg -n 20
+    sudo journalctl -u awg-quick@awg0 -n 20
     echo ""
     echo "Try rebooting to load the kernel module, then run:"
-    echo "  sudo systemctl start amneziawg"
+    echo "  sudo systemctl start awg-quick@awg0"
     exit 1
 }
 
 sleep 3
 
-if systemctl is-active --quiet amneziawg; then
+if systemctl is-active --quiet awg-quick@awg0; then
     echo "✓ AmneziaWG VPN is running"
 else
     echo "✗ VPN failed to start"
@@ -287,7 +328,7 @@ echo ""
 # =============================================================================
 echo "=== PHASE 10: Enabling auto-start ==="
 
-sudo systemctl enable amneziawg
+sudo systemctl enable awg-quick@awg0
 echo "✓ VPN will start on boot"
 
 echo ""
@@ -296,18 +337,22 @@ echo ""
 # DONE
 # =============================================================================
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║  AmneziaWG setup complete!                                    ║"
+echo "║  AmneziaWG 2.0 setup complete!                                ║"
 echo "║                                                               ║"
 echo "║  VPN Status: RUNNING                                          ║"
 echo "║  Interface:  awg0                                             ║"
 echo "║  Auto-start: ENABLED                                          ║"
 echo "║                                                               ║"
 echo "║  Commands:                                                    ║"
-echo "║    sudo awg show                    - Show VPN status         ║"
-echo "║    sudo systemctl restart amneziawg - Restart VPN             ║"
-echo "║    sudo systemctl stop amneziawg    - Stop VPN                ║"
+echo "║    sudo awg show awg0               - Show VPN status         ║"
+echo "║    sudo systemctl restart awg-quick@awg0 - Restart VPN        ║"
+echo "║    sudo systemctl stop awg-quick@awg0    - Stop VPN           ║"
 echo "║                                                               ║"
-echo "║  IMPORTANT: Update artifact.service to remove proxy settings! ║"
-echo "║  With AmneziaWG, all traffic goes through VPN automatically.  ║"
-echo "║  No SOCKS proxy needed!                                       ║"
+echo "║  Config: /etc/amnezia/amneziawg/awg0.conf                     ║"
+echo "║  Tailscale: Active (DNS disabled, using 8.8.8.8)              ║"
+echo "║                                                               ║"
+echo "║  Features:                                                    ║"
+echo "║  - AWG 2.0 with full DPI obfuscation (H1-H4, S3-S4, I1)       ║"
+echo "║  - Split-tunnel routing (Tailscale bypasses VPN)              ║"
+echo "║  - VPN endpoint exception (prevents routing loops)           ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"

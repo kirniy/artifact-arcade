@@ -13,7 +13,7 @@ Supports multiple themes (set PHOTOBOOTH_THEME env var):
 
 # When True, prints labels on thermal printer. When False, digital-only mode.
 PRINTING_ENABLED = False
-USE_AI_GENERATION = False  # Toggle AI generation vs local Polaroid fallback
+USE_AI_GENERATION = True  # Toggle AI generation vs local Polaroid fallback
 
 import logging
 import io
@@ -858,15 +858,20 @@ class PhotoboothMode(BaseMode):
             buffer[-28:, :, :] = (buffer[-28:, :, :].astype(np.float32) * 0.3).astype(np.uint8)
             buffer[-28:, :, 0] = np.minimum(buffer[-28:, :, 0].astype(np.uint16) + 30, 255).astype(np.uint8)
 
-            # Diagonal arrow pointing down-left (↙)
+            # Animated diagonal arrow pointing down-right (↘)
             arrow_color = self.THEME_CHROME
-            ax, ay = 10, 108  # Arrow tip position (bottom-left area)
-            draw_line(buffer, ax + 12, ay - 10, ax, ay, arrow_color)  # Shaft
-            draw_line(buffer, ax, ay, ax + 4, ay - 2, arrow_color)    # Arrowhead bottom
-            draw_line(buffer, ax, ay, ax + 2, ay - 5, arrow_color)    # Arrowhead left
+            # Pulsing animation - arrow bounces toward corner
+            bounce = int(3 * abs(((self._time_in_phase // 150) % 10) - 5) / 5)
+            ax, ay = 118 + bounce, 108 + bounce  # Arrow tip position (bottom-right area)
 
-            draw_text(buffer, "СКАЧАЙ ФОТО", 24, 104, self.THEME_CHROME, scale=1)
-            draw_text(buffer, "НА САЙТЕ", 24, 114, (200, 180, 255), scale=1)
+            # Larger arrow with thicker lines
+            for offset in range(-1, 2):  # Draw 3 lines for thickness
+                draw_line(buffer, ax - 18 + offset, ay - 14, ax + offset, ay, arrow_color)  # Shaft
+                draw_line(buffer, ax + offset, ay, ax - 6 + offset, ay - 2, arrow_color)   # Arrowhead left
+                draw_line(buffer, ax + offset, ay, ax - 2 + offset, ay - 6, arrow_color)   # Arrowhead top
+
+            draw_text(buffer, "СКАЧАЙ ФОТО", 4, 104, self.THEME_CHROME, scale=1)
+            draw_text(buffer, "НА САЙТЕ", 4, 114, (200, 180, 255), scale=1)
 
         elif self._state.result_view == "qr":
             # Full screen QR code

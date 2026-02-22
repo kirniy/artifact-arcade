@@ -42,7 +42,8 @@ arp -a | grep -i "raspberry\|artifact"
 | Network | Location | Priority |
 |---------|----------|----------|
 | Renaissance | Home | 5 |
-| office_64 | Club | 10 (prefers when both available) |
+| VNVNC | Club (primary) | 10 |
+| office_64 | Club (backup) | 8 |
 
 ### Pre-configured Services
 
@@ -51,14 +52,54 @@ arp -a | grep -i "raspberry\|artifact"
 | `artifact.service` | Enabled | Main arcade application (autostart) |
 | `artifact-dashboard.service` | Enabled | Web dashboard on port 8080 |
 | `artifact-update.timer` | Enabled | Auto-pulls from GitHub every 2 min |
-| `sing-box.service` | Enabled | VPN (Frankfurt server) |
+| `awg-quick@awg0.service` | Enabled | AmneziaWG 2.0 VPN (Netherlands server) |
+| `tailscaled.service` | Enabled | Tailscale mesh networking |
 | `wayvnc` | Enabled | Remote desktop |
+
+### AmneziaWG VPN Setup
+
+The Pi uses AmneziaWG 2.0 with full obfuscation to bypass DPI. Config is at `/etc/amnezia/amneziawg/awg0.conf`.
+
+**Key features:**
+- Split-tunnel routing (Tailscale traffic bypasses VPN)
+- VPN endpoint exception to prevent routing loops
+- Policy-based routing with fwmark
+- Persists through reboots
+
+**VPN Server:** Netherlands (151.245.92.201:36047)
+
+```bash
+# Check VPN status
+sudo awg show awg0
+
+# Restart VPN
+sudo systemctl restart awg-quick@awg0
+
+# Test connectivity
+ping -c 3 8.8.8.8
+curl -s https://api.ipify.org
+```
+
+### Remote Access via Tailscale
+
+When not on the same network, access Pi via Tailscale:
+- Pi Tailscale IP: `100.115.122.91`
+- Hostname: `artifact`
+
+```bash
+# From any Tailscale-connected device
+ssh kirniy@100.115.122.91
+# Or
+ssh kirniy@artifact
+```
+
+**Note:** VPN is configured with `--accept-dns=false` to use 8.8.8.8 instead of Tailscale's Magic DNS.
 
 ### Quick Commands (on Pi)
 
 ```bash
 # Check all services
-systemctl status artifact artifact-dashboard artifact-update.timer sing-box
+systemctl status artifact artifact-dashboard artifact-update.timer awg-quick@awg0
 
 # View live logs
 journalctl -u artifact -f
