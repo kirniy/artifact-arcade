@@ -92,12 +92,22 @@ class GeminiClient:
         self._client_beta = None  # v1beta client for image generation
         self._initialized = True
 
-        # Build list of API keys for rotation on 429 errors
-        self._api_keys: List[str] = [k for k in [
-            config.api_key,
-            os.environ.get("GEMINI_API_KEY_BACKUP", ""),
-        ] if k]
+        # Build list of API keys for rotation on errors
+        # Priority: GEMINI_API_KEYS (comma-separated) > individual env vars
+        keys_csv = os.environ.get("GEMINI_API_KEYS", "")
+        if keys_csv:
+            self._api_keys = [k.strip() for k in keys_csv.split(",") if k.strip()]
+        else:
+            self._api_keys = [k for k in [
+                config.api_key,
+                os.environ.get("GEMINI_API_KEY_2", ""),
+                os.environ.get("GEMINI_API_KEY_3", ""),
+                os.environ.get("GEMINI_API_KEY_BACKUP", ""),
+            ] if k]
         self._current_key_index = 0
+        # Ensure config uses the first key
+        if self._api_keys and not config.api_key:
+            self.config = GeminiConfig(api_key=self._api_keys[0])
 
         if USE_PROXY:
             logger.info(f"GeminiClient initialized ({len(self._api_keys)} API key(s)), proxy: {PROXY_URL}")
@@ -211,7 +221,8 @@ class GeminiClient:
                 contents = prompt
 
             # Generate with retry logic
-            for attempt in range(self.config.max_retries):
+            max_attempts = max(self.config.max_retries, len(self._api_keys))
+            for attempt in range(max_attempts):
                 try:
                     response = await asyncio.wait_for(
                         asyncio.to_thread(
@@ -242,9 +253,9 @@ class GeminiClient:
                     logger.warning(f"Timeout on attempt {attempt + 1}")
                 except Exception as e:
                     err = str(e)
-                    if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                    if "429" in err or "RESOURCE_EXHAUSTED" in err or "403" in err:
                         if self._rotate_api_key():
-                            logger.info("Retrying text gen with backup API key")
+                            logger.info(f"Retrying text gen with key {self._current_key_index + 1}/{len(self._api_keys)}")
                             self._client = None
                             await self._ensure_client("v1")
                             await asyncio.sleep(self.config.retry_delay)
@@ -307,7 +318,8 @@ class GeminiClient:
                 system_instruction=system_instruction,
             )
 
-            for attempt in range(self.config.max_retries):
+            max_attempts = max(self.config.max_retries, len(self._api_keys))
+            for attempt in range(max_attempts):
                 try:
                     response = await asyncio.wait_for(
                         asyncio.to_thread(
@@ -341,7 +353,15 @@ class GeminiClient:
                 except asyncio.TimeoutError:
                     logger.warning(f"Image analysis timeout, attempt {attempt + 1}")
                 except Exception as e:
-                    if "503" in str(e):
+                    err = str(e)
+                    if "429" in err or "RESOURCE_EXHAUSTED" in err or "403" in err:
+                        if self._rotate_api_key():
+                            logger.info(f"Retrying vision with key {self._current_key_index + 1}/{len(self._api_keys)}")
+                            self._client = None
+                            await self._ensure_client("v1")
+                            await asyncio.sleep(self.config.retry_delay)
+                            continue
+                    if "503" in err or "overloaded" in err.lower():
                         await asyncio.sleep(self.config.retry_delay * (attempt + 1))
                     else:
                         raise
@@ -428,7 +448,8 @@ class GeminiClient:
                 f"?key={self.config.api_key}"
             )
 
-            for attempt in range(self.config.max_retries):
+            max_attempts = max(self.config.max_retries, len(self._api_keys))
+            for attempt in range(max_attempts):
                 try:
                     # Set up connector - use SOCKS5 proxy if enabled
                     connector = None
@@ -458,7 +479,7 @@ class GeminiClient:
                             if not response.ok:
                                 error_text = await response.text()
                                 logger.error(f"API error {response.status}: {error_text}")
-                                if response.status == 429 and self._rotate_api_key():
+                                if response.status in (429, 403) and self._rotate_api_key():
                                     logger.info("Retrying with backup API key")
                                     # Rebuild endpoint with new key
                                     endpoint = (
