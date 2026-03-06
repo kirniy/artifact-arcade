@@ -514,7 +514,7 @@ class PhotoboothMode(BaseMode):
                 moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
                 personality_context = (
                     f"Photo taken at {moscow_time} Moscow time. "
-                    f"Include exactly '{moscow_time} МСК' in the handwritten caption "
+                    f"Include exactly '{moscow_time}' in the handwritten caption "
                     f"area at the bottom of the Polaroid."
                 )
 
