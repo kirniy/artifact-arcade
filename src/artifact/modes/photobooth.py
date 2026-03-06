@@ -361,7 +361,12 @@ class PhotoboothMode(BaseMode):
         Returns:
             Tuple of (display_style, label_style) for 1:1 and 9:16 formats
         """
-        if self._theme.ai_style_key == "malchishnik":
+        if self._theme.ai_style_key == "feyphoria":
+            return (
+                CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE,  # 1:1 square for display
+                CaricatureStyle.PHOTOBOOTH_FEYPHORIA,  # 9:16 vertical for label
+            )
+        elif self._theme.ai_style_key == "malchishnik":
             return (
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,  # 9:16 vertical for label
@@ -502,9 +507,9 @@ class PhotoboothMode(BaseMode):
             display_style, label_style = self._get_caricature_styles()
             logger.info(f"Generating photo booth with theme {self._theme.id}: {label_style.value}")
 
-            # For malchishnik theme, pass Moscow time so it appears in the Polaroid caption
+            # For themes with timestamps, pass Moscow time for the caption
             personality_context = None
-            if self._theme.ai_style_key == "malchishnik":
+            if self._theme.ai_style_key in ("malchishnik", "feyphoria"):
                 moscow_tz = timezone(timedelta(hours=3))
                 moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
                 personality_context = (

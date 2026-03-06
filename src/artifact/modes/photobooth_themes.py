@@ -116,6 +116,24 @@ MALCHISHNIK_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: ФЕЙФОРИЯ (March 6-8, 2026)
+# =============================================================================
+FEYPHORIA_THEME = PhotoboothTheme(
+    id="feyphoria",
+    event_name="ФЕЙФОРИЯ",
+    event_date="06-08.03",
+    logo_filename="feyphoria.png",
+    theme_chrome=(207, 155, 120),     # Rose gold — enchanted fairy metallic
+    theme_red=(120, 30, 50),          # Burgundy rose — deep botanical accent
+    theme_black=(10, 46, 26),         # Deep emerald green — enchanted forest night
+    ticker_idle="FEYPHORIA",          # 9 Latin chars — fits 48px ticker
+    lcd_prefix="ФЕЙФОР",             # 6 Cyrillic chars — fits LCD countdown
+    description="ФЕЙФОРИЯ",
+    ai_style_key="feyphoria",
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -123,10 +141,11 @@ THEMES = {
     "tripvenice": TRIPVENICE_THEME,
     "loveintheair": LOVEINTHEAIR_THEME,
     "malchishnik": MALCHISHNIK_THEME,
+    "feyphoria": FEYPHORIA_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "malchishnik"
+DEFAULT_THEME = "feyphoria"
 
 
 def get_current_theme() -> PhotoboothTheme:

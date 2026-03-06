@@ -44,6 +44,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_LOVEINTHEAIR_SQUARE = "photobooth_loveintheair_square"  # 1:1 square - Valentine's theme
     PHOTOBOOTH_MALCHISHNIK = "photobooth_malchishnik"  # 9:16 vertical - Hangover bachelor party theme
     PHOTOBOOTH_MALCHISHNIK_SQUARE = "photobooth_malchishnik_square"  # 1:1 square - Hangover bachelor party theme
+    PHOTOBOOTH_FEYPHORIA = "photobooth_feyphoria"  # 9:16 vertical - Enchanted fairy forest theme
+    PHOTOBOOTH_FEYPHORIA_SQUARE = "photobooth_feyphoria_square"  # 1:1 square - Enchanted fairy forest theme
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -795,6 +797,238 @@ SQUARE 1:1 format.""",
 ]
 
 
+# =============================================================================
+# ФЕЙФОРИЯ PHOTOBOOTH VARIATIONS - Enchanted fairy forest party theme
+# =============================================================================
+# OUTPUT: 9:16 VERTICAL aspect ratio - for label printing
+# STYLE: Art Nouveau enchanted vector illustration, rose gold + emerald
+# DATES: 06-08.03  VENUE: Конюшенная 2В  BRAND: VNVNC.RU
+# NOTE: Moscow time is passed via personality_context and must appear in caption
+
+FEYPHORIA_VARIATIONS = [
+    """ФЕЙФОРИЯ — ENCHANTED DOLL PHOTO BOOTH (VERTICAL 9:16)
+
+Create a VERTICAL photo booth strip (9:16 ratio) with 4 portraits of this person in a 2×2 grid on an aged, grungy card.
+
+ABSOLUTE #1 PRIORITY — LIKENESS & CLOTHING:
+- The person must look EXACTLY like the reference photo in ALL 4 frames
+- SAME face, SAME hair, SAME clothing — including ANY text on clothing (preserve it letter-for-letter)
+- The person's outfit, accessories, and every visible detail must match the original photo PRECISELY
+- If multiple people in the photo, include ALL of them in every frame
+
+RENDERING STYLE — VINYL COLLECTIBLE DOLL / 3D FIGURINE:
+- Make the person look like a high-end vinyl collectible doll or action figure
+- Smooth, slightly shiny plastic-like skin with subtle subsurface scattering
+- Slightly enlarged eyes (10-15% bigger), refined features, perfect symmetry
+- Think: Popmart blind box figure, Mighty Jaxx collectible, Japanese vinyl toy
+- The rendering should feel 3D, volumetric, with soft studio-like lighting on the figure
+- Hair should look like sculpted plastic hair (slightly stylized, smooth)
+- Clothing should look like miniature real fabric on a doll
+
+BACKGROUND — PRESERVE THE ORIGINAL SCENE:
+- Keep the EXACT background from the original photo (the venue, lighting, interior)
+- Do NOT replace with forest, outdoors, or any other environment
+- ADD fairy enchantment elements OVER the existing scene:
+  - Golden sparkle dust floating in the air
+  - 2-3 tiny glowing flowers or vines growing from frame edges
+  - Delicate butterfly silhouettes
+  - Magical warm glow enhancement on existing lights
+- Keep it subtle — the original vibe STAYS, just with fairy magic sprinkled in
+- Do NOT add neon lights or change the existing lighting
+
+CARD/BORDER — GRUNGY AGED POLAROID WITH DOODLES:
+- Thick cream/off-white border around the photo grid — weathered, stained, aged paper
+- Coffee stains, slight yellowing, crinkled edges
+- Hand-drawn MARKER DOODLES covering the borders densely:
+  - Flowers, ferns, vine tendrils, butterflies, tiny stars, leaf spirals
+  - Drawn in dark forest green and rose-gold metallic ink
+  - Confident, quick marker strokes — like someone doodled at the party
+  - Some doodles bleed slightly into the photo frames
+
+4 FRAMES — same doll-ified person, different expressions:
+- Top-left: Confident direct look, slight smirk, golden sparkle dust
+- Top-right: Big laugh, joyful, butterflies nearby
+- Bottom-left: Relaxed cool pose, magical glow
+- Bottom-right: Mysterious side angle, sparkles
+
+TEXT:
+- TOP on border: "ФЕЙФОРИЯ" in elegant rose-gold serif with tiny floral decorations on the letters (like roses and petals woven into the letterforms), "06-08.03" below in smaller text
+- NO timestamps on individual frames
+- BOTTOM on border: "VNVNC.RU" on the left in marker handwriting, time from personality context on the right, "06-08.03 · Конюшенная 2В" below with flower doodles around it
+
+9:16 VERTICAL. Vinyl doll 3D rendering on doodled aged Polaroid card.""",
+
+    """ФЕЙФОРИЯ — FAIRY FIGURINE PHOTO BOOTH (VERTICAL 9:16)
+
+Create a VERTICAL 9:16 photo booth strip — 4 portraits in a 2×2 grid on a grungy vintage card.
+
+LIKENESS IS THE #1 RULE:
+- Person must be INSTANTLY recognizable from the reference photo
+- EXACT same face, hair, clothing — preserve ALL text on garments letter-by-letter
+- If group photo, ALL people must appear in every frame
+- Clothing texture, color, and details must match perfectly
+
+3D PLASTIC DOLL STYLE:
+- Render the person as a premium collectible vinyl figurine
+- Smooth glossy plastic skin, slightly oversized expressive eyes
+- Sculpted-looking hair with a plastic sheen
+- Think: designer toy meets Barbie — recognizable person but doll-ified
+- Soft volumetric 3D lighting, gentle rim light on the plastic surface
+- NOT cartoon — still the real person, just with vinyl doll finish
+
+BACKGROUND — KEEP ORIGINAL, ADD MAGIC:
+- PRESERVE the actual background environment from the reference photo
+- Same venue, same lighting, same atmosphere — do not replace
+- Layer fairy elements ON TOP of what's already there:
+  - Floating golden sparkle particles (fairy dust)
+  - Small glowing wildflowers at edges
+  - 1-2 butterfly silhouettes catching the light
+  - Warm magical bloom on existing light sources
+- Original scene must be clearly recognizable underneath the magic
+
+AGED POLAROID WITH HAND-DRAWN DOODLES:
+- Weathered cream paper border — stained, yellowed, worn corners
+- DENSE hand-drawn marker doodles on every border surface:
+  - Forest ferns, wildflowers, ivy vines, butterflies, stars, tiny leaves
+  - Dark green ink + rose-gold metallic marker
+  - Loose, confident sketch style — party vibes
+  - Doodles sometimes overlap photo edges
+
+4 FRAMES — different expressions of the same person:
+- Frame 1: Direct confident gaze, warm smirk, sparkle dust
+- Frame 2: Genuine big laugh, butterflies in air
+- Frame 3: Chill/relaxed, enchanted glow on lights
+- Frame 4: Cool mysterious angle, sparkles floating
+
+TEXT:
+- TOP: "ФЕЙФОРИЯ" in elegant rose-gold serif letters adorned with tiny roses and petals woven into the letterforms, "06-08.03" below
+- NO timestamps on individual frames
+- BOTTOM: "VNVNC.RU" left in marker, time from context on right, "06-08.03 · Конюшенная 2В" scribbled below + flower doodles
+
+9:16 VERTICAL. Premium vinyl figurine portraits on doodled vintage Polaroid!""",
+
+    """ФЕЙФОРИЯ — COLLECTIBLE DOLL PHOTO BOOTH (VERTICAL 9:16)
+
+VERTICAL 9:16 photo booth strip. 4 portraits, 2×2 grid, aged grungy card.
+
+CRITICAL — LIKENESS AND CLOTHING FIRST:
+- Person MUST look exactly like the reference photo in all 4 frames
+- Same face shape, same hair, same clothing with ALL text preserved exactly
+- Every detail from the original photo matters — accessories, colors, textures
+- Group photos: include EVERYONE in every frame
+
+STYLE — HIGH-END VINYL TOY / DESIGNER DOLL:
+- Person rendered as a collectible designer vinyl doll
+- Smooth plastic-finish skin with soft sheen and subsurface glow
+- Eyes slightly enlarged, features refined but RECOGNIZABLE
+- Hair has that sculpted, slightly glossy doll-hair look
+- Clothes look like real miniature fabric draped on a figurine
+- 3D volumetric feel — soft directional lighting, gentle shadows
+- Think: Popmart x Mighty Jaxx premium collectible, NOT cheap toy
+
+BACKGROUND — ORIGINAL SCENE + FAIRY DUST:
+- Keep the REAL background from the photo — venue, lights, interior, everything
+- Do NOT swap to a different environment
+- Overlay subtle enchantment effects:
+  - Golden fairy dust particles suspended in air
+  - Tiny luminous flowers peeking from corners
+  - Butterfly silhouettes in warm tones
+  - Gentle magical glow on existing light sources
+- Scene stays authentic — magic is an accent, not a replacement
+
+GRUNGY CARD WITH MARKER ART:
+- Thick aged cream border — paper texture, coffee rings, worn edges, yellowing
+- Hand-drawn doodles EVERYWHERE on borders:
+  - Ferns, wildflowers, vine curls, butterflies, small stars, leaves
+  - Dark forest green + rose-gold metallic ink
+  - Quick energetic marker style — like someone drew at the party
+  - Some doodles creep into photo edges
+
+4 FRAMES — different expressions:
+- TL: Confident look, slight smile, golden sparkles
+- TR: Big joyful laugh, butterflies
+- BL: Relaxed pose, enchanted light glow
+- BR: Cool side angle, sparkle particles
+
+TEXT:
+- TOP: "ФЕЙФОРИЯ" elegant rose-gold serif with floral decorations integrated into the letters (roses, petals, tiny vines on letterforms), "06-08.03" below
+- NO timestamps on individual frames
+- BOTTOM: "VNVNC.RU" left marker style, time from context on right, "06-08.03 · Конюшенная 2В" below + flower doodles
+
+9:16 VERTICAL. Designer doll 3D portraits on grungy doodled Polaroid card!""",
+]
+
+# ФЕЙФОРИЯ SQUARE VARIATIONS — 1:1 for LED display
+FEYPHORIA_SQUARE_VARIATIONS = [
+    """ФЕЙФОРИЯ — SQUARE DOLL BOOTH (1:1)
+
+LIKENESS IS ESSENTIAL:
+- The person must look EXACTLY like the reference photo in every frame
+- Same face, hair, clothing — preserve ALL text on garments letter-by-letter
+- If multiple people, include ALL of them
+
+Create a SQUARE (1:1) photo booth grid with 4 portraits in a 2x2 layout.
+
+3D VINYL DOLL STYLE:
+- Person rendered as a premium collectible vinyl figurine
+- Smooth glossy plastic skin, slightly oversized eyes, refined features
+- Sculpted doll-like hair with plastic sheen
+- Think: Popmart / Mighty Jaxx collectible — recognizable but doll-ified
+- Soft 3D volumetric lighting, gentle rim light on plastic surface
+
+BACKGROUND — KEEP ORIGINAL, ADD MAGIC:
+- PRESERVE the actual background from the reference photo (venue, lighting, interior)
+- Do NOT replace — just ADD subtle fairy elements on top:
+  - Golden sparkle particles, tiny glowing flowers, butterfly silhouettes
+  - Magical bloom on existing light sources
+- Original scene stays — magic is accent only
+
+GRUNGY AGED CARD WITH DOODLES:
+- Weathered cream border with paper texture, coffee stains, worn edges
+- Hand-drawn marker doodles on borders: flowers, ferns, vines, butterflies, stars
+- Dark forest green + rose-gold metallic ink, confident marker strokes
+
+4 FRAMES — different expressions of the same doll-ified person:
+Frame 1: Confident gaze, sparkle dust
+Frame 2: Laughing, butterflies
+Frame 3: Relaxed, enchanted glow
+Frame 4: Mysterious angle, sparkles
+
+BRANDING: "VNVNC" tall condensed white letters in thin rose-gold rectangular border.
+
+SQUARE 1:1. Vinyl doll 3D portraits on doodled grungy card!""",
+
+    """ФЕЙФОРИЯ — FIGURINE SQUARE BOOTH (1:1)
+
+LIKENESS IS TOP PRIORITY — person must be EXACTLY recognizable from reference photo.
+Same clothing, same face, same hair. If multiple people, include ALL of them.
+
+SQUARE 1:1 photo grid — 4 portraits in 2x2 layout.
+
+STYLE: High-end vinyl collectible doll. Smooth plastic skin, slightly enlarged eyes,
+sculpted hair. Designer toy aesthetic — Barbie meets Popmart. Still recognizable, just doll-ified.
+3D volumetric feel with soft lighting and gentle shadows.
+
+BACKGROUND: Keep the REAL background from the photo — same venue, same lights.
+Add subtle fairy magic ON TOP: golden sparkle dust, tiny glowing flowers, butterflies.
+Do NOT replace the environment.
+
+CARD: Aged cream paper border with coffee stains, yellowing, worn edges.
+Dense hand-drawn marker doodles: wildflowers, ferns, vines, butterflies, stars.
+Dark green + rose-gold ink. Party doodle energy.
+
+4 FRAMES — different expressions:
+Frame 1: Direct confident look, sparkles
+Frame 2: Genuine laugh, butterflies
+Frame 3: Chill/relaxed, enchanted glow
+Frame 4: Cool side angle, fairy dust
+
+BRANDING: "VNVNC" condensed white in thin rose-gold border.
+
+SQUARE 1:1 format. Designer doll portraits on grungy doodled card!""",
+]
+
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -1225,6 +1459,16 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE: "MALCHISHNIK_SQUARE_VARIATION",  # 1:1 for display
 
     # =========================================================================
+    # PHOTOBOOTH ФЕЙФОРИЯ MODE - 9:16 vertical enchanted fairy forest theme
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_FEYPHORIA: "FEYPHORIA_VARIATION",  # 9:16 for label
+
+    # =========================================================================
+    # PHOTOBOOTH ФЕЙФОРИЯ SQUARE MODE - 1:1 square fairy forest for LED
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE: "FEYPHORIA_SQUARE_VARIATION",  # 1:1 for display
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -1301,6 +1545,8 @@ class CaricatureService:
                 "LOVEINTHEAIR_SQUARE_VARIATION": LOVEINTHEAIR_SQUARE_VARIATIONS,
                 "MALCHISHNIK_VARIATION": MALCHISHNIK_VARIATIONS,
                 "MALCHISHNIK_SQUARE_VARIATION": MALCHISHNIK_SQUARE_VARIATIONS,
+                "FEYPHORIA_VARIATION": FEYPHORIA_VARIATIONS,
+                "FEYPHORIA_SQUARE_VARIATION": FEYPHORIA_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
