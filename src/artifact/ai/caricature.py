@@ -1584,6 +1584,8 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_FEYPHORIA,
+                CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE,
             )
             is_venice_style = style in (
                 CaricatureStyle.PHOTOBOOTH_VENICE,
@@ -1644,7 +1646,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Determine aspect ratio based on style
             # Photobooth uses 9:16 vertical format for better label layout
-            if style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_VENICE, CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR, CaricatureStyle.PHOTOBOOTH_MALCHISHNIK):
+            if style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_VENICE, CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR, CaricatureStyle.PHOTOBOOTH_MALCHISHNIK, CaricatureStyle.PHOTOBOOTH_FEYPHORIA):
                 aspect_ratio = "9:16"
             else:
                 aspect_ratio = "1:1"
