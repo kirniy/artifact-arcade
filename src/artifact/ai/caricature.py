@@ -854,7 +854,7 @@ CARD/BORDER — GRUNGY AGED POLAROID WITH DOODLES:
 TEXT:
 - TOP on border: "ФЕЙФОРИЯ" in elegant rose-gold serif with tiny floral decorations on the letters (like roses and petals woven into the letterforms), "06-08.03" below in smaller text
 - NO timestamps on individual frames
-- BOTTOM on border: "VNVNC.RU" on the left in marker handwriting, time from personality context on the right, "06-08.03 · Конюшенная 2В" below with flower doodles around it
+- BOTTOM on border: "VNVNC.RU" on the left in marker handwriting, time from personality context on the right, "Конюшенная 2В" below with flower doodles around it
 
 9:16 VERTICAL. Vinyl doll 3D rendering on doodled aged Polaroid card.""",
 
@@ -903,7 +903,7 @@ AGED POLAROID WITH HAND-DRAWN DOODLES:
 TEXT:
 - TOP: "ФЕЙФОРИЯ" in elegant rose-gold serif letters adorned with tiny roses and petals woven into the letterforms, "06-08.03" below
 - NO timestamps on individual frames
-- BOTTOM: "VNVNC.RU" left in marker, time from context on right, "06-08.03 · Конюшенная 2В" scribbled below + flower doodles
+- BOTTOM: "VNVNC.RU" left in marker, time from context on right, "Конюшенная 2В" scribbled below + flower doodles
 
 9:16 VERTICAL. Premium vinyl figurine portraits on doodled vintage Polaroid!""",
 
@@ -953,7 +953,7 @@ GRUNGY CARD WITH MARKER ART:
 TEXT:
 - TOP: "ФЕЙФОРИЯ" elegant rose-gold serif with floral decorations integrated into the letters (roses, petals, tiny vines on letterforms), "06-08.03" below
 - NO timestamps on individual frames
-- BOTTOM: "VNVNC.RU" left marker style, time from context on right, "06-08.03 · Конюшенная 2В" below + flower doodles
+- BOTTOM: "VNVNC.RU" left marker style, time from context on right, "Конюшенная 2В" below + flower doodles
 
 9:16 VERTICAL. Designer doll 3D portraits on grungy doodled Polaroid card!""",
 ]
