@@ -60,20 +60,26 @@ arp -a | grep -i "raspberry\|artifact"
 
 Gemini image generation is geo-blocked in Russia. The VPN server `151.245.92.201` is used as a DNS resolver to route Gemini API traffic through Netherlands. **The full VPN (awg-quick@awg0) is DISABLED and must stay disabled.**
 
-**DNS config in `/etc/dhcpcd.conf`** (must be first nameserver):
-```
-static domain_name_servers=151.245.92.201 8.8.8.8 1.1.1.1
+**DNS managed via NetworkManager** (NOT dhcpcd — NM is the active network manager):
+```bash
+# Check current DNS config in NM connection "VNVNC"
+nmcli con show VNVNC | grep dns
+
+# Set/fix DNS (run as root or with sudo):
+sudo nmcli con mod "VNVNC" ipv4.dns "151.245.92.201 8.8.8.8 1.1.1.1" ipv4.ignore-auto-dns yes
+sudo nmcli con up "VNVNC"
+# Verify:
+cat /etc/resolv.conf  # should show 151.245.92.201 first
 ```
 
 **If Gemini fails with `FAILED_PRECONDITION: User location is not supported`:**
 ```bash
-# 1. Verify DNS config
-grep domain_name_servers /etc/dhcpcd.conf
-# Must be: static domain_name_servers=151.245.92.201 8.8.8.8 1.1.1.1
+# 1. Verify resolv.conf has 151.245.92.201 first
+cat /etc/resolv.conf
 
-# 2. Fix resolv.conf if needed
-sudo sed -i 1s/^/nameserver 151.245.92.201
-/ /etc/resolv.conf
+# 2. If missing, fix via NetworkManager:
+sudo nmcli con mod "VNVNC" ipv4.dns "151.245.92.201 8.8.8.8 1.1.1.1" ipv4.ignore-auto-dns yes
+sudo nmcli con up "VNVNC"
 
 # 3. Confirm VPN is disabled
 sudo systemctl disable --now awg-quick@awg0
