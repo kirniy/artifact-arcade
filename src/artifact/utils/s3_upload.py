@@ -339,7 +339,7 @@ def upload_bytes_to_s3(
              '--acl', 'public-read',
              '--content-type', content_type],
             capture_output=True,
-            timeout=30
+            timeout=90
         )
 
         # Clean up temp file
@@ -439,7 +439,7 @@ def upload_file_to_s3(
              '--acl', 'public-read',
              '--content-type', content_type],
             capture_output=True,
-            timeout=30
+            timeout=90
         )
 
         if result.returncode == 0:
