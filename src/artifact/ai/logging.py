@@ -259,3 +259,28 @@ def get_ai_logger(log_dir: Optional[str] = None) -> AILogger:
     if _ai_logger is None:
         _ai_logger = AILogger(log_dir)
     return _ai_logger
+
+
+    def save_reference_photo(self, reference_photo: bytes) -> str:
+        """Save a reference photo immediately (before AI generation attempt).
+
+        Called at the start of generate_image so photos are preserved
+        even if AI generation fails.
+
+        Returns:
+            Path to saved ref photo, or empty string on error
+        """
+        try:
+            import hashlib
+            day_dir = self._get_day_dir()
+            photo_hash = hashlib.md5(reference_photo).hexdigest()[:12]
+            ref_filename = f"ref_{photo_hash}.jpg"
+            ref_filepath = day_dir / "images" / ref_filename
+            if not ref_filepath.exists():
+                with open(ref_filepath, "wb") as f:
+                    f.write(reference_photo)
+                logger.debug(f"Saved reference photo: {ref_filepath}")
+            return str(ref_filepath)
+        except Exception as e:
+            logger.error(f"Failed to save reference photo: {e}")
+            return ""

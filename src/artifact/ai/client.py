@@ -448,6 +448,14 @@ class GeminiClient:
                 f"?key={self.config.api_key}"
             )
 
+            # Save reference photo immediately before any API attempts
+            # so it is preserved even if generation fails
+            if reference_photo:
+                try:
+                    get_ai_logger().save_reference_photo(reference_photo)
+                except Exception:
+                    pass
+
             max_attempts = max(self.config.max_retries, len(self._api_keys))
             for attempt in range(max_attempts):
                 try:
