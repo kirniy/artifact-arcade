@@ -52,32 +52,34 @@ arp -a | grep -i "raspberry\|artifact"
 | `artifact.service` | Enabled | Main arcade application (autostart) |
 | `artifact-dashboard.service` | Enabled | Web dashboard on port 8080 |
 | `artifact-update.timer` | Enabled | Auto-pulls from GitHub every 2 min |
-| `awg-quick@awg0.service` | Enabled | AmneziaWG 2.0 VPN (Netherlands server) |
+| `awg-quick@awg0.service` | **DISABLED** | AmneziaWG VPN — disabled, DNS trick used instead |
 | `tailscaled.service` | Enabled | Tailscale mesh networking |
 | `wayvnc` | Enabled | Remote desktop |
 
-### AmneziaWG VPN Setup
+### Gemini API Geo-Unblocking (DNS Trick)
 
-The Pi uses AmneziaWG 2.0 with full obfuscation to bypass DPI. Config is at `/etc/amnezia/amneziawg/awg0.conf`.
+Gemini image generation is geo-blocked in Russia. The VPN server `151.245.92.201` is used as a DNS resolver to route Gemini API traffic through Netherlands. **The full VPN (awg-quick@awg0) is DISABLED and must stay disabled.**
 
-**Key features:**
-- Split-tunnel routing (Tailscale traffic bypasses VPN)
-- VPN endpoint exception to prevent routing loops
-- Policy-based routing with fwmark
-- Persists through reboots
+**DNS config in `/etc/dhcpcd.conf`** (must be first nameserver):
+```
+static domain_name_servers=151.245.92.201 8.8.8.8 1.1.1.1
+```
 
-**VPN Server:** Netherlands (151.245.92.201:36047)
-
+**If Gemini fails with `FAILED_PRECONDITION: User location is not supported`:**
 ```bash
-# Check VPN status
-sudo awg show awg0
+# 1. Verify DNS config
+grep domain_name_servers /etc/dhcpcd.conf
+# Must be: static domain_name_servers=151.245.92.201 8.8.8.8 1.1.1.1
 
-# Restart VPN
-sudo systemctl restart awg-quick@awg0
+# 2. Fix resolv.conf if needed
+sudo sed -i 1s/^/nameserver 151.245.92.201
+/ /etc/resolv.conf
 
-# Test connectivity
-ping -c 3 8.8.8.8
-curl -s https://api.ipify.org
+# 3. Confirm VPN is disabled
+sudo systemctl disable --now awg-quick@awg0
+
+# 4. Test Gemini reachable (expect 404, NOT FAILED_PRECONDITION)
+curl -s https://generativelanguage.googleapis.com/ | head -3
 ```
 
 ### Remote Access via Tailscale
