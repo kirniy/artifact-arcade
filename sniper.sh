@@ -16,15 +16,6 @@ echo "=== SNIPER CONNECTED at $(date) ==="
 echo "Current WiFi: $(iwgetid -r 2>/dev/null || echo unknown)"
 echo "IP: $(hostname -I 2>/dev/null || echo unknown)"
 
-# Kill all VPN stuff
-sudo systemctl stop sing-box 2>/dev/null
-sudo systemctl disable sing-box 2>/dev/null
-sudo systemctl stop xray-proxy 2>/dev/null
-sudo systemctl disable xray-proxy 2>/dev/null
-sudo systemctl stop tun2socks 2>/dev/null
-sudo systemctl disable tun2socks 2>/dev/null
-sudo systemctl stop amneziawg 2>/dev/null
-
 # Kill the broken persist-venue-route service
 sudo systemctl stop persist-venue-route.service 2>/dev/null
 sudo systemctl disable persist-venue-route.service 2>/dev/null
@@ -174,7 +165,7 @@ while true; do
                 echo "║  Next steps:                                                  ║"
                 echo "║    1. Connect YOUR Mac to VNVNC (if not already)              ║"
                 echo "║    2. ssh kirniy@${NEW_IP:-artifact.local}                    ║"
-                echo "║    3. Run: ./scripts/setup-amneziawg.sh                       ║"
+                echo "║    3. Verify DNS: nmcli con show VNVNC | grep dns             ║"
                 echo "╚═══════════════════════════════════════════════════════════════╝"
                 exit 0
             else

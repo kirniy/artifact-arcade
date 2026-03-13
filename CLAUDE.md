@@ -52,13 +52,12 @@ arp -a | grep -i "raspberry\|artifact"
 | `artifact.service` | Enabled | Main arcade application (autostart) |
 | `artifact-dashboard.service` | Enabled | Web dashboard on port 8080 |
 | `artifact-update.timer` | Enabled | Auto-pulls from GitHub every 2 min |
-| `awg-quick@awg0.service` | **DISABLED** | AmneziaWG VPN — disabled, DNS trick used instead |
 | `tailscaled.service` | Enabled | Tailscale mesh networking |
 | `wayvnc` | Enabled | Remote desktop |
 
 ### Gemini API Geo-Unblocking (DNS Trick)
 
-Gemini image generation is geo-blocked in Russia. The VPN server `151.245.92.201` is used as a DNS resolver to route Gemini API traffic through Netherlands. **The full VPN (awg-quick@awg0) is DISABLED and must stay disabled.**
+Gemini image generation is geo-blocked in Russia. The DNS resolver `82.40.57.136` provides the working SNI/DNS-based route used for Gemini image generation. No local VPN, sing-box, or xray services should be installed on the machine.
 
 **DNS managed via NetworkManager** (NOT dhcpcd — NM is the active network manager):
 ```bash
@@ -66,25 +65,22 @@ Gemini image generation is geo-blocked in Russia. The VPN server `151.245.92.201
 nmcli con show VNVNC | grep dns
 
 # Set/fix DNS (run as root or with sudo):
-sudo nmcli con mod "VNVNC" ipv4.dns "151.245.92.201 8.8.8.8 1.1.1.1" ipv4.ignore-auto-dns yes
+sudo nmcli con mod "VNVNC" ipv4.dns "82.40.57.136 8.8.8.8 1.1.1.1" ipv4.ignore-auto-dns yes
 sudo nmcli con up "VNVNC"
 # Verify:
-cat /etc/resolv.conf  # should show 151.245.92.201 first
+cat /etc/resolv.conf  # should show 82.40.57.136 first
 ```
 
 **If Gemini fails with `FAILED_PRECONDITION: User location is not supported`:**
 ```bash
-# 1. Verify resolv.conf has 151.245.92.201 first
+# 1. Verify resolv.conf has 82.40.57.136 first
 cat /etc/resolv.conf
 
 # 2. If missing, fix via NetworkManager:
-sudo nmcli con mod "VNVNC" ipv4.dns "151.245.92.201 8.8.8.8 1.1.1.1" ipv4.ignore-auto-dns yes
+sudo nmcli con mod "VNVNC" ipv4.dns "82.40.57.136 8.8.8.8 1.1.1.1" ipv4.ignore-auto-dns yes
 sudo nmcli con up "VNVNC"
 
-# 3. Confirm VPN is disabled
-sudo systemctl disable --now awg-quick@awg0
-
-# 4. Test Gemini reachable (expect 404, NOT FAILED_PRECONDITION)
+# 3. Test Gemini reachable (expect 404, NOT FAILED_PRECONDITION)
 curl -s https://generativelanguage.googleapis.com/ | head -3
 ```
 
@@ -101,13 +97,13 @@ ssh kirniy@100.115.122.91
 ssh kirniy@artifact
 ```
 
-**Note:** VPN is configured with `--accept-dns=false` to use 8.8.8.8 instead of Tailscale's Magic DNS.
+**Note:** Keep NetworkManager DNS pinned for `VNVNC` so Tailscale Magic DNS does not override Gemini resolution.
 
 ### Quick Commands (on Pi)
 
 ```bash
 # Check all services
-systemctl status artifact artifact-dashboard artifact-update.timer awg-quick@awg0
+systemctl status artifact artifact-dashboard artifact-update.timer
 
 # View live logs
 journalctl -u artifact -f

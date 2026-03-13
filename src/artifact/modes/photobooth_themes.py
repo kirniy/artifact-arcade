@@ -13,7 +13,8 @@ Switch themes by setting PHOTOBOOTH_THEME environment variable:
 - "loveintheair"
 - "malchishnik"
 - "fiesta"
-- "feyphoria" (default)
+- "feyphoria"
+- "fiesta" (default)
 """
 
 import os
@@ -166,7 +167,7 @@ THEMES = {
 }
 
 # Default theme
-DEFAULT_THEME = "feyphoria"
+DEFAULT_THEME = "fiesta"
 
 
 def get_current_theme() -> PhotoboothTheme:

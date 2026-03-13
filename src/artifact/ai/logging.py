@@ -61,15 +61,25 @@ class AILogger:
         today = datetime.now().strftime("%Y-%m-%d")
         day_dir = self.log_dir / today
 
+        self._prepare_directory(self.log_dir)
+        self._prepare_directory(day_dir)
         for subdir in ["text", "images", "metadata"]:
-            (day_dir / subdir).mkdir(parents=True, exist_ok=True)
+            self._prepare_directory(day_dir / subdir)
 
     def _get_day_dir(self) -> Path:
         """Get today's log directory."""
         today = datetime.now().strftime("%Y-%m-%d")
         day_dir = self.log_dir / today
-        day_dir.mkdir(parents=True, exist_ok=True)
+        self._prepare_directory(day_dir)
         return day_dir
+
+    def _prepare_directory(self, path: Path) -> None:
+        """Ensure shared log directories stay writable across root/user runs."""
+        path.mkdir(parents=True, exist_ok=True)
+        try:
+            path.chmod(0o777)
+        except OSError:
+            logger.debug("Could not chmod %s", path, exc_info=True)
 
     def _generate_id(self) -> str:
         """Generate unique ID for log entries."""
