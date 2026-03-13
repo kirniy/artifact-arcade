@@ -1033,200 +1033,110 @@ SQUARE 1:1 format. Designer doll portraits on grungy doodled card!""",
 
 # FIESTA VARIATIONS - Realistic Spanish party style with elegant doodles
 FIESTA_VARIATIONS = [
-    """FIESTA — REALISTIC PHOTO BOOTH (VERTICAL 9:16)
+    """ФИЕСТА — FERIA POSTER PHOTO BOOTH (VERTICAL 9:16)
 
-Create a VERTICAL photo booth strip (9:16 ratio) with 4 realistic portraits in a 2×2 grid.
+VERTICAL 9:16 photo booth strip. 4 portraits, 2x2 grid, tactile printed poster card.
 
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "FIESTA", "13.03-14.03", "VNVNC"
-- NO OTHER text, no random captions, no year stamps
-- "VNVNC" should stay clean and small, never distorted
-- Keep the Fiesta logo placement clean and obvious as part of the branding area
+CRITICAL — LIKENESS AND CLOTHING FIRST:
+- Person MUST look exactly like the reference photo in all 4 frames
+- Same face shape, same hair, same clothing with ALL text preserved exactly
+- Every detail from the original photo matters — accessories, colors, textures
+- Group photos: include EVERYONE in every frame
 
-STYLE: HIGH-QUALITY EDITORIAL PHOTOREALISM.
-- Preserve the person completely: same face geometry, same hair, same skin marks, same smile lines
-- Preserve all people from the photo in every frame, with similar poses but slight variations
-- Keep clothing, tattoos, jewelry, and every visible detail
-- NO cartoon, NO dolls, NO exaggerated heads
-- Style should be stylish, modern party realism with Spanish party atmosphere
+STYLE — HIGH-END EDITORIAL PHOTOREALISM:
+- Premium realistic club portrait photography, not illustration and not 3D render
+- Natural skin, real hair, real fabric, real eyes, no dollification
+- Soft cinematic nightlife lighting with warm highlights and rich shadow contrast
+- Think: luxury Spanish club photo booth meets feria poster campaign image
 
-REALISM DETAILS:
-- Natural skin tones, subtle flattering camera correction, soft portrait depth of field
-- Cinematic lighting typical for club photography: warm highlights with gentle shadows
-- Keep the original scene and background cues recognizable (don’t redraw the venue)
+BACKGROUND — ORIGINAL SCENE + FIESTA GRAPHICS:
+- Keep the REAL background from the photo — venue, lights, interior, everything
+- Do NOT swap to a different environment
+- Overlay subtle Spanish fiesta elements:
+  - Carnation petals, paper confetti, fan silhouettes, tile-border accents
+  - Flamenco curve doodles, corrida-poster framing rhythm, feria ornament hints
+  - Warm glow on existing light sources, but the real venue must remain visible
+- Scene stays authentic — Spanish styling is an accent, not a replacement
 
-THEME ADAPTATION:
-- Transform people subtly into a confident Spanish party look: Mediterranean warmth in palette,
-  gentle warmth in complexions, fashionable club outfits with Iberian nightlife energy
-- Add festive Spanish details in props/accents (napkins, decor hints, confetti hints) without changing outfits
+PRINTED CARD WITH MARKER ART:
+- Thick warm cream border with matte paper grain, poster wear, halftone dust, slight ink spread
+- The whole piece must feel like a real physical printed photobooth strip / Polaroid card held in the hand
+- Visible paper tooth, matte coating, micro-scratches, soft edge wear, slight curl, pressure marks from handling
+- Tiny analog print imperfections are welcome: faint roller marks, subtle registration shift, soft chemical unevenness, gentle light scuffs
+- Hand-drawn marker doodles on borders, as if someone decorated the printed photo by hand after it came out:
+  - Flamenco flourishes, stars, swirls, carnations, fan shapes, confetti sparks
+  - Andalusian tile corners, castanet icons, crescent comb shapes, matador-jacket braid patterns, bull-horn silhouette motifs, sunburst loops
+  - Deep red, black ink, aged gold accent feeling
+  - Quick expressive marker energy, like custom poster art done at the party
+  - Some graphics may creep into the photo edges, but never cover faces
+  - NO extra words or lettering inside the doodles
 
-DOODLE OVERLAYS:
-- Add stylish HAND-HELD marker doodles in black/white around frame borders and margins
-- Doodles can include stars, small palm leaves, swirls, and confetti bursts
-- Keep doodles energetic but not chaotic, more graphic-chic than childish
+4 FRAMES — different expressions:
+- TL: Direct confident gaze, cool half-smile, poster-star energy
+- TR: Genuine laugh, warm movement, confetti accents
+- BL: Relaxed pose, sensual club mood, soft carnation/petal details
+- BR: Side angle, sharper corrida-poster confidence, dramatic light contrast
 
-4 FRAMES:
-- Frame 1: Confident direct look, half-smile, high-end editorial vibe
-- Frame 2: Genuine smile/laughter, dynamic posture
-- Frame 3: Relaxed pose, shoulder drop, club mood
-- Frame 4: Side angle, cool gaze, evening light contrast
+TEXT:
+- ONLY these texts allowed: "ФИЕСТА", "13.03-14.03", "VNVNC.RU", the time from context, "КОНЮШЕННАЯ 2В"
+- "ФИЕСТА" must be in RUSSIAN letters, large and unmistakable, styled like an elegant Spanish feria/corrida poster headline
+- "VNVNC.RU" must be exact Latin text as plain letters, not a symbol, not an emblem, not a rewritten word
+- NEVER distort, transliterate, or mutate "VNVNC.RU" into anything like "VNAVNC" or Cyrillic variants
+- TOP: "ФИЕСТА" in bold Spanish poster lettering with subtle feria/corrida rhythm, "13.03-14.03" below
+- NO timestamps on individual frames
+- BOTTOM on border: exact text "VNVNC.RU" on the left in stylish marker lettering, time from context on the right, "КОНЮШЕННАЯ 2В" below with carnation / flamenco doodles
 
-LAYOUT:
-- TOP: "FIESTA" and "13.03-14.03"
-- BOTTOM: "VNVNC" and a clean space for event logo on the right
-
-9:16 VERTICAL. Realistic, stylish, upscale photobooth look with doodled graphic accents.""",
-
-    """FIESTA - ИСПАНСКАЯ ПЕЧАТНАЯ ФОТОБУДКА (VERTICAL 9:16)
-
-Create a VERTICAL 9:16 printed photobooth strip with 4 realistic portraits of the SAME person, identity preserved in every frame.
-
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "ФИЕСТА", "13.03-14.03", "VNVNC"
-- "ФИЕСТА" must be in RUSSIAN, bold, clear, party-poster style
-- The date must appear ONLY ONCE in the whole composition
-- "VNVNC" must remain in ENGLISH letters
-- No other words, subtitles, labels, or random typography
-
-REALISM FIRST:
-- This is a printed photobooth strip, not an illustration or 3D render
-- Preserve exact likeness, facial structure, clothing, and attitude from the reference photo
-- No doll-like plastic sheen, no cartoon stylization, no toy aesthetics
-
-MORE SPANISH MOTIFS:
-- Strong Spanish fiesta cues: feria poster energy, flamenco typography rhythm, Iberian ceramic ornament feeling, fan shapes, tile-inspired border accents, red carnation mood, castanet/flamenco hand energy
-- Palette: deep red, paprika, burnt orange, olive, aged gold, warm cream paper
-- Elegant Andalusian nightlife atmosphere, sensual but premium and realistic
-
-PRINTED MATERIAL FEEL:
-- Make it feel physically printed: visible matte paper grain, offset print imperfection, halftone dust, ink spread, slight registration shift, subtle screenprint texture, tactile poster surface
-- Add tasteful worn print details, but keep faces clean and attractive
-
-GRAPHIC DETAILS:
-- Doodles and ornaments should frame the photos, not cover faces: flamenco curves, tile borders, hand-drawn stars, confetti, poster flourishes
-- Event logo mark can appear as a clean branded element
-
-LAYOUT:
-- Put "ФИЕСТА" as the main title
-- Put the single date once, not repeated
-- Keep "VNVNC" as a footer brand mark
-
-4 DIFFERENT EXPRESSIONS:
-- Frame 1: direct gaze, confident smile
-- Frame 2: playful smile, head slightly tilted
-- Frame 3: warm relaxed expression with subtle hand gesture
-- Frame 4: candid sideways look with motion energy
-
-9:16 VERTICAL. Strong Spanish printed party identity with tactile photobooth realism.
-""",
-
-    """FIESTA - ИСПАНСКИЙ КЛУБНЫЙ ПОСТЕР-ФОТОБУДКА (VERTICAL 9:16)
-
-Create a polished 2×2 vertical photobooth strip in premium photorealistic editorial style.
-
-RULES:
-- All persons from the source must stay instantly recognizable
-- Keep exact face details, hair, clothing, and accessories
-- Use the same background logic from the source with realistic adaptation only
-- NO cartoon, NO dollification, NO stylized 3D model look
-- Text allowed only: "ФИЕСТА", "13.03-14.03", "VNVNC"
-- The date must appear ONLY ONCE
-- Include the event emblem as a clean branding element matching the submitted logo
-
-STYLE:
-- High-end photobooth output mixed with Spanish club poster aesthetics
-- More obviously Spanish: feria-inspired composition, flamenco curve motifs, warm Mediterranean nightlife palette, dramatic red accents, cream paper stock, festive Iberian ornament language
-- Strong print feeling: risograph/silkscreen/offset hybrid texture, paper tooth, ink density variation, lightly distressed poster surface
-- Crisp skin texture and premium likeness still come first
-
-FRAMES:
-- Four distinct but similar portraits, same person, same clothing
-- Variation only in pose, smile, gaze, and body energy
-
-TEXT PLACEMENT:
-- Main title: "ФИЕСТА"
-- Single date one time only
-- Footer brand: "VNVNC"
-
-9:16 VERTICAL. Realistic luxury photobooth with Spanish printed-poster texture.
-""",
+9:16 VERTICAL. Premium Spanish feria poster realism on a tactile doodled photobooth card!""",
 ]
 
 
 # FIESTA SQUARE VARIATIONS - 1:1 for LED display
 FIESTA_SQUARE_VARIATIONS = [
-    """FIESTA — REALISTIC SQUARE BOOTH (1:1)
+    """ФИЕСТА — SQUARE FERIA POSTER BOOTH (1:1)
 
-Create a SQUARE (1:1) photo booth grid with 4 realistic portraits in a 2x2 layout.
+LIKENESS IS ESSENTIAL:
+- The person must look EXACTLY like the reference photo in every frame
+- Same face, hair, clothing — preserve ALL text on garments letter-by-letter
+- If multiple people, include ALL of them
 
-CRITICAL RULES:
-- ONLY these texts allowed: "FIESTA", "13.03-14.03", "VNVNC"
-- ALL persons must match the reference photo exactly.
-- No caricature, no dollification, no 3D toy effect.
+Create a SQUARE (1:1) photo booth grid with 4 portraits in a 2x2 layout.
 
-STYLE:
-- Editorial photorealism with club lighting and subtle warm grading.
-- Preserve the original scene, keep the same background logic.
-- Keep people, expressions, clothing, and accessories identical to source identity.
+EDITORIAL REALISM:
+- Premium realistic club portrait photography, not illustration and not toy-like
+- Natural skin, true facial structure, realistic hair, real fabrics
+- Warm Spanish nightlife grading with deep red, paprika, olive, cream, and aged-gold accents
 
-SPANISH THEME:
-- Use Spanish nightlife visual cues: muted crimson, olive, warm gold accents.
-- Add stylish doodle brush marks around frame edges, not overlaid on faces.
+BACKGROUND — KEEP ORIGINAL, ADD SPANISH DETAIL:
+- PRESERVE the actual background from the reference photo
+- Do NOT replace it
+- Add subtle fiesta graphics on top:
+  carnation petals, fan silhouettes, tile-border accents, flamenco curve motifs, confetti sparks
+- Original scene stays — Spanish styling is accent only
 
-FRAMES:
-1) Confident centered portrait, natural smile
-2) Relaxed grin, shoulder turn
-3) Casual laughter, dynamic expression
-4) Side profile with confident gaze
+PRINTED CARD:
+- Warm cream poster border with matte paper texture, halftone dust, slight ink spread
+- The object should feel like a real printed photobooth card / Polaroid square with tactile physical presence
+- Add paper tooth, matte coating, subtle edge wear, tiny handling scuffs, faint print-process imperfections
+- Hand-drawn marker doodles on the printed photo border:
+  carnations, stars, swirls, fan shapes, corrida-poster flourishes,
+  Andalusian tile corners, castanet icons, comb shapes, matador braid motifs, bull-horn silhouette curves
+- Stylish and graphic, never messy
+- NO words inside doodles, only shapes and ornament
 
-TOP: "FIESTA" + "13.03-14.03"
-BOTTOM: "VNVNC" + clean space for logo
+4 FRAMES — different expressions of the same real person:
+Frame 1: Confident gaze, poster-star energy
+Frame 2: Genuine laugh, movement
+Frame 3: Relaxed warm club mood
+Frame 4: Side angle, dramatic confidence
 
-1:1 format. Realistic photobooth grid with clean doodle borders.""",
+TEXT RULES:
+- ONLY these texts allowed: "ФИЕСТА", "13.03-14.03", "VNVNC.RU", the time from context, "КОНЮШЕННАЯ 2В"
+- "ФИЕСТА" must be in RUSSIAN letters only, styled like a bold Spanish feria/corrida poster title
+- "VNVNC.RU" must be exact Latin letters as text, never mutated, never transliterated
 
-    """FIESTA — SQUARE CANDID REALISM (1:1)
+FOOTER: exact text "VNVNC.RU" as a clean left footer mark, time from context on the right, "КОНЮШЕННАЯ 2В" below.
 
-SQUARE (1:1) photo booth strip with 4 realistic portraits in 2×2 grid.
-
-TEXT RULES: only "FIESTA", "13.03-14.03", "VNVNC".
-Keep brand clean, do not add random slogans.
-
-STYLE:
-- Real skin texture, realistic hair, realistic eyes, real facial features.
-- Keep full likeness while styling the person in stylish Spanish club energy.
-- Keep original clothes and background elements visible and correct.
-
-DOODLES:
-- Minimal, trendy hand-drawn doodles in black ink around outer borders.
-- Include confetti arcs, swirls, and subtle palm accents.
-
-FRAMES:
-Frame 1: Direct look, confident poise
-Frame 2: Laughing naturally
-Frame 3: Relaxed shoulder and hand gesture
-Frame 4: Cool side profile
-
-1:1 format for LED gallery. Cinematic realistic fiesta strip with doodle accents.
-""",
-
-    """FIESTA — ELEGANT REALITY SQUARE BOOTH (1:1)
-
-Create a realistic 1:1 square photo booth grid (4 portraits, 2x2).
-
-RULES:
-- Preserve all faces and details from the source photo, including clothing text and accessories.
-- No stylization that changes face structure.
-- Do not hallucinate faces or change group composition.
-- Include event branding exactly: "FIESTA", "13.03-14.03", "VNVNC" and logo area.
-
-VISUAL STYLE:
-- Warm realistic palette with Spanish nightlife tones.
-- Editorial contrast, rich shadows, premium photo booth output.
-- Outer frame and margins get clean doodled marks, still sophisticated.
-
-FRAMES:
-- Show the same people in the same outfits, each with subtle pose/expression variation.
-""",
+SQUARE 1:1. Realistic fiesta portraits on tactile feria-poster card!""",
 ]
 
 
