@@ -1052,6 +1052,9 @@ STYLE — HIGH-END EDITORIAL PHOTOREALISM:
 BACKGROUND — ORIGINAL SCENE + FIESTA GRAPHICS:
 - Keep the REAL background from the photo — venue, lights, interior, everything
 - Do NOT swap to a different environment
+- The scenery behind the people must stay recognizable as the actual captured place
+- Preserve the original composition depth, furniture, walls, light sources, and venue cues behind them
+- Spanish styling may tint or decorate the scenery a bit warmer/redder, but the place itself must still clearly read as the same location from the source photo
 - Overlay subtle Spanish fiesta elements:
   - Carnation petals, paper confetti, fan silhouettes, tile-border accents
   - Flamenco curve doodles, corrida-poster framing rhythm, feria ornament hints
@@ -1080,6 +1083,9 @@ PRINTED CARD WITH MARKER ART:
 TEXT:
 - ONLY these texts allowed: "ФИЕСТА", "13.03-14.03", "VNVNC.RU", the time from context, "КОНЮШЕННАЯ 2В"
 - "ФИЕСТА" must be in RUSSIAN letters, large and unmistakable, styled like an elegant Spanish feria/corrida poster headline
+- "ФИЕСТА" should not be plain flat text: integrate it into a long Spanish-flag ribbon / banner / fabric strip motif
+- The title can sit on, be woven through, or be cut out from a waving red-yellow-red flag-like strip behind it
+- The effect should feel like Spanish flag material incorporated into the headline design, not just colored letters
 - "VNVNC.RU" must be exact Latin text as plain letters, not a symbol, not an emblem, not a rewritten word
 - NEVER distort, transliterate, or mutate "VNVNC.RU" into anything like "VNAVNC" or Cyrillic variants
 - TOP: "ФИЕСТА" in bold Spanish poster lettering with subtle feria/corrida rhythm, "13.03-14.03" below
@@ -1109,6 +1115,9 @@ EDITORIAL REALISM:
 BACKGROUND — KEEP ORIGINAL, ADD SPANISH DETAIL:
 - PRESERVE the actual background from the reference photo
 - Do NOT replace it
+- The scenery behind the people must remain recognizable as the real captured venue
+- Preserve the same room cues, lighting layout, walls, decor, and spatial depth from the source
+- Spanish red/corrida styling can be layered onto the scenery, but the background must still read as the same place
 - Add subtle fiesta graphics on top:
   carnation petals, fan silhouettes, tile-border accents, flamenco curve motifs, confetti sparks
 - Original scene stays — Spanish styling is accent only
@@ -1132,6 +1141,8 @@ Frame 4: Side angle, dramatic confidence
 TEXT RULES:
 - ONLY these texts allowed: "ФИЕСТА", "13.03-14.03", "VNVNC.RU", the time from context, "КОНЮШЕННАЯ 2В"
 - "ФИЕСТА" must be in RUSSIAN letters only, styled like a bold Spanish feria/corrida poster title
+- "ФИЕСТА" should be integrated into a long Spanish-flag ribbon / banner / fabric-strip graphic, not just colored letters
+- Use a waving red-yellow-red strip behind or through the word so the title feels physically built from Spanish flag material
 - "VNVNC.RU" must be exact Latin letters as text, never mutated, never transliterated
 
 FOOTER: exact text "VNVNC.RU" as a clean left footer mark, time from context on the right, "КОНЮШЕННАЯ 2В" below.
