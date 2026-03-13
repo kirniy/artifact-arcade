@@ -46,6 +46,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_MALCHISHNIK_SQUARE = "photobooth_malchishnik_square"  # 1:1 square - Hangover bachelor party theme
     PHOTOBOOTH_FEYPHORIA = "photobooth_feyphoria"  # 9:16 vertical - Enchanted fairy forest theme
     PHOTOBOOTH_FEYPHORIA_SQUARE = "photobooth_feyphoria_square"  # 1:1 square - Enchanted fairy forest theme
+    PHOTOBOOTH_FIESTA = "photobooth_fiesta"  # 9:16 vertical - Realistic Spanish party theme
+    PHOTOBOOTH_FIESTA_SQUARE = "photobooth_fiesta_square"  # 1:1 square - Realistic Spanish party theme
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -1029,6 +1031,205 @@ SQUARE 1:1 format. Designer doll portraits on grungy doodled card!""",
 ]
 
 
+# FIESTA VARIATIONS - Realistic Spanish party style with elegant doodles
+FIESTA_VARIATIONS = [
+    """FIESTA — REALISTIC PHOTO BOOTH (VERTICAL 9:16)
+
+Create a VERTICAL photo booth strip (9:16 ratio) with 4 realistic portraits in a 2×2 grid.
+
+CRITICAL TEXT RULES:
+- ONLY these texts allowed: "FIESTA", "13.03-14.03", "VNVNC"
+- NO OTHER text, no random captions, no year stamps
+- "VNVNC" should stay clean and small, never distorted
+- Keep the Fiesta logo placement clean and obvious as part of the branding area
+
+STYLE: HIGH-QUALITY EDITORIAL PHOTOREALISM.
+- Preserve the person completely: same face geometry, same hair, same skin marks, same smile lines
+- Preserve all people from the photo in every frame, with similar poses but slight variations
+- Keep clothing, tattoos, jewelry, and every visible detail
+- NO cartoon, NO dolls, NO exaggerated heads
+- Style should be stylish, modern party realism with Spanish party atmosphere
+
+REALISM DETAILS:
+- Natural skin tones, subtle flattering camera correction, soft portrait depth of field
+- Cinematic lighting typical for club photography: warm highlights with gentle shadows
+- Keep the original scene and background cues recognizable (don’t redraw the venue)
+
+THEME ADAPTATION:
+- Transform people subtly into a confident Spanish party look: Mediterranean warmth in palette,
+  gentle warmth in complexions, fashionable club outfits with Iberian nightlife energy
+- Add festive Spanish details in props/accents (napkins, decor hints, confetti hints) without changing outfits
+
+DOODLE OVERLAYS:
+- Add stylish HAND-HELD marker doodles in black/white around frame borders and margins
+- Doodles can include stars, small palm leaves, swirls, and confetti bursts
+- Keep doodles energetic but not chaotic, more graphic-chic than childish
+
+4 FRAMES:
+- Frame 1: Confident direct look, half-smile, high-end editorial vibe
+- Frame 2: Genuine smile/laughter, dynamic posture
+- Frame 3: Relaxed pose, shoulder drop, club mood
+- Frame 4: Side angle, cool gaze, evening light contrast
+
+LAYOUT:
+- TOP: "FIESTA" and "13.03-14.03"
+- BOTTOM: "VNVNC" and a clean space for event logo on the right
+
+9:16 VERTICAL. Realistic, stylish, upscale photobooth look with doodled graphic accents.""",
+
+    """FIESTA - ИСПАНСКАЯ ПЕЧАТНАЯ ФОТОБУДКА (VERTICAL 9:16)
+
+Create a VERTICAL 9:16 printed photobooth strip with 4 realistic portraits of the SAME person, identity preserved in every frame.
+
+CRITICAL TEXT RULES:
+- ONLY these texts allowed: "ФИЕСТА", "13.03-14.03", "VNVNC"
+- "ФИЕСТА" must be in RUSSIAN, bold, clear, party-poster style
+- The date must appear ONLY ONCE in the whole composition
+- "VNVNC" must remain in ENGLISH letters
+- No other words, subtitles, labels, or random typography
+
+REALISM FIRST:
+- This is a printed photobooth strip, not an illustration or 3D render
+- Preserve exact likeness, facial structure, clothing, and attitude from the reference photo
+- No doll-like plastic sheen, no cartoon stylization, no toy aesthetics
+
+MORE SPANISH MOTIFS:
+- Strong Spanish fiesta cues: feria poster energy, flamenco typography rhythm, Iberian ceramic ornament feeling, fan shapes, tile-inspired border accents, red carnation mood, castanet/flamenco hand energy
+- Palette: deep red, paprika, burnt orange, olive, aged gold, warm cream paper
+- Elegant Andalusian nightlife atmosphere, sensual but premium and realistic
+
+PRINTED MATERIAL FEEL:
+- Make it feel physically printed: visible matte paper grain, offset print imperfection, halftone dust, ink spread, slight registration shift, subtle screenprint texture, tactile poster surface
+- Add tasteful worn print details, but keep faces clean and attractive
+
+GRAPHIC DETAILS:
+- Doodles and ornaments should frame the photos, not cover faces: flamenco curves, tile borders, hand-drawn stars, confetti, poster flourishes
+- Event logo mark can appear as a clean branded element
+
+LAYOUT:
+- Put "ФИЕСТА" as the main title
+- Put the single date once, not repeated
+- Keep "VNVNC" as a footer brand mark
+
+4 DIFFERENT EXPRESSIONS:
+- Frame 1: direct gaze, confident smile
+- Frame 2: playful smile, head slightly tilted
+- Frame 3: warm relaxed expression with subtle hand gesture
+- Frame 4: candid sideways look with motion energy
+
+9:16 VERTICAL. Strong Spanish printed party identity with tactile photobooth realism.
+""",
+
+    """FIESTA - ИСПАНСКИЙ КЛУБНЫЙ ПОСТЕР-ФОТОБУДКА (VERTICAL 9:16)
+
+Create a polished 2×2 vertical photobooth strip in premium photorealistic editorial style.
+
+RULES:
+- All persons from the source must stay instantly recognizable
+- Keep exact face details, hair, clothing, and accessories
+- Use the same background logic from the source with realistic adaptation only
+- NO cartoon, NO dollification, NO stylized 3D model look
+- Text allowed only: "ФИЕСТА", "13.03-14.03", "VNVNC"
+- The date must appear ONLY ONCE
+- Include the event emblem as a clean branding element matching the submitted logo
+
+STYLE:
+- High-end photobooth output mixed with Spanish club poster aesthetics
+- More obviously Spanish: feria-inspired composition, flamenco curve motifs, warm Mediterranean nightlife palette, dramatic red accents, cream paper stock, festive Iberian ornament language
+- Strong print feeling: risograph/silkscreen/offset hybrid texture, paper tooth, ink density variation, lightly distressed poster surface
+- Crisp skin texture and premium likeness still come first
+
+FRAMES:
+- Four distinct but similar portraits, same person, same clothing
+- Variation only in pose, smile, gaze, and body energy
+
+TEXT PLACEMENT:
+- Main title: "ФИЕСТА"
+- Single date one time only
+- Footer brand: "VNVNC"
+
+9:16 VERTICAL. Realistic luxury photobooth with Spanish printed-poster texture.
+""",
+]
+
+
+# FIESTA SQUARE VARIATIONS - 1:1 for LED display
+FIESTA_SQUARE_VARIATIONS = [
+    """FIESTA — REALISTIC SQUARE BOOTH (1:1)
+
+Create a SQUARE (1:1) photo booth grid with 4 realistic portraits in a 2x2 layout.
+
+CRITICAL RULES:
+- ONLY these texts allowed: "FIESTA", "13.03-14.03", "VNVNC"
+- ALL persons must match the reference photo exactly.
+- No caricature, no dollification, no 3D toy effect.
+
+STYLE:
+- Editorial photorealism with club lighting and subtle warm grading.
+- Preserve the original scene, keep the same background logic.
+- Keep people, expressions, clothing, and accessories identical to source identity.
+
+SPANISH THEME:
+- Use Spanish nightlife visual cues: muted crimson, olive, warm gold accents.
+- Add stylish doodle brush marks around frame edges, not overlaid on faces.
+
+FRAMES:
+1) Confident centered portrait, natural smile
+2) Relaxed grin, shoulder turn
+3) Casual laughter, dynamic expression
+4) Side profile with confident gaze
+
+TOP: "FIESTA" + "13.03-14.03"
+BOTTOM: "VNVNC" + clean space for logo
+
+1:1 format. Realistic photobooth grid with clean doodle borders.""",
+
+    """FIESTA — SQUARE CANDID REALISM (1:1)
+
+SQUARE (1:1) photo booth strip with 4 realistic portraits in 2×2 grid.
+
+TEXT RULES: only "FIESTA", "13.03-14.03", "VNVNC".
+Keep brand clean, do not add random slogans.
+
+STYLE:
+- Real skin texture, realistic hair, realistic eyes, real facial features.
+- Keep full likeness while styling the person in stylish Spanish club energy.
+- Keep original clothes and background elements visible and correct.
+
+DOODLES:
+- Minimal, trendy hand-drawn doodles in black ink around outer borders.
+- Include confetti arcs, swirls, and subtle palm accents.
+
+FRAMES:
+Frame 1: Direct look, confident poise
+Frame 2: Laughing naturally
+Frame 3: Relaxed shoulder and hand gesture
+Frame 4: Cool side profile
+
+1:1 format for LED gallery. Cinematic realistic fiesta strip with doodle accents.
+""",
+
+    """FIESTA — ELEGANT REALITY SQUARE BOOTH (1:1)
+
+Create a realistic 1:1 square photo booth grid (4 portraits, 2x2).
+
+RULES:
+- Preserve all faces and details from the source photo, including clothing text and accessories.
+- No stylization that changes face structure.
+- Do not hallucinate faces or change group composition.
+- Include event branding exactly: "FIESTA", "13.03-14.03", "VNVNC" and logo area.
+
+VISUAL STYLE:
+- Warm realistic palette with Spanish nightlife tones.
+- Editorial contrast, rich shadows, premium photo booth output.
+- Outer frame and margins get clean doodled marks, still sophisticated.
+
+FRAMES:
+- Show the same people in the same outfits, each with subtle pose/expression variation.
+""",
+]
+
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -1469,6 +1670,16 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE: "FEYPHORIA_SQUARE_VARIATION",  # 1:1 for display
 
     # =========================================================================
+    # PHOTOBOOTH FIESTA MODE - 9:16 vertical Spanish realism party style
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_FIESTA: "FIESTA_VARIATION",  # 9:16 for label
+
+    # =========================================================================
+    # PHOTOBOOTH FIESTA SQUARE MODE - 1:1 square Spanish realism for LED
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE: "FIESTA_SQUARE_VARIATION",  # 1:1 for display
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -1547,6 +1758,8 @@ class CaricatureService:
                 "MALCHISHNIK_SQUARE_VARIATION": MALCHISHNIK_SQUARE_VARIATIONS,
                 "FEYPHORIA_VARIATION": FEYPHORIA_VARIATIONS,
                 "FEYPHORIA_SQUARE_VARIATION": FEYPHORIA_SQUARE_VARIATIONS,
+                "FIESTA_VARIATION": FIESTA_VARIATIONS,
+                "FIESTA_SQUARE_VARIATION": FIESTA_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -1586,6 +1799,8 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA,
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_FIESTA,
+                CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,
             )
             is_venice_style = style in (
                 CaricatureStyle.PHOTOBOOTH_VENICE,
@@ -1599,8 +1814,19 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,
             )
+            is_fiesta_style = style in (
+                CaricatureStyle.PHOTOBOOTH_FIESTA,
+                CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,
+            )
 
-            if is_malchishnik_style:
+            if is_fiesta_style:
+                color_instruction = """- FULL COLOR — distinctly Spanish mediterranean print palette: deep red, paprika, burnt orange, olive, aged gold, warm cream
+- High-end photorealistic editorial output with natural skin tones and realistic lighting
+- No 3D render or toy doll treatment, no cartoon look, no plastic textures
+- Preserve original scene and likeness while applying elegant Spanish nightlife mood
+- Add tactile printed-material feel: matte paper grain, halftone traces, ink spread, poster texture, subtle registration imperfection
+- Spanish visual motifs should be obvious but tasteful: feria poster energy, flamenco curves, tile-border accents, fan/carnation ornament language"""
+            elif is_malchishnik_style:
                 color_instruction = """- FULL COLOR — analog film palette: pushed warm yellows/ambers, boosted reds, slight green in shadows
 - Disposable camera / Polaroid aesthetic — heavy film grain, blown center flash, chemical color shift
 - Overexposed highlights, underexposed dark corners, light leaks at edges (orange/red burn)
@@ -1646,7 +1872,14 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Determine aspect ratio based on style
             # Photobooth uses 9:16 vertical format for better label layout
-            if style in (CaricatureStyle.PHOTOBOOTH, CaricatureStyle.PHOTOBOOTH_VENICE, CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR, CaricatureStyle.PHOTOBOOTH_MALCHISHNIK, CaricatureStyle.PHOTOBOOTH_FEYPHORIA):
+            if style in (
+                CaricatureStyle.PHOTOBOOTH,
+                CaricatureStyle.PHOTOBOOTH_VENICE,
+                CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,
+                CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,
+                CaricatureStyle.PHOTOBOOTH_FEYPHORIA,
+                CaricatureStyle.PHOTOBOOTH_FIESTA,
+            ):
                 aspect_ratio = "9:16"
             else:
                 aspect_ratio = "1:1"
@@ -1655,6 +1888,8 @@ UNIQUENESS TOKEN: {uniqueness_token}
             # The model understands to use the photo as reference
             if is_malchishnik_style:
                 image_style = "Analog disposable camera photography, Polaroid film photo, heavy film grain, blown flash, warm pushed colors, party chaos, Hangover movie aesthetic"
+            elif style == CaricatureStyle.PHOTOBOOTH_FIESTA or style == CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE:
+                image_style = "Cinematic editorial photorealistic portrait photography, natural skin tones, premium nightlife club lighting, subtle filmic grain"
             elif is_loveintheair_style:
                 image_style = "Warm illustrated Valentine's card portrait, clean bold outlines, flat warm colors, cream and blush pink, hearts and roses, modern greeting card style"
             elif is_venice_style:

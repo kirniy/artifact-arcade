@@ -11,7 +11,9 @@ Switch themes by setting PHOTOBOOTH_THEME environment variable:
 - "boilingroom"
 - "tripvenice"
 - "loveintheair"
-- "malchishnik" (default)
+- "malchishnik"
+- "fiesta"
+- "feyphoria" (default)
 """
 
 import os
@@ -134,6 +136,24 @@ FEYPHORIA_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: FIESTA (March 13-14, 2026)
+# =============================================================================
+FIESTA_THEME = PhotoboothTheme(
+    id="fiesta",
+    event_name="ФИЕСТА",
+    event_date="13.03-14.03",
+    logo_filename="fiesta.png",
+    theme_chrome=(255, 140, 90),    # Warm peach-orange, party accent
+    theme_red=(180, 30, 40),        # Saturated fiesta red
+    theme_black=(8, 14, 20),        # Deep charcoal-night backdrop
+    ticker_idle="FIESTA",
+    lcd_prefix="ФИЕСТА",
+    description="ФИЕСТА",
+    ai_style_key="fiesta",
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -142,6 +162,7 @@ THEMES = {
     "loveintheair": LOVEINTHEAIR_THEME,
     "malchishnik": MALCHISHNIK_THEME,
     "feyphoria": FEYPHORIA_THEME,
+    "fiesta": FIESTA_THEME,
 }
 
 # Default theme
@@ -154,6 +175,9 @@ def get_current_theme() -> PhotoboothTheme:
     Set PHOTOBOOTH_THEME environment variable to switch themes:
     - export PHOTOBOOTH_THEME=boilingroom
     - export PHOTOBOOTH_THEME=tripvenice
+    - export PHOTOBOOTH_THEME=malchishnik
+    - export PHOTOBOOTH_THEME=feyphoria
+    - export PHOTOBOOTH_THEME=fiesta
 
     Returns:
         PhotoboothTheme instance for the active theme

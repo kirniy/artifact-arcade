@@ -9,6 +9,10 @@ Photo booth flow:
 Supports multiple themes (set PHOTOBOOTH_THEME env var):
 - boilingroom: Raw analog concert photography, red & black palette
 - tripvenice: 3D Sims-style Venetian carnival, gold & burgundy palette
+- malchishnik: High-noise analogue party realism, warm film palette
+- loveintheair: Romantic warm-toned illustrated card style
+- feyphoria: Art toy + fantasy doodle theme
+- fiesta: Realistic Spanish-style party realism with doodle overlays
 """
 
 # When True, prints labels on thermal printer. When False, digital-only mode.
@@ -361,7 +365,12 @@ class PhotoboothMode(BaseMode):
         Returns:
             Tuple of (display_style, label_style) for 1:1 and 9:16 formats
         """
-        if self._theme.ai_style_key == "feyphoria":
+        if self._theme.ai_style_key == "fiesta":
+            return (
+                CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,  # 1:1 square for display
+                CaricatureStyle.PHOTOBOOTH_FIESTA,  # 9:16 vertical for label
+            )
+        elif self._theme.ai_style_key == "feyphoria":
             return (
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA,  # 9:16 vertical for label
@@ -459,8 +468,8 @@ class PhotoboothMode(BaseMode):
             time_w = get_text_width(font, moscow_time)
             draw.text((canvas_w - margin - 20 - time_w, text_y_row1), moscow_time, font=font, fill=text_color)
             
-            # Bottom row left: 20.02-22.02
-            date_str = "20.02-22.02"
+            # Bottom row left: event date(s) from theme config
+            date_str = self._theme.event_date
             draw.text((margin + 20, text_y_row2), date_str, font=font, fill=text_color)
             
             # Bottom row right: Конюшенная 2В
