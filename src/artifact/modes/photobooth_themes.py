@@ -155,6 +155,24 @@ FIESTA_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: НОЧЬ В БОЛЬШОМ ГОРОДЕ (March 20-21, 2026)
+# =============================================================================
+BIGCITYLIFE_THEME = PhotoboothTheme(
+    id="bigcitylife",
+    event_name="НОЧЬ В БОЛЬШОМ ГОРОДЕ",
+    event_date="20.03-21.03",
+    logo_filename="bigcitylife.png",
+    theme_chrome=(255, 220, 50),     # NYC yellow cab / street neon
+    theme_red=(200, 30, 30),         # Graffiti red
+    theme_black=(8, 8, 12),          # Deep night city
+    ticker_idle="BIGCITY",           # 7 Latin chars
+    lcd_prefix="NYC",                # 3 chars for LCD
+    description="НОЧЬ В БОЛЬШОМ ГОРОДЕ",
+    ai_style_key="bigcitylife",
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -164,6 +182,7 @@ THEMES = {
     "malchishnik": MALCHISHNIK_THEME,
     "feyphoria": FEYPHORIA_THEME,
     "fiesta": FIESTA_THEME,
+    "bigcitylife": BIGCITYLIFE_THEME,
 }
 
 # Default theme

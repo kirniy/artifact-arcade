@@ -365,7 +365,12 @@ class PhotoboothMode(BaseMode):
         Returns:
             Tuple of (display_style, label_style) for 1:1 and 9:16 formats
         """
-        if self._theme.ai_style_key == "fiesta":
+        if self._theme.ai_style_key == "bigcitylife":
+            return (
+                CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE,  # 1:1 square for display
+                CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,  # 9:16 vertical for label
+            )
+        elif self._theme.ai_style_key == "fiesta":
             return (
                 CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_FIESTA,  # 9:16 vertical for label
@@ -518,7 +523,7 @@ class PhotoboothMode(BaseMode):
 
             # For themes with timestamps, pass Moscow time for the caption
             personality_context = None
-            if self._theme.ai_style_key in ("malchishnik", "feyphoria"):
+            if self._theme.ai_style_key in ("malchishnik", "feyphoria", "bigcitylife"):
                 moscow_tz = timezone(timedelta(hours=3))
                 moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
                 personality_context = (

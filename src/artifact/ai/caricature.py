@@ -48,6 +48,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_FEYPHORIA_SQUARE = "photobooth_feyphoria_square"  # 1:1 square - Enchanted fairy forest theme
     PHOTOBOOTH_FIESTA = "photobooth_fiesta"  # 9:16 vertical - Realistic Spanish party theme
     PHOTOBOOTH_FIESTA_SQUARE = "photobooth_fiesta_square"  # 1:1 square - Realistic Spanish party theme
+    PHOTOBOOTH_BIGCITYLIFE = "photobooth_bigcitylife"  # 9:16 vertical - 90s NYC graffiti theme
+    PHOTOBOOTH_BIGCITYLIFE_SQUARE = "photobooth_bigcitylife_square"  # 1:1 square - 90s NYC graffiti theme
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -1151,6 +1153,171 @@ SQUARE 1:1. Realistic fiesta portraits on tactile feria-poster card!""",
 ]
 
 
+# BIGCITYLIFE VARIATIONS - 90s NYC graffiti art photobooth (9:16 vertical)
+BIGCITYLIFE_VARIATIONS = [
+    """НОЧЬ В БОЛЬШОМ ГОРОДЕ — GRAFFITI CHARACTER PHOTOBOOTH (VERTICAL 9:16)
+
+Create a VERTICAL 9:16 photo booth strip with 4 portraits rendered as 2D graffiti mural characters.
+
+CRITICAL RENDERING RULES:
+- STRICTLY 2D graffiti character art — flat color fills, bold spray-can outlines, paint drips and fade effects
+- NOT photorealistic. NOT 3D. NOT a Pixar render. Like a legendary Bronx wall piece by TATS CRU or COPE2
+- Wildstyle energy: thick black outlines, spray fade effects, dripping paint, raw street art texture
+- Zero 3D depth or volumetric shading — pure 2D illustration with spray-can texture
+
+LIKENESS (CRITICAL):
+- Exact match to the person in the reference photo — face, hair, body proportions preserved
+- Preserve ALL clothing text letter-for-letter exactly as it appears
+- Preserve all accessories, colors, and recognizable details — rendered in 2D graffiti style
+
+BACKGROUND:
+- Keep the original background from the reference photo as base
+- Overlay NYC graffiti elements: brick wall texture showing through, spray-painted tags in background, fire escape silhouettes, subway tile patterns at edges
+
+BORDER:
+- Aged Polaroid border, slightly yellowed and coffee-stained
+- Black ink doodles along edges: tiny fire escapes, yellow taxi cabs, boomboxes, 5-pointed stars, crown graffiti tags
+- Scan texture, paper grain, slight crease marks
+
+TEXT (exactly these, no other text):
+- TOP of strip: "НОЧЬ В БОЛЬШОМ ГОРОДЕ" + "20.03-21.03" in condensed bold graffiti-tag style lettering
+- BOTTOM LEFT: "VNVNC.RU" in graffiti bubble letters — always in English, never Cyrillic
+- BOTTOM RIGHT: injected timestamp from personality_context (exact time as written)
+- BELOW timestamp: "Конюшенная 2В" in small condensed type
+- NO year. NO "МСК". Date appears ONCE at top only. No per-frame timestamps.
+
+4 FRAMES (2x2 grid):
+- Frame 1: Direct gaze, confident expression, straight-on pose
+- Frame 2: Slight head tilt, relaxed smile, arms natural
+- Frame 3: Dynamic energy, body turned, looking at camera
+- Frame 4: Candid mood, side angle, cool street energy
+
+PALETTE: NYC cab yellow, graffiti red, concrete grey, night black, neon orange spray — all flat 2D fills
+
+9:16 VERTICAL. Pure 2D graffiti character art photobooth strip. Raw, gritty, NYC street energy.""",
+
+    """BIG CITY LIFE — 90s NYC ГРАФФИТИ ФОТОБУДКА (VERTICAL 9:16)
+
+Создай ВЕРТИКАЛЬНУЮ фотополосу 9:16 с 4 портретами в стиле 2D граффити-арт.
+
+РЕНДЕРИНГ (КРИТИЧНО):
+- СТРОГО 2D граффити — плоские заливки, жирные контуры баллончиком, подтёки краски
+- НЕ фотореализм. НЕ 3D. Как стенная роспись от TATS CRU или COPE2 в Бронксе
+- Wildstyle-энергия: толстые чёрные контуры, фейды баллончиком, капли краски
+- Ноль объёмного затенения — чистая 2D иллюстрация с текстурой аэрозоля
+
+СХОДСТВО (КРИТИЧНО):
+- Точное совпадение с человеком на фото — лицо, волосы, пропорции сохранены
+- Сохранить ВСЕ надписи на одежде буква в букву
+- Все детали и аксессуары — в 2D граффити-стиле
+
+ФОН:
+- Базовый фон из оригинального фото сохраняется
+- Поверх наложить NYC-граффити: текстура кирпичной стены, теги баллончиком, силуэты пожарных лестниц
+
+РАМКА:
+- Состаренная рамка Polaroid — пожелтевшая бумага с кофейными пятнами
+- Чёрные чернильные дудлы по краям: пожарные лестницы, жёлтые такси, бумбоксы, звёзды, граффити-короны
+
+ТЕКСТ (только эти, никаких других):
+- СВЕРХУ: "НОЧЬ В БОЛЬШОМ ГОРОДЕ" + "20.03-21.03" — граффити-шрифт, конденсированный жирный
+- СНИЗУ СЛЕВА: "VNVNC.RU" — граффити-буббл леттеринг, всегда латиницей
+- СНИЗУ СПРАВА: время из personality_context (точно как написано)
+- ПОД ВРЕМЕНЕМ: "Конюшенная 2В" — мелкий конденсированный шрифт
+- Год НЕ писать. "МСК" НЕ писать. Дата только один раз сверху.
+
+4 КАДРА (сетка 2x2):
+- Кадр 1: Прямой взгляд, уверенная поза
+- Кадр 2: Расслабленная улыбка, лёгкий наклон головы
+- Кадр 3: Динамичная поза, корпус повёрнут
+- Кадр 4: Боковой угол, уличная энергия
+
+ПАЛИТРА: Жёлтый (NYC cab), граффити-красный, бетонный серый, ночной чёрный, оранжевый неон
+
+9:16 ВЕРТИКАЛЬНАЯ. Чистый 2D граффити-арт. Сырая уличная энергия Нью-Йорка.""",
+
+    """BIG CITY LIFE — NYC STREET ART BOOTH (VERTICAL 9:16)
+
+Create a VERTICAL 9:16 photo booth strip with 4 portraits as authentic 2D graffiti mural art.
+
+STYLE MANDATE — 2D GRAFFITI ONLY:
+- Pure 2D spray-can character illustration — bold outlines, flat fills, drips, fades
+- Reference: TATS CRU style, COPE2 style, classic Bronx/Bushwick wall mural energy
+- Absolutely no photorealism, no 3D rendering, no smooth gradients, no Pixar-style
+- Every line should feel like it was laid down with a spray can by a master aerosol artist
+
+IDENTITY PRESERVATION:
+- The person must be instantly recognizable from the reference photo
+- Face structure, hair, clothing reproduced faithfully in 2D graffiti art style
+- All text on clothing preserved exactly — rendered as part of the 2D illustration
+
+ENVIRONMENT:
+- Base: keep original photo background recognizable beneath graffiti overlay
+- NYC elements woven in: subway tile borders, spray-painted throw-ups in background, brick wall sections, fire escapes framing the composition
+
+POLAROID TREATMENT:
+- Warm yellowed Polaroid border with age marks
+- Hand-drawn black ink annotations at edges: fire escapes, taxi silhouettes, boomboxes, star bursts, crown tags
+- Slight scan artifact, paper texture
+
+TEXT RULES (strict):
+- TOP: "НОЧЬ В БОЛЬШОМ ГОРОДЕ" + "20.03-21.03" — graffiti tag style, condensed bold
+- BOTTOM LEFT: "VNVNC.RU" — bubble letter graffiti, English only
+- BOTTOM RIGHT: time from personality_context (copy exactly)
+- SMALL BELOW: "Конюшенная 2В" condensed
+- No year, no МСК, date once at top, no per-frame time labels
+
+4 EXPRESSIONS:
+- Frame 1: Bold front-facing, strong stance, NYC attitude
+- Frame 2: Natural smile, relaxed energy
+- Frame 3: Turned shoulder, side-eye confidence
+- Frame 4: Caught moment, candid power
+
+COLORS: Cab yellow #FFD700, graffiti red #CC1F1F, concrete #7A7A7A, night black #0A0A0A, neon orange #FF6B00
+
+9:16 VERTICAL. 2D spray-can character art. Wildstyle Bronx energy. NOT a photograph.""",
+]
+
+
+# BIGCITYLIFE SQUARE VARIATIONS - 1:1 for LED display
+BIGCITYLIFE_SQUARE_VARIATIONS = [
+    """BIG CITY LIFE — GRAFFITI SQUARE BOOTH (1:1)
+
+Create a SQUARE (1:1) photo booth grid with 4 portraits rendered as 2D graffiti mural characters.
+
+STYLE: Pure 2D spray-can graffiti character art — flat fills, bold outlines, paint drips
+Reference: TATS CRU / COPE2 style. NOT photorealistic. NOT 3D.
+
+LIKENESS: Preserve exact face and clothing from reference photo in 2D graffiti style.
+Preserve ALL clothing text letter-for-letter.
+
+BACKGROUND: NYC brick wall texture, spray-painted tags, fire escape silhouettes.
+
+BRANDING: "VNVNC.RU" in graffiti bubble letters at bottom — English only, never Cyrillic.
+
+4 FRAMES: Same person, different expressions and angles. 2D graffiti art throughout.
+
+1:1 SQUARE. Raw NYC street art energy.""",
+
+    """NYC GRAFFITI SQUARE — BIG CITY LIFE (1:1)
+
+SQUARE 1:1 photo booth. 4 graffiti character portraits, 2x2 grid.
+
+RENDER AS: 2D spray-can wall art character — bold outlines, flat color, drips, fades.
+Like a Bronx graffiti mural, NOT a photograph, NOT 3D.
+
+Keep the person's likeness exact. Preserve all clothing text exactly.
+
+Background: brick wall with spray tags and fire escapes.
+
+Bottom: "VNVNC.RU" in bubble graffiti letters (English always).
+
+Palette: cab yellow, graffiti red, concrete grey, night black, neon orange.
+
+1:1 SQUARE. Flat 2D wildstyle graffiti character art.""",
+]
+
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -1601,6 +1768,16 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE: "FIESTA_SQUARE_VARIATION",  # 1:1 for display
 
     # =========================================================================
+    # PHOTOBOOTH BIG CITY LIFE MODE - 9:16 vertical 90s NYC graffiti theme
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE: "BIGCITYLIFE_VARIATION",  # 9:16 for label
+
+    # =========================================================================
+    # PHOTOBOOTH BIG CITY LIFE SQUARE MODE - 1:1 square NYC graffiti for LED
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE: "BIGCITYLIFE_SQUARE_VARIATION",  # 1:1 for display
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -1681,6 +1858,8 @@ class CaricatureService:
                 "FEYPHORIA_SQUARE_VARIATION": FEYPHORIA_SQUARE_VARIATIONS,
                 "FIESTA_VARIATION": FIESTA_VARIATIONS,
                 "FIESTA_SQUARE_VARIATION": FIESTA_SQUARE_VARIATIONS,
+                "BIGCITYLIFE_VARIATION": BIGCITYLIFE_VARIATIONS,
+                "BIGCITYLIFE_SQUARE_VARIATION": BIGCITYLIFE_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -1722,6 +1901,8 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_FIESTA,
                 CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,
+                CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE,
             )
             is_venice_style = style in (
                 CaricatureStyle.PHOTOBOOTH_VENICE,
@@ -1739,8 +1920,18 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_FIESTA,
                 CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,
             )
+            is_bigcitylife_style = style in (
+                CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,
+                CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE,
+            )
 
-            if is_fiesta_style:
+            if is_bigcitylife_style:
+                color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
+- Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
+- NOT photorealistic. NOT 3D. Like a legendary Bronx graffiti mural by TATS CRU or COPE2
+- Wildstyle energy, raw and gritty, thick black outlines, spray fade effects, dripping paint
+- 2D illustration with visible brushstroke/spray-can texture, zero 3D depth or shading"""
+            elif is_fiesta_style:
                 color_instruction = """- FULL COLOR — distinctly Spanish mediterranean print palette: deep red, paprika, burnt orange, olive, aged gold, warm cream
 - High-end photorealistic editorial output with natural skin tones and realistic lighting
 - No 3D render or toy doll treatment, no cartoon look, no plastic textures
@@ -1800,6 +1991,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA,
                 CaricatureStyle.PHOTOBOOTH_FIESTA,
+                CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -1807,7 +1999,9 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Send photo directly to Gemini 3 Pro Image Preview
             # The model understands to use the photo as reference
-            if is_malchishnik_style:
+            if is_bigcitylife_style:
+                image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
+            elif is_malchishnik_style:
                 image_style = "Analog disposable camera photography, Polaroid film photo, heavy film grain, blown flash, warm pushed colors, party chaos, Hangover movie aesthetic"
             elif style == CaricatureStyle.PHOTOBOOTH_FIESTA or style == CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE:
                 image_style = "Cinematic editorial photorealistic portrait photography, natural skin tones, premium nightlife club lighting, subtle filmic grain"
