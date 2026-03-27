@@ -180,14 +180,14 @@ class WS2812BDisplay(Display):
             local_col = 7 - x
             matrix_offset = 320
 
-        # Serpentine: even columns top-to-bottom, odd columns bottom-to-top.
-        # If this parity is flipped, the entire ticker becomes unreadable.
+        # Serpentine: odd columns top-to-bottom, even columns bottom-to-top.
+        # Physical wiring starts from the bottom of column 0.
         if local_col % 2 == 0:
-            # Even column: y=0 is first pixel
-            pixel_in_col = y
-        else:
-            # Odd column: y=7 is first pixel (reversed)
+            # Even column: y=7 is first pixel (bottom to top)
             pixel_in_col = 7 - y
+        else:
+            # Odd column: y=0 is first pixel (top to bottom)
+            pixel_in_col = y
 
         return matrix_offset + local_col * 8 + pixel_in_col
 
