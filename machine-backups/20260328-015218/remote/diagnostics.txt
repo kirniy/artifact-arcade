@@ -1,0 +1,536 @@
+HOSTNAME=artifact
+---
+Linux artifact 6.12.47+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.12.47-1+rpt1 (2025-09-16) aarch64 GNU/Linux
+---
+StatusText=ARTIFACT hardware loop running
+ExecStart={ path=/home/kirniy/modular-arcade/.venv/bin/python ; argv[]=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.main ; ignore_errors=no ; start_time=[Sat 2026-03-28 01:32:47 MSK] ; stop_time=[n/a] ; pid=1179 ; code=(null) ; status=0/0 }
+ActiveState=active
+SubState=running
+FragmentPath=/etc/systemd/system/artifact.service
+---
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    inet 192.168.1.117/24 brd 192.168.1.255 scope global dynamic noprefixroute wlan0
+       valid_lft 24231sec preferred_lft 24231sec
+4: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1280 qdisc fq_codel state UNKNOWN group default qlen 500
+    inet 100.115.122.91/32 scope global tailscale0
+       valid_lft forever preferred_lft forever
+---
+default via 192.168.1.1 dev wlan0 proto dhcp src 192.168.1.117 metric 600 
+192.168.1.0/24 dev wlan0 proto kernel scope link src 192.168.1.117 metric 600 
+---
+2: eth0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 88:a2:9e:10:ca:d3 brd ff:ff:ff:ff:ff:ff
+---
+VNVNC:bd96d4bb-9b6e-46e2-8bb1-613c0085526a:802-11-wireless:wlan0
+tailscale0:23e406cc-be4e-40cf-a8cf-5ce1fbd9a16e:tun:tailscale0
+lo:f928e79b-6c9c-42e4-a1e9-878fcf56dcb8:loopback:lo
+---
+connection.id:                          VNVNC
+connection.uuid:                        bd96d4bb-9b6e-46e2-8bb1-613c0085526a
+connection.stable-id:                   --
+connection.type:                        802-11-wireless
+connection.interface-name:              wlan0
+connection.autoconnect:                 yes
+connection.autoconnect-priority:        0
+connection.autoconnect-retries:         -1 (default)
+connection.multi-connect:               0 (default)
+connection.auth-retries:                -1
+connection.timestamp:                   1774650769
+connection.permissions:                 --
+connection.zone:                        --
+connection.controller:                  --
+connection.master:                      --
+connection.slave-type:                  --
+connection.port-type:                   --
+connection.autoconnect-slaves:          -1 (default)
+connection.autoconnect-ports:           -1 (default)
+connection.down-on-poweroff:            -1 (default)
+connection.secondaries:                 --
+connection.gateway-ping-timeout:        0
+connection.ip-ping-timeout:             0
+connection.ip-ping-addresses:           --
+connection.ip-ping-addresses-require-all:-1 (default)
+connection.metered:                     unknown
+connection.lldp:                        default
+connection.mdns:                        -1 (default)
+connection.llmnr:                       -1 (default)
+connection.dns-over-tls:                -1 (default)
+connection.mptcp-flags:                 0x0 (default)
+connection.wait-device-timeout:         -1
+connection.wait-activation-delay:       -1
+802-11-wireless.ssid:                   VNVNC
+802-11-wireless.mode:                   infrastructure
+802-11-wireless.band:                   --
+802-11-wireless.channel:                0
+802-11-wireless.bssid:                  --
+802-11-wireless.mac-address:            --
+802-11-wireless.cloned-mac-address:     --
+802-11-wireless.generate-mac-address-mask:--
+802-11-wireless.mac-address-denylist:   --
+802-11-wireless.mac-address-randomization:default
+802-11-wireless.mtu:                    auto
+802-11-wireless.seen-bssids:            52:FF:20:8A:D2:3F,52:FF:20:88:1E:1B,50:FF:20:EA:D2:3F,00:72:63:21:11:6A,50:FF:20:22:67:7A
+802-11-wireless.hidden:                 no
+802-11-wireless.powersave:              0 (default)
+802-11-wireless.wake-on-wlan:           0x1 (default)
+802-11-wireless.ap-isolation:           -1 (default)
+802-11-wireless.channel-width:          0 (auto)
+802-11-wireless-security.key-mgmt:      wpa-psk
+802-11-wireless-security.wep-tx-keyidx: 0
+802-11-wireless-security.auth-alg:      open
+802-11-wireless-security.proto:         --
+802-11-wireless-security.pairwise:      --
+802-11-wireless-security.group:         --
+802-11-wireless-security.pmf:           0 (default)
+802-11-wireless-security.leap-username: --
+802-11-wireless-security.wep-key0:      <hidden>
+802-11-wireless-security.wep-key1:      <hidden>
+802-11-wireless-security.wep-key2:      <hidden>
+802-11-wireless-security.wep-key3:      <hidden>
+802-11-wireless-security.wep-key-flags: 0 (none)
+802-11-wireless-security.wep-key-type:  unknown
+802-11-wireless-security.psk:           <hidden>
+802-11-wireless-security.psk-flags:     0 (none)
+802-11-wireless-security.leap-password: <hidden>
+802-11-wireless-security.leap-password-flags:0 (none)
+802-11-wireless-security.wps-method:    0x0 (default)
+802-11-wireless-security.fils:          0 (default)
+ipv4.method:                            auto
+ipv4.dns:                               82.40.57.136,8.8.8.8,1.1.1.1
+ipv4.dns-search:                        --
+ipv4.dns-options:                       --
+ipv4.dns-priority:                      0
+ipv4.addresses:                         --
+ipv4.gateway:                           --
+ipv4.routes:                            --
+ipv4.route-metric:                      -1
+ipv4.route-table:                       0 (unspec)
+ipv4.routing-rules:                     --
+ipv4.replace-local-rule:                -1 (default)
+ipv4.dhcp-send-release:                 -1 (default)
+ipv4.routed-dns:                        -1 (default)
+ipv4.ignore-auto-routes:                no
+ipv4.ignore-auto-dns:                   yes
+ipv4.dhcp-client-id:                    --
+ipv4.dhcp-iaid:                         --
+ipv4.dhcp-dscp:                         --
+ipv4.dhcp-timeout:                      0 (default)
+ipv4.dhcp-send-hostname-deprecated:     yes
+ipv4.dhcp-send-hostname:                -1 (default)
+ipv4.dhcp-hostname:                     --
+ipv4.dhcp-fqdn:                         --
+ipv4.dhcp-hostname-flags:               0x0 (none)
+ipv4.never-default:                     no
+ipv4.may-fail:                          yes
+ipv4.required-timeout:                  -1 (default)
+ipv4.dad-timeout:                       -1 (default)
+ipv4.dhcp-vendor-class-identifier:      --
+ipv4.dhcp-ipv6-only-preferred:          -1 (default)
+ipv4.link-local:                        0 (default)
+ipv4.dhcp-reject-servers:               --
+ipv4.auto-route-ext-gw:                 -1 (default)
+ipv4.shared-dhcp-range:                 --
+ipv4.shared-dhcp-lease-time:            0 (default)
+ipv6.method:                            auto
+ipv6.dns:                               --
+ipv6.dns-search:                        --
+ipv6.dns-options:                       --
+ipv6.dns-priority:                      0
+ipv6.addresses:                         --
+ipv6.gateway:                           --
+ipv6.routes:                            --
+ipv6.route-metric:                      -1
+ipv6.route-table:                       0 (unspec)
+ipv6.routing-rules:                     --
+ipv6.replace-local-rule:                -1 (default)
+ipv6.dhcp-send-release:                 -1 (default)
+ipv6.routed-dns:                        -1 (default)
+ipv6.ignore-auto-routes:                no
+ipv6.ignore-auto-dns:                   no
+ipv6.never-default:                     no
+ipv6.may-fail:                          yes
+ipv6.required-timeout:                  -1 (default)
+ipv6.ip6-privacy:                       -1 (default)
+ipv6.temp-valid-lifetime:               0 (default)
+ipv6.temp-preferred-lifetime:           0 (default)
+ipv6.addr-gen-mode:                     default
+ipv6.ra-timeout:                        0 (default)
+ipv6.mtu:                               auto
+ipv6.dhcp-pd-hint:                      --
+ipv6.dhcp-duid:                         --
+ipv6.dhcp-iaid:                         --
+ipv6.dhcp-timeout:                      0 (default)
+ipv6.dhcp-send-hostname-deprecated:     yes
+ipv6.dhcp-send-hostname:                -1 (default)
+ipv6.dhcp-hostname:                     --
+ipv6.dhcp-hostname-flags:               0x0 (none)
+ipv6.auto-route-ext-gw:                 -1 (default)
+ipv6.token:                             --
+proxy.method:                           none
+proxy.browser-only:                     no
+proxy.pac-url:                          --
+proxy.pac-script:                       --
+GENERAL.NAME:                           VNVNC
+GENERAL.UUID:                           bd96d4bb-9b6e-46e2-8bb1-613c0085526a
+GENERAL.DEVICES:                        wlan0
+GENERAL.IP-IFACE:                       wlan0
+GENERAL.STATE:                          activated
+GENERAL.DEFAULT:                        yes
+GENERAL.DEFAULT6:                       no
+GENERAL.SPEC-OBJECT:                    /org/freedesktop/NetworkManager/AccessPoint/1
+GENERAL.VPN:                            no
+GENERAL.DBUS-PATH:                      /org/freedesktop/NetworkManager/ActiveConnection/2
+GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/Settings/2
+GENERAL.ZONE:                           --
+GENERAL.MASTER-PATH:                    --
+IP4.ADDRESS[1]:                         192.168.1.117/24
+IP4.GATEWAY:                            192.168.1.1
+IP4.ROUTE[1]:                           dst = 192.168.1.0/24, nh = 0.0.0.0, mt = 600
+IP4.ROUTE[2]:                           dst = 0.0.0.0/0, nh = 192.168.1.1, mt = 600
+IP4.DNS[1]:                             82.40.57.136
+IP4.DNS[2]:                             8.8.8.8
+IP4.DNS[3]:                             1.1.1.1
+DHCP4.OPTION[1]:                        dhcp_client_identifier = 01:88:a2:9e:10:ca:d4
+DHCP4.OPTION[2]:                        dhcp_lease_time = 25200
+DHCP4.OPTION[3]:                        dhcp_server_identifier = 192.168.1.1
+DHCP4.OPTION[4]:                        domain_name_servers = 192.168.1.1
+DHCP4.OPTION[5]:                        expiry = 1774676170
+DHCP4.OPTION[6]:                        ip_address = 192.168.1.117
+DHCP4.OPTION[7]:                        requested_broadcast_address = 1
+DHCP4.OPTION[8]:                        requested_domain_name = 1
+DHCP4.OPTION[9]:                        requested_domain_name_servers = 1
+DHCP4.OPTION[10]:                       requested_domain_search = 1
+DHCP4.OPTION[11]:                       requested_host_name = 1
+DHCP4.OPTION[12]:                       requested_interface_mtu = 1
+DHCP4.OPTION[13]:                       requested_ms_classless_static_routes = 1
+DHCP4.OPTION[14]:                       requested_nis_domain = 1
+DHCP4.OPTION[15]:                       requested_nis_servers = 1
+DHCP4.OPTION[16]:                       requested_ntp_servers = 1
+DHCP4.OPTION[17]:                       requested_rfc3442_classless_static_routes = 1
+DHCP4.OPTION[18]:                       requested_root_path = 1
+DHCP4.OPTION[19]:                       requested_routers = 1
+DHCP4.OPTION[20]:                       requested_static_routes = 1
+DHCP4.OPTION[21]:                       requested_subnet_mask = 1
+DHCP4.OPTION[22]:                       requested_time_offset = 1
+DHCP4.OPTION[23]:                       requested_wpad = 1
+DHCP4.OPTION[24]:                       routers = 192.168.1.1
+DHCP4.OPTION[25]:                       subnet_mask = 255.255.255.0
+IP6.ADDRESS[1]:                         fdee:5787:bba1:0:7762:db87:98e4:a19/64
+IP6.ADDRESS[2]:                         fe80::ad4f:c284:3ff:6f5e/64
+IP6.GATEWAY:                            --
+IP6.ROUTE[1]:                           dst = fe80::/64, nh = ::, mt = 1024
+IP6.ROUTE[2]:                           dst = fdee:5787:bba1::/64, nh = ::, mt = 600
+IP6.ROUTE[3]:                           dst = 2001:2:7847:1251:feee:ed78:4712:5180/128, nh = fe80::52ff:20ff:feb8:1e1b, mt = 600
+IP6.DNS[1]:                             fe80::52ff:20ff:feb8:1e1b
+DHCP6.OPTION[1]:                        dhcp6_client_id = 00:04:86:53:db:ba:35:30:35:27:a8:1e:00:3c:09:79:d4:1c
+DHCP6.OPTION[2]:                        dhcp6_name_servers = fe80::52ff:20ff:feb8:1e1b
+DHCP6.OPTION[3]:                        iaid = d2:59:86:4f
+---
+enabled
+disabled
+disabled
+enabled
+---
+Mar 28 01:47:35 artifact python[1179]: 01:47:35 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36360)
+Mar 28 01:47:36 artifact python[1179]: 01:47:36 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36420)
+Mar 28 01:47:37 artifact python[1179]: 01:47:37 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36480)
+Mar 28 01:47:38 artifact python[1179]: 01:47:38 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36540)
+Mar 28 01:47:39 artifact python[1179]: 01:47:39 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36600)
+Mar 28 01:47:40 artifact python[1179]: 01:47:40 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36660)
+Mar 28 01:47:42 artifact python[1179]: 01:47:42 [INFO] artifact.modes.photobooth: Label image generated: 1790215 bytes
+Mar 28 01:47:42 artifact python[1179]: 01:47:42 [INFO] artifact.modes.photobooth: AI photo booth generation completed (display + label)
+Mar 28 01:47:42 artifact python[1179]: 01:47:42 [INFO] artifact.modes.photobooth: Uploading photo booth image...
+Mar 28 01:47:42 artifact python[1179]: 01:47:42 [INFO] artifact.utils.s3_upload: Uploading to Selectel S3: artifact/photobooth/photobooth_20260328_014742_25c7cf7c.png (1790215 bytes)
+Mar 28 01:47:42 artifact python[1179]: 01:47:42 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36720)
+Mar 28 01:47:43 artifact python[1179]: 01:47:43 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36780)
+Mar 28 01:47:44 artifact python[1179]: 01:47:44 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36840)
+Mar 28 01:47:45 artifact python[1179]: 01:47:45 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36900)
+Mar 28 01:47:46 artifact python[1179]: 01:47:46 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 36960)
+Mar 28 01:47:47 artifact python[1179]: 01:47:47 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37020)
+Mar 28 01:47:48 artifact python[1179]: 01:47:48 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37080)
+Mar 28 01:47:49 artifact python[1179]: 01:47:49 [INFO] artifact.utils.s3_upload: Redirect HTML uploaded: vnvnc.ru/p/25c7cf7c
+Mar 28 01:47:49 artifact python[1179]: 01:47:49 [INFO] artifact.utils.s3_upload: Upload successful: https://e6aaa51f-863a-439e-9b6e-69991ff0ad6e.selstorage.ru/artifact/photobooth/photobooth_20260328_014742_25c7cf7c.png (short: https://vnvnc.ru/p/25c7cf7c)
+Mar 28 01:47:49 artifact python[1179]: 01:47:49 [INFO] artifact.modes.photobooth: Photo uploaded successfully: https://vnvnc.ru/p/25c7cf7c
+Mar 28 01:47:49 artifact python[1179]: 01:47:49 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37140)
+Mar 28 01:47:50 artifact python[1179]: 01:47:50 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37200)
+Mar 28 01:47:51 artifact python[1179]: 01:47:51 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37260)
+Mar 28 01:47:52 artifact python[1179]: 01:47:52 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37320)
+Mar 28 01:47:53 artifact python[1179]: 01:47:53 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37380)
+Mar 28 01:47:54 artifact python[1179]: 01:47:54 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37440)
+Mar 28 01:47:55 artifact python[1179]: 01:47:55 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37500)
+Mar 28 01:47:56 artifact python[1179]: 01:47:56 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37560)
+Mar 28 01:47:57 artifact python[1179]: 01:47:57 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37620)
+Mar 28 01:47:58 artifact python[1179]: 01:47:58 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37680)
+Mar 28 01:47:59 artifact python[1179]: 01:47:59 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37740)
+Mar 28 01:48:00 artifact python[1179]: 01:48:00 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37800)
+Mar 28 01:48:01 artifact python[1179]: 01:48:01 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37860)
+Mar 28 01:48:02 artifact python[1179]: 01:48:02 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37920)
+Mar 28 01:48:03 artifact python[1179]: 01:48:03 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 37980)
+Mar 28 01:48:04 artifact python[1179]: 01:48:04 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38040)
+Mar 28 01:48:04 artifact python[1179]: 01:48:04 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38100)
+Mar 28 01:48:05 artifact python[1179]: 01:48:05 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38160)
+Mar 28 01:48:06 artifact python[1179]: 01:48:06 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38220)
+Mar 28 01:48:07 artifact python[1179]: 01:48:07 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38280)
+Mar 28 01:48:08 artifact python[1179]: 01:48:08 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38340)
+Mar 28 01:48:09 artifact python[1179]: 01:48:09 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38400)
+Mar 28 01:48:10 artifact python[1179]: 01:48:10 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38460)
+Mar 28 01:48:11 artifact python[1179]: 01:48:11 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38520)
+Mar 28 01:48:12 artifact python[1179]: 01:48:12 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38580)
+Mar 28 01:48:13 artifact python[1179]: 01:48:13 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38640)
+Mar 28 01:48:14 artifact python[1179]: 01:48:14 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38700)
+Mar 28 01:48:15 artifact python[1179]: 01:48:15 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38760)
+Mar 28 01:48:16 artifact python[1179]: 01:48:16 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38820)
+Mar 28 01:48:17 artifact python[1179]: 01:48:17 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38880)
+Mar 28 01:48:18 artifact python[1179]: 01:48:18 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 38940)
+Mar 28 01:48:19 artifact python[1179]: 01:48:19 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39000)
+Mar 28 01:48:20 artifact python[1179]: 01:48:20 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39060)
+Mar 28 01:48:21 artifact python[1179]: 01:48:21 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39120)
+Mar 28 01:48:22 artifact python[1179]: 01:48:22 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39180)
+Mar 28 01:48:23 artifact python[1179]: 01:48:23 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39240)
+Mar 28 01:48:24 artifact python[1179]: 01:48:24 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39300)
+Mar 28 01:48:25 artifact python[1179]: 01:48:25 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39360)
+Mar 28 01:48:26 artifact python[1179]: 01:48:26 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39420)
+Mar 28 01:48:27 artifact python[1179]: 01:48:27 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39480)
+Mar 28 01:48:28 artifact python[1179]: 01:48:28 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39540)
+Mar 28 01:48:29 artifact python[1179]: 01:48:29 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39600)
+Mar 28 01:48:30 artifact python[1179]: 01:48:30 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39660)
+Mar 28 01:48:31 artifact python[1179]: 01:48:31 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39720)
+Mar 28 01:48:32 artifact python[1179]: 01:48:32 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39780)
+Mar 28 01:48:32 artifact python[1179]: 01:48:32 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39840)
+Mar 28 01:48:33 artifact python[1179]: 01:48:33 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39900)
+Mar 28 01:48:34 artifact python[1179]: 01:48:34 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 39960)
+Mar 28 01:48:35 artifact python[1179]: 01:48:35 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40020)
+Mar 28 01:48:36 artifact python[1179]: 01:48:36 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40080)
+Mar 28 01:48:37 artifact python[1179]: 01:48:37 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40140)
+Mar 28 01:48:38 artifact python[1179]: 01:48:38 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40200)
+Mar 28 01:48:39 artifact python[1179]: 01:48:39 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40260)
+Mar 28 01:48:40 artifact python[1179]: 01:48:40 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40320)
+Mar 28 01:48:41 artifact python[1179]: 01:48:41 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40380)
+Mar 28 01:48:42 artifact python[1179]: 01:48:42 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40440)
+Mar 28 01:48:43 artifact python[1179]: 01:48:43 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40500)
+Mar 28 01:48:44 artifact python[1179]: 01:48:44 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40560)
+Mar 28 01:48:45 artifact python[1179]: 01:48:45 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40620)
+Mar 28 01:48:46 artifact python[1179]: 01:48:46 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40680)
+Mar 28 01:48:47 artifact python[1179]: 01:48:47 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40740)
+Mar 28 01:48:48 artifact python[1179]: 01:48:48 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40800)
+Mar 28 01:48:49 artifact python[1179]: 01:48:49 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40860)
+Mar 28 01:48:50 artifact python[1179]: 01:48:50 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40920)
+Mar 28 01:48:51 artifact python[1179]: 01:48:51 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 40980)
+Mar 28 01:48:52 artifact python[1179]: 01:48:52 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41040)
+Mar 28 01:48:53 artifact python[1179]: 01:48:53 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41100)
+Mar 28 01:48:54 artifact python[1179]: 01:48:54 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41160)
+Mar 28 01:48:55 artifact python[1179]: 01:48:55 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41220)
+Mar 28 01:48:56 artifact python[1179]: 01:48:56 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41280)
+Mar 28 01:48:57 artifact python[1179]: 01:48:57 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41340)
+Mar 28 01:48:58 artifact python[1179]: 01:48:58 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41400)
+Mar 28 01:48:59 artifact python[1179]: 01:48:59 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41460)
+Mar 28 01:49:00 artifact python[1179]: 01:49:00 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41520)
+Mar 28 01:49:01 artifact python[1179]: 01:49:01 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41580)
+Mar 28 01:49:01 artifact python[1179]: 01:49:01 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41640)
+Mar 28 01:49:02 artifact python[1179]: 01:49:02 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41700)
+Mar 28 01:49:03 artifact python[1179]: 01:49:03 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41760)
+Mar 28 01:49:04 artifact python[1179]: 01:49:04 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41820)
+Mar 28 01:49:05 artifact python[1179]: 01:49:05 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41880)
+Mar 28 01:49:06 artifact python[1179]: 01:49:06 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 41940)
+Mar 28 01:49:07 artifact python[1179]: 01:49:07 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42000)
+Mar 28 01:49:08 artifact python[1179]: 01:49:08 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42060)
+Mar 28 01:49:09 artifact python[1179]: 01:49:09 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42120)
+Mar 28 01:49:10 artifact python[1179]: 01:49:10 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42180)
+Mar 28 01:49:11 artifact python[1179]: 01:49:11 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42240)
+Mar 28 01:49:12 artifact python[1179]: 01:49:12 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42300)
+Mar 28 01:49:13 artifact python[1179]: 01:49:13 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42360)
+Mar 28 01:49:14 artifact python[1179]: 01:49:14 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42420)
+Mar 28 01:49:15 artifact python[1179]: 01:49:15 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42480)
+Mar 28 01:49:16 artifact python[1179]: 01:49:16 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42540)
+Mar 28 01:49:17 artifact python[1179]: 01:49:17 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42600)
+Mar 28 01:49:18 artifact python[1179]: 01:49:18 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42660)
+Mar 28 01:49:19 artifact python[1179]: 01:49:19 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42720)
+Mar 28 01:49:20 artifact python[1179]: 01:49:20 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42780)
+Mar 28 01:49:21 artifact python[1179]: 01:49:21 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42840)
+Mar 28 01:49:22 artifact python[1179]: 01:49:22 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42900)
+Mar 28 01:49:23 artifact python[1179]: 01:49:23 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 42960)
+Mar 28 01:49:24 artifact python[1179]: 01:49:24 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43020)
+Mar 28 01:49:25 artifact python[1179]: 01:49:25 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43080)
+Mar 28 01:49:26 artifact python[1179]: 01:49:26 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43140)
+Mar 28 01:49:27 artifact python[1179]: 01:49:27 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43200)
+Mar 28 01:49:28 artifact python[1179]: 01:49:28 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43260)
+Mar 28 01:49:29 artifact python[1179]: 01:49:29 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43320)
+Mar 28 01:49:29 artifact python[1179]: 01:49:29 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43380)
+Mar 28 01:49:30 artifact python[1179]: 01:49:30 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43440)
+Mar 28 01:49:31 artifact python[1179]: 01:49:31 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43500)
+Mar 28 01:49:32 artifact python[1179]: 01:49:32 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43560)
+Mar 28 01:49:33 artifact python[1179]: 01:49:33 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43620)
+Mar 28 01:49:34 artifact python[1179]: 01:49:34 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43680)
+Mar 28 01:49:35 artifact python[1179]: 01:49:35 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43740)
+Mar 28 01:49:36 artifact python[1179]: 01:49:36 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43800)
+Mar 28 01:49:37 artifact python[1179]: 01:49:37 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43860)
+Mar 28 01:49:38 artifact python[1179]: 01:49:38 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43920)
+Mar 28 01:49:39 artifact python[1179]: 01:49:39 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 43980)
+Mar 28 01:49:40 artifact python[1179]: 01:49:40 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44040)
+Mar 28 01:49:41 artifact python[1179]: 01:49:41 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44100)
+Mar 28 01:49:42 artifact python[1179]: 01:49:42 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44160)
+Mar 28 01:49:43 artifact python[1179]: 01:49:43 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44220)
+Mar 28 01:49:44 artifact python[1179]: 01:49:44 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44280)
+Mar 28 01:49:45 artifact python[1179]: 01:49:45 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44340)
+Mar 28 01:49:46 artifact python[1179]: 01:49:46 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44400)
+Mar 28 01:49:47 artifact python[1179]: 01:49:47 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44460)
+Mar 28 01:49:48 artifact python[1179]: 01:49:48 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44520)
+Mar 28 01:49:49 artifact python[1179]: 01:49:49 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44580)
+Mar 28 01:49:50 artifact python[1179]: 01:49:50 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44640)
+Mar 28 01:49:51 artifact python[1179]: 01:49:51 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44700)
+Mar 28 01:49:52 artifact python[1179]: 01:49:52 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44760)
+Mar 28 01:49:53 artifact python[1179]: 01:49:53 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44820)
+Mar 28 01:49:54 artifact python[1179]: 01:49:54 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44880)
+Mar 28 01:49:55 artifact python[1179]: 01:49:55 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 44940)
+Mar 28 01:49:56 artifact python[1179]: 01:49:56 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45000)
+Mar 28 01:49:57 artifact python[1179]: 01:49:57 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45060)
+Mar 28 01:49:58 artifact python[1179]: 01:49:58 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45120)
+Mar 28 01:49:58 artifact python[1179]: 01:49:58 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45180)
+Mar 28 01:49:59 artifact python[1179]: 01:49:59 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45240)
+Mar 28 01:50:00 artifact python[1179]: 01:50:00 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45300)
+Mar 28 01:50:01 artifact python[1179]: 01:50:01 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45360)
+Mar 28 01:50:02 artifact python[1179]: 01:50:02 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45420)
+Mar 28 01:50:03 artifact python[1179]: 01:50:03 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45480)
+Mar 28 01:50:04 artifact python[1179]: 01:50:04 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45540)
+Mar 28 01:50:05 artifact python[1179]: 01:50:05 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45600)
+Mar 28 01:50:06 artifact python[1179]: 01:50:06 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45660)
+Mar 28 01:50:07 artifact python[1179]: 01:50:07 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45720)
+Mar 28 01:50:08 artifact python[1179]: 01:50:08 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45780)
+Mar 28 01:50:09 artifact python[1179]: 01:50:09 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45840)
+Mar 28 01:50:10 artifact python[1179]: 01:50:10 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45900)
+Mar 28 01:50:11 artifact python[1179]: 01:50:11 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 45960)
+Mar 28 01:50:12 artifact python[1179]: 01:50:12 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46020)
+Mar 28 01:50:13 artifact python[1179]: 01:50:13 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46080)
+Mar 28 01:50:14 artifact python[1179]: 01:50:14 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46140)
+Mar 28 01:50:15 artifact python[1179]: 01:50:15 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46200)
+Mar 28 01:50:16 artifact python[1179]: 01:50:16 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46260)
+Mar 28 01:50:17 artifact python[1179]: 01:50:17 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46320)
+Mar 28 01:50:18 artifact python[1179]: 01:50:18 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46380)
+Mar 28 01:50:19 artifact python[1179]: 01:50:19 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46440)
+Mar 28 01:50:20 artifact python[1179]: 01:50:20 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46500)
+Mar 28 01:50:21 artifact python[1179]: 01:50:21 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46560)
+Mar 28 01:50:22 artifact python[1179]: 01:50:22 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46620)
+Mar 28 01:50:23 artifact python[1179]: 01:50:23 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46680)
+Mar 28 01:50:24 artifact python[1179]: 01:50:24 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46740)
+Mar 28 01:50:25 artifact python[1179]: 01:50:25 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46800)
+Mar 28 01:50:26 artifact python[1179]: 01:50:26 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46860)
+Mar 28 01:50:27 artifact python[1179]: 01:50:27 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46920)
+Mar 28 01:50:27 artifact python[1179]: 01:50:27 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 46980)
+Mar 28 01:50:28 artifact python[1179]: 01:50:28 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47040)
+Mar 28 01:50:29 artifact python[1179]: 01:50:29 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47100)
+Mar 28 01:50:30 artifact python[1179]: 01:50:30 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47160)
+Mar 28 01:50:31 artifact python[1179]: 01:50:31 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47220)
+Mar 28 01:50:32 artifact python[1179]: 01:50:32 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47280)
+Mar 28 01:50:33 artifact python[1179]: 01:50:33 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47340)
+Mar 28 01:50:34 artifact python[1179]: 01:50:34 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47400)
+Mar 28 01:50:35 artifact python[1179]: 01:50:35 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47460)
+Mar 28 01:50:36 artifact python[1179]: 01:50:36 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47520)
+Mar 28 01:50:37 artifact python[1179]: 01:50:37 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47580)
+Mar 28 01:50:38 artifact python[1179]: 01:50:38 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47640)
+Mar 28 01:50:39 artifact python[1179]: 01:50:39 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47700)
+Mar 28 01:50:40 artifact python[1179]: 01:50:40 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47760)
+Mar 28 01:50:41 artifact python[1179]: 01:50:41 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47820)
+Mar 28 01:50:42 artifact python[1179]: 01:50:42 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47880)
+Mar 28 01:50:43 artifact python[1179]: 01:50:43 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 47940)
+Mar 28 01:50:44 artifact python[1179]: 01:50:44 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48000)
+Mar 28 01:50:45 artifact python[1179]: 01:50:45 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48060)
+Mar 28 01:50:46 artifact python[1179]: 01:50:46 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48120)
+Mar 28 01:50:47 artifact python[1179]: 01:50:47 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48180)
+Mar 28 01:50:48 artifact python[1179]: 01:50:48 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48240)
+Mar 28 01:50:49 artifact python[1179]: 01:50:49 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48300)
+Mar 28 01:50:50 artifact python[1179]: 01:50:50 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48360)
+Mar 28 01:50:51 artifact python[1179]: 01:50:51 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48420)
+Mar 28 01:50:52 artifact python[1179]: 01:50:52 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48480)
+Mar 28 01:50:53 artifact python[1179]: 01:50:53 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48540)
+Mar 28 01:50:54 artifact python[1179]: 01:50:54 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48600)
+Mar 28 01:50:55 artifact python[1179]: 01:50:55 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48660)
+Mar 28 01:50:56 artifact python[1179]: 01:50:56 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48720)
+Mar 28 01:50:57 artifact python[1179]: 01:50:57 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48780)
+Mar 28 01:50:57 artifact python[1179]: 01:50:57 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48840)
+Mar 28 01:50:58 artifact python[1179]: 01:50:58 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48900)
+Mar 28 01:50:59 artifact python[1179]: 01:50:59 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 48960)
+Mar 28 01:51:00 artifact python[1179]: 01:51:00 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49020)
+Mar 28 01:51:01 artifact python[1179]: 01:51:01 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49080)
+Mar 28 01:51:02 artifact python[1179]: 01:51:02 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49140)
+Mar 28 01:51:03 artifact python[1179]: 01:51:03 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49200)
+Mar 28 01:51:04 artifact python[1179]: 01:51:04 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49260)
+Mar 28 01:51:05 artifact python[1179]: 01:51:05 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49320)
+Mar 28 01:51:06 artifact python[1179]: 01:51:06 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49380)
+Mar 28 01:51:07 artifact python[1179]: 01:51:07 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49440)
+Mar 28 01:51:08 artifact python[1179]: 01:51:08 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49500)
+Mar 28 01:51:09 artifact python[1179]: 01:51:09 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49560)
+Mar 28 01:51:10 artifact python[1179]: 01:51:10 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49620)
+Mar 28 01:51:11 artifact python[1179]: 01:51:11 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49680)
+Mar 28 01:51:12 artifact python[1179]: 01:51:12 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49740)
+Mar 28 01:51:13 artifact python[1179]: 01:51:13 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49800)
+Mar 28 01:51:14 artifact python[1179]: 01:51:14 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49860)
+Mar 28 01:51:15 artifact python[1179]: 01:51:15 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49920)
+Mar 28 01:51:16 artifact python[1179]: 01:51:16 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 49980)
+Mar 28 01:51:17 artifact python[1179]: 01:51:17 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50040)
+Mar 28 01:51:18 artifact python[1179]: 01:51:18 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50100)
+Mar 28 01:51:19 artifact python[1179]: 01:51:19 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50160)
+Mar 28 01:51:20 artifact python[1179]: 01:51:20 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50220)
+Mar 28 01:51:21 artifact python[1179]: 01:51:21 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50280)
+Mar 28 01:51:22 artifact python[1179]: 01:51:22 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50340)
+Mar 28 01:51:23 artifact python[1179]: 01:51:23 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50400)
+Mar 28 01:51:24 artifact python[1179]: 01:51:24 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50460)
+Mar 28 01:51:24 artifact python[1179]: 01:51:24 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50520)
+Mar 28 01:51:25 artifact python[1179]: 01:51:25 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50580)
+Mar 28 01:51:26 artifact python[1179]: 01:51:26 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50640)
+Mar 28 01:51:27 artifact python[1179]: 01:51:27 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50700)
+Mar 28 01:51:28 artifact python[1179]: 01:51:28 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50760)
+Mar 28 01:51:29 artifact python[1179]: 01:51:29 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50820)
+Mar 28 01:51:30 artifact python[1179]: 01:51:30 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50880)
+Mar 28 01:51:31 artifact python[1179]: 01:51:31 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 50940)
+Mar 28 01:51:32 artifact python[1179]: 01:51:32 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51000)
+Mar 28 01:51:33 artifact python[1179]: 01:51:33 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51060)
+Mar 28 01:51:34 artifact python[1179]: 01:51:34 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51120)
+Mar 28 01:51:35 artifact python[1179]: 01:51:35 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51180)
+Mar 28 01:51:36 artifact python[1179]: 01:51:36 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51240)
+Mar 28 01:51:37 artifact python[1179]: 01:51:37 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51300)
+Mar 28 01:51:38 artifact python[1179]: 01:51:38 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51360)
+Mar 28 01:51:39 artifact python[1179]: 01:51:39 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51420)
+Mar 28 01:51:40 artifact python[1179]: 01:51:40 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51480)
+Mar 28 01:51:41 artifact python[1179]: 01:51:41 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51540)
+Mar 28 01:51:42 artifact python[1179]: 01:51:42 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51600)
+Mar 28 01:51:43 artifact python[1179]: 01:51:43 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51660)
+Mar 28 01:51:44 artifact python[1179]: 01:51:44 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51720)
+Mar 28 01:51:45 artifact python[1179]: 01:51:45 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51780)
+Mar 28 01:51:46 artifact python[1179]: 01:51:46 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51840)
+Mar 28 01:51:47 artifact python[1179]: 01:51:47 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51900)
+Mar 28 01:51:48 artifact python[1179]: 01:51:48 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 51960)
+Mar 28 01:51:49 artifact python[1179]: 01:51:49 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52020)
+Mar 28 01:51:50 artifact python[1179]: 01:51:50 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52080)
+Mar 28 01:51:51 artifact python[1179]: 01:51:51 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52140)
+Mar 28 01:51:52 artifact python[1179]: 01:51:52 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52200)
+Mar 28 01:51:52 artifact python[1179]: 01:51:52 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52260)
+Mar 28 01:51:53 artifact python[1179]: 01:51:53 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52320)
+Mar 28 01:51:54 artifact python[1179]: 01:51:54 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52380)
+Mar 28 01:51:55 artifact python[1179]: 01:51:55 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52440)
+Mar 28 01:51:56 artifact python[1179]: 01:51:56 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52500)
+Mar 28 01:51:57 artifact python[1179]: 01:51:57 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52560)
+Mar 28 01:51:58 artifact python[1179]: 01:51:58 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52620)
+Mar 28 01:51:59 artifact python[1179]: 01:51:59 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52680)
+Mar 28 01:52:00 artifact python[1179]: 01:52:00 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52740)
+Mar 28 01:52:01 artifact python[1179]: 01:52:01 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52800)
+Mar 28 01:52:02 artifact python[1179]: 01:52:02 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52860)
+Mar 28 01:52:03 artifact python[1179]: 01:52:03 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52920)
+Mar 28 01:52:04 artifact python[1179]: 01:52:04 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 52980)
+Mar 28 01:52:05 artifact python[1179]: 01:52:05 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53040)
+Mar 28 01:52:06 artifact python[1179]: 01:52:06 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53100)
+Mar 28 01:52:07 artifact python[1179]: 01:52:07 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53160)
+Mar 28 01:52:08 artifact python[1179]: 01:52:08 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53220)
+Mar 28 01:52:09 artifact python[1179]: 01:52:09 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53280)
+Mar 28 01:52:10 artifact python[1179]: 01:52:10 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53340)
+Mar 28 01:52:11 artifact python[1179]: 01:52:11 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53400)
+Mar 28 01:52:12 artifact python[1179]: 01:52:12 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53460)
+Mar 28 01:52:13 artifact python[1179]: 01:52:13 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53520)
+Mar 28 01:52:14 artifact python[1179]: 01:52:14 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53580)
+Mar 28 01:52:15 artifact python[1179]: 01:52:15 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53640)
+Mar 28 01:52:16 artifact python[1179]: 01:52:16 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53700)
+Mar 28 01:52:17 artifact python[1179]: 01:52:17 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53760)
+Mar 28 01:52:18 artifact python[1179]: 01:52:18 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53820)
+Mar 28 01:52:19 artifact python[1179]: 01:52:19 [INFO] artifact.hardware.display.hdmi: pygame.display.flip() called (frame 53880)

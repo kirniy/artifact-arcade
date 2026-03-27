@@ -132,6 +132,15 @@ class HardwareRunner:
 
         logger.info("HardwareRunner created")
 
+    @staticmethod
+    def _systemd_notify(message: str) -> None:
+        """Best-effort systemd notification for READY/WATCHDOG state."""
+        try:
+            import sdnotify
+            sdnotify.SystemdNotifier().notify(message)
+        except Exception:
+            pass
+
     def _init_displays(self) -> bool:
         """Initialize all display hardware."""
         success = True
@@ -803,6 +812,9 @@ class HardwareRunner:
         watchdog_interval = 10.0
         last_watchdog = 0.0
 
+        # Mark the unit ready once the loop is about to enter steady state.
+        self._systemd_notify("READY=1\nSTATUS=ARTIFACT hardware loop running")
+
         while self._running:
             # Handle events from hardware
             self._handle_events()
@@ -840,13 +852,7 @@ class HardwareRunner:
             import time
             now = time.time()
             if now - last_watchdog >= watchdog_interval:
-                try:
-                    import sdnotify
-                    sdnotify.SystemdNotifier().notify("WATCHDOG=1")
-                except ImportError:
-                    pass  # sdnotify not installed
-                except Exception:
-                    pass
+                self._systemd_notify("WATCHDOG=1")
                 last_watchdog = now
 
             # Yield to other tasks

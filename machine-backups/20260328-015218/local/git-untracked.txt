@@ -1,0 +1,7 @@
+configs/novastar/README.md
+configs/novastar/SHA256SUMS
+docs/hardware/machine-restore.md
+scripts/snapshot_artifact_machine.sh
+scripts/test_fiesta_render.py
+scripts/test_ws2812b_mapping.py
+tests/test_ws2812b_mapping.py

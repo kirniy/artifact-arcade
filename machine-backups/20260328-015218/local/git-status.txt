@@ -1,0 +1,15 @@
+ M .gitignore
+ M pi-config/cmdline.txt
+ M requirements-hardware.txt
+ M scripts/artifact.service
+ M src/artifact/graphics/__init__.py
+ M src/artifact/hardware/__init__.py
+ M src/artifact/hardware/display/ws2812b.py
+ M src/artifact/hardware/runner.py
+?? configs/novastar/README.md
+?? configs/novastar/SHA256SUMS
+?? docs/hardware/machine-restore.md
+?? scripts/snapshot_artifact_machine.sh
+?? scripts/test_fiesta_render.py
+?? scripts/test_ws2812b_mapping.py
+?? tests/

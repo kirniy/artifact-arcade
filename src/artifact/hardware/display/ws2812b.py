@@ -151,14 +151,19 @@ class WS2812BDisplay(Display):
         """
         Convert (x, y) coordinates to LED index.
 
+        This mapping is the verified December 31, 2025 cabinet baseline.
+        Do not change matrix order or serpentine parity without:
+        1. running the ws2812b mapping regression test, and
+        2. checking a real hardware photo against the diagnostic pattern.
+
         Physical layout - SERPENTINE, COLUMN-MAJOR, RIGHT to LEFT:
         - Pixels 0-63: rightmost 8x8 (x=40-47 visually)
         - Pixels 64-319: middle 32x8 (x=8-39 visually)
         - Pixels 320-383: leftmost 8x8 (x=0-7 visually)
 
         Within each matrix, columns go right to left.
-        Even columns (0,2,4...): top to bottom (y=0 at top)
-        Odd columns (1,3,5...): bottom to top (y=0 at bottom)
+        Even columns (0,2,4...): bottom to top (y=7 is the first pixel)
+        Odd columns (1,3,5...): top to bottom (y=0 is the first pixel)
         """
         # Map visual x coordinate to physical matrix and local position
         # Visual: x=0 is LEFT, x=47 is RIGHT
@@ -180,8 +185,8 @@ class WS2812BDisplay(Display):
             local_col = 7 - x
             matrix_offset = 320
 
-        # Serpentine: odd columns top-to-bottom, even columns bottom-to-top.
-        # Physical wiring starts from the bottom of column 0.
+        # December 31, 2025 verified parity:
+        # even columns start at the bottom, odd columns start at the top.
         if local_col % 2 == 0:
             # Even column: y=7 is first pixel (bottom to top)
             pixel_in_col = 7 - y
