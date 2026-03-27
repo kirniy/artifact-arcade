@@ -3851,18 +3851,7 @@ class RotatingIdleAnimation:
             # Draw text at offset position
             draw_text(buffer, text, -x_offset, 0, color, scale=1)
 
-        # Add winter sparkles - random twinkling pixels
-        t_sec = t / 1000
-        num_sparkles = 3
-        for i in range(num_sparkles):
-            # Deterministic but animated sparkle positions
-            phase = t_sec * 2 + i * 2.1
-            if math.sin(phase) > 0.7:  # Only show some of the time
-                sparkle_x = int((math.sin(phase * 0.7 + i) * 0.5 + 0.5) * (buffer.shape[1] - 1))
-                sparkle_y = int((math.cos(phase * 0.5 + i * 1.3) * 0.5 + 0.5) * (buffer.shape[0] - 1))
-                brightness = int(200 + 55 * math.sin(phase * 3))
-                if 0 <= sparkle_x < buffer.shape[1] and 0 <= sparkle_y < buffer.shape[0]:
-                    buffer[sparkle_y, sparkle_x] = (brightness, brightness, brightness)
+        # Sparkles removed - on the 48x8 LED ticker they look like noise
 
     def _render_ticker_flip(self, buffer: NDArray[np.uint8], old_text: str, new_text: str,
                             old_color: tuple, new_color: tuple, progress: float, t: float) -> None:
