@@ -180,12 +180,13 @@ class WS2812BDisplay(Display):
             local_col = 7 - x
             matrix_offset = 320
 
-        # Serpentine: odd columns top-to-bottom, even columns bottom-to-top
-        if local_col % 2 == 1:
-            # Odd column: y=0 is first pixel
+        # Serpentine: even columns top-to-bottom, odd columns bottom-to-top.
+        # If this parity is flipped, the entire ticker becomes unreadable.
+        if local_col % 2 == 0:
+            # Even column: y=0 is first pixel
             pixel_in_col = y
         else:
-            # Even column: y=7 is first pixel (reversed)
+            # Odd column: y=7 is first pixel (reversed)
             pixel_in_col = 7 - y
 
         return matrix_offset + local_col * 8 + pixel_in_col
