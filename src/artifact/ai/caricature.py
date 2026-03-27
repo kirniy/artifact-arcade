@@ -202,190 +202,125 @@ Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
 ]
 
 # PHOTOBOOTH VARIATIONS - BOILING ROOM underground DJ party theme VERTICAL photo strip
-# OUTPUT: 9:16 VERTICAL aspect ratio — FULL COLOR (red & black only)
-# STYLE: Chromatic aberration, super wide angle, film grain, analog textures
+# OUTPUT: 9:16 VERTICAL aspect ratio — fixed prompt, no random styling drift
+# STYLE: Premium 2D club-poster illustration, wide-angle, dark paper, visible venue
+# DATES: 27.03-29.03  VENUE: КОНЮШЕННАЯ 2В  BRAND: VNVNC.RU
+# NOTE: Moscow time is passed via personality_context and must appear in footer
 PHOTOBOOTH_VARIATIONS = [
-    """BOILING ROOM — VECTOR ART PHOTO BOOTH (VERTICAL 9:16)
+    """BOILING ROOM — GRAPHIC CLUB POSTER PHOTO BOOTH (VERTICAL 9:16)
 
-Create a VERTICAL photo booth strip (9:16 ratio) with 4 drawings in a 2×2 grid.
+Create a VERTICAL 9:16 photo booth strip with 4 illustrated frames in a 2×2 grid on dark textured paper.
 
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "BOILING ROOM", "31.01", "VNVNC"
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin red rectangular border
-
-ART STYLE — VECTOR / SKETCH ILLUSTRATION (NOT A PHOTO!):
-- Each frame is a STYLISH PINTEREST-WORTHY DRAWING / ILLUSTRATION of the person
-- Bold clean lines, flat color fills, graphic novel / poster art quality
-- Think: Shepard Fairey, Alphonse Mucha meets modern vector art, screen print aesthetic
-- Strong graphic shapes, high contrast, confident ink strokes
-- NOT photorealistic — this is an ILLUSTRATION, a cool artistic interpretation
-- Capture the person's likeness and distinctive features 
-
-PRINTED FULL BLEED ON DARK TEXTURED POLAROID PAPER — THE ENTIRE BACKGROUND:
-- The paper/background is DARK — black or very dark charcoal with visible texture
-- Heavy paper grain, rough matte black cardstock feel, tactile and moody
-- Borders between frames are DARK textured paper — not white, not cream
-- The whole strip feels like it's printed on expensive dark art paper
-- Ink and color sit ON TOP of the dark surface — like screen printing on black paper
-- Visible paper fiber, subtle noise, rough tactile quality throughout
-
-ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
-- Same people in all 4 frames but with DIFFERENT expressions and poses each time
-- Background within each frame: dark with red/neon accents, smoke, club atmosphere
-
-COLOR PALETTE: Red, black, white, and skin tones only. Red neon glows, white highlights.
-Person looks ATTRACTIVE and cool — stylish, confident, flattering artistic interpretation.
-NOT sweaty. NOT gross. Clean and stylish vector art.
-
-4 FRAMES — same person, different vibes:
-Frame 1: Cool confident look, slight smile, red neon glow behind
-Frame 2: Laughing or big smile, head tilted, dynamic line work
-Frame 3: Arms up or hands near face, vibing, eyes closed, red backlight glow
-Frame 4: Different angle — looking to side or over shoulder, moody red accent lighting
-
-LENS FEEL: SUPER WIDE ANGLE (14-18mm) distortion in the drawing — exaggerated perspective.
-EFFECTS: Halftone dots, screen print texture, bold outlines, graphic poster quality.
-
-TOP: "BOILING ROOM" bold graphic text (ENGLISH!), "31.01" below.
-BOTTOM: "VNVNC" — tall condensed white letters inside thin red rectangular border.
-
-9:16 VERTICAL. Vector/sketch style drawings on DARK textured paper!""",
-
-    """BOILING ROOM — SKETCH ART BOOTH (VERTICAL 9:16)
-
-Generate a VERTICAL (9:16) photo booth strip — 4 illustrations in a 2×2 grid.
+ABSOLUTE #1 PRIORITY — EXACT LIKENESS, EXACT CLOTHING, EXACT GROUP:
+- These must be THE EXACT PEOPLE from the source photo in all 4 frames
+- Same faces, same facial structure, same hairstyle, same hair color, same glasses, same facial hair, same makeup, same body proportions
+- SAME clothing, SAME accessories, SAME styling from the source photo
+- Preserve ANY text, logos, prints, or graphics on clothing letter-for-letter
+- If the source photo is a group shot, include ALL people from the source photo in EVERY frame
+- Do NOT replace them with generic club characters, do NOT beautify beyond recognition
 
 CRITICAL TEXT RULES:
-- ONLY these texts allowed: "BOILING ROOM", "31.01", "VNVNC"
+- ONLY these texts allowed: "BOILING ROOM", "27.03-29.03", "VNVNC.RU", the time from personality_context, "КОНЮШЕННАЯ 2В"
 - NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin red rectangular border
+- "VNVNC.RU" must stay exact Latin text in tall condensed white letters inside a thin red rectangular border
+- The timestamp must come from personality_context exactly as written
+- NO per-frame timestamps. NO "МСК". NO year. The date appears once at the top only
 
-ART STYLE — BOLD SKETCH / VECTOR ILLUSTRATION:
-- NOT a photograph — each frame is a stylish DRAWING of the person
-- Clean vector lines, bold ink strokes, flat graphic color fills
-- Screen print / risograph / poster art aesthetic
-- High contrast, strong silhouettes, graphic and punchy
-- Capture the person's LIKENESS — recognizable features rendered as cool illustration
+STYLE — PREMIUM DRAWN CLUB POSTER ILLUSTRATION:
+- Strictly a DRAWN / ILLUSTRATED image, NOT photorealistic, NOT 3D, NOT a vinyl toy
+- Premium 2D editorial club-poster art with bold black ink lines, red and white highlights, subtle halftone texture
+- High-end underground flyer energy, clean graphic shapes, confident line work, stylish but controlled
+- Chromatic aberration, super wide angle, film grain, analog textures
+- Faces must stay highly recognizable while being rendered as polished illustration
+- Attractive and cool, but still unmistakably the real people from the source photo
 
-CAMERA: EXTREME WIDE ANGLE (12-16mm) distortion in EVERY frame — fisheye-like barrel distortion, dramatic close-ups!
+COMPOSITION / CAMERA:
+- Super wide-angle lens feel, around 18-24mm
+- Show enough of the scene so the venue remains visible behind the people
+- Do NOT crop too tight on faces; include upper body / mid-shot framing
+- Keep strong perspective, ceiling lines, room depth, and club-space geometry
 
-DARK TEXTURED PAPER SURFACE:
-- Background paper is BLACK or very dark — like printing on black cardstock
-- Heavy visible paper texture: grain, fiber, rough matte surface
-- Dark borders and gaps between all 4 frames — dark paper visible everywhere
-- Art sits ON the dark surface — colors pop against the dark background
-- Feels like a limited-edition screen print on premium dark stock
-- Text and logos also look printed/stamped on the dark paper
+BACKGROUND — SHOW WHAT IS BEHIND THE PEOPLE TOO:
+- Show the actual venue/background elements visible behind the people in the source photo
+- Preserve the real room structure: lights, walls, mirrors, railings, ceiling lines, LED strips, furniture, architectural shapes
+- Convert the real background into the same red/black illustrated style instead of deleting it
+- Background must stay visible and readable in every frame, not empty black, not abstract smoke only
+- Club atmosphere is welcome, but the real scene behind the people must still be present
 
-ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP together
-- Same people in all 4 frames with DIFFERENT expressions and poses
-- Background within frames: dark with red/neon graphic elements, smoke shapes
+DARK PRINTED CARD:
+- Entire strip printed on black / dark charcoal textured paper
+- Rich paper grain, matte finish, subtle wear, tactile premium poster-stock feel
+- Dark borders between frames, no white paper anywhere
+- Art and typography look screen-printed on top of the dark paper
 
-LOOK: Person rendered as ATTRACTIVE and cool — flattering artistic style.
-COLOR: Red, white, black. Skin rendered with warmth but stylized. Red neon accents.
-NOT sweaty. NOT dark/murky faces. Bold, well-defined, stylish illustration.
+COLOR PALETTE:
+- Mostly black, deep red, white, chrome silver, and true skin tones
+- Red neon accents and white highlights only where needed
+- Clean, stylish, high contrast; NOT muddy, NOT sweaty, NOT grimy
+- Visible film grain, analog print texture, and slight chromatic fringe on edges
 
-4 FRAMES — same person, 4 different moments:
-Frame 1: Looking at viewer, confident, red glow behind, bold line work
-Frame 2: Genuine smile or laugh, dynamic pose, graphic energy
-Frame 3: Vibing — eyes closed, head back, feeling the music, red backlight shapes
-Frame 4: Profile or three-quarter view, moody red rim light, mysterious
+4 FRAMES — same exact people, different energy:
+- Frame 1: Direct look, confident, venue clearly visible behind them
+- Frame 2: Laughing / candid energy, same group all present, dynamic wide-angle perspective
+- Frame 3: Calmer music moment, relaxed pose, background still visible
+- Frame 4: Side angle or over-shoulder variation, all people still included if it is a group photo
 
-PERSPECTIVE: SUPER WIDE ANGLE distortion feel — exaggerated foreshortening in the drawing.
-EFFECTS: Halftone, screen print texture, bold outlines, limited color palette.
+TOP:
+- "BOILING ROOM" in beautiful metallic chrome letters, polished silver / chromed type on the dark paper
+- "27.03-29.03" below in clean condensed type
 
-TOP: "BOILING ROOM" bold text (ENGLISH!), "31.01" below.
-BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters in thin red rectangular border.
+BOTTOM LEFT:
+- exact text "VNVNC.RU" — tall condensed white letters inside thin red rectangular border
 
-9:16 VERTICAL. Sketch/vector illustrations on DARK textured paper!""",
+BOTTOM RIGHT:
+- time from personality_context, exact digits as written
 
-    """BOILING ROOM — GRAPHIC ART BOOTH (VERTICAL 9:16)
+SMALL BELOW TIME:
+- exact text "КОНЮШЕННАЯ 2В" in ALL CAPS
 
-Create a VERTICAL (9:16) photo booth strip with 4 illustrations in 2×2 layout.
-
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "BOILING ROOM", "31.01", "VNVNC"
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC" must be in TALL CONDENSED IMPACT-STYLE FONT — white letters inside thin red rectangular border
-
-ART STYLE — GRAPHIC VECTOR ILLUSTRATION:
-- Each frame is a VECTOR-STYLE ARTWORK of the person — NOT a photograph
-- Bold graphic lines, clean shapes, flat fills with subtle gradients
-- Aesthetic: mix of pop art, screen print, editorial illustration
-- Strong outlines, confident strokes, high contrast, punchy composition
-- Person's face and features are RECOGNIZABLE — artistic but accurate likeness
-
-
-DARK TEXTURED PAPER — PREMIUM FEEL:
-- ENTIRE background/paper is DARK — black or deep charcoal
-- Rich paper texture: visible grain, matte finish, rough fiber, tactile
-- Dark gaps between frames show the paper surface — no white borders
-- Art is printed ON dark paper — colors and whites pop dramatically
-- Feels like a limited run art print on heavy dark stock
-- All text looks screen-printed or letterpress-stamped on the dark surface
-
-ALL PEOPLE FROM REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP
-- All people together in each frame with dark + red graphic background elements
-- Same people, 4 DIFFERENT expressions and poses — vary the energy
-
-STYLE: Person looks ATTRACTIVE — cool, stylish, confident in the illustration.
-COLOR: Red, black, white primary palette. Warm skin tones (stylized but natural).
-Red neon glows and accents. NOT sweaty. NOT grimy. Clean, bold, aspirational art.
-
-4 FRAMES — different expressions and angles:
-Frame 1: Direct look, confident half-smile, red glow shapes behind
-Frame 2: Candid laugh, dynamic composition, bold graphic energy
-Frame 3: Music vibe — eyes closed, peaceful or ecstatic, red backlight shapes
-Frame 4: Profile or angled view, moody red accent, atmospheric
-
-PERSPECTIVE: SUPER WIDE ANGLE distortion in the illustration — barrel distortion feel.
-EFFECTS: Halftone dots, screen print registration marks, bold outlines, graphic texture.
-
-TOP: "BOILING ROOM" — bold graphic text (ENGLISH!), "31.01" below.
-BOTTOM: "VNVNC" — TALL CONDENSED IMPACT-STYLE FONT, white letters inside thin red rectangular border.
-
-9:16 VERTICAL. Vector/graphic art on DARK textured paper!""",
+9:16 VERTICAL. Dark printed club-poster photo booth strip with visible venue background and exact likeness.""",
 ]
 
 # PHOTOBOOTH SQUARE VARIATIONS - BOILING ROOM theme 1:1 for LED display
 # OUTPUT: 1:1 SQUARE aspect ratio for 128x128 LED display preview
 # STYLE: Red & black only, chromatic aberration, wide angle, analog texture
 PHOTOBOOTH_SQUARE_VARIATIONS = [
-    """BOILING ROOM — VECTOR ART BOOTH (SQUARE 1:1)
+    """BOILING ROOM — GRAPHIC CLUB POSTER BOOTH (SQUARE 1:1)
 
-Create a SQUARE (1:1) photo booth grid with 4 vector-style drawings in a 2×2 layout.
+Create a SQUARE 1:1 photo booth grid with 4 illustrated frames in a 2×2 layout.
 
-ART STYLE: VECTOR / SKETCH ILLUSTRATION — NOT a photo. Bold lines, flat color fills,
-screen print / poster art aesthetic. Capture the person's likeness as cool illustration.
-High contrast, strong graphic shapes, modern editorial art quality.
+LIKENESS AND CLOTHING ARE THE TOP PRIORITY:
+- These must be the exact people from the source photo
+- Same faces, same hair, same clothing, same accessories, same proportions
+- Preserve all clothing text and logos letter-for-letter
+- If the source photo is a group shot, include ALL people in every frame
 
-DARK TEXTURED PAPER: Background is BLACK/dark charcoal with heavy paper grain texture.
-Dark borders between frames. Art printed ON dark paper — colors pop against black.
-Feels like a limited-edition screen print on premium dark stock.
+STYLE:
+- Strictly DRAWN / ILLUSTRATED premium 2D club-poster art, not a photo, not 3D
+- Bold black lines, red and white highlights, subtle halftone print texture
+- High-end underground flyer aesthetic on dark textured paper
+- Chromatic aberration, super wide angle, film grain, analog textures
 
-ALL PEOPLE FROM THE REFERENCE PHOTO:
-- Include all MAIN SUBJECTS in the foreground — if it's a group photo, draw the WHOLE GROUP
-- Same people, 4 DIFFERENT expressions and poses.
+BACKGROUND:
+- Show the real scene behind the people from the source photo
+- Keep venue geometry, lights, walls, ceiling lines, and room depth visible
+- Convert the real background into the same red/black illustrated style
 
-Person looks ATTRACTIVE and cool in the illustration. NOT sweaty. Clean, stylish, bold art.
-COLOR: Red, black, white. Warm skin tones (stylized). Red neon accents and glows.
+COMPOSITION:
+- Wide-angle lens feel, not tight portrait crops
+- People plus visible environment in every frame
 
-4 FRAMES — different expressions:
-Frame 1: Confident look, slight smile, red glow shapes behind
-Frame 2: Laughing, dynamic, bold graphic energy
-Frame 3: Vibing — eyes closed, feeling music, red backlight shapes
-Frame 4: Different angle, moody red accent lighting
+COLOR:
+- Mostly black, deep red, white, chrome silver, and true skin tones
+- Clean, stylish, high contrast, not muddy
 
-PERSPECTIVE: SUPER WIDE ANGLE distortion feel in the drawing.
-EFFECTS: Halftone, screen print texture, bold outlines.
+4 FRAMES:
+- Same exact people in all 4 frames, slight expression / angle changes only
 
-BRANDING: "VNVNC" — tall condensed white letters in thin red rectangular border.
+BRANDING:
+- exact text "VNVNC" in tall condensed white letters inside a thin red rectangular border
 
-SQUARE 1:1. Vector/sketch art on DARK textured paper!""",
+SQUARE 1:1. Dark printed club-poster illustration with visible venue background and exact likeness.""",
 ]
 
 # =============================================================================
@@ -1904,6 +1839,10 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE,
             )
+            is_boilingroom_style = style in (
+                CaricatureStyle.PHOTOBOOTH,
+                CaricatureStyle.PHOTOBOOTH_SQUARE,
+            )
             is_venice_style = style in (
                 CaricatureStyle.PHOTOBOOTH_VENICE,
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,
@@ -1931,6 +1870,12 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
 - NOT photorealistic. NOT 3D. Like a legendary Bronx graffiti mural by TATS CRU or COPE2
 - Wildstyle energy, raw and gritty, thick black outlines, spray fade effects, dripping paint
 - 2D illustration with visible brushstroke/spray-can texture, zero 3D depth or shading"""
+            elif is_boilingroom_style:
+                color_instruction = """- FULL COLOR — mostly black, deep red, white, chrome silver, and true skin tones
+- Strictly premium 2D illustrated club-poster art, NOT photorealistic, NOT 3D, NOT plastic
+- Chromatic aberration, super wide angle, film grain, analog textures
+- Strong likeness and exact clothing from the reference photo are mandatory
+- Dark printed-paper feel, halftone traces, visible venue background, polished chrome headline"""
             elif is_fiesta_style:
                 color_instruction = """- FULL COLOR — distinctly Spanish mediterranean print palette: deep red, paprika, burnt orange, olive, aged gold, warm cream
 - High-end photorealistic editorial output with natural skin tones and realistic lighting
@@ -2001,6 +1946,8 @@ UNIQUENESS TOKEN: {uniqueness_token}
             # The model understands to use the photo as reference
             if is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
+            elif is_boilingroom_style:
+                image_style = "Premium 2D underground club poster illustration, drawn graphic art, chromatic aberration, super wide angle, film grain, analog textures, visible venue background, metallic chrome headline, exact likeness and exact clothing from reference photo"
             elif is_malchishnik_style:
                 image_style = "Analog disposable camera photography, Polaroid film photo, heavy film grain, blown flash, warm pushed colors, party chaos, Hangover movie aesthetic"
             elif style == CaricatureStyle.PHOTOBOOTH_FIESTA or style == CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE:

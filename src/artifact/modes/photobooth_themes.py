@@ -47,12 +47,12 @@ class PhotoboothTheme:
 
 
 # =============================================================================
-# THEME: BOILING ROOM (January 31, 2025)
+# THEME: BOILING ROOM (March 27-29, 2026)
 # =============================================================================
 BOILINGROOM_THEME = PhotoboothTheme(
     id="boilingroom",
     event_name="BOILING ROOM",
-    event_date="31.01",
+    event_date="27.03-29.03",
     logo_filename="boilingroom.png",
     theme_chrome=(192, 192, 192),  # Chrome silver
     theme_red=(139, 0, 0),  # Deep red

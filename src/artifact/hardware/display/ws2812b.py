@@ -10,7 +10,8 @@ Total: 48x8 = 384 LEDs
 Physical daisy chain order: 8x8 → 32x8 → 8x8
 Each matrix has its own serpentine pattern.
 
-Uses GPIO 21 (not GPIO 18) to avoid conflict with audio PWM.
+Uses GPIO 21 via PCM_DOUT instead of GPIO 18 PWM, so the LED signal does not
+fight over the PWM audio path.
 """
 
 import logging
@@ -43,7 +44,7 @@ class WS2812BDisplay(Display):
     WS2812B LED strip driver for 48x8 ticker display.
 
     Hardware configuration:
-    - GPIO Pin: 21 (PWM, avoids audio conflict on GPIO 18)
+    - GPIO Pin: 21 (PCM_DOUT, avoids the PWM audio path on GPIO 18)
     - LED Count: 384 (48 columns x 8 rows)
     - LED Type: WS2812B (GRB color order)
     - Brightness: Configurable (default 50%)
@@ -63,7 +64,7 @@ class WS2812BDisplay(Display):
     """
 
     # Hardware configuration
-    LED_PIN = 21          # GPIO 21 (not 18, to avoid audio conflict)
+    LED_PIN = 21          # GPIO 21 / PCM_DOUT
     LED_FREQ_HZ = 800000  # 800kHz signal frequency
     LED_DMA = 10          # DMA channel
     LED_INVERT = False    # Don't invert signal

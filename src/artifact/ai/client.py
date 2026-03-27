@@ -444,7 +444,8 @@ class GeminiClient:
             max_attempts = max(self.config.max_retries, len(self._api_keys))
             for attempt in range(max_attempts):
                 try:
-                    async with aiohttp.ClientSession() as session:
+                    # Respect proxy environment variables on the Pi.
+                    async with aiohttp.ClientSession(trust_env=True) as session:
                         async with session.post(
                             endpoint,
                             json=payload,

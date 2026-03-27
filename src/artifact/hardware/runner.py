@@ -220,6 +220,14 @@ class HardwareRunner:
         import subprocess
 
         try:
+            if os.getenv("ARTIFACT_DISABLE_AUDIO", "").strip().lower() in {
+                "1", "true", "yes", "on"
+            }:
+                logger.info("Audio disabled via ARTIFACT_DISABLE_AUDIO")
+                self._audio_enabled = False
+                self._audio_engine = None
+                return False
+
             pygame = _get_pygame()
 
             # Load bcm2835 module for 3.5mm jack

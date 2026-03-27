@@ -521,15 +521,21 @@ class PhotoboothMode(BaseMode):
             display_style, label_style = self._get_caricature_styles()
             logger.info(f"Generating photo booth with theme {self._theme.id}: {label_style.value}")
 
-            # For themes with timestamps, pass Moscow time for the caption
+            # Themes with footer timestamps need the live Moscow time injected.
             personality_context = None
-            if self._theme.ai_style_key in ("malchishnik", "feyphoria", "bigcitylife"):
+            timestamp_theme_keys = {
+                "boilingroom",
+                "malchishnik",
+                "feyphoria",
+                "bigcitylife",
+            }
+            if self._theme.ai_style_key in timestamp_theme_keys:
                 moscow_tz = timezone(timedelta(hours=3))
                 moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
                 personality_context = (
                     f"Photo taken at {moscow_time} Moscow time. "
                     f"Include exactly '{moscow_time}' in the handwritten caption "
-                    f"area at the bottom of the Polaroid."
+                    f"or footer area at the bottom of the image."
                 )
 
             # Generate only the label (9:16) image
