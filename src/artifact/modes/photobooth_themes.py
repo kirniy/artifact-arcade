@@ -14,6 +14,9 @@ Switch themes by setting PHOTOBOOTH_THEME environment variable:
 - "malchishnik"
 - "fiesta"
 - "feyphoria"
+- "brainrot"
+- "wedding"
+- "whatsapp"
 - "fiesta" (default)
 """
 
@@ -173,6 +176,60 @@ BIGCITYLIFE_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: ITALIAN BRAINROT (Cringe Party, April 4, 2026)
+# =============================================================================
+BRAINROT_THEME = PhotoboothTheme(
+    id="brainrot",
+    event_name="КРИНЖ ПАТИ",
+    event_date="03.04-05.04",
+    logo_filename="brainrot.png",
+    theme_chrome=(255, 232, 72),    # Acid yellow headline glow
+    theme_red=(255, 70, 166),       # Candy-magenta outer glow
+    theme_black=(40, 8, 62),        # Deep violet meme-night background
+    ticker_idle="КРИНЖ ПАТИ",
+    lcd_prefix="BRAINR",
+    description="ИТАЛЬЯНСКИЙ БРЕЙНРОТ",
+    ai_style_key="brainrot",
+)
+
+
+# =============================================================================
+# THEME: СВАДЬБА 2004 (Cringe Party, April 4, 2026)
+# =============================================================================
+WEDDING_THEME = PhotoboothTheme(
+    id="wedding",
+    event_name="ФАВТФАА ПЭПЭ",
+    event_date="03.04-05.04",
+    logo_filename="wedding.png",
+    theme_chrome=(255, 214, 232),   # Pink wedding chrome
+    theme_red=(219, 72, 140),       # Satin-magenta accent
+    theme_black=(58, 26, 54),       # Plum VHS shadow
+    ticker_idle="ФАВТФАА ПЭПЭ",
+    lcd_prefix="СВАД04",
+    description="СЕЛЬСКИЙ ГЛАМУР",
+    ai_style_key="wedding",
+)
+
+
+# =============================================================================
+# THEME: WHATSAPP ОТКРЫТКИ (Cringe Party, April 4, 2026)
+# =============================================================================
+WHATSAPP_THEME = PhotoboothTheme(
+    id="whatsapp",
+    event_name="ПЭПЭШНЕЙШЕ",
+    event_date="03.04-05.04",
+    logo_filename="whatsapp.png",
+    theme_chrome=(255, 218, 84),    # Gold postcard lettering
+    theme_red=(255, 96, 152),       # Rose-pink sparkle accent
+    theme_black=(8, 86, 56),        # WhatsApp green shadow
+    ticker_idle="ПЭПЭШНЕЙШЕ",
+    lcd_prefix="WAPP",
+    description="БАБУШКИН ЧАТ",
+    ai_style_key="whatsapp",
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -183,6 +240,9 @@ THEMES = {
     "feyphoria": FEYPHORIA_THEME,
     "fiesta": FIESTA_THEME,
     "bigcitylife": BIGCITYLIFE_THEME,
+    "brainrot": BRAINROT_THEME,
+    "wedding": WEDDING_THEME,
+    "whatsapp": WHATSAPP_THEME,
 }
 
 # Default theme

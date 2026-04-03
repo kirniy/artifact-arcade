@@ -62,7 +62,7 @@ class AISettings(BaseSettings):
 
     # Model names
     prediction_model: str = "gemini-2.5-flash"
-    caricature_model: str = "gemini-3-pro-image-preview"
+    caricature_model: str = Field(default="gemini-3-pro-image-preview", env="GEMINI_IMAGE_MODEL")
 
     # Timeouts
     prediction_timeout: float = 300.0  # 5 minutes

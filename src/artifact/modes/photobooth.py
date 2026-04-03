@@ -23,7 +23,8 @@ import logging
 import io
 import os
 import asyncio
-from typing import Optional
+from collections import OrderedDict
+from typing import Optional, Type
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 
@@ -42,7 +43,11 @@ from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.animation.santa_runner import SantaRunner
 from artifact.audio.engine import get_audio_engine
 from artifact.printing.label_receipt import LabelReceiptGenerator
-from artifact.modes.photobooth_themes import get_current_theme, PhotoboothTheme
+from artifact.modes.photobooth_themes import (
+    PhotoboothTheme,
+    get_current_theme,
+    get_theme_by_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +100,8 @@ class PhotoboothMode(BaseMode):
     requires_camera = True
     requires_ai = True
     estimated_duration = 30
+    theme_id_override: Optional[str] = None
+    description = "Фоткайся на память!"
 
     BEEP_TIME = 0.2
     COUNTDOWN_SECONDS = 3
@@ -112,9 +119,13 @@ class PhotoboothMode(BaseMode):
         self._santa_runner: Optional[SantaRunner] = None
         self._audio = get_audio_engine()
         self._logo_frame: Optional[NDArray[np.uint8]] = None
+        self._theme_reference_images: list[tuple[bytes, str]] = []
 
-        # Load theme configuration
-        self._theme: PhotoboothTheme = get_current_theme()
+        # Load theme configuration.
+        if self.theme_id_override:
+            self._theme = get_theme_by_id(self.theme_id_override)
+        else:
+            self._theme = get_current_theme()
         logger.info(f"Photobooth using theme: {self._theme.id} ({self._theme.event_name})")
 
         # Theme-derived properties
@@ -138,12 +149,18 @@ class PhotoboothMode(BaseMode):
                 img = img.resize((80, 80), PILImage.Resampling.LANCZOS)
                 self._logo_rgba = np.array(img, dtype=np.uint8)
                 logger.info(f"Loaded {self._theme.id} logo: {self._theme.logo_filename}")
+
+                if self._theme.ai_style_key in {"brainrot", "wedding", "whatsapp"}:
+                    with open(logo_path, "rb") as logo_file:
+                        mime_type = "image/png" if logo_path.lower().endswith(".png") else "image/jpeg"
+                        self._theme_reference_images = [(logo_file.read(), mime_type)]
             else:
                 logger.warning(f"Logo not found: {logo_path}")
                 self._logo_rgba = None
         except Exception as e:
             logger.warning(f"Failed to load logo: {e}")
             self._logo_rgba = None
+            self._theme_reference_images = []
 
     def _blit_logo(self, buffer: NDArray[np.uint8], x: int, y: int) -> None:
         """Blit RGBA logo onto buffer with alpha compositing."""
@@ -326,7 +343,7 @@ class PhotoboothMode(BaseMode):
 
             # Initialize loading animation for the waiting screen
             try:
-                self._santa_runner = SantaRunner()
+                self._santa_runner = SantaRunner(theme=self._theme)
                 self._santa_runner.reset()
             except Exception as e:
                 logger.warning(f"Failed to create loading animation: {e}")
@@ -394,6 +411,21 @@ class PhotoboothMode(BaseMode):
             return (
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_VENICE,  # 9:16 vertical for label
+            )
+        elif self._theme.ai_style_key == "brainrot":
+            return (
+                CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_BRAINROT,
+            )
+        elif self._theme.ai_style_key == "wedding":
+            return (
+                CaricatureStyle.PHOTOBOOTH_WEDDING_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_WEDDING,
+            )
+        elif self._theme.ai_style_key == "whatsapp":
+            return (
+                CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_WHATSAPP,
             )
         else:
             # Default to boilingroom styles
@@ -528,6 +560,9 @@ class PhotoboothMode(BaseMode):
                 "malchishnik",
                 "feyphoria",
                 "bigcitylife",
+                "brainrot",
+                "wedding",
+                "whatsapp",
             }
             if self._theme.ai_style_key in timestamp_theme_keys:
                 moscow_tz = timezone(timedelta(hours=3))
@@ -543,6 +578,7 @@ class PhotoboothMode(BaseMode):
                 reference_photo=self._state.photo_bytes,
                 style=label_style,  # 9:16 vertical
                 personality_context=personality_context,
+                extra_reference_images=self._theme_reference_images or None,
             )
 
             if label_result and label_result.image_data:
@@ -957,3 +993,80 @@ class PhotoboothMode(BaseMode):
             return "    ГОТОВО!   "[:16]
         else:
             return "      ЖМИ     "[:16]
+
+
+class BrainrotPhotoboothMode(PhotoboothMode):
+    """Italian brainrot party booth."""
+
+    name = "brainrot_booth"
+    display_name = "BRAINROT"
+    description = "ЛИЦА В БРЕЙНРОТЕ"
+    theme_id_override = "brainrot"
+
+
+class WeddingPhotoboothMode(PhotoboothMode):
+    """2000s Russian countryside wedding booth."""
+
+    name = "wedding_booth"
+    display_name = "ЛЮБОВЬ\nИ ГОЛУБИ"
+    description = "СЕЛЬСКАЯ СВАДЬБА"
+    theme_id_override = "wedding"
+
+
+class WhatsAppPhotoboothMode(PhotoboothMode):
+    """Grandma-postcard WhatsApp booth."""
+
+    name = "whatsapp_booth"
+    display_name = "WA\nОТКРЫТКИ"
+    description = "ОТКРЫТКА В ЧАТ"
+    theme_id_override = "whatsapp"
+
+
+PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Type[PhotoboothMode]]" = OrderedDict(
+    [
+        ("classic", PhotoboothMode),
+        ("brainrot", BrainrotPhotoboothMode),
+        ("wedding", WeddingPhotoboothMode),
+        ("whatsapp", WhatsAppPhotoboothMode),
+    ]
+)
+
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("brainrot", "wedding", "whatsapp")
+
+
+def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:
+    """Return photobooth variants to register in menu order.
+
+    Configure with PHOTOBOOTH_MENU_MODES as a comma-separated list of registry keys.
+    Example:
+        PHOTOBOOTH_MENU_MODES=classic
+        PHOTOBOOTH_MENU_MODES=brainrot,wedding,whatsapp
+        PHOTOBOOTH_MENU_MODES=classic,brainrot
+    """
+    raw = os.environ.get("PHOTOBOOTH_MENU_MODES", ",".join(DEFAULT_PHOTOBOOTH_MENU_MODES))
+    requested = [item.strip().lower() for item in raw.split(",") if item.strip()]
+    if not requested:
+        requested = list(DEFAULT_PHOTOBOOTH_MENU_MODES)
+
+    resolved: list[Type[PhotoboothMode]] = []
+    seen_mode_names: set[str] = set()
+
+    for key in requested:
+        mode_cls = PHOTOBOOTH_MENU_REGISTRY.get(key)
+        if mode_cls is None:
+            logger.warning("Unknown PHOTOBOOTH_MENU_MODES entry: %s", key)
+            continue
+        if mode_cls.name in seen_mode_names:
+            continue
+        resolved.append(mode_cls)
+        seen_mode_names.add(mode_cls.name)
+
+    if not resolved:
+        logger.warning(
+            "PHOTOBOOTH_MENU_MODES=%r resolved to no modes, falling back to %s",
+            raw,
+            DEFAULT_PHOTOBOOTH_MENU_MODES,
+        )
+        resolved = [PHOTOBOOTH_MENU_REGISTRY[key] for key in DEFAULT_PHOTOBOOTH_MENU_MODES]
+
+    return resolved

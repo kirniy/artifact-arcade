@@ -1,14 +1,10 @@
-"""Neon Pulse - Stylish animated loading screen for BOILING ROOM.
-
-Full-screen BOILING ROOM logo with subtle warping distortion,
-ambient particles, and burst effects on button press.
-"""
+"""Neon pulse loading animation for the active photobooth theme."""
 
 import math
 import os
 import random
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -17,6 +13,9 @@ try:
     from PIL import Image as PILImage
 except ImportError:
     PILImage = None
+
+if TYPE_CHECKING:
+    from artifact.modes.photobooth_themes import PhotoboothTheme
 
 
 @dataclass
@@ -52,7 +51,7 @@ class PulseState:
 
 
 class JetpackRider:
-    """Neon pulse loading animation with BOILING ROOM logo."""
+    """Neon pulse loading animation with the active theme logo."""
 
     CYAN = (0, 255, 220)
     MAGENTA = (255, 0, 180)
@@ -60,14 +59,16 @@ class JetpackRider:
     WHITE = (240, 240, 255)
     BG = (6, 3, 15)
 
-    def __init__(self):
+    def __init__(self, theme: Optional["PhotoboothTheme"] = None):
         self._state = PulseState()
         self._logo: Optional[NDArray] = None  # RGBA 128x128
         self._logo_rgb: Optional[NDArray] = None
         self._logo_alpha: Optional[NDArray] = None
-        # Get theme for background color
-        from artifact.modes.photobooth_themes import get_current_theme
-        self._theme = get_current_theme()
+        if theme is None:
+            from artifact.modes.photobooth_themes import get_current_theme
+            self._theme = get_current_theme()
+        else:
+            self._theme = theme
         # Set ambient colors per theme
         if self._theme.id == "tripvenice":
             self.BG = (255, 255, 255)  # White for Venice
@@ -85,10 +86,7 @@ class JetpackRider:
     def _load_logo(self):
         if PILImage is None:
             return
-        # Get logo filename from current theme
-        from artifact.modes.photobooth_themes import get_current_theme
-        theme = get_current_theme()
-        logo_filename = theme.logo_filename  # e.g., "tripvenice.png" or "boilingroom.png"
+        logo_filename = self._theme.logo_filename
 
         # Try multiple paths (assets/images first, then root fallback)
         candidates = [

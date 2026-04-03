@@ -30,7 +30,7 @@ from artifact.modes.bad_santa import BadSantaMode        # ПЛОХОЙ САНТ
 # from artifact.modes.sorting_hat import SortingHatMode  # ШЛЯПА - HIDDEN
 from artifact.modes.fortune import FortuneMode           # ГАДАЛКА
 from artifact.modes.ai_prophet import AIProphetMode      # ПРОРОК
-from artifact.modes.photobooth import PhotoboothMode     # ФОТОБУДКА
+from artifact.modes.photobooth import get_configured_photobooth_modes
 from artifact.modes.guess_me import GuessMeMode          # КТО Я?
 from artifact.modes.squid_game import SquidGameMode      # КАЛЬМАР
 from artifact.modes.quiz import QuizMode                 # КВИЗ
@@ -185,10 +185,10 @@ class ArtifactSimulator:
         # Check for API key
         has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
 
-        # Register modes — BOILING ROOM party (photobooth only)
-        # ФОТОБУДКА - Photo booth (ONLY active mode)
-        self.mode_manager.register_mode(PhotoboothMode)
-        logger.info("📸 PHOTOBOOTH registered as #1")
+        # Register photobooth variants in configured order.
+        for idx, photobooth_mode in enumerate(get_configured_photobooth_modes(), start=1):
+            self.mode_manager.register_mode(photobooth_mode)
+            logger.info("📸 %s registered as #%d", photobooth_mode.name.upper(), idx)
 
         # ПРОЖАРКА - Roast mode (DISABLED for BOILING ROOM)
         # self.mode_manager.register_mode(RoastMeMode)

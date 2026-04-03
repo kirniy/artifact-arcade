@@ -7,7 +7,7 @@ arcade fortune-telling use case.
 import os
 import asyncio
 import logging
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Union, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
@@ -28,11 +28,26 @@ class GeminiModel(Enum):
     # Image understanding (photo analysis) - Gemini 2.5 Flash supports vision
     FLASH_VISION = "gemini-2.5-flash"
 
-    # Image generation (caricatures/sketches) - Gemini 3.0 Pro Image Preview
+    # Image generation - Nano Banana 2
+    FLASH_IMAGE_31 = "gemini-3.1-flash-image-preview"
+
+    # Image generation - Nano Banana
+    FLASH_IMAGE = "gemini-2.5-flash-image"
+
+    # Image generation - Nano Banana Pro
     PRO_IMAGE = "gemini-3-pro-image-preview"
 
     # Legacy alias for backward compatibility
     IMAGEN = "gemini-3-pro-image-preview"
+
+
+IMAGE_GENERATION_MODEL_ENV = "GEMINI_IMAGE_MODEL"
+DEFAULT_IMAGE_GENERATION_MODEL = GeminiModel.PRO_IMAGE.value
+VALID_IMAGE_GENERATION_MODELS = {
+    GeminiModel.FLASH_IMAGE_31.value,
+    GeminiModel.FLASH_IMAGE.value,
+    GeminiModel.PRO_IMAGE.value,
+}
 
 
 @dataclass
@@ -79,6 +94,7 @@ class GeminiClient:
         self._client = None  # Default client (v1)
         self._client_beta = None  # v1beta client for image generation
         self._initialized = True
+        self._image_generation_model = self._resolve_image_generation_model()
 
         # Build list of API keys for rotation on errors
         # Priority: GEMINI_API_KEYS (comma-separated) > individual env vars
@@ -97,7 +113,28 @@ class GeminiClient:
         if self._api_keys and not config.api_key:
             self.config = GeminiConfig(api_key=self._api_keys[0])
 
-        logger.info(f"GeminiClient initialized ({len(self._api_keys)} API key(s))")
+        logger.info(
+            "GeminiClient initialized (%s API key(s), image model=%s)",
+            len(self._api_keys),
+            self._image_generation_model,
+        )
+
+    def _resolve_image_generation_model(self) -> str:
+        """Resolve the active image generation model from the environment."""
+        configured_model = os.environ.get(IMAGE_GENERATION_MODEL_ENV, "").strip()
+        if not configured_model:
+            return DEFAULT_IMAGE_GENERATION_MODEL
+
+        if configured_model not in VALID_IMAGE_GENERATION_MODELS:
+            logger.warning(
+                "Unsupported %s=%s, falling back to %s",
+                IMAGE_GENERATION_MODEL_ENV,
+                configured_model,
+                DEFAULT_IMAGE_GENERATION_MODEL,
+            )
+            return DEFAULT_IMAGE_GENERATION_MODEL
+
+        return configured_model
 
     def _rotate_api_key(self) -> bool:
         """Rotate to next API key on 429 errors. Returns True if rotated."""
@@ -365,8 +402,9 @@ class GeminiClient:
         aspect_ratio: str = "1:1",
         image_size: str = "1K",
         style: Optional[str] = None,
+        extra_reference_images: Optional[List[Tuple[bytes, str]]] = None,
     ) -> Optional[bytes]:
-        """Generate an image using Gemini 3 Pro Image Preview.
+        """Generate an image using the configured Gemini image model.
 
         Can optionally take a reference photo to generate personalized
         caricatures or styled portraits.
@@ -378,6 +416,8 @@ class GeminiClient:
             aspect_ratio: Image aspect ratio (1:1, 9:16, 16:9, etc.)
             image_size: Output resolution ("1K", "2K", or "4K")
             style: Optional style guidance
+            extra_reference_images: Additional non-subject reference images
+                such as logos, emblems, or style anchors
 
         Returns:
             Image bytes (PNG) or None on error
@@ -408,7 +448,19 @@ class GeminiClient:
                     }
                 })
 
-            # Build request payload for Gemini 3 Pro Image Preview
+            if extra_reference_images:
+                for image_bytes, mime_type in extra_reference_images:
+                    if not image_bytes:
+                        continue
+                    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+                    parts.append({
+                        "inlineData": {
+                            "mimeType": mime_type,
+                            "data": image_b64,
+                        }
+                    })
+
+            # Build request payload for the active Gemini image generation model
             # Uses REST API directly for better control
             payload = {
                 "contents": [
@@ -426,10 +478,12 @@ class GeminiClient:
                 },
             }
 
-            # REST API endpoint for Gemini 3 Pro Image Preview
+            image_model = self._image_generation_model
+
+            # REST API endpoint for the configured image model
             endpoint = (
                 f"https://generativelanguage.googleapis.com/v1beta/models/"
-                f"{GeminiModel.IMAGEN.value}:generateContent"
+                f"{image_model}:generateContent"
                 f"?key={self.config.api_key}"
             )
 
@@ -468,7 +522,7 @@ class GeminiClient:
                                     # Rebuild endpoint with new key
                                     endpoint = (
                                         f"https://generativelanguage.googleapis.com/v1beta/models/"
-                                        f"{GeminiModel.IMAGEN.value}:generateContent"
+                                        f"{image_model}:generateContent"
                                         f"?key={self.config.api_key}"
                                     )
                                     await asyncio.sleep(self.config.retry_delay)
@@ -498,12 +552,13 @@ class GeminiClient:
                                                     category="generated_image",
                                                     image_data=decoded_image,
                                                     prompt=full_prompt,
-                                                    model=GeminiModel.IMAGEN.value,
+                                                    model=image_model,
                                                     style=style,
                                                     reference_photo=reference_photo,
                                                     metadata={
                                                         "aspect_ratio": aspect_ratio,
                                                         "image_size": image_size,
+                                                        "extra_reference_image_count": len(extra_reference_images or []),
                                                     }
                                                 )
                                             except Exception as log_error:
@@ -532,6 +587,11 @@ class GeminiClient:
     def is_available(self) -> bool:
         """Check if AI features are available."""
         return bool(self.config.api_key)
+
+    @property
+    def image_generation_model(self) -> str:
+        """Return the active Gemini image generation model."""
+        return self._image_generation_model
 
 
 # Module-level singleton accessor

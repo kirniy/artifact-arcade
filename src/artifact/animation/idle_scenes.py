@@ -20,7 +20,7 @@ Each scene has coordinated animations for:
 - LCD display (16 chars)
 """
 
-from typing import List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -57,6 +57,13 @@ SCENE_DURATIONS = {
     'SAGA_LIVE': 45000,       # 45 seconds - video duration
     # POSTER_SLIDESHOW cycles quickly through event posters
     'POSTER_SLIDESHOW': 60000,  # 60 seconds to show many posters
+    # Cringe Party idle scenes
+    'CRINGE_HERO': 16000,
+    'CRINGE_CIRCLE_VIDEO': 15000,
+    'CRINGE_VENUE': 14000,
+    'CRINGE_BRAINROT': 14000,
+    'CRINGE_WEDDING': 14000,
+    'CRINGE_WHATSAPP': 14000,
 }
 
 
@@ -71,6 +78,12 @@ class IdleScene(Enum):
     SNOWFALL = auto()         # Winter snowfall
     FIREPLACE = auto()        # Cozy fireplace
     HYPERCUBE = auto()        # 4D hypercube rotation
+    CRINGE_HERO = auto()      # Cringe Party emblem / hero artwork
+    CRINGE_CIRCLE_VIDEO = auto()  # Cringe Party circle emblem video
+    CRINGE_VENUE = auto()     # Venue / signage slideshow
+    CRINGE_BRAINROT = auto()  # Italian brainrot references
+    CRINGE_WEDDING = auto()   # Wedding postcard references
+    CRINGE_WHATSAPP = auto()  # Grandma WhatsApp postcard references
 
 
 # Camera effect sub-modes (cycled within CAMERA_EFFECTS scene)
@@ -90,7 +103,7 @@ class SceneState:
     time: float = 0.0
     scene_time: float = 0.0
     frame: int = 0
-    current_scene: IdleScene = IdleScene.VNVNC_ENTRANCE
+    current_scene: IdleScene = IdleScene.CRINGE_HERO
     # Camera effects sub-mode state
     camera_effect: CameraEffect = CameraEffect.MIRROR
     camera_effect_time: float = 0.0  # Time in current effect
@@ -105,18 +118,7 @@ class RotatingIdleAnimation:
 
     def __init__(self):
         self.state = SceneState()
-        # VNVNC_ENTRANCE first, then other enabled scenes shuffled
-        # Disabled: SAGA_LIVE (Winter Saga), SNOWFALL, FIREPLACE, DIVOOM_GALLERY (winter/NY themes)
-        disabled_scenes = {
-            IdleScene.SAGA_LIVE,      # Winter Saga video
-            IdleScene.SNOWFALL,       # Winter theme
-            IdleScene.FIREPLACE,      # Winter theme
-            IdleScene.DIVOOM_GALLERY, # Disabled for now
-        }
-        self.scenes = [IdleScene.VNVNC_ENTRANCE]
-        other_scenes = [s for s in IdleScene if s != IdleScene.VNVNC_ENTRANCE and s not in disabled_scenes]
-        random.shuffle(other_scenes)
-        self.scenes.extend(other_scenes)
+        self.scenes = self._build_idle_scene_playlist()
         self.scene_index = 0
         self.state.current_scene = self.scenes[0]
 
@@ -258,6 +260,17 @@ class RotatingIdleAnimation:
         except ImportError:
             logger.warning("PIL not available for poster slideshow")
 
+        self.cringe_assets: Dict[IdleScene, List[NDArray[np.uint8]]] = {}
+        self.cringe_scene_titles = {
+            IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_CIRCLE_VIDEO: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_VENUE: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_BRAINROT: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_WEDDING: "ФАВТФАА ПЭПЭ",
+            IdleScene.CRINGE_WHATSAPP: "ПЭПЭШНЕЙШЕ",
+        }
+        self._load_cringe_party_assets()
+
         # Pac-Man maze and state
         self.pacman_tile = 8
         self.pacman_maze = [
@@ -355,9 +368,169 @@ class RotatingIdleAnimation:
         self.saga_video_capture = None
         self.saga_video_path: Optional[Path] = None
         self.saga_audio_playing = False
+        self.cringe_circle_video_capture = None
+        self.cringe_circle_video_path: Optional[Path] = None
         self._cv2_available = False
         self._pygame_mixer_available = False
         self._load_saga_video()
+        self._load_cringe_circle_video()
+
+    def _build_idle_scene_playlist(self) -> List[IdleScene]:
+        """Return the active idle scene order.
+
+        Old scenes stay in the codebase, but the active playlist is now fully
+        replaced with Cringe Party visuals.
+        """
+        playlist = [IdleScene.CRINGE_CIRCLE_VIDEO]
+        other_scenes = [
+            IdleScene.CRINGE_VENUE,
+            IdleScene.CRINGE_BRAINROT,
+            IdleScene.CRINGE_WEDDING,
+            IdleScene.CRINGE_WHATSAPP,
+        ]
+        random.shuffle(other_scenes)
+        playlist.extend(other_scenes)
+        return playlist
+
+    def _load_cringe_party_assets(self) -> None:
+        """Preload and center-fit Cringe Party stills for smooth idle playback."""
+        if not self._pil_available:
+            return
+
+        from PIL import Image, ImageOps
+
+        root = Path(__file__).parent.parent.parent.parent / "assets" / "idle" / "cringe_party"
+        scene_dirs = {
+            IdleScene.CRINGE_HERO: root / "hero",
+            IdleScene.CRINGE_VENUE: root / "venue",
+            IdleScene.CRINGE_BRAINROT: root / "brainrot",
+            IdleScene.CRINGE_WEDDING: root / "wedding",
+            IdleScene.CRINGE_WHATSAPP: root / "whatsapp",
+        }
+
+        for scene, folder in scene_dirs.items():
+            frames: List[NDArray[np.uint8]] = []
+            if not folder.exists():
+                logger.warning("Missing idle asset folder for %s: %s", scene.name, folder)
+                self.cringe_assets[scene] = frames
+                continue
+
+            for path in sorted(folder.iterdir()):
+                if path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                    continue
+                try:
+                    image = Image.open(path).convert("RGB")
+                    fitted = ImageOps.fit(
+                        image,
+                        (160, 160),
+                        method=Image.Resampling.LANCZOS,
+                        centering=(0.5, 0.5),
+                    )
+                    frames.append(np.array(fitted, dtype=np.uint8))
+                except Exception as exc:
+                    logger.warning("Failed to load idle asset %s: %s", path.name, exc)
+            self.cringe_assets[scene] = frames
+
+    def _render_cringe_party_scene(self, buffer: NDArray[np.uint8], scene: IdleScene) -> None:
+        """Render a panning single-image Cringe Party scene with simple motion graphics."""
+        fill(buffer, (12, 8, 18))
+
+        images = self.cringe_assets.get(scene, [])
+        if not images:
+            draw_centered_text(buffer, self.cringe_scene_titles.get(scene, "КРИНЖ"), 54, (255, 214, 90), scale=1)
+            draw_centered_text(buffer, "03.04-05.04", 68, (255, 140, 180), scale=1)
+            return
+
+        cycle_ms = 4600
+        transition_ms = 900
+        total = len(images) * cycle_ms
+        cycle_time = self.state.scene_time % total if total else 0
+        index = int(cycle_time // cycle_ms) % len(images)
+        next_index = (index + 1) % len(images)
+        time_in_cycle = cycle_time % cycle_ms
+
+        self._blit_cringe_image(buffer, images[index], self.state.scene_time / 1000.0, phase=index)
+        if time_in_cycle >= cycle_ms - transition_ms and len(images) > 1:
+            temp = np.zeros_like(buffer)
+            self._blit_cringe_image(temp, images[next_index], self.state.scene_time / 1000.0, phase=next_index + 7)
+            alpha = (time_in_cycle - (cycle_ms - transition_ms)) / transition_ms
+            buffer[:] = (
+                buffer.astype(np.float32) * (1.0 - alpha) + temp.astype(np.float32) * alpha
+            ).astype(np.uint8)
+
+        self._draw_cringe_overlay(buffer, scene)
+
+    def _blit_cringe_image(
+        self,
+        buffer: NDArray[np.uint8],
+        image: NDArray[np.uint8],
+        t: float,
+        phase: int,
+    ) -> None:
+        """Pan around a center-fit image to create a cheap Ken Burns effect."""
+        h, w = image.shape[:2]
+        max_x = max(0, w - 128)
+        max_y = max(0, h - 128)
+        ox = int((0.5 + 0.5 * math.sin(t * 0.45 + phase * 0.9)) * max_x)
+        oy = int((0.5 + 0.5 * math.cos(t * 0.38 + phase * 0.7)) * max_y)
+        np.copyto(buffer, image[oy:oy + 128, ox:ox + 128])
+
+    def _draw_cringe_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene) -> None:
+        """Add lightweight scene tint, border, doodles, and event footer."""
+        t = self.state.scene_time / 1000.0
+        accent_map = {
+            IdleScene.CRINGE_HERO: (255, 90, 160),
+            IdleScene.CRINGE_CIRCLE_VIDEO: (255, 90, 160),
+            IdleScene.CRINGE_VENUE: (255, 210, 90),
+            IdleScene.CRINGE_BRAINROT: (215, 255, 70),
+            IdleScene.CRINGE_WEDDING: (255, 196, 220),
+            IdleScene.CRINGE_WHATSAPP: (90, 235, 150),
+        }
+        accent = accent_map.get(scene, (255, 200, 100))
+
+        # Darken bottom for footer and add a subtle top ribbon.
+        buffer[0:16] = (buffer[0:16].astype(np.float32) * 0.72).astype(np.uint8)
+        buffer[104:128] = (buffer[104:128].astype(np.float32) * 0.54).astype(np.uint8)
+
+        # Animated border pulse.
+        pulse = 0.75 + 0.25 * math.sin(t * 2.4)
+        border = tuple(int(channel * pulse) for channel in accent)
+        buffer[0:2, :] = border
+        buffer[126:128, :] = border
+        buffer[:, 0:2] = border
+        buffer[:, 126:128] = border
+
+        # Doodles / sticker marks in corners.
+        self._draw_corner_cross(buffer, 10, 18, accent)
+        self._draw_corner_cross(buffer, 118, 22, accent)
+        self._draw_corner_cross(buffer, 18, 112, accent)
+        self._draw_starburst(buffer, 108, 108, accent)
+
+        # Floating sparkle dots.
+        for dot_idx in range(6):
+            px = int(64 + math.sin(t * 0.8 + dot_idx * 1.7) * (34 + dot_idx * 2))
+            py = int(64 + math.cos(t * 1.1 + dot_idx * 1.3) * (20 + dot_idx * 3))
+            if 2 <= px < 126 and 2 <= py < 126:
+                draw_circle(buffer, px, py, 1, (255, 255, 255))
+
+        # Tiny scanlines for low-rent postcard screen feel.
+        for y in range(0, 128, 4):
+            buffer[y:y + 1] = (buffer[y:y + 1].astype(np.float32) * 0.92).astype(np.uint8)
+
+        title = self.cringe_scene_titles.get(scene, "КРИНЖ ПАТИ")
+        draw_centered_text(buffer, title[:12], 4, accent, scale=1)
+        draw_centered_text(buffer, "03.04-05.04", 108, (255, 240, 210), scale=1)
+        draw_centered_text(buffer, "VNVNC.RU", 116, accent, scale=1)
+
+    def _draw_corner_cross(self, buffer: NDArray[np.uint8], x: int, y: int, color: Tuple[int, int, int]) -> None:
+        draw_line(buffer, x - 4, y, x + 4, y, color)
+        draw_line(buffer, x, y - 4, x, y + 4, color)
+
+    def _draw_starburst(self, buffer: NDArray[np.uint8], x: int, y: int, color: Tuple[int, int, int]) -> None:
+        draw_line(buffer, x - 5, y, x + 5, y, color)
+        draw_line(buffer, x, y - 5, x, y + 5, color)
+        draw_line(buffer, x - 4, y - 4, x + 4, y + 4, color)
+        draw_line(buffer, x - 4, y + 4, x + 4, y - 4, color)
 
     def _load_divoom_gifs(self) -> None:
         """Load all Divoom GIF animations from assets folder."""
@@ -436,6 +609,30 @@ class RotatingIdleAnimation:
         else:
             logger.warning(f"SAGA LIVE video not found: {video_path}")
 
+    def _load_cringe_circle_video(self) -> None:
+        """Load the silent Cringe Party circle video for idle playback."""
+        if not self._cv2_available:
+            try:
+                import cv2  # noqa: F401
+                self._cv2_available = True
+            except ImportError:
+                logger.warning("OpenCV not available, CRINGE_CIRCLE_VIDEO disabled")
+                return
+
+        video_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "assets"
+            / "idle"
+            / "cringe_party"
+            / "video"
+            / "cringe-party-circle.mp4"
+        )
+        if video_path.exists():
+            self.cringe_circle_video_path = video_path
+            logger.info(f"Loaded cringe idle video: {video_path.name}")
+        else:
+            logger.warning(f"Cringe idle video not found: {video_path}")
+
     def _start_saga_video(self) -> None:
         """Start playing SAGA LIVE video with audio."""
         if not self._cv2_available or not self.saga_video_path:
@@ -487,6 +684,23 @@ class RotatingIdleAnimation:
             except Exception:
                 pass
             self.saga_audio_playing = False
+
+    def _start_cringe_circle_video(self) -> None:
+        """Start playing the silent Cringe Party circle video."""
+        if not self._cv2_available or not self.cringe_circle_video_path:
+            return
+
+        import cv2
+
+        if self.cringe_circle_video_capture:
+            self.cringe_circle_video_capture.release()
+        self.cringe_circle_video_capture = cv2.VideoCapture(str(self.cringe_circle_video_path))
+
+    def _stop_cringe_circle_video(self) -> None:
+        """Stop the silent Cringe Party circle video."""
+        if self.cringe_circle_video_capture:
+            self.cringe_circle_video_capture.release()
+            self.cringe_circle_video_capture = None
 
         # Resume idle music
         from artifact.audio.engine import get_audio_engine
@@ -665,6 +879,12 @@ class RotatingIdleAnimation:
 
     def get_scene_name(self) -> str:
         names = {
+            IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_CIRCLE_VIDEO: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_VENUE: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_BRAINROT: "КРИНЖ ПАТИ",
+            IdleScene.CRINGE_WEDDING: "ФАВТФАА ПЭПЭ",
+            IdleScene.CRINGE_WHATSAPP: "ПЭПЭШНЕЙШЕ",
             IdleScene.VNVNC_ENTRANCE: "ВХОД",
             IdleScene.CAMERA_EFFECTS: "КАМЕРА",
             IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
@@ -688,12 +908,16 @@ class RotatingIdleAnimation:
             self._load_poster_slideshow()
         elif scene == IdleScene.SAGA_LIVE:
             self._start_saga_video()
+        elif scene == IdleScene.CRINGE_CIRCLE_VIDEO:
+            self._start_cringe_circle_video()
 
     def _on_scene_exit(self, scene: IdleScene) -> None:
         if scene == IdleScene.CAMERA_EFFECTS:
             self._close_camera()
         elif scene == IdleScene.SAGA_LIVE:
             self._stop_saga_video()
+        elif scene == IdleScene.CRINGE_CIRCLE_VIDEO:
+            self._stop_cringe_circle_video()
 
     def _open_camera(self) -> None:
         """Open camera - uses shared camera_service (always running)."""
@@ -753,7 +977,11 @@ class RotatingIdleAnimation:
         """Render current scene to main display."""
         scene = self.state.current_scene
 
-        if scene == IdleScene.VNVNC_ENTRANCE:
+        if scene == IdleScene.CRINGE_CIRCLE_VIDEO:
+            self._render_cringe_circle_video(buffer)
+        elif scene in self.cringe_scene_titles:
+            self._render_cringe_party_scene(buffer, scene)
+        elif scene == IdleScene.VNVNC_ENTRANCE:
             self._render_vnvnc_entrance(buffer)
         elif scene == IdleScene.CAMERA_EFFECTS:
             self._render_camera_effects(buffer)
@@ -3689,6 +3917,33 @@ class RotatingIdleAnimation:
 
         buffer[:] = frame
 
+    def _render_cringe_circle_video(self, buffer: NDArray[np.uint8]) -> None:
+        """Render the silent Cringe Party circle video frame."""
+        if not self._cv2_available or not self.cringe_circle_video_capture:
+            self._render_cringe_party_scene(buffer, IdleScene.CRINGE_HERO)
+            return
+
+        import cv2
+
+        if not self.cringe_circle_video_capture.isOpened():
+            self._render_cringe_party_scene(buffer, IdleScene.CRINGE_HERO)
+            return
+
+        ret, frame = self.cringe_circle_video_capture.read()
+        if not ret:
+            self.cringe_circle_video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = self.cringe_circle_video_capture.read()
+            if not ret:
+                self._render_cringe_party_scene(buffer, IdleScene.CRINGE_HERO)
+                return
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if frame.shape[0] != 128 or frame.shape[1] != 128:
+            frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_AREA)
+
+        buffer[:] = frame
+        self._draw_cringe_overlay(buffer, IdleScene.CRINGE_CIRCLE_VIDEO)
+
     def _render_camera_effects(self, buffer: NDArray[np.uint8]) -> None:
         """Render camera with currently selected effect."""
         effect = self.state.camera_effect
@@ -3899,6 +4154,10 @@ class RotatingIdleAnimation:
         clear(buffer)
         t = self.state.time  # Use global time for consistent animation
 
+        if self.state.current_scene in self.cringe_scene_titles:
+            self._render_ticker_static_winter(buffer, "LOLOLOLOLOLOL", (255, 215, 90), t)
+            return
+
         # Special case: POSTER_SLIDESHOW shows dates
         if self.state.current_scene == IdleScene.POSTER_SLIDESHOW and self.poster_dates:
             idx = self.poster_index % len(self.poster_dates)
@@ -3970,6 +4229,12 @@ class RotatingIdleAnimation:
         idx = int(t / 2000) % 3
 
         texts = {
+            IdleScene.CRINGE_HERO: [" КРИНЖ ПАТИ  ", " 03.04-05.04 ", " НАЖМИ СТАРТ "],
+            IdleScene.CRINGE_CIRCLE_VIDEO: [" КРИНЖ ПАТИ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
+            IdleScene.CRINGE_VENUE: [" КРИНЖ ПАТИ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
+            IdleScene.CRINGE_BRAINROT: [" КРИНЖ ПАТИ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
+            IdleScene.CRINGE_WEDDING: ["ФАВТФАА ПЭПЭ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
+            IdleScene.CRINGE_WHATSAPP: ["ПЭПЭШНЕЙШЕ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
             IdleScene.VNVNC_ENTRANCE: ["  ДОБРО       ", " ПОЖАЛОВАТЬ  ", " НАЖМИ СТАРТ "],
             IdleScene.CAMERA_EFFECTS: ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "],
             IdleScene.DIVOOM_GALLERY: ["   VNVNC    ", "  VNVNC.RU  ", " НАЖМИ СТАРТ "],
@@ -3987,20 +4252,9 @@ class RotatingIdleAnimation:
         """Reset animation state."""
         self._close_camera()
         self._stop_saga_video()  # Stop video and its audio
+        self._stop_cringe_circle_video()
         self.state = SceneState()
-        # VNVNC_ENTRANCE first, then shuffle the rest
-        # Disabled scenes: winter/NY themes
-        disabled_scenes = {
-            IdleScene.SAGA_LIVE,      # Winter Saga video
-            IdleScene.SNOWFALL,       # Winter theme
-            IdleScene.FIREPLACE,      # Winter theme
-            IdleScene.DIVOOM_GALLERY, # Pixel art gallery (disabled)
-        }
-        self.scenes = []
-        self.scenes.append(IdleScene.VNVNC_ENTRANCE)
-        other_scenes = [s for s in IdleScene if s != IdleScene.VNVNC_ENTRANCE and s not in disabled_scenes]
-        random.shuffle(other_scenes)
-        self.scenes.extend(other_scenes)
+        self.scenes = self._build_idle_scene_playlist()
         self.scene_index = 0
         self.state.current_scene = self.scenes[0]
         self.eye_x = 0.0

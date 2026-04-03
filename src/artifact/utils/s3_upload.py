@@ -9,6 +9,7 @@ Path: artifact/{type}/{filename}
 Public URL: https://e6aaa51f-863a-439e-9b6e-69991ff0ad6e.selstorage.ru/artifact/...
 """
 
+import json
 import logging
 import subprocess
 import uuid
@@ -16,13 +17,23 @@ import tempfile
 import threading
 import shutil
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+S3_MAIN_UPLOAD_TIMEOUT = 180
+S3_REDIRECT_UPLOAD_TIMEOUT = 45
+S3_MANIFEST_TIMEOUT = 180
+S3_UPLOAD_RETRIES = 3
+
+_THIS_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _THIS_DIR.parent.parent.parent
+UPLOAD_SPOOL_DIR = _PROJECT_ROOT / "data" / "upload_spool"
 
 # Check AWS CLI availability - include common macOS paths
 def _find_aws_cli() -> Optional[str]:
@@ -103,6 +114,102 @@ class PreUploadInfo:
     short_url: str
     s3_key: str
     full_url: str
+
+
+@dataclass
+class PendingUpload:
+    """Persisted upload job kept on disk until S3 confirms success."""
+
+    prefix: str
+    filename: str
+    extension: str
+    content_type: str
+    s3_key: str
+    file_path: str
+    meta_path: str
+    short_id: Optional[str] = None
+
+
+def _ensure_spool_dir(prefix: str) -> Path:
+    path = UPLOAD_SPOOL_DIR / prefix
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _pending_paths(prefix: str, filename: str) -> tuple[Path, Path]:
+    spool_dir = _ensure_spool_dir(prefix)
+    return spool_dir / filename, spool_dir / f"{filename}.json"
+
+
+def _create_pending_upload(
+    data: bytes,
+    *,
+    prefix: str,
+    filename: str,
+    extension: str,
+    content_type: str,
+    s3_key: str,
+    short_id: Optional[str] = None,
+) -> PendingUpload:
+    file_path, meta_path = _pending_paths(prefix, filename)
+
+    if not file_path.exists():
+        file_path.write_bytes(data)
+
+    meta = {
+        "prefix": prefix,
+        "filename": filename,
+        "extension": extension,
+        "content_type": content_type,
+        "s3_key": s3_key,
+        "short_id": short_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "file_path": str(file_path),
+    }
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return PendingUpload(
+        prefix=prefix,
+        filename=filename,
+        extension=extension,
+        content_type=content_type,
+        s3_key=s3_key,
+        short_id=short_id,
+        file_path=str(file_path),
+        meta_path=str(meta_path),
+    )
+
+
+def _load_pending_upload(meta_path: Path) -> Optional[PendingUpload]:
+    try:
+        payload = json.loads(meta_path.read_text(encoding="utf-8"))
+        file_path = Path(payload["file_path"])
+        if not file_path.exists():
+            logger.warning("Pending upload payload missing: %s", file_path)
+            return None
+        return PendingUpload(
+            prefix=payload["prefix"],
+            filename=payload["filename"],
+            extension=payload["extension"],
+            content_type=payload["content_type"],
+            s3_key=payload["s3_key"],
+            short_id=payload.get("short_id"),
+            file_path=str(file_path),
+            meta_path=str(meta_path),
+        )
+    except Exception as e:
+        logger.warning("Failed to read pending upload %s: %s", meta_path, e)
+        return None
+
+
+def _delete_pending_upload(pending: PendingUpload) -> None:
+    for path_str in (pending.file_path, pending.meta_path):
+        try:
+            Path(path_str).unlink()
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            logger.warning("Failed to remove pending upload artifact %s: %s", path_str, e)
 
 
 def pre_generate_upload_info(prefix: str, extension: str = "png") -> PreUploadInfo:
@@ -193,6 +300,56 @@ def _create_redirect_html(target_url: str, title: str = "VNVNC Arcade") -> str:
 </html>'''
 
 
+def _run_aws_command(
+    args: list[str],
+    *,
+    timeout: int,
+    retries: int = 1,
+    retry_delay_sec: float = 2.0,
+) -> subprocess.CompletedProcess[bytes]:
+    """Run an AWS CLI command with bounded retries for flaky network conditions."""
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            return subprocess.run(args, capture_output=True, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            last_error = exc
+            logger.warning(
+                "AWS command timed out on attempt %s/%s after %ss: %s",
+                attempt,
+                retries,
+                timeout,
+                " ".join(args[0:6]),
+            )
+            if attempt < retries:
+                threading.Event().wait(retry_delay_sec * attempt)
+    assert last_error is not None
+    raise last_error
+
+
+def _upload_local_path_to_s3(local_path: str, s3_key: str, content_type: str) -> subprocess.CompletedProcess[bytes]:
+    """Upload an existing local file to the configured S3 key."""
+    return _run_aws_command(
+        [
+            AWS_CLI_PATH,
+            '--endpoint-url',
+            SELECTEL_ENDPOINT,
+            '--profile',
+            'selectel',
+            's3',
+            'cp',
+            local_path,
+            f's3://{SELECTEL_BUCKET}/{s3_key}',
+            '--acl',
+            'public-read',
+            '--content-type',
+            content_type,
+        ],
+        timeout=S3_MAIN_UPLOAD_TIMEOUT,
+        retries=S3_UPLOAD_RETRIES,
+    )
+
+
 def _upload_redirect_html(short_id: str, target_url: str) -> bool:
     """Upload a redirect HTML file to S3.
 
@@ -221,15 +378,15 @@ def _upload_redirect_html(short_id: str, target_url: str) -> bool:
             tmp.write(html_content)
             tmp_path = tmp.name
 
-        result = subprocess.run(
+        result = _run_aws_command(
             [AWS_CLI_PATH, '--endpoint-url', SELECTEL_ENDPOINT,
              '--profile', 'selectel',
              's3', 'cp', tmp_path,
              f's3://{SELECTEL_BUCKET}/{s3_key}',
              '--acl', 'public-read',
              '--content-type', 'text/html; charset=utf-8'],
-            capture_output=True,
-            timeout=15
+            timeout=S3_REDIRECT_UPLOAD_TIMEOUT,
+            retries=2,
         )
 
         try:
@@ -247,6 +404,167 @@ def _upload_redirect_html(short_id: str, target_url: str) -> bool:
     except Exception as e:
         logger.warning(f"Failed to create redirect: {e}")
         return False
+
+
+def refresh_public_photo_manifest(prefix: str = "photobooth", max_items: int = 5000) -> bool:
+    """Publish a public manifest for gallery consumers."""
+    if not AWS_CLI_AVAILABLE:
+        logger.warning("Cannot refresh manifest: AWS CLI not available")
+        return False
+
+    aws_creds = os.path.expanduser("~/.aws/credentials")
+    if not os.path.exists(aws_creds):
+        logger.warning("Cannot refresh manifest: AWS credentials not configured")
+        return False
+
+    list_prefix = f"{SELECTEL_PREFIX}/{prefix}/"
+    manifest_key = f"{list_prefix}manifest.json"
+
+    try:
+        result = _run_aws_command(
+            [
+                AWS_CLI_PATH,
+                "--endpoint-url",
+                SELECTEL_ENDPOINT,
+                "--profile",
+                "selectel",
+                "s3api",
+                "list-objects-v2",
+                "--bucket",
+                SELECTEL_BUCKET,
+                "--prefix",
+                list_prefix,
+                "--page-size",
+                "1000",
+                "--max-items",
+                str(max_items),
+                "--output",
+                "json",
+            ],
+            timeout=S3_MANIFEST_TIMEOUT,
+            retries=2,
+        )
+
+        if result.returncode != 0:
+            stderr = result.stderr.decode() if result.stderr else ""
+            logger.warning("Failed to list S3 objects for manifest refresh: %s", stderr)
+            return False
+
+        payload = json.loads(result.stdout.decode() or "{}")
+        contents = payload.get("Contents") or []
+        photos = []
+
+        for item in contents:
+            key = item.get("Key") or ""
+            size = int(item.get("Size") or 0)
+            if not key or key == manifest_key or key.endswith("/") or size < 1000:
+                continue
+            if not key.lower().endswith((".png", ".jpg", ".jpeg")):
+                continue
+
+            photos.append(
+                {
+                    "key": key,
+                    "url": f"{SELECTEL_PUBLIC_URL}/{key}",
+                    "lastModified": item.get("LastModified") or "",
+                    "size": size,
+                }
+            )
+
+        photos.sort(key=lambda photo: photo["lastModified"], reverse=True)
+        manifest = {
+            "photos": photos[:max_items],
+            "total": len(photos),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+            tmp.write(json.dumps(manifest, ensure_ascii=False).encode("utf-8"))
+            tmp_path = tmp.name
+
+        upload = _run_aws_command(
+            [
+                AWS_CLI_PATH,
+                "--endpoint-url",
+                SELECTEL_ENDPOINT,
+                "--profile",
+                "selectel",
+                "s3",
+                "cp",
+                tmp_path,
+                f"s3://{SELECTEL_BUCKET}/{manifest_key}",
+                "--acl",
+                "public-read",
+                "--content-type",
+                "application/json; charset=utf-8",
+                "--cache-control",
+                "no-cache, no-store, must-revalidate",
+            ],
+            timeout=S3_MANIFEST_TIMEOUT,
+            retries=2,
+        )
+
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+        if upload.returncode != 0:
+            stderr = upload.stderr.decode() if upload.stderr else ""
+            logger.warning("Failed to upload public manifest: %s", stderr)
+            return False
+
+        logger.info("Refreshed public %s manifest with %s photos", prefix, len(photos))
+        return True
+    except Exception as e:
+        logger.warning("Manifest refresh failed: %s", e)
+        return False
+
+
+def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict:
+    """Retry persisted uploads left behind by earlier failures."""
+    if not UPLOAD_SPOOL_DIR.exists():
+        return {"retried": 0, "succeeded": 0, "failed": 0}
+
+    meta_files: list[Path] = []
+    if prefix:
+        meta_files.extend(sorted((UPLOAD_SPOOL_DIR / prefix).glob("*.json")))
+    else:
+        meta_files.extend(sorted(UPLOAD_SPOOL_DIR.glob("*/*.json")))
+
+    retried = 0
+    succeeded = 0
+    failed = 0
+
+    for meta_path in meta_files[:limit]:
+        pending = _load_pending_upload(meta_path)
+        if pending is None:
+            failed += 1
+            continue
+
+        retried += 1
+        try:
+            result = _upload_local_path_to_s3(pending.file_path, pending.s3_key, pending.content_type)
+            if result.returncode != 0:
+                failed += 1
+                stderr = result.stderr.decode() if result.stderr else ""
+                logger.warning("Pending upload failed for %s: %s", pending.filename, stderr)
+                continue
+
+            url = f"{SELECTEL_PUBLIC_URL}/{pending.s3_key}"
+            if pending.short_id:
+                _upload_redirect_html(pending.short_id, url)
+            if pending.prefix == "photobooth":
+                refresh_public_photo_manifest(pending.prefix)
+
+            _delete_pending_upload(pending)
+            succeeded += 1
+            logger.info("Retried pending upload successfully: %s", pending.filename)
+        except Exception as e:
+            failed += 1
+            logger.warning("Pending upload retry failed for %s: %s", pending.filename, e)
+
+    return {"retried": retried, "succeeded": succeeded, "failed": failed}
 
 
 def generate_qr_image(url: str, size: int = 60) -> Optional[np.ndarray]:
@@ -323,37 +641,23 @@ def upload_bytes_to_s3(
         else:
             filename = generate_filename(prefix, extension)
             s3_key = f"{SELECTEL_PREFIX}/{prefix}/{filename}"
-
-        with tempfile.NamedTemporaryFile(suffix=f'.{extension}', delete=False) as tmp:
-            tmp.write(data)
-            tmp_path = tmp.name
+        short_id = filename.rsplit('_', 1)[-1].rsplit('.', 1)[0]
+        pending = _create_pending_upload(
+            data,
+            prefix=prefix,
+            filename=filename,
+            extension=extension,
+            content_type=content_type,
+            s3_key=s3_key,
+            short_id=short_id,
+        )
 
         logger.info(f"Uploading to Selectel S3: {s3_key} ({len(data)} bytes)")
 
-        # Upload using AWS CLI (using found path for macOS compatibility)
-        result = subprocess.run(
-            [AWS_CLI_PATH, '--endpoint-url', SELECTEL_ENDPOINT,
-             '--profile', 'selectel',
-             's3', 'cp', tmp_path,
-             f's3://{SELECTEL_BUCKET}/{s3_key}',
-             '--acl', 'public-read',
-             '--content-type', content_type],
-            capture_output=True,
-            timeout=90
-        )
-
-        # Clean up temp file
-        try:
-            os.unlink(tmp_path)
-        except:
-            pass
+        result = _upload_local_path_to_s3(pending.file_path, s3_key, content_type)
 
         if result.returncode == 0:
             url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
-
-            # Extract short_id from filename (the 8-char UUID portion)
-            # Filename format: prefix_20251227_123456_a1b2c3d4.jpg
-            short_id = filename.rsplit('_', 1)[-1].rsplit('.', 1)[0]
             short_url = None
 
             # Upload redirect HTML for short URL
@@ -362,6 +666,9 @@ def upload_bytes_to_s3(
 
             # Generate QR code for the short URL if available, otherwise full URL
             qr_image = generate_qr_image(short_url or url)
+            if prefix == "photobooth":
+                refresh_public_photo_manifest(prefix)
+            _delete_pending_upload(pending)
             logger.info(f"Upload successful: {url} (short: {short_url})")
             return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
         else:
@@ -379,7 +686,7 @@ def upload_bytes_to_s3(
             return UploadResult(success=False, error=error)
 
     except subprocess.TimeoutExpired:
-        logger.error("Upload timed out after 30 seconds - check network connection")
+        logger.error("Upload timed out after %s seconds after %s attempts - check network connection", S3_MAIN_UPLOAD_TIMEOUT, S3_UPLOAD_RETRIES)
         return UploadResult(success=False, error="Upload timeout - check network")
     except FileNotFoundError:
         error = "AWS CLI not found. Run: sudo apt install awscli"
@@ -540,6 +847,10 @@ class AsyncUploader:
 
         def _upload():
             result = upload_bytes_to_s3(data, prefix, extension, content_type, pre_info=pre_info)
+            try:
+                retry_pending_uploads(prefix=prefix, limit=10)
+            except Exception as e:
+                logger.warning(f"Pending upload retry pass failed: {e}")
             self._result = result
             if self._callback:
                 try:

@@ -8,6 +8,8 @@ and launches the appropriate version.
 import asyncio
 import logging
 import sys
+import threading
+import time
 from pathlib import Path
 
 # Add parent to path for local development
@@ -56,6 +58,7 @@ async def run_hardware() -> None:
     from artifact.core.events import Event, EventType
     from artifact.printing.manager import PrintManager
     from artifact.utils.camera_service import camera_service
+    from artifact.utils.s3_upload import retry_pending_uploads
 
     # Import curated game modes (same as simulator)
     from artifact.modes.roast import RoastMeMode             # ПРОЖАРКА (first!)
@@ -64,7 +67,7 @@ async def run_hardware() -> None:
     # from artifact.modes.sorting_hat import SortingHatMode  # ШЛЯПА - HIDDEN
     from artifact.modes.fortune import FortuneMode           # ГАДАЛКА
     from artifact.modes.ai_prophet import AIProphetMode      # ПРОРОК
-    from artifact.modes.photobooth import PhotoboothMode     # ФОТОБУДКА
+    from artifact.modes.photobooth import get_configured_photobooth_modes
     from artifact.modes.guess_me import GuessMeMode          # КТО Я?
     from artifact.modes.squid_game import SquidGameMode      # КАЛЬМАР
     from artifact.modes.quiz import QuizMode                 # КВИЗ
@@ -101,10 +104,10 @@ async def run_hardware() -> None:
     # Check for API key
     has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
 
-    # Register modes in order — BOILING ROOM party (photobooth only)
-    # ФОТОБУДКА - Photo booth (ONLY active mode)
-    mode_manager.register_mode(PhotoboothMode)
-    logger.info("📸 PHOTOBOOTH registered as #1")
+    # Register photobooth variants in order from config.
+    for idx, photobooth_mode in enumerate(get_configured_photobooth_modes(), start=1):
+        mode_manager.register_mode(photobooth_mode)
+        logger.info("📸 %s registered as #%d", photobooth_mode.name.upper(), idx)
 
     # ПРОЖАРКА - Roast mode (DISABLED for BOILING ROOM)
     # mode_manager.register_mode(RoastMeMode)
@@ -162,6 +165,18 @@ async def run_hardware() -> None:
     # ======================================================================
 
     logger.info(f"Registered {len(mode_manager._registered_modes)} modes")
+
+    def retry_spooled_uploads() -> None:
+        while True:
+            try:
+                summary = retry_pending_uploads(limit=100)
+                if summary["retried"] or summary["failed"]:
+                    logger.info("Pending upload retry pass: %s", summary)
+            except Exception:
+                logger.exception("Pending upload retry pass crashed")
+            time.sleep(300)
+
+    threading.Thread(target=retry_spooled_uploads, daemon=True).start()
 
     # Initialize hardware
     if not runner.init():

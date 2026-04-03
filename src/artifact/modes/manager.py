@@ -263,6 +263,9 @@ MODE_COLORS = {
     "fortune": (180, 100, 255),     # Mystic purple
     "ai_prophet": (0, 255, 180),    # Neon teal
     "photobooth": (139, 0, 0),      # BOILING ROOM deep red
+    "brainrot_booth": (255, 232, 72),
+    "wedding_booth": (255, 214, 232),
+    "whatsapp_booth": (80, 215, 120),
     "roast": (255, 100, 30),        # Fire orange
     "squid_game": (255, 50, 80),    # Red light
     "quiz": (255, 220, 0),          # Gold
@@ -365,6 +368,9 @@ MODE_LABELS_RU = {
     "roulette": "РУЛЕТКА",
     "squid_game": "SQUID GAME",
     "photobooth": "ФОТОБУДКА",
+    "brainrot_booth": "BRAINROT",
+    "wedding_booth": "ЛЮБОВЬ И ГОЛУБИ",
+    "whatsapp_booth": "WA ОТКРЫТКИ",
     "y2k": "НУЛЕВЫЕ",
     "bad_santa": "ПЛОХОЙ САНТА",
 }
@@ -375,6 +381,9 @@ MODE_DESCRIPTIONS_RU = {
     "fortune": "Гадаем по звездам!",
     "ai_prophet": "ИИ читает тебя как книгу",
     "photobooth": "Фоткайся на память!",
+    "brainrot_booth": "КРИНЖ ПАТИ",
+    "wedding_booth": "ФАВТФАА ПЭПЭ",
+    "whatsapp_booth": "ПЭПЭШНЕЙШЕ",
     "roast": "ПРОЖАРКА СТЕБЕМ ПО ФОТО",
     "zodiac": "Что говорят звезды?",
     "quiz": "Проверь себя!",

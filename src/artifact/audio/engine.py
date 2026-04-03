@@ -1395,6 +1395,9 @@ class AudioEngine:
 
         # Photo modes
         "photobooth": "music_nightcall",
+        "brainrot_booth": "music_nightcall",
+        "wedding_booth": "music_nightcall",
+        "whatsapp_booth": "music_nightcall",
         "rap_god": "music_bumer",
     }
 

@@ -382,7 +382,7 @@ class ArcadeBot:
 
     # Available modes for mode selection
     AVAILABLE_MODES = [
-        "fortune", "ai_prophet", "photobooth", "roast",
+        "fortune", "ai_prophet", "photobooth", "brainrot_booth", "wedding_booth", "whatsapp_booth", "roast",
         "squid_game", "quiz", "tower_stack", "brick_breaker", "video",
         "sorting_hat", "guess_me", "roulette", "autopsy"
     ]

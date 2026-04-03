@@ -60,32 +60,67 @@ class SimulatorCamera:
 
             logger.info(f"Attempting to open camera device {self._device_id}...")
 
-            # Try to open camera - macOS may prompt for permission
-            self._cap = cv2.VideoCapture(self._device_id)
+            backend_candidates = []
+            if hasattr(cv2, "CAP_AVFOUNDATION"):
+                backend_candidates.append(("AVFoundation", cv2.CAP_AVFOUNDATION))
+            backend_candidates.append(("default", None))
 
-            # Give macOS time to show permission dialog and user to respond
-            # The first open attempt may trigger the dialog
-            time.sleep(0.5)
+            for backend_name, backend in backend_candidates:
+                for attempt in range(3):
+                    cap = (
+                        cv2.VideoCapture(self._device_id, backend)
+                        if backend is not None
+                        else cv2.VideoCapture(self._device_id)
+                    )
 
-            # Try reading a frame to verify camera actually works
-            if self._cap.isOpened():
-                ret, test_frame = self._cap.read()
-                if ret and test_frame is not None:
-                    # Set resolution
-                    self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
-                    self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
-                    self._use_opencv = True
-                    self._is_open = True
-                    logger.info("✓ Webcam opened successfully via OpenCV")
-                    return True
-                else:
-                    logger.warning("Camera opened but cannot read frames - permission may be denied")
-                    logger.warning("On macOS: Go to System Settings > Privacy & Security > Camera")
-                    logger.warning("and enable camera access for Terminal or your IDE")
-                    self._cap.release()
-                    self._cap = None
-            else:
-                logger.warning("Could not open webcam - camera may be in use or permission denied")
+                    # Continuity Camera can take a moment to wake up.
+                    time.sleep(0.35)
+
+                    if not cap.isOpened():
+                        logger.debug(
+                            "Camera open attempt failed",
+                            extra={
+                                "device_id": self._device_id,
+                                "backend": backend_name,
+                                "attempt": attempt + 1,
+                            },
+                        )
+                        cap.release()
+                        continue
+
+                    test_frame = None
+                    for _ in range(10):
+                        ret, frame = cap.read()
+                        if ret and frame is not None:
+                            test_frame = frame
+                            break
+                        time.sleep(0.15)
+
+                    if test_frame is not None:
+                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
+                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
+                        self._cap = cap
+                        self._use_opencv = True
+                        self._is_open = True
+                        logger.info(
+                            "✓ Webcam opened successfully via OpenCV (%s)",
+                            backend_name,
+                        )
+                        return True
+
+                    logger.debug(
+                        "Camera opened but no frames arrived yet",
+                        extra={
+                            "device_id": self._device_id,
+                            "backend": backend_name,
+                            "attempt": attempt + 1,
+                        },
+                    )
+                    cap.release()
+
+            logger.warning("Could not open webcam - camera may be in use or permission denied")
+            logger.warning("On macOS: Go to System Settings > Privacy & Security > Camera")
+            logger.warning("and enable camera access for Terminal or your IDE")
 
         except ImportError:
             logger.warning("OpenCV not available, using placeholder camera")

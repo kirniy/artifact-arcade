@@ -50,6 +50,12 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_FIESTA_SQUARE = "photobooth_fiesta_square"  # 1:1 square - Realistic Spanish party theme
     PHOTOBOOTH_BIGCITYLIFE = "photobooth_bigcitylife"  # 9:16 vertical - 90s NYC graffiti theme
     PHOTOBOOTH_BIGCITYLIFE_SQUARE = "photobooth_bigcitylife_square"  # 1:1 square - 90s NYC graffiti theme
+    PHOTOBOOTH_BRAINROT = "photobooth_brainrot"  # 9:16 vertical - cringe-party brainrot mode
+    PHOTOBOOTH_BRAINROT_SQUARE = "photobooth_brainrot_square"  # 1:1 square - cringe-party brainrot mode
+    PHOTOBOOTH_WEDDING = "photobooth_wedding"  # 9:16 vertical - Russian wedding postcard mode
+    PHOTOBOOTH_WEDDING_SQUARE = "photobooth_wedding_square"  # 1:1 square - Russian wedding postcard mode
+    PHOTOBOOTH_WHATSAPP = "photobooth_whatsapp"  # 9:16 vertical - grandma WhatsApp postcard mode
+    PHOTOBOOTH_WHATSAPP_SQUARE = "photobooth_whatsapp_square"  # 1:1 square - grandma WhatsApp postcard mode
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -1253,6 +1259,397 @@ Palette: cab yellow, graffiti red, concrete grey, night black, neon orange.
 ]
 
 
+# BRAINROT VARIATIONS - single-image cringe-party Italian brainrot poster
+BRAINROT_VARIATIONS = [
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D meme shark with bright blue sneakers, glossy skin, a stupid grin, and cursed athletic pose while keeping the exact human face from the source photo.
+Background: cheap vaporwave seaside gradient, bad Photoshop glow, stretched resave artifacts, ugly star sparkles.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D wooden log-creature with huge eyes, creepy smile, and long awkward limbs while keeping the exact human face from the source photo.
+Background: dim dawn street, dirty orange light, repost compression, harsh sharpen halos.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D ballerina with a glossy porcelain cappuccino-cup head, pink tutu, and uncanny beauty-poster energy while keeping the exact human face from the source photo.
+Background: pink beauty gradient, cheap glitter, warped mesh backdrop, fake lens flares.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D coffee-cup trickster with chrome lid head, sly eyes, and a dramatic action pose while keeping the exact human face from the source photo.
+Background: gritty cafe backroom, steel reflections, overprocessed contrast, greasy glow.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D banana-dolphin hybrid with glossy yellow-blue skin, absurd smile, and cursed elegance while keeping the exact human face from the source photo.
+Background: cheap tropical beach, ugly sunset gradient, sea haze, jpeg dirt.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D elephant-sandal hybrid with giant feet and tragic meme stare while keeping the exact human face from the source photo.
+Background: dusty desert highway, bad mirage blur, washed-out resize artifacts, hot glow.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D camel-fridge hybrid with long legs, cold expression, and cursed dignity while keeping the exact human face from the source photo.
+Background: city heat haze, roadside realism, municipal colors, bad compositing shadows.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D frog-tire hybrid walking upright with glossy rubber body and disgusting-cute internet creature energy while keeping the exact human face from the source photo.
+Background: marsh roadside, repost blur, oversharpened edges, ugly glow outline.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D tree-creature with huge human feet, hunched body, and damp forest meme realism while keeping the exact human face from the source photo.
+Background: humid forest clearing, fake god-rays, stretched color banding, cursed photobash.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D cat-fish hybrid with underwater fur, glossy fish body, and absurd cute face while keeping the exact human face from the source photo.
+Background: aquarium glow, fake bubbles, jelly colors, chromatic aberration, repost artifacts.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D tiny beaked runner with huge sunglasses and ridiculous speed pose while keeping the exact human face from the source photo.
+Background: beige road dust, ugly motion streaks, dirty gradient sky, low-quality web sheen.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO 2x2 grid. NO strip. NO separate frames.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Main subject: reinterpret the real person as a surreal semi-realistic 3D giraffe-watermelon hybrid with elegant long legs and glossy fruit body while keeping the exact human face from the source photo.
+Background: sunny roadside scene, highway vibe, cracked resize artifacts, terrible meme compositing.
+
+Style: authentic Italian brainrot internet image, semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost jpeg artifacts, wrong proportions, ugly outer glow, over-sharpened edges, width squeeze, dumb sparkles.
+Composition: keep all real people together in one centered composition; add only tiny unlabeled cameo creatures or meme doodles at the far edges.
+
+Text and branding:
+- The ONLY huge decorative title is "КРИНЖ ПАТИ"
+- Use the emblem reference image to keep the exact party title correct
+- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
+
+Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
+""",
+]
+
+
+BRAINROT_SQUARE_VARIATIONS = [
+    """КРИНЖ ПАТИ — ITALIAN BRAINROT PARTY POSTER (SQUARE 1:1)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO four frames.
+
+Keep the exact faces and every person from the source photo in one shared square composition.
+Faces remain human and instantly recognizable. Transform bodies/costumes/background into the approved Italian brainrot canon only:
+TRALALERO TRALALA, TUNG TUNG TUNG SAHUR, BALLERINA CAPPUCCINA, CAPPUCCINO ASSASSINO,
+BANANITA DOLFINITA, LIRILI LARILA, FRIGO CAMELO, BONECA AMBALABU, BRR BRR PATAPIM,
+TRIPPI TROPPI, FRULLI FRULLA, GIRAFA CELESTE.
+Do not use Bombardiro Crocodilo or military characters.
+
+If multiple people are present, assign different approved characters while keeping everyone together in one centered scene.
+Do not print the character names anywhere.
+Use the emblem reference image to keep the exact party title correct.
+
+Visual style: full-bleed cursed semi-realistic 3D brainrot poster, glossy materials, bad Photoshop cutout energy, repost JPEG grime, ugly glow, width-squeezed WordArt, fake glitter, arrows, stars, bad PNG stickers.
+
+Required footer/event text somewhere in the image:
+"КРИНЖ ПАТИ", "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No character names, no English meme words, no floating sticker text, no "WordArt" text, and no other text.
+
+Square 1:1, single-image poster, not a photobooth grid.
+""",
+]
+
+
+WEDDING_VARIATIONS = [
+    """КРИНЖ ПАТИ — СЕЛЬСКАЯ СВАДЕБНАЯ ОТКРЫТКА (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO multi-frame strip.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Preserve the exact faces from the source photo and keep the whole group together in one composition.
+If the source photo has multiple people, every person must stay in the final image.
+Faces, expressions, hairstyles, and recognizability are critical.
+
+THEME:
+- Turn the scene into a painfully cliché 2000s Russian countryside wedding photo
+- Cheap banquet glamour, satin drapes, glossy roses, doves, hearts, champagne, fake gold, bad Photoshop halos, plastic flowers, sparkles, wedding rings clipart
+- Everything should feel like a provincial wedding photographer and a kiosk postcard designer collaborated badly
+
+STYLE:
+- Single-image posed wedding-card / photo-studio montage
+- Center the people as the main wedding portrait, large in the middle
+- Preserve human likeness first; wardrobe can be lightly glamorized with wedding accessories, veils, ribbons, corsages, shiny jackets, too much satin
+- If the image contains two or more men and no women, portray them as fun wedding guests or friends at the banquet, not as a couple
+- For male-only groups: think vodka toast, champagne, banquet-table posing, goofy guest energy, brothers/cousins/friends at a wedding
+- No kissing, no romantic embrace, no groom-and-groom wedding pairing, no bouquet couple pose for male-only groups
+- Add meme doodles and bad decorative overlays around the borders
+- Slight glossy print texture, cheap lamination glare, VHS-ish nostalgia, overprocessed beauty-retouch energy
+
+TEXT AND BRANDING:
+- Use the emblem reference image to keep the exact party title correct
+- The main decorative title should read exactly "КРИНЖ ПАТИ", styled like tacky wedding-card lettering
+- Required exact text:
+  * "КРИНЖ ПАТИ"
+  * "VNVNC.RU"
+  * "03.04-05.04"
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- No other text
+- No year anywhere
+
+OUTPUT:
+- One centered wedding portrait/postcard
+- Group preserved, no panels, no grid, meme doodles and tacky wedding decor everywhere
+- Vertical 9:16 output
+""",
+]
+
+
+WEDDING_SQUARE_VARIATIONS = [
+    """КРИНЖ ПАТИ — СЕЛЬСКАЯ СВАДЕБНАЯ ОТКРЫТКА (SQUARE 1:1)
+
+Create one square wedding postcard image with the people centered in the middle.
+No grid, no photostrip, no separate frames.
+
+Exact faces and full group inclusion are mandatory.
+Turn the scene into a cursed 2000s Russian countryside wedding portrait:
+cheap satin backdrops, roses, doves, rings, fake gold, glossy banquet glamour, plastic flowers,
+bad Photoshop light rays, champagne glasses, heart clipart, tacky sparkle doodles.
+
+Preserve recognizability first. Wardrobe can be wedding-styled, but never lose the real faces.
+If the image contains two or more men and no women, portray them as fun wedding guests or friends at the banquet, not as a couple.
+For male-only groups: use toasting, drinking vodka or champagne, banquet-photo energy, and no romantic embrace or groom-and-groom pairing.
+
+Required text somewhere in the design:
+"КРИНЖ ПАТИ", "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No other text. Use the emblem reference image to keep the title exact.
+
+Square 1:1 single-image composition, with meme doodles around the border.
+""",
+]
+
+
+WHATSAPP_VARIATIONS = [
+    """КРИНЖ ПАТИ — БАБУШКИНА FORWARDED-POSTCARD ЭСТЕТИКА (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO photobooth grid. NO panels.
+Edge-to-edge full-bleed digital artwork, vertical, print-ready, not framed, not photographed, no white border.
+
+Keep the exact faces from the source photo and preserve the full group together in one scene.
+If several people are in the photo, all of them must appear in the final postcard.
+Faces stay highly recognizable and human.
+
+THEME:
+- Transform the image into an overdecorated WhatsApp greeting postcard that a grandma would forward to the whole family chat
+- Glitter roses, gold swans, candles, kittens, sparkles, lace borders, glowing flowers, blessings-card energy, cheap gradients, clip-art abundance
+- Slightly absurd, sentimental, tasteless, and extremely sincere
+
+STYLE:
+- One centered postcard portrait with the group in the middle
+- Bright decorative collage around them, not multiple frames
+- Soft heavenly glow, tacky glitter texture, fake rhinestones, reflective foil accents, bright floral overlays
+- Add meme doodles and cute-chaotic border stickers without covering faces
+- The final image should feel like a forwarded greeting JPEG saved 20 times
+
+TEXT AND BRANDING:
+- Use the emblem reference image to keep the exact party title correct
+- The main decorative title should read exactly "КРИНЖ ПАТИ", styled like a glittery grandma postcard heading
+- Required exact text:
+  * "КРИНЖ ПАТИ"
+  * "VNVNC.RU"
+  * "03.04-05.04"
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- No other text
+- No extra long paragraphs of text
+
+OUTPUT:
+- One centered grandma-style postcard portrait
+- Exact likeness, full group preserved, no grid, meme doodles and absurd decorations everywhere
+- Vertical 9:16
+""",
+]
+
+
+WHATSAPP_SQUARE_VARIATIONS = [
+    """КРИНЖ ПАТИ — БАБУШКИНА FORWARDED-POSTCARD ЭСТЕТИКА (SQUARE 1:1)
+
+One square centered postcard image only. No photostrip, no grid, no four frames.
+
+Preserve the exact human faces and keep every person from the original photo in one shared square composition.
+Theme: forwarded grandma WhatsApp greeting card with glitter roses, gold swans, candles, kittens, lace, cheap gradients,
+glow effects, flowers, blessing-card sentimentality, meme doodles, and overdecorated sticker clutter.
+
+The portrait/group must stay front-and-center and recognizable while the border/background becomes tacky postcard chaos.
+
+Required text somewhere in the image:
+"КРИНЖ ПАТИ", "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No other text. Use the emblem reference image to keep the title exact.
+
+Square 1:1 single-image postcard.
+""",
+]
+
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -1713,6 +2110,36 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE: "BIGCITYLIFE_SQUARE_VARIATION",  # 1:1 for display
 
     # =========================================================================
+    # PHOTOBOOTH BRAINROT MODE - 9:16 vertical single-image brainrot poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_BRAINROT: "BRAINROT_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH BRAINROT SQUARE MODE - 1:1 square single-image brainrot poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE: "BRAINROT_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH WEDDING MODE - 9:16 vertical single-image wedding postcard
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_WEDDING: "WEDDING_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH WEDDING SQUARE MODE - 1:1 square single-image wedding postcard
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_WEDDING_SQUARE: "WEDDING_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH WHATSAPP MODE - 9:16 vertical single-image WhatsApp postcard
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_WHATSAPP: "WHATSAPP_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH WHATSAPP SQUARE MODE - 1:1 square single-image WhatsApp postcard
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE: "WHATSAPP_SQUARE_VARIATION",
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -1747,6 +2174,7 @@ class CaricatureService:
         style: CaricatureStyle = CaricatureStyle.MYSTICAL,
         size: Tuple[int, int] = (384, 384),
         personality_context: Optional[str] = None,
+        extra_reference_images: Optional[List[Tuple[bytes, str]]] = None,
     ) -> Optional[Caricature]:
         """Generate a caricature based on a reference photo.
 
@@ -1758,6 +2186,7 @@ class CaricatureService:
             style: Caricature style to use
             size: Output size (width, height)
             personality_context: Optional personality traits from questions
+            extra_reference_images: Additional branding or style reference images
 
         Returns:
             Caricature object or None on error
@@ -1795,6 +2224,12 @@ class CaricatureService:
                 "FIESTA_SQUARE_VARIATION": FIESTA_SQUARE_VARIATIONS,
                 "BIGCITYLIFE_VARIATION": BIGCITYLIFE_VARIATIONS,
                 "BIGCITYLIFE_SQUARE_VARIATION": BIGCITYLIFE_SQUARE_VARIATIONS,
+                "BRAINROT_VARIATION": BRAINROT_VARIATIONS,
+                "BRAINROT_SQUARE_VARIATION": BRAINROT_SQUARE_VARIATIONS,
+                "WEDDING_VARIATION": WEDDING_VARIATIONS,
+                "WEDDING_SQUARE_VARIATION": WEDDING_SQUARE_VARIATIONS,
+                "WHATSAPP_VARIATION": WHATSAPP_VARIATIONS,
+                "WHATSAPP_SQUARE_VARIATION": WHATSAPP_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -1822,6 +2257,15 @@ Express their personality through the art - confident people get powerful poses,
 introverts get serene expressions, risk-takers get dynamic energy, etc.
 """
 
+            reference_asset_hint = ""
+            if extra_reference_images:
+                reference_asset_hint = """
+ADDITIONAL REFERENCE IMAGES:
+- Extra reference images are style or branding anchors, not extra people
+- If a party emblem/logo is provided, preserve its exact party name and use it for correct branding
+- Never replace the real people from the photo with the emblem or logo
+"""
+
             # Determine if this style should be full color (photobooth) or B&W (thermal print styles)
             is_color_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -1838,6 +2282,12 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_BRAINROT,
+                CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_WEDDING,
+                CaricatureStyle.PHOTOBOOTH_WEDDING_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_WHATSAPP,
+                CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -1863,8 +2313,38 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE,
             )
+            is_brainrot_style = style in (
+                CaricatureStyle.PHOTOBOOTH_BRAINROT,
+                CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
+            )
+            is_wedding_style = style in (
+                CaricatureStyle.PHOTOBOOTH_WEDDING,
+                CaricatureStyle.PHOTOBOOTH_WEDDING_SQUARE,
+            )
+            is_whatsapp_style = style in (
+                CaricatureStyle.PHOTOBOOTH_WHATSAPP,
+                CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE,
+            )
 
-            if is_bigcitylife_style:
+            if is_brainrot_style:
+                color_instruction = """- FULL COLOR — cursed meme palette: toxic lime, oversaturated cyan, tomato red, fake gold, candy magenta, JPEG-white glow
+- Single centered poster composition only, no grid and no separate frames
+- Exact human faces are mandatory; do not replace faces with animal heads
+- Bodies, costumes, props, and silhouettes can become Italian brainrot hybrid creatures while keeping the real people recognizable
+- Meme doodles, ugly WordArt, sticker clutter, fake glitter, repost-JPEG ugliness are required
+- If multiple people are present, keep the full group together in one shared composition"""
+            elif is_wedding_style:
+                color_instruction = """- FULL COLOR — cheap wedding palette: bubblegum pink, satin white, fake gold, burgundy roses, champagne beige, over-soft skin tones
+- Single centered postcard composition only, no grid and no separate frames
+- Preserve exact faces and whole-group likeness first
+- Allow wardrobe/accessory wedding styling, but never lose recognizability
+- Add tacky wedding decorations, glossy print texture, bad Photoshop glow, and meme doodles"""
+            elif is_whatsapp_style:
+                color_instruction = """- FULL COLOR — forwarded-postcard palette: bright emerald, sky blue gradient, glitter gold, rose pink, candle amber, floral neon
+- Single centered postcard composition only, no grid and no separate frames
+- Preserve exact faces and the full group together in one image
+- Add grandma-WhatsApp postcard decor: glitter flowers, swans, kittens, lace, glow, stickers, foil effects, and meme doodles"""
+            elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
 - NOT photorealistic. NOT 3D. Like a legendary Bronx graffiti mural by TATS CRU or COPE2
@@ -1921,6 +2401,7 @@ CRITICAL REQUIREMENTS:
   * NEVER add any year (2024, 2025, 2026, etc.) - just "VNVNC" alone if adding branding
   * Example: "VNVNC" is correct, "ВНВНЦ" or "VNVNC 2026" is WRONG!
 {personality_hint}
+{reference_asset_hint}
 {style_prompt}
 
 The result should be recognizable as THIS specific person, transformed artistically.
@@ -1937,6 +2418,9 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA,
                 CaricatureStyle.PHOTOBOOTH_FIESTA,
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,
+                CaricatureStyle.PHOTOBOOTH_BRAINROT,
+                CaricatureStyle.PHOTOBOOTH_WEDDING,
+                CaricatureStyle.PHOTOBOOTH_WHATSAPP,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -1944,7 +2428,13 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Send photo directly to Gemini 3 Pro Image Preview
             # The model understands to use the photo as reference
-            if is_bigcitylife_style:
+            if is_brainrot_style:
+                image_style = "Full-bleed Italian brainrot meme poster, surreal semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost JPEG artifacts, ugly outer glow, width-squeezed WordArt, dumb sparkles, exact human faces preserved"
+            elif is_wedding_style:
+                image_style = "Cheesy Russian countryside wedding postcard portrait, tacky glossy studio montage, satin drapes, fake gold, roses, doves, bad Photoshop glow, sentimental print texture"
+            elif is_whatsapp_style:
+                image_style = "Grandma WhatsApp greeting-card collage, glitter postcard portrait, flowers, swans, kittens, lace, glowing clip-art, forwarded JPEG aesthetic"
+            elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:
                 image_style = "Premium 2D underground club poster illustration, drawn graphic art, chromatic aberration, super wide angle, film grain, analog textures, visible venue background, metallic chrome headline, exact likeness and exact clothing from reference photo"
@@ -1968,6 +2458,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 aspect_ratio=aspect_ratio,
                 image_size="1K",  # Use 1K resolution
                 style=image_style,
+                extra_reference_images=extra_reference_images,
             )
 
             if image_data:
