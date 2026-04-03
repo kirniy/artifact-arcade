@@ -133,6 +133,11 @@ class PendingUpload:
 def _ensure_spool_dir(prefix: str) -> Path:
     path = UPLOAD_SPOOL_DIR / prefix
     path.mkdir(parents=True, exist_ok=True)
+    for target in (UPLOAD_SPOOL_DIR, path):
+        try:
+            target.chmod(0o777)
+        except OSError:
+            logger.debug("Could not chmod spool dir %s", target, exc_info=True)
     return path
 
 
