@@ -37,7 +37,13 @@ from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect, draw_line
 from artifact.graphics.text_utils import draw_centered_text, draw_text
 from artifact.utils.camera_service import camera_service
-from artifact.utils.s3_upload import AsyncUploader, UploadResult, pre_generate_upload_info, generate_qr_image
+from artifact.utils.s3_upload import (
+    AsyncUploader,
+    UploadResult,
+    generate_qr_image,
+    pre_generate_upload_info,
+    provision_short_url_redirect,
+)
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.animation.santa_runner import SantaRunner
@@ -639,10 +645,10 @@ class PhotoboothMode(BaseMode):
         logger.info("Uploading photo booth image...")
         self._state.is_uploading = True
 
-        # Set unified gallery QR code (same for everyone)
-        gallery_url = "https://vnvnc.ru/gallery/photobooth"
-        self._state.qr_url = gallery_url
-        self._state.qr_image = generate_qr_image(gallery_url)
+        pre_info = pre_generate_upload_info("photobooth", "png")
+        self._state.qr_url = pre_info.short_url
+        self._state.qr_image = generate_qr_image(pre_info.short_url)
+        provision_short_url_redirect(pre_info)
 
         if not PRINTING_ENABLED:
             # Digital-only mode: upload raw AI image (clean, no footer)
@@ -652,11 +658,11 @@ class PhotoboothMode(BaseMode):
                 extension="png",
                 content_type="image/png",
                 callback=self._on_upload_complete,
+                pre_info=pre_info,
             )
         else:
             # Printing mode: render label with footer + QR
             try:
-                pre_info = pre_generate_upload_info("photobooth", "png")
                 logger.info(f"Pre-generated short URL: {pre_info.short_url}")
 
                 label_gen = LabelReceiptGenerator()

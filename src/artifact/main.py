@@ -174,7 +174,7 @@ async def run_hardware() -> None:
                     logger.info("Pending upload retry pass: %s", summary)
             except Exception:
                 logger.exception("Pending upload retry pass crashed")
-            time.sleep(300)
+            time.sleep(60)
 
     threading.Thread(target=retry_spooled_uploads, daemon=True).start()
 

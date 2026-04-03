@@ -254,7 +254,6 @@ def _create_redirect_html(target_url: str, title: str = "VNVNC Arcade") -> str:
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0;url={target_url}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
     <style>
@@ -292,10 +291,39 @@ def _create_redirect_html(target_url: str, title: str = "VNVNC Arcade") -> str:
 <body>
     <div class="loader">
         <div class="spinner"></div>
-        <p>Загрузка...</p>
+        <p>ФОТО ГОТОВИТСЯ...</p>
+        <p id="status">ПРОВЕРЯЕМ ФАЙЛ...</p>
         <p><a href="{target_url}">Нажмите, если не перенаправлено</a></p>
     </div>
-    <script>window.location.replace("{target_url}");</script>
+    <script>
+        const targetUrl = {json.dumps(target_url)};
+        const statusEl = document.getElementById("status");
+        const isImageTarget = /\\.(png|jpe?g|webp|gif)(\\?|$)/i.test(targetUrl);
+
+        function redirectNow() {{
+            window.location.replace(targetUrl);
+        }}
+
+        function pollForImage(delayMs) {{
+            const probe = new Image();
+            probe.onload = () => {{
+                statusEl.textContent = "ПЕРЕХОДИМ К ФОТО...";
+                redirectNow();
+            }};
+            probe.onerror = () => {{
+                statusEl.textContent = "ФОТО ЕЩЕ ЗАГРУЖАЕТСЯ...";
+                window.setTimeout(() => pollForImage(Math.min(delayMs + 500, 5000)), delayMs);
+            }};
+            probe.src = targetUrl + (targetUrl.includes("?") ? "&" : "?") + "wait=" + Date.now();
+        }}
+
+        if (isImageTarget) {{
+            pollForImage(1000);
+        }} else {{
+            statusEl.textContent = "ПОДГОТАВЛИВАЕМ ССЫЛКУ...";
+            window.setTimeout(redirectNow, 1200);
+        }}
+    </script>
 </body>
 </html>'''
 
@@ -404,6 +432,11 @@ def _upload_redirect_html(short_id: str, target_url: str) -> bool:
     except Exception as e:
         logger.warning(f"Failed to create redirect: {e}")
         return False
+
+
+def provision_short_url_redirect(pre_info: PreUploadInfo) -> bool:
+    """Create/update the short redirect URL before or after the main upload."""
+    return _upload_redirect_html(pre_info.short_id, pre_info.full_url)
 
 
 def refresh_public_photo_manifest(prefix: str = "photobooth", max_items: int = 5000) -> bool:
@@ -555,7 +588,11 @@ def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict
             if pending.short_id:
                 _upload_redirect_html(pending.short_id, url)
             if pending.prefix == "photobooth":
-                refresh_public_photo_manifest(pending.prefix)
+                threading.Thread(
+                    target=refresh_public_photo_manifest,
+                    kwargs={"prefix": pending.prefix},
+                    daemon=True,
+                ).start()
 
             _delete_pending_upload(pending)
             succeeded += 1
@@ -658,16 +695,20 @@ def upload_bytes_to_s3(
 
         if result.returncode == 0:
             url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
-            short_url = None
-
-            # Upload redirect HTML for short URL
-            if _upload_redirect_html(short_id, url):
-                short_url = f"https://vnvnc.ru/p/{short_id}"
-
-            # Generate QR code for the short URL if available, otherwise full URL
-            qr_image = generate_qr_image(short_url or url)
+            short_url = f"https://vnvnc.ru/p/{short_id}"
+            qr_image = generate_qr_image(short_url)
             if prefix == "photobooth":
-                refresh_public_photo_manifest(prefix)
+                threading.Thread(
+                    target=refresh_public_photo_manifest,
+                    kwargs={"prefix": prefix},
+                    daemon=True,
+                ).start()
+            elif pre_info is None:
+                threading.Thread(
+                    target=_upload_redirect_html,
+                    args=(short_id, url),
+                    daemon=True,
+                ).start()
             _delete_pending_upload(pending)
             logger.info(f"Upload successful: {url} (short: {short_url})")
             return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
