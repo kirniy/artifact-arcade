@@ -56,6 +56,12 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_WEDDING_SQUARE = "photobooth_wedding_square"  # 1:1 square - Russian wedding postcard mode
     PHOTOBOOTH_WHATSAPP = "photobooth_whatsapp"  # 9:16 vertical - grandma WhatsApp postcard mode
     PHOTOBOOTH_WHATSAPP_SQUARE = "photobooth_whatsapp_square"  # 1:1 square - grandma WhatsApp postcard mode
+    PHOTOBOOTH_SLAVIC_SOUL = "photobooth_slavic_soul"  # 9:16 vertical - slavic soul luxury mode
+    PHOTOBOOTH_SLAVIC_SOUL_SQUARE = "photobooth_slavic_soul_square"  # 1:1 square - slavic soul mode
+    PHOTOBOOTH_SLAVIC_TALES = "photobooth_slavic_tales"  # 9:16 vertical - slavic fairy-tale mode
+    PHOTOBOOTH_SLAVIC_TALES_SQUARE = "photobooth_slavic_tales_square"  # 1:1 square - slavic fairy-tale mode
+    PHOTOBOOTH_BANYA_CHIC = "photobooth_banya_chic"  # 9:16 vertical - decadent bathhouse mode
+    PHOTOBOOTH_BANYA_CHIC_SQUARE = "photobooth_banya_chic_square"  # 1:1 square - decadent bathhouse mode
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -1650,6 +1656,224 @@ Square 1:1 single-image postcard.
 ]
 
 
+SLAVIC_SOUL_VARIATIONS = [
+    """СЛАВЯНСКАЯ ДУША — SLAVIC CORE LUXURY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO panels. Full-bleed vertical poster.
+
+CRITICAL LIKENESS:
+- Preserve the exact real human faces from the source photo
+- If multiple people are present, preserve the exact full group and exact people count
+- Never crop the group down to one hero and never demote extra people into background decoration
+- Preserve visible clothing text and logos letter-for-letter
+- Faces, skin, eyes, and recognizability stay photoreal and unmistakable
+
+VISUAL DIRECTION:
+- Pure black velvet background only, no room interior, no fairy-tale scenery, no bathhouse scenery, no postcard border, no fake photo frame
+- Premium Slavic-core editorial still-life collage with warm amber glow, lacquer-red accents, antique gold, amber, fur brown, cranberry crimson
+- Hyper-polished luxury-campaign / collectible-object finish for props and styling, while the people remain recognizable humans
+- Floating curated objects orbit around the people in a clean balanced composition like a fashion-campaign still life
+- Use the extra reference images only as style anchors for the gold ornamental emblem and VNVNC treatment
+
+SLAVIC SOUL OBJECT WORLD:
+- jeweled fur ushanka
+- Khokhloma-style red lacquer heels
+- bottle of perfume in the spirit of "Красная Москва"
+- amber prayer beads
+- faceted crystal vodka glass
+- cranberries, pearls, dried rose petals
+- woven burgundy tapestry with golden deer and folk geometry
+- small porcelain figurine with floral shawl
+
+WARDROBE / STYLING:
+- merge the real outfit with luxe folk-glam touches: kokoshnik jewelry, floral shawl details, fur trim, gold chains, lacquer-red ornament accents
+- keep the real body language and exact face, do not turn the subject into a toy
+- if multiple people are present, style them as one expensive Slavic-core clique with distinct individual accents for each person
+- cool, powerful, expensive, a little ironic, never kitschy in a cheap way
+
+TEXT AND BRANDING:
+- the ONLY huge decorative title is exactly "СЛАВЯНСКАЯ ДУША"
+- title must be rendered in glowing embossed antique-gold ornamental lettering matching the reference style
+- required footer text somewhere elegant in the composition:
+  * "VNVNC.RU"
+  * "18.04"
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no other text
+
+OUTPUT:
+- one centered Slavic-core luxury poster
+- black background, floating props, warm gold glow, exact likeness
+- vertical 9:16
+""",
+]
+
+
+SLAVIC_SOUL_SQUARE_VARIATIONS = [
+    """СЛАВЯНСКАЯ ДУША — SLAVIC CORE LUXURY POSTER (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no four frames.
+
+Keep the exact faces and full group from the source photo.
+If multiple people are present, keep the exact people count and stage them as one luxury folk-glam ensemble.
+Use a pure black background with floating luxury folk props: jeweled ushanka, Khokhloma heels,
+amber beads, faceted glass, cranberries, porcelain figurine, burgundy tapestry with golden deer.
+The people stay photoreal and recognizable while the styling gains kokoshnik, fur, shawl, and gold-chain glamour.
+
+Huge title exactly "СЛАВЯНСКАЯ ДУША" in glowing embossed antique-gold lettering.
+Required text somewhere in the design:
+"VNVNC.RU", "18.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 single-image Slavic-core poster on a black velvet void.
+""",
+]
+
+
+SLAVIC_TALES_VARIATIONS = [
+    """СЛАВЯНСКИЕ СКАЗКИ — DARK FAIRY-TALE SLAVIC CORE POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO separate panels.
+
+CRITICAL LIKENESS:
+- Preserve exact human faces, skin, gaze, and expressions from the source photo
+- If multiple people are present, preserve the exact full group and exact people count
+- Never collapse the scene to a single protagonist; every visible person remains a main character
+- Preserve visible clothing text and logos
+
+VISUAL DIRECTION:
+- Build a real enchanted fairy-tale world, not a pure black void and not a floating still-life poster
+- Slavic fairy-tale luxury: moonlit birch forest, carved terem details, old-gold ornaments, raven-black night, garnet red, ivory snow, ember glow
+- Faces remain real and photoreal; transform the setting, wardrobe, and symbolic objects into a premium storybook world
+- The composition should feel like an expensive live-action Slavic fantasy scene, not cosplay and not a spa ad
+
+SLAVIC TALES OBJECT WORLD:
+- firebird feathers or a glowing firebird aura
+- carved terem window or throne details
+- enchanted golden apples or ornate silver bowls
+- ornate kokoshnik crowns, embroidered shawls, fur capes, red boots, white valenki
+- ancient folk talismans, beads, lacquer miniatures, raven feathers, moonlit branches
+- deer motifs, berries, chain accents, magical frost, candlelight
+- absolutely NO mushrooms
+
+WARDROBE / STYLING:
+- turn the people into expensive modern tsarevna / tsarevich / enchanted-court icons
+- if multiple people are present, give them complementary fairy-tale roles inside the same scene while preserving all real faces
+- embroidered textures, fur, lacquer-red ornament, black boots, dramatic shawls, heroic or mystical hand props
+- elegant, magical, storybook, but still editorial and luxurious rather than cosplay
+
+TEXT AND BRANDING:
+- the ONLY huge title is exactly "СЛАВЯНСКИЕ СКАЗКИ"
+- title is glowing embossed antique-gold ornamental lettering in the same family as the reference images
+- required footer text:
+  * "VNVNC.RU"
+  * "18.04"
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no extra text
+
+OUTPUT:
+- one centered dark fairy-tale Slavic-core poster
+- real enchanted environment, magical objects, exact human likeness
+- vertical 9:16
+""",
+]
+
+
+SLAVIC_TALES_SQUARE_VARIATIONS = [
+    """СЛАВЯНСКИЕ СКАЗКИ — DARK FAIRY-TALE SLAVIC CORE POSTER (SQUARE 1:1)
+
+One square single-image composition only.
+Preserve the exact faces and full group from the source photo.
+If multiple people are present, keep everyone and make them read as one fairy-tale ensemble rather than one hero plus extras.
+
+Build a real premium fairy-tale setting: moonlit birch forest or carved terem backdrop, firebird feathers,
+golden apples, kokoshnik crowns, floral shawls, red boots, white valenki, fur mittens,
+gold ornaments, deer motifs, berries, candlelight, magical frost. No mushrooms.
+
+Huge title exactly "СЛАВЯНСКИЕ СКАЗКИ" in glowing embossed antique-gold lettering.
+Required text:
+"VNVNC.RU", "18.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 single-image fairy-tale Slavic-core luxury poster.
+""",
+]
+
+
+BANYA_CHIC_VARIATIONS = [
+    """БАННЫЙ ШИК — DECADENT SLAVIC BATHHOUSE POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO multiple panels.
+
+CRITICAL LIKENESS:
+- Preserve exact human faces and the full group from the source photo
+- If multiple people are present, preserve the exact people count and keep everyone in the same shared scene
+- Keep visible clothing text and logos
+- People stay recognizable, photoreal, and human
+
+VISUAL DIRECTION:
+- Build a decadent bathhouse world, not a pure black void and not a fairy-tale forest
+- Decadent banya editorial aesthetic: hot cedar wood, dense steam, brass, champagne foam, caviar gloss, warm gold, amber, pearl, cream, dill green, towel white, lacquer red
+- Premium luxury-ad / bathhouse-club finish with photoreal skin, humid air, and tactile steam-room atmosphere
+- The composition should feel expensive, funny, decadent, humid, and very Slavic
+
+BANYA CHIC OBJECT WORLD:
+- polished brass samovar with a fur ushanka on top
+- thick steam ribbons
+- black caviar in crystal bowl and red caviar in golden bowl
+- champagne bottle with flying cork
+- frosted vodka or champagne glasses
+- blini stack
+- mother-of-pearl spoons
+- lemon wedges, dill, berries, towel or linen accents
+- elegant birch venik, cedar bucket, brass тазик, tiled or wooden bench details
+
+WARDROBE / STYLING:
+- merge the real outfit with decadent bathhouse glamour: embroidered robe or towel accents, fur, gold chains, plush textures, rich spa-lounge energy
+- if multiple people are present, style them as one decadent banya crew enjoying the same over-luxurious steam ritual
+- not rustic peasant comedy, not spa brochure minimalism
+- rich, glossy, steaming, slightly absurd, and intentionally over-luxurious
+
+TEXT AND BRANDING:
+- the ONLY huge title is exactly "БАННЫЙ ШИК"
+- title must be glowing embossed antique-gold ornamental lettering matching the reference aesthetic
+- required footer text:
+  * "VNVNC.RU"
+  * "18.04"
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no extra text
+
+OUTPUT:
+- one centered decadent bathhouse poster
+- steam-room interior, samovar, caviar, champagne, exact likeness
+- vertical 9:16
+""",
+]
+
+
+BANYA_CHIC_SQUARE_VARIATIONS = [
+    """БАННЫЙ ШИК — DECADENT SLAVIC BATHHOUSE POSTER (SQUARE 1:1)
+
+One square single-image composition only.
+Keep the exact real faces and full group from the source photo.
+If multiple people are present, keep the whole crew together in one decadent bathhouse scene.
+
+Use a steamy cedar-and-brass bathhouse setting with luxury props: samovar with ushanka, steam,
+black and red caviar, champagne bottle, frosted glasses, blini, mother-of-pearl spoons, lemon, dill,
+linen/towel accents, birch venik, cedar bucket, and warm gold highlights.
+
+Huge title exactly "БАННЫЙ ШИК" in glowing embossed antique-gold lettering.
+Required text:
+"VNVNC.RU", "18.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 single-image Slavic bathhouse luxury poster.
+""",
+]
+
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -2140,6 +2364,36 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE: "WHATSAPP_SQUARE_VARIATION",
 
     # =========================================================================
+    # PHOTOBOOTH SLAVIC SOUL MODE - 9:16 vertical slavic-core luxury poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL: "SLAVIC_SOUL_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH SLAVIC SOUL SQUARE MODE - 1:1 square slavic-core luxury poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL_SQUARE: "SLAVIC_SOUL_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH SLAVIC TALES MODE - 9:16 vertical slavic fairy-tale poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES: "SLAVIC_TALES_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH SLAVIC TALES SQUARE MODE - 1:1 square slavic fairy-tale poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES_SQUARE: "SLAVIC_TALES_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH BANYA CHIC MODE - 9:16 vertical decadent bathhouse poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_BANYA_CHIC: "BANYA_CHIC_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH BANYA CHIC SQUARE MODE - 1:1 square decadent bathhouse poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE: "BANYA_CHIC_SQUARE_VARIATION",
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -2230,6 +2484,12 @@ class CaricatureService:
                 "WEDDING_SQUARE_VARIATION": WEDDING_SQUARE_VARIATIONS,
                 "WHATSAPP_VARIATION": WHATSAPP_VARIATIONS,
                 "WHATSAPP_SQUARE_VARIATION": WHATSAPP_SQUARE_VARIATIONS,
+                "SLAVIC_SOUL_VARIATION": SLAVIC_SOUL_VARIATIONS,
+                "SLAVIC_SOUL_SQUARE_VARIATION": SLAVIC_SOUL_SQUARE_VARIATIONS,
+                "SLAVIC_TALES_VARIATION": SLAVIC_TALES_VARIATIONS,
+                "SLAVIC_TALES_SQUARE_VARIATION": SLAVIC_TALES_SQUARE_VARIATIONS,
+                "BANYA_CHIC_VARIATION": BANYA_CHIC_VARIATIONS,
+                "BANYA_CHIC_SQUARE_VARIATION": BANYA_CHIC_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -2288,6 +2548,12 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_WEDDING_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_WHATSAPP,
                 CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
+                CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -2325,6 +2591,18 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_WHATSAPP,
                 CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE,
             )
+            is_slavic_soul_style = style in (
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL_SQUARE,
+            )
+            is_slavic_tales_style = style in (
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES_SQUARE,
+            )
+            is_banya_chic_style = style in (
+                CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
+                CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE,
+            )
 
             if is_brainrot_style:
                 color_instruction = """- FULL COLOR — cursed meme palette: toxic lime, oversaturated cyan, tomato red, fake gold, candy magenta, JPEG-white glow
@@ -2344,6 +2622,27 @@ ADDITIONAL REFERENCE IMAGES:
 - Single centered postcard composition only, no grid and no separate frames
 - Preserve exact faces and the full group together in one image
 - Add grandma-WhatsApp postcard decor: glitter flowers, swans, kittens, lace, glow, stickers, foil effects, and meme doodles"""
+            elif is_slavic_soul_style:
+                color_instruction = """- FULL COLOR — slavic-core luxury palette: velvet black, lacquer red, antique gold, amber, champagne ivory, cranberry crimson, fur brown
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Pure black luxury background, floating curated props, and rich warm amber lighting are mandatory
+- Human faces must stay photoreal and exact; props and styling may become hyper-polished luxury still life
+- If multiple people are present, keep the full group together as one fashion-campaign clique
+- Huge ornamental gold title lettering and elegant footer branding are required"""
+            elif is_slavic_tales_style:
+                color_instruction = """- FULL COLOR — enchanted Slavic fairy-tale palette: moonlit indigo, raven black, old gold, garnet red, birch white, ember orange, icy ivory
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Build a real fairy-tale environment with atmosphere, depth, and magical objects; not a pure black void
+- Human faces must stay photoreal and exact while the world becomes luxurious storybook fantasy
+- If multiple people are present, keep the full group together as an ensemble cast with equal presence
+- Huge ornamental gold title lettering and elegant footer branding are required"""
+            elif is_banya_chic_style:
+                color_instruction = """- FULL COLOR — decadent bathhouse palette: cedar honey, steam white, brass gold, towel cream, dill green, caviar black, cranberry red, warm amber skin tones
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Build a humid steam-room or bathhouse interior; not a pure black void and not a fairy-tale scene
+- Human faces must stay photoreal and exact while props, styling, and atmosphere become glossy decadent bathhouse editorial
+- If multiple people are present, keep the full group together in one shared bathhouse ritual scene
+- Huge ornamental gold title lettering and elegant footer branding are required"""
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
@@ -2388,11 +2687,13 @@ ADDITIONAL REFERENCE IMAGES:
 - NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic"""
 
-            prompt = f"""Create an artistic portrait OF THIS EXACT PERSON from the reference photo.
+            prompt = f"""Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo.
 
 CRITICAL REQUIREMENTS:
-- This must capture THE PERSON IN THE PHOTO - their likeness is essential
+- This must capture THE REAL PERSON OR REAL GROUP IN THE PHOTO - likeness is essential
 - Recognize their distinctive features and incorporate them naturally
+- If the reference photo contains multiple people, preserve the exact people count and keep every visible person in the final image
+- Never crop a group photo down to one hero, never merge two people into one, and never replace a person with a prop or logo
 {color_instruction}
 - TEXT LANGUAGE RULES (CRITICAL!!!):
   * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C
@@ -2421,6 +2722,9 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_BRAINROT,
                 CaricatureStyle.PHOTOBOOTH_WEDDING,
                 CaricatureStyle.PHOTOBOOTH_WHATSAPP,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES,
+                CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -2434,6 +2738,12 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Cheesy Russian countryside wedding postcard portrait, tacky glossy studio montage, satin drapes, fake gold, roses, doves, bad Photoshop glow, sentimental print texture"
             elif is_whatsapp_style:
                 image_style = "Grandma WhatsApp greeting-card collage, glitter postcard portrait, flowers, swans, kittens, lace, glowing clip-art, forwarded JPEG aesthetic"
+            elif is_slavic_soul_style:
+                image_style = "Luxurious slavic-core fashion editorial poster, pure black velvet background, floating lacquered and gilded props, embossed gold lettering, premium still-life glamour, clique-like group staging, exact photoreal human faces preserved"
+            elif is_slavic_tales_style:
+                image_style = "Cinematic Slavic fairy-tale fashion tableau, enchanted moonlit environment, carved terem and forest magic details, premium live-action storybook fantasy, ensemble cast staging, exact photoreal human faces preserved"
+            elif is_banya_chic_style:
+                image_style = "Decadent Slavic bathhouse editorial portrait, steamy cedar-and-brass interior, humid luxury atmosphere, caviar-and-champagne absurd glamour, shared group scene, exact photoreal human faces preserved"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

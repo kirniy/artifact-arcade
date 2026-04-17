@@ -266,6 +266,9 @@ MODE_COLORS = {
     "brainrot_booth": (255, 232, 72),
     "wedding_booth": (255, 214, 232),
     "whatsapp_booth": (80, 215, 120),
+    "slavic_soul_booth": (255, 210, 126),
+    "slavic_tales_booth": (214, 92, 106),
+    "banya_chic_booth": (255, 226, 150),
     "roast": (255, 100, 30),        # Fire orange
     "squid_game": (255, 50, 80),    # Red light
     "quiz": (255, 220, 0),          # Gold
@@ -371,6 +374,9 @@ MODE_LABELS_RU = {
     "brainrot_booth": "BRAINROT",
     "wedding_booth": "ЛЮБОВЬ И ГОЛУБИ",
     "whatsapp_booth": "WA ОТКРЫТКИ",
+    "slavic_soul_booth": "СЛАВЯНСКАЯ ДУША",
+    "slavic_tales_booth": "СЛАВЯНСКИЕ СКАЗКИ",
+    "banya_chic_booth": "БАННЫЙ ШИК",
     "y2k": "НУЛЕВЫЕ",
     "bad_santa": "ПЛОХОЙ САНТА",
 }
@@ -384,6 +390,9 @@ MODE_DESCRIPTIONS_RU = {
     "brainrot_booth": "КРИНЖ ПАТИ",
     "wedding_booth": "ФАВТФАА ПЭПЭ",
     "whatsapp_booth": "ПЭПЭШНЕЙШЕ",
+    "slavic_soul_booth": "ФОЛК ГЛАМУР И ЗОЛОТО",
+    "slavic_tales_booth": "СКАЗКИ, ОРНАМЕНТ, МАГИЯ",
+    "banya_chic_booth": "ПАР, САМОВАР, ИКРА",
     "roast": "ПРОЖАРКА СТЕБЕМ ПО ФОТО",
     "zodiac": "Что говорят звезды?",
     "quiz": "Проверь себя!",

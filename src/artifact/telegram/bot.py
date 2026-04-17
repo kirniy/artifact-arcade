@@ -295,9 +295,11 @@ class ArcadeControl:
 
     def _write_command(self, command: str, **kwargs) -> None:
         """Write a command to the control file."""
+        now = datetime.now()
         data = {
             "command": command,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now.timestamp(),
+            "timestamp_iso": now.isoformat(),
             **kwargs
         }
         try:

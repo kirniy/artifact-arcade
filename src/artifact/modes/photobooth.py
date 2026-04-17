@@ -144,6 +144,7 @@ class PhotoboothMode(BaseMode):
 
     def _load_logo(self) -> None:
         """Load theme logo for display overlay."""
+        self._theme_reference_images = []
         try:
             logo_path = os.path.join(
                 os.path.dirname(__file__), "..", "..", "..", "assets", "images", self._theme.logo_filename
@@ -156,10 +157,32 @@ class PhotoboothMode(BaseMode):
                 self._logo_rgba = np.array(img, dtype=np.uint8)
                 logger.info(f"Loaded {self._theme.id} logo: {self._theme.logo_filename}")
 
-                if self._theme.ai_style_key in {"brainrot", "wedding", "whatsapp"}:
-                    with open(logo_path, "rb") as logo_file:
-                        mime_type = "image/png" if logo_path.lower().endswith(".png") else "image/jpeg"
-                        self._theme_reference_images = [(logo_file.read(), mime_type)]
+                reference_filenames: list[str] = list(self._theme.reference_image_filenames)
+                if self._theme.ai_style_key in {
+                    "brainrot",
+                    "wedding",
+                    "whatsapp",
+                    "slavic_soul",
+                    "slavic_tales",
+                    "banya_chic",
+                }:
+                    reference_filenames.insert(0, self._theme.logo_filename)
+
+                seen_filenames: set[str] = set()
+                for reference_filename in reference_filenames:
+                    if reference_filename in seen_filenames:
+                        continue
+                    seen_filenames.add(reference_filename)
+                    reference_path = os.path.join(
+                        os.path.dirname(__file__), "..", "..", "..", "assets", "images", reference_filename
+                    )
+                    reference_path = os.path.normpath(reference_path)
+                    if not os.path.exists(reference_path):
+                        logger.warning("Reference asset not found for %s: %s", self._theme.id, reference_filename)
+                        continue
+                    with open(reference_path, "rb") as reference_file:
+                        mime_type = "image/png" if reference_path.lower().endswith(".png") else "image/jpeg"
+                        self._theme_reference_images.append((reference_file.read(), mime_type))
             else:
                 logger.warning(f"Logo not found: {logo_path}")
                 self._logo_rgba = None
@@ -418,6 +441,21 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_VENICE,  # 9:16 vertical for label
             )
+        elif self._theme.ai_style_key == "slavic_soul":
+            return (
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL,
+            )
+        elif self._theme.ai_style_key == "slavic_tales":
+            return (
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES,
+            )
+        elif self._theme.ai_style_key == "banya_chic":
+            return (
+                CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
+            )
         elif self._theme.ai_style_key == "brainrot":
             return (
                 CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
@@ -569,6 +607,9 @@ class PhotoboothMode(BaseMode):
                 "brainrot",
                 "wedding",
                 "whatsapp",
+                "slavic_soul",
+                "slavic_tales",
+                "banya_chic",
             }
             if self._theme.ai_style_key in timestamp_theme_keys:
                 moscow_tz = timezone(timedelta(hours=3))
@@ -1028,16 +1069,46 @@ class WhatsAppPhotoboothMode(PhotoboothMode):
     theme_id_override = "whatsapp"
 
 
+class SlavicSoulPhotoboothMode(PhotoboothMode):
+    """Славянский люкс, фолк-гламур и тёплое золото."""
+
+    name = "slavic_soul_booth"
+    display_name = "СЛАВ.\nДУША"
+    description = "СЛАВЯНСКАЯ ДУША"
+    theme_id_override = "slavic_soul"
+
+
+class SlavicTalesPhotoboothMode(PhotoboothMode):
+    """Тёмная славянская сказка с богатой орнаментальной магией."""
+
+    name = "slavic_tales_booth"
+    display_name = "СЛАВ.\nСКАЗКИ"
+    description = "СЛАВЯНСКИЕ СКАЗКИ"
+    theme_id_override = "slavic_tales"
+
+
+class BanyaChicPhotoboothMode(PhotoboothMode):
+    """Пар, самовар, икра и декадентский банный шик."""
+
+    name = "banya_chic_booth"
+    display_name = "БАННЫЙ\nШИК"
+    description = "БАННЫЙ ШИК"
+    theme_id_override = "banya_chic"
+
+
 PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Type[PhotoboothMode]]" = OrderedDict(
     [
         ("classic", PhotoboothMode),
+        ("slavic_soul", SlavicSoulPhotoboothMode),
+        ("slavic_tales", SlavicTalesPhotoboothMode),
+        ("banya_chic", BanyaChicPhotoboothMode),
         ("brainrot", BrainrotPhotoboothMode),
         ("wedding", WeddingPhotoboothMode),
         ("whatsapp", WhatsAppPhotoboothMode),
     ]
 )
 
-DEFAULT_PHOTOBOOTH_MENU_MODES = ("brainrot", "wedding", "whatsapp")
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("slavic_soul", "slavic_tales", "banya_chic")
 
 
 def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:
@@ -1046,8 +1117,8 @@ def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:
     Configure with PHOTOBOOTH_MENU_MODES as a comma-separated list of registry keys.
     Example:
         PHOTOBOOTH_MENU_MODES=classic
-        PHOTOBOOTH_MENU_MODES=brainrot,wedding,whatsapp
-        PHOTOBOOTH_MENU_MODES=classic,brainrot
+        PHOTOBOOTH_MENU_MODES=slavic_soul,slavic_tales,banya_chic
+        PHOTOBOOTH_MENU_MODES=classic,slavic_soul
     """
     raw = os.environ.get("PHOTOBOOTH_MENU_MODES", ",".join(DEFAULT_PHOTOBOOTH_MENU_MODES))
     requested = [item.strip().lower() for item in raw.split(",") if item.strip()]

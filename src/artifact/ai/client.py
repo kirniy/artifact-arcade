@@ -4,9 +4,10 @@ Based on patterns from voicio/gemini_client.py with adaptations for
 arcade fortune-telling use case.
 """
 
-import os
 import asyncio
 import logging
+import mimetypes
+import os
 from typing import Optional, Dict, Any, List, Union, Tuple
 from dataclasses import dataclass
 from enum import Enum
@@ -449,9 +450,13 @@ class GeminiClient:
                 })
 
             if extra_reference_images:
-                for image_bytes, mime_type in extra_reference_images:
+                for image_bytes, mime_hint in extra_reference_images:
                     if not image_bytes:
                         continue
+                    mime_type = mime_hint
+                    if "/" not in mime_type:
+                        guessed_mime, _ = mimetypes.guess_type(mime_type)
+                        mime_type = guessed_mime or "image/png"
                     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
                     parts.append({
                         "inlineData": {

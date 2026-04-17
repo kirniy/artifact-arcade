@@ -47,6 +47,7 @@ class PhotoboothTheme:
 
     # AI style identifier (maps to prompt variations)
     ai_style_key: str  # e.g., "boilingroom", "tripvenice"
+    reference_image_filenames: Tuple[str, ...] = ()
 
 
 # =============================================================================
@@ -230,6 +231,63 @@ WHATSAPP_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: SLAVIC CORE - СЛАВЯНСКАЯ ДУША (April 18, 2026)
+# =============================================================================
+SLAVIC_SOUL_THEME = PhotoboothTheme(
+    id="slavic_soul",
+    event_name="СЛАВЯНСКАЯ ДУША",
+    event_date="18.04",
+    logo_filename="slaviccore-emblem.png",
+    theme_chrome=(255, 208, 126),
+    theme_red=(158, 42, 36),
+    theme_black=(6, 3, 2),
+    ticker_idle="ДУША",
+    lcd_prefix="ДУША",
+    description="СЛАВЯНСКАЯ ДУША",
+    ai_style_key="slavic_soul",
+    reference_image_filenames=("slaviccore-vnvnc.png",),
+)
+
+
+# =============================================================================
+# THEME: SLAVIC CORE - СЛАВЯНСКИЕ СКАЗКИ (April 18, 2026)
+# =============================================================================
+SLAVIC_TALES_THEME = PhotoboothTheme(
+    id="slavic_tales",
+    event_name="СЛАВЯНСКИЕ СКАЗКИ",
+    event_date="18.04",
+    logo_filename="slaviccore-emblem.png",
+    theme_chrome=(238, 196, 120),
+    theme_red=(132, 34, 48),
+    theme_black=(9, 5, 6),
+    ticker_idle="СКАЗКИ",
+    lcd_prefix="СКАЗК",
+    description="СЛАВЯНСКИЕ СКАЗКИ",
+    ai_style_key="slavic_tales",
+    reference_image_filenames=("slaviccore-vnvnc.png",),
+)
+
+
+# =============================================================================
+# THEME: SLAVIC CORE - БАННЫЙ ШИК (April 18, 2026)
+# =============================================================================
+BANYA_CHIC_THEME = PhotoboothTheme(
+    id="banya_chic",
+    event_name="БАННЫЙ ШИК",
+    event_date="18.04",
+    logo_filename="slaviccore-emblem.png",
+    theme_chrome=(248, 221, 144),
+    theme_red=(180, 96, 44),
+    theme_black=(7, 4, 2),
+    ticker_idle="БАНЯ",
+    lcd_prefix="БАНЯ",
+    description="БАННЫЙ ШИК",
+    ai_style_key="banya_chic",
+    reference_image_filenames=("slaviccore-vnvnc.png",),
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -243,10 +301,13 @@ THEMES = {
     "brainrot": BRAINROT_THEME,
     "wedding": WEDDING_THEME,
     "whatsapp": WHATSAPP_THEME,
+    "slavic_soul": SLAVIC_SOUL_THEME,
+    "slavic_tales": SLAVIC_TALES_THEME,
+    "banya_chic": BANYA_CHIC_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "fiesta"
+DEFAULT_THEME = "slavic_soul"
 
 
 def get_current_theme() -> PhotoboothTheme:
