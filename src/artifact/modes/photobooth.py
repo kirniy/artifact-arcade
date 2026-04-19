@@ -60,12 +60,7 @@ MOSCOW_TZ = timezone(timedelta(hours=3))
 
 
 def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = None) -> tuple[str, str]:
-    """Return the footer date/time strings for a theme in Moscow time.
-
-    Some overnight parties keep using the previous calendar date after midnight.
-    When `party_date_rollover_hour` is set, times earlier than that hour inherit
-    the previous day's date while keeping the real current Moscow time.
-    """
+    """Return the footer date/time strings for a theme in Moscow time."""
     if now is None:
         now = datetime.now(MOSCOW_TZ)
     elif now.tzinfo is None:
@@ -636,11 +631,10 @@ class PhotoboothMode(BaseMode):
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                 if self._theme.ai_style_key in {"slavic_soul", "slavic_tales", "banya_chic"}:
                     personality_context = (
-                        f"REAL MOSCOW PARTY DATE FOR THIS PHOTO: {footer_date_str}. "
+                        f"REAL MOSCOW DATE FOR THIS PHOTO: {footer_date_str}. "
                         f"REAL MOSCOW TIME FOR THIS PHOTO: {moscow_time}. "
                         f"Use exactly '{footer_date_str}' as the footer date and exactly "
-                        f"'{moscow_time}' as the footer time. The date already follows the "
-                        f"overnight party labeling rule, so do not recalculate or change it."
+                        f"'{moscow_time}' as the footer time."
                     )
                 else:
                     personality_context = (
