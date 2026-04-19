@@ -1696,7 +1696,7 @@ TEXT AND BRANDING:
 - title must be rendered in glowing embossed antique-gold ornamental lettering matching the reference style
 - required footer text somewhere elegant in the composition:
   * "VNVNC.RU"
-  * exact date from personality_context
+  * exact Russian weekday from personality_context
   * exact time from personality_context
   * "КОНЮШЕННАЯ 2В"
 - no other text
@@ -1722,7 +1722,7 @@ The people stay photoreal and recognizable while the styling gains kokoshnik, fu
 
 Huge title exactly "СЛАВЯНСКАЯ ДУША" in glowing embossed antique-gold lettering.
 Required text somewhere in the design:
-"VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
 No extra text.
 
 Square 1:1 single-image Slavic-core poster on a black velvet void.
@@ -1767,7 +1767,7 @@ TEXT AND BRANDING:
 - title is glowing embossed antique-gold ornamental lettering in the same family as the reference images
 - required footer text:
   * "VNVNC.RU"
-  * exact date from personality_context
+  * exact Russian weekday from personality_context
   * exact time from personality_context
   * "КОНЮШЕННАЯ 2В"
 - no extra text
@@ -1793,7 +1793,7 @@ gold ornaments, deer motifs, berries, candlelight, magical frost. No mushrooms.
 
 Huge title exactly "СЛАВЯНСКИЕ СКАЗКИ" in glowing embossed antique-gold lettering.
 Required text:
-"VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
 No extra text.
 
 Square 1:1 single-image fairy-tale Slavic-core luxury poster.
@@ -1840,7 +1840,7 @@ TEXT AND BRANDING:
 - title must be glowing embossed antique-gold ornamental lettering matching the reference aesthetic
 - required footer text:
   * "VNVNC.RU"
-  * exact date from personality_context
+  * exact Russian weekday from personality_context
   * exact time from personality_context
   * "КОНЮШЕННАЯ 2В"
 - no extra text
@@ -1866,7 +1866,7 @@ linen/towel accents, birch venik, cedar bucket, and warm gold highlights.
 
 Huge title exactly "БАННЫЙ ШИК" in glowing embossed antique-gold lettering.
 Required text:
-"VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
 No extra text.
 
 Square 1:1 single-image Slavic bathhouse luxury poster.

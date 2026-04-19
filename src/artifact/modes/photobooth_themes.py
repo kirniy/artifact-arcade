@@ -48,6 +48,7 @@ class PhotoboothTheme:
     # AI style identifier (maps to prompt variations)
     ai_style_key: str  # e.g., "boilingroom", "tripvenice"
     party_date_rollover_hour: Optional[int] = None  # Use previous date before this Moscow hour
+    footer_date_mode: str = "date"  # "date" or "weekday_ru"
     reference_image_filenames: Tuple[str, ...] = ()
 
 
@@ -245,6 +246,8 @@ SLAVIC_SOUL_THEME = PhotoboothTheme(
     ticker_idle="ДУША",
     lcd_prefix="ДУША",
     description="СЛАВЯНСКАЯ ДУША",
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
     ai_style_key="slavic_soul",
     reference_image_filenames=("slaviccore-vnvnc.png",),
 )
@@ -264,6 +267,8 @@ SLAVIC_TALES_THEME = PhotoboothTheme(
     ticker_idle="СКАЗКИ",
     lcd_prefix="СКАЗК",
     description="СЛАВЯНСКИЕ СКАЗКИ",
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
     ai_style_key="slavic_tales",
     reference_image_filenames=("slaviccore-vnvnc.png",),
 )
@@ -283,6 +288,8 @@ BANYA_CHIC_THEME = PhotoboothTheme(
     ticker_idle="БАНЯ",
     lcd_prefix="БАНЯ",
     description="БАННЫЙ ШИК",
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
     ai_style_key="banya_chic",
     reference_image_filenames=("slaviccore-vnvnc.png",),
 )

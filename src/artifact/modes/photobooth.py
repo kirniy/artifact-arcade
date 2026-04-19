@@ -57,6 +57,15 @@ from artifact.modes.photobooth_themes import (
 
 logger = logging.getLogger(__name__)
 MOSCOW_TZ = timezone(timedelta(hours=3))
+RUSSIAN_WEEKDAYS = (
+    "ПОНЕДЕЛЬНИК",
+    "ВТОРНИК",
+    "СРЕДА",
+    "ЧЕТВЕРГ",
+    "ПЯТНИЦА",
+    "СУББОТА",
+    "ВОСКРЕСЕНЬЕ",
+)
 
 
 def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = None) -> tuple[str, str]:
@@ -73,7 +82,12 @@ def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = Non
     if rollover_hour is not None and now.hour < rollover_hour:
         footer_date = now - timedelta(days=1)
 
-    return footer_date.strftime("%d.%m"), now.strftime("%H:%M")
+    if theme.footer_date_mode == "weekday_ru":
+        footer_label = RUSSIAN_WEEKDAYS[footer_date.weekday()]
+    else:
+        footer_label = footer_date.strftime("%d.%m")
+
+    return footer_label, now.strftime("%H:%M")
 
 
 @dataclass
@@ -631,10 +645,10 @@ class PhotoboothMode(BaseMode):
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                 if self._theme.ai_style_key in {"slavic_soul", "slavic_tales", "banya_chic"}:
                     personality_context = (
-                        f"REAL MOSCOW DATE FOR THIS PHOTO: {footer_date_str}. "
+                        f"REAL MOSCOW RUSSIAN WEEKDAY LABEL FOR THIS PHOTO: {footer_date_str}. "
                         f"REAL MOSCOW TIME FOR THIS PHOTO: {moscow_time}. "
-                        f"Use exactly '{footer_date_str}' as the footer date and exactly "
-                        f"'{moscow_time}' as the footer time."
+                        f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
+                        f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
                 else:
                     personality_context = (
