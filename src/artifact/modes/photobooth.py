@@ -56,6 +56,29 @@ from artifact.modes.photobooth_themes import (
 )
 
 logger = logging.getLogger(__name__)
+MOSCOW_TZ = timezone(timedelta(hours=3))
+
+
+def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = None) -> tuple[str, str]:
+    """Return the footer date/time strings for a theme in Moscow time.
+
+    Some overnight parties keep using the previous calendar date after midnight.
+    When `party_date_rollover_hour` is set, times earlier than that hour inherit
+    the previous day's date while keeping the real current Moscow time.
+    """
+    if now is None:
+        now = datetime.now(MOSCOW_TZ)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=MOSCOW_TZ)
+    else:
+        now = now.astimezone(MOSCOW_TZ)
+
+    footer_date = now
+    rollover_hour = theme.party_date_rollover_hour
+    if rollover_hour is not None and now.hour < rollover_hour:
+        footer_date = now - timedelta(days=1)
+
+    return footer_date.strftime("%d.%m"), now.strftime("%H:%M")
 
 
 @dataclass
@@ -535,8 +558,7 @@ class PhotoboothMode(BaseMode):
                 elif hasattr(f, 'getlength'): return int(f.getlength(t))
                 return f.getsize(t)[0]
 
-            moscow_tz = timezone(timedelta(hours=3))
-            moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
+            footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
             
             text_y_row1 = margin + target_photo_h + 100
             text_y_row2 = text_y_row1 + 130
@@ -549,9 +571,8 @@ class PhotoboothMode(BaseMode):
             time_w = get_text_width(font, moscow_time)
             draw.text((canvas_w - margin - 20 - time_w, text_y_row1), moscow_time, font=font, fill=text_color)
             
-            # Bottom row left: event date(s) from theme config
-            date_str = self._theme.event_date
-            draw.text((margin + 20, text_y_row2), date_str, font=font, fill=text_color)
+            # Bottom row left: footer date (may roll back after midnight for overnight parties)
+            draw.text((margin + 20, text_y_row2), footer_date_str, font=font, fill=text_color)
             
             # Bottom row right: Конюшенная 2В
             venue_str = "КОНЮШЕННАЯ 2В"
@@ -612,13 +633,21 @@ class PhotoboothMode(BaseMode):
                 "banya_chic",
             }
             if self._theme.ai_style_key in timestamp_theme_keys:
-                moscow_tz = timezone(timedelta(hours=3))
-                moscow_time = datetime.now(moscow_tz).strftime("%H:%M")
-                personality_context = (
-                    f"Photo taken at {moscow_time} Moscow time. "
-                    f"Include exactly '{moscow_time}' in the handwritten caption "
-                    f"or footer area at the bottom of the image."
-                )
+                footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                if self._theme.ai_style_key in {"slavic_soul", "slavic_tales", "banya_chic"}:
+                    personality_context = (
+                        f"REAL MOSCOW PARTY DATE FOR THIS PHOTO: {footer_date_str}. "
+                        f"REAL MOSCOW TIME FOR THIS PHOTO: {moscow_time}. "
+                        f"Use exactly '{footer_date_str}' as the footer date and exactly "
+                        f"'{moscow_time}' as the footer time. The date already follows the "
+                        f"overnight party labeling rule, so do not recalculate or change it."
+                    )
+                else:
+                    personality_context = (
+                        f"Photo taken at {moscow_time} Moscow time. "
+                        f"Include exactly '{moscow_time}' in the handwritten caption "
+                        f"or footer area at the bottom of the image."
+                    )
 
             # Generate only the label (9:16) image
             label_result = await self._caricature_service.generate_caricature(
