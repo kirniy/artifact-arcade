@@ -68,6 +68,12 @@ SCENE_DURATIONS = {
 }
 
 
+def _get_current_theme():
+    from artifact.modes.photobooth_themes import get_current_theme
+
+    return get_current_theme()
+
+
 class IdleScene(Enum):
     """Available idle scenes - curated set of 9 effects."""
     VNVNC_ENTRANCE = auto()   # Grand entrance with neon sign - ALWAYS FIRST
@@ -119,6 +125,7 @@ class RotatingIdleAnimation:
 
     def __init__(self):
         self.state = SceneState()
+        self._theme = _get_current_theme()
         self.idle_variant = self._detect_idle_variant()
         self.scenes = self._build_idle_scene_playlist()
         self.scene_index = 0
@@ -263,7 +270,7 @@ class RotatingIdleAnimation:
             logger.warning("PIL not available for poster slideshow")
 
         self.cringe_assets: Dict[IdleScene, List[NDArray[np.uint8]]] = {}
-        self.idle_event_date = "18.04" if self.idle_variant == "slavic" else "03.04-05.04"
+        self._sync_theme_text()
         self.cringe_scene_titles = self._build_variant_scene_titles()
         self._load_cringe_party_assets()
 
@@ -371,18 +378,62 @@ class RotatingIdleAnimation:
         self._load_saga_video()
         self._load_cringe_circle_video()
 
+        # If the initial playlist starts with a scene that needs media resources,
+        # enter it immediately so the first visible frame is real content, not a fallback.
+        self._on_scene_enter()
+
     def _detect_idle_variant(self) -> str:
-        """Detect whether the Slavic idle package should be active."""
+        """Detect which idle package should be active."""
         slavic_keys = {"slavic_soul", "slavic_tales", "banya_chic"}
         requested_modes = {
             item.strip().lower()
             for item in os.environ.get("PHOTOBOOTH_MENU_MODES", "").split(",")
             if item.strip()
         }
-        theme_id = os.environ.get("PHOTOBOOTH_THEME", "").strip().lower()
-        if requested_modes & slavic_keys or theme_id in slavic_keys:
+        theme_id = os.environ.get("PHOTOBOOTH_THEME", "").strip().lower() or self._theme.id
+        if theme_id == "candy-shop":
+            return "candy_shop"
+        if theme_id in slavic_keys:
+            return "slavic"
+        if theme_id == "vnvnc-bday":
+            return "vnvnc_bday"
+        if theme_id == "mtv-night":
+            return "mtv_night"
+        if theme_id == "shadow-kingdom":
+            return "shadow_kingdom"
+        if theme_id == "circus-maximus":
+            return "circus_maximus"
+        if theme_id == "street-heat":
+            return "street_heat"
+        if theme_id == "office-core":
+            return "office_core"
+        if requested_modes & slavic_keys:
             return "slavic"
         return "cringe"
+
+    def _sync_theme_text(self) -> None:
+        """Refresh text derived from the active photobooth theme."""
+        self.idle_title = self._theme.event_name.strip() or self._theme.ticker_idle.strip() or "VNVNC"
+        self.idle_ticker_text = self._theme.ticker_idle.strip() or self.idle_title
+        self.idle_lcd_prefix = self._theme.lcd_prefix.strip() or self.idle_ticker_text
+        if self.idle_variant == "slavic":
+            self.idle_event_date = self._theme.event_date.strip() or "18.04"
+        elif self.idle_variant == "candy_shop":
+            self.idle_event_date = self._theme.event_date.strip() or "22.05"
+        elif self.idle_variant == "vnvnc_bday":
+            self.idle_event_date = self._theme.event_date.strip() or "9 YEARS"
+        elif self.idle_variant == "circus_maximus":
+            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "CIRCUS"
+        elif self.idle_variant == "mtv_night":
+            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "MTV"
+        elif self.idle_variant == "shadow_kingdom":
+            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "SHADOW"
+        elif self.idle_variant == "street_heat":
+            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "HEAT"
+        elif self.idle_variant == "office_core":
+            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "OFFICE"
+        else:
+            self.idle_event_date = self._theme.event_date.strip() or "03.04-05.04"
 
     def _build_variant_scene_titles(self) -> Dict[IdleScene, str]:
         """Return per-scene labels for the active idle package."""
@@ -395,6 +446,35 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: "БАННЫЙ ШИК",
                 IdleScene.CRINGE_WHATSAPP: "VNVNC",
             }
+        if self.idle_variant == "candy_shop":
+            return {
+                IdleScene.CRINGE_HERO: "CANDY SHOP",
+                IdleScene.CRINGE_CIRCLE_VIDEO: "CANDY SHOP",
+            }
+        if self.idle_variant == "vnvnc_bday":
+            return {
+                IdleScene.VNVNC_ENTRANCE: "VNVNC B'DAY",
+            }
+        if self.idle_variant == "circus_maximus":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: self.idle_title,
+            }
+        if self.idle_variant == "mtv_night":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "MTV NIGHT",
+            }
+        if self.idle_variant == "shadow_kingdom":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "SHADOW KINGDOM",
+            }
+        if self.idle_variant == "street_heat":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "STREET HEAT",
+            }
+        if self.idle_variant == "office_core":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "OFFICE CORE",
+            }
 
         return {
             IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
@@ -406,12 +486,22 @@ class RotatingIdleAnimation:
         }
 
     def _build_idle_scene_playlist(self) -> List[IdleScene]:
-        """Return the active idle scene order.
-
-        Old scenes stay in the codebase, but the active playlist is now fully
-        replaced with Cringe Party visuals.
-        """
+        """Return the active idle scene order."""
         if self.idle_variant == "slavic":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "candy_shop":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "vnvnc_bday":
+            return [IdleScene.VNVNC_ENTRANCE]
+        if self.idle_variant == "mtv_night":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "shadow_kingdom":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "circus_maximus":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "street_heat":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "office_core":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
 
         playlist = [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -430,7 +520,43 @@ class RotatingIdleAnimation:
         if not self._pil_available:
             return
 
+        if self.idle_variant == "vnvnc_bday":
+            self.cringe_assets = {}
+            return
+        if self.idle_variant == "mtv_night":
+            self.cringe_assets = {}
+            return
+        if self.idle_variant == "shadow_kingdom":
+            self.cringe_assets = {}
+            return
+        if self.idle_variant == "circus_maximus":
+            self.cringe_assets = {}
+            return
+        if self.idle_variant == "street_heat":
+            self.cringe_assets = {}
+            return
+        if self.idle_variant == "office_core":
+            self.cringe_assets = {}
+            return
+
         from PIL import Image, ImageOps
+
+        if self.idle_variant == "candy_shop":
+            logo_path = Path(__file__).parent.parent.parent.parent / "assets" / "images" / "candy-shop.png"
+            frames: List[NDArray[np.uint8]] = []
+            if logo_path.exists():
+                image = Image.open(logo_path).convert("RGB")
+                fitted = ImageOps.fit(
+                    image,
+                    (160, 160),
+                    method=Image.Resampling.LANCZOS,
+                    centering=(0.5, 0.5),
+                )
+                frames.append(np.array(fitted, dtype=np.uint8))
+            else:
+                logger.warning("Candy Shop idle asset not found: %s", logo_path)
+            self.cringe_assets = {IdleScene.CRINGE_HERO: frames}
+            return
 
         if self.idle_variant == "slavic":
             root = Path(__file__).parent.parent.parent.parent / "assets" / "idle" / "slavic_core" / "hero"
@@ -480,10 +606,14 @@ class RotatingIdleAnimation:
 
         images = self.cringe_assets.get(scene, [])
         if not images:
-            fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else "КРИНЖ"
-            fallback_color = (255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90)
-            date_color = (220, 154, 96) if self.idle_variant == "slavic" else (255, 140, 180)
-            draw_centered_text(buffer, self.cringe_scene_titles.get(scene, fallback_title), 54, fallback_color, scale=1)
+            fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
+            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop"} else (
+                (255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90)
+            )
+            date_color = self._theme.theme_red if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop"} else (
+                (220, 154, 96) if self.idle_variant == "slavic" else (255, 140, 180)
+            )
+            self._draw_centered_title(buffer, self.cringe_scene_titles.get(scene, fallback_title), 50, fallback_color)
             draw_centered_text(buffer, self.idle_event_date, 68, date_color, scale=1)
             return
 
@@ -533,6 +663,15 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: (255, 220, 150),
                 IdleScene.CRINGE_WHATSAPP: (255, 214, 126),
             }
+        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop"}:
+            accent_map = {
+                IdleScene.CRINGE_HERO: self._theme.theme_chrome,
+                IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.theme_chrome,
+                IdleScene.CRINGE_VENUE: self._theme.theme_red,
+                IdleScene.CRINGE_BRAINROT: self._theme.theme_red,
+                IdleScene.CRINGE_WEDDING: self._theme.theme_chrome,
+                IdleScene.CRINGE_WHATSAPP: self._theme.theme_red,
+            }
         else:
             accent_map = {
                 IdleScene.CRINGE_HERO: (255, 90, 160),
@@ -573,12 +712,35 @@ class RotatingIdleAnimation:
         for y in range(0, 128, 4):
             buffer[y:y + 1] = (buffer[y:y + 1].astype(np.float32) * 0.92).astype(np.uint8)
 
-        fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else "КРИНЖ ПАТИ"
+        fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
         title = self.cringe_scene_titles.get(scene, fallback_title)
-        draw_centered_text(buffer, title[:12], 4, accent, scale=1)
+        self._draw_centered_title(buffer, title, 4, accent)
         footer_date_color = (255, 232, 182) if self.idle_variant == "slavic" else (255, 240, 210)
         draw_centered_text(buffer, self.idle_event_date, 108, footer_date_color, scale=1)
         draw_centered_text(buffer, "VNVNC.RU", 116, accent, scale=1)
+
+    def _draw_centered_title(
+        self,
+        buffer: NDArray[np.uint8],
+        title: str,
+        y: int,
+        color: Tuple[int, int, int],
+    ) -> None:
+        """Draw a compact title without chopping long two-word event names."""
+        title = " ".join(title.split())
+        if len(title) <= 12:
+            draw_centered_text(buffer, title, y, color, scale=1)
+            return
+
+        words = title.split()
+        if len(words) >= 2:
+            first = words[0]
+            second = " ".join(words[1:])
+            draw_centered_text(buffer, first[:12], y, color, scale=1)
+            draw_centered_text(buffer, second[:12], y + 8, color, scale=1)
+            return
+
+        draw_centered_text(buffer, title[:12], y, color, scale=1)
 
     def _draw_corner_cross(self, buffer: NDArray[np.uint8], x: int, y: int, color: Tuple[int, int, int]) -> None:
         draw_line(buffer, x - 4, y, x + 4, y, color)
@@ -677,6 +839,98 @@ class RotatingIdleAnimation:
                 logger.warning("OpenCV not available, CRINGE_CIRCLE_VIDEO disabled")
                 return
 
+        if self.idle_variant == "vnvnc_bday":
+            return
+        if self.idle_variant == "mtv_night":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "mtv_night"
+                / "video"
+                / "mtv-night-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded MTV night idle video: {video_path.name}")
+            else:
+                logger.warning(f"MTV night idle video not found: {video_path}")
+            return
+        if self.idle_variant == "shadow_kingdom":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "shadow_kingdom"
+                / "video"
+                / "shadow-kingdom-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded shadow kingdom idle video: {video_path.name}")
+            else:
+                logger.warning(f"Shadow kingdom idle video not found: {video_path}")
+            return
+        if self.idle_variant == "candy_shop":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "candy_shop"
+                / "video"
+                / "candy-shop-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded Candy Shop idle video: {video_path.name}")
+            else:
+                logger.warning(f"Candy Shop idle video not found: {video_path}")
+            return
+        if self.idle_variant == "circus_maximus":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "circus_maximus"
+                / "video"
+                / "circus-maximus-circle.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded circus maximus idle video: {video_path.name}")
+            else:
+                logger.warning(f"Circus maximus idle video not found: {video_path}")
+            return
+        if self.idle_variant == "street_heat":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "street_heat"
+                / "video"
+                / "street-heat-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded street heat idle video: {video_path.name}")
+            else:
+                logger.warning(f"Street heat idle video not found: {video_path}")
+            return
+        if self.idle_variant == "office_core":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "office_core"
+                / "video"
+                / "office-core-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded Office Core idle video: {video_path.name}")
+            else:
+                logger.warning(f"Office Core idle video not found: {video_path}")
+            return
         if self.idle_variant == "slavic":
             video_path = (
                 Path(__file__).parent.parent.parent.parent
@@ -955,6 +1209,60 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: "БАНЯ",
                 IdleScene.CRINGE_WHATSAPP: "VNVNC",
                 IdleScene.VNVNC_ENTRANCE: "ВХОД",
+                IdleScene.CAMERA_EFFECTS: "КАМЕРА",
+                IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
+                IdleScene.SAGA_LIVE: "САГА",
+                IdleScene.POSTER_SLIDESHOW: "АФИШИ",
+                IdleScene.DNA_HELIX: "ДНК",
+                IdleScene.SNOWFALL: "СНЕГ",
+                IdleScene.FIREPLACE: "КАМИН",
+                IdleScene.HYPERCUBE: "ГИПЕР",
+            }
+        elif self.idle_variant == "circus_maximus":
+            names = {
+                IdleScene.CRINGE_HERO: self.idle_lcd_prefix,
+                IdleScene.CRINGE_CIRCLE_VIDEO: "MAXIMUS",
+                IdleScene.CRINGE_VENUE: self.idle_lcd_prefix,
+                IdleScene.CRINGE_BRAINROT: self.idle_lcd_prefix,
+                IdleScene.CRINGE_WEDDING: self.idle_lcd_prefix,
+                IdleScene.CRINGE_WHATSAPP: "VNVNC",
+                IdleScene.VNVNC_ENTRANCE: self.idle_lcd_prefix,
+                IdleScene.CAMERA_EFFECTS: "КАМЕРА",
+                IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
+                IdleScene.SAGA_LIVE: "САГА",
+                IdleScene.POSTER_SLIDESHOW: "АФИШИ",
+                IdleScene.DNA_HELIX: "ДНК",
+                IdleScene.SNOWFALL: "СНЕГ",
+                IdleScene.FIREPLACE: "КАМИН",
+                IdleScene.HYPERCUBE: "ГИПЕР",
+            }
+        elif self.idle_variant == "candy_shop":
+            names = {
+                IdleScene.CRINGE_HERO: "CANDY",
+                IdleScene.CRINGE_CIRCLE_VIDEO: "CANDY",
+                IdleScene.CRINGE_VENUE: "CANDY",
+                IdleScene.CRINGE_BRAINROT: "CANDY",
+                IdleScene.CRINGE_WEDDING: "CANDY",
+                IdleScene.CRINGE_WHATSAPP: "VNVNC",
+                IdleScene.VNVNC_ENTRANCE: "CANDY",
+                IdleScene.CAMERA_EFFECTS: "КАМЕРА",
+                IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
+                IdleScene.SAGA_LIVE: "САГА",
+                IdleScene.POSTER_SLIDESHOW: "АФИШИ",
+                IdleScene.DNA_HELIX: "ДНК",
+                IdleScene.SNOWFALL: "СНЕГ",
+                IdleScene.FIREPLACE: "КАМИН",
+                IdleScene.HYPERCUBE: "ГИПЕР",
+            }
+        elif self.idle_variant == "office_core":
+            names = {
+                IdleScene.CRINGE_HERO: "OFFICE",
+                IdleScene.CRINGE_CIRCLE_VIDEO: "OFFICE",
+                IdleScene.CRINGE_VENUE: "OFFICE",
+                IdleScene.CRINGE_BRAINROT: "OFFICE",
+                IdleScene.CRINGE_WEDDING: "OFFICE",
+                IdleScene.CRINGE_WHATSAPP: "VNVNC",
+                IdleScene.VNVNC_ENTRANCE: "OFFICE",
                 IdleScene.CAMERA_EFFECTS: "КАМЕРА",
                 IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
                 IdleScene.SAGA_LIVE: "САГА",
@@ -4263,8 +4571,55 @@ class RotatingIdleAnimation:
                 ]
                 idx = int((t // 2600) % len(slavic_texts))
                 self._render_ticker_static_winter(buffer, slavic_texts[idx], slavic_colors[idx], t)
+            elif self.idle_variant == "vnvnc_bday":
+                bday_texts = [
+                    " BDAY MODE ",
+                    " 9 YEARS ",
+                    " VNVNC.RU ",
+                    " KARTA VNVNC ",
+                    " RAP GOD ",
+                    " НАЖМИ СТАРТ ",
+                ]
+                bday_colors = [
+                    (255, 120, 190),
+                    (255, 232, 182),
+                    (255, 210, 126),
+                    (120, 240, 255),
+                    (215, 255, 90),
+                    (255, 238, 170),
+                ]
+                idx = int((t // 2600) % len(bday_texts))
+                self._render_ticker_static_winter(buffer, bday_texts[idx], bday_colors[idx], t)
+            elif self.idle_variant == "circus_maximus":
+                circus_texts = [
+                    "ФОТОБУДКА",
+                    "СДЕЛАЙ ФОТО",
+                    self.idle_title,
+                    "CIRCUS MAXIMUS",
+                    " VNVNC.RU ",
+                    " НАЖМИ СТАРТ ",
+                ]
+                circus_texts = [text for text in circus_texts if text.strip()]
+                circus_colors = [
+                    self._theme.theme_chrome,
+                    self._theme.theme_red,
+                    (255, 214, 90),
+                    (255, 240, 210),
+                    self._theme.theme_chrome,
+                ]
+                idx = int((t // 2600) % len(circus_texts))
+                self._render_ticker_static_winter(buffer, circus_texts[idx], circus_colors[idx], t)
             else:
-                self._render_ticker_static_winter(buffer, "LOLOLOLOLOLOL", (255, 215, 90), t)
+                theme_texts = [
+                    self.idle_ticker_text,
+                    self.idle_title,
+                    self.idle_event_date,
+                    " VNVNC.RU ",
+                    " НАЖМИ СТАРТ ",
+                ]
+                theme_texts = [text for text in theme_texts if text.strip()]
+                idx = int((t // 2600) % len(theme_texts))
+                self._render_ticker_static_winter(buffer, theme_texts[idx], self._theme.theme_chrome, t)
             return
 
         # Special case: POSTER_SLIDESHOW shows dates
@@ -4276,16 +4631,12 @@ class RotatingIdleAnimation:
             draw_centered_text(buffer, date_text, 0, color, scale=1)
             return
 
-        # Get current theme for dynamic ticker text
-        from artifact.modes.photobooth_themes import get_current_theme
-        theme = get_current_theme()
-        
         # Unified rotating texts for all idle modes (horizontal scroll for longer ones)
         texts = [
             "VNVNC",
             "VNVNC.RU",
-            theme.ticker_idle,  # Dynamic from theme: VENICE, BOILING, etc.
-            theme.event_date,   # Dynamic from theme: 06.02-07.02, 31.01, etc.
+            self.idle_ticker_text,  # Dynamic from theme: VENICE, BOILING, etc.
+            self._theme.event_date,   # Dynamic from theme: 06.02-07.02, 31.01, etc.
             "ФОТОБУДКА",
             "VNVNC <3",
         ]
@@ -4355,6 +4706,12 @@ class RotatingIdleAnimation:
                 IdleScene.FIREPLACE: ["   УЮТНЫЙ   ", "   КАМИН    ", " НАЖМИ СТАРТ "],
                 IdleScene.HYPERCUBE: [" ГИПЕРКУБ   ", "    4D      ", " НАЖМИ СТАРТ "],
             }
+        elif self.idle_variant in {"circus_maximus", "candy_shop"}:
+            return [
+                f" {self.idle_lcd_prefix} ".center(16)[:16],
+                self.idle_title.center(16)[:16],
+                " НАЖМИ СТАРТ ",
+            ][idx].center(16)[:16]
         else:
             texts = {
                 IdleScene.CRINGE_HERO: [" КРИНЖ ПАТИ  ", " 03.04-05.04 ", " НАЖМИ СТАРТ "],
@@ -4382,12 +4739,23 @@ class RotatingIdleAnimation:
         self._stop_saga_video()  # Stop video and its audio
         self._stop_cringe_circle_video()
         self.state = SceneState()
+        self._theme = _get_current_theme()
+        self.idle_variant = self._detect_idle_variant()
         self.scenes = self._build_idle_scene_playlist()
         self.scene_index = 0
         self.state.current_scene = self.scenes[0]
+        self.locked = False
+        self._sync_theme_text()
+        self.cringe_scene_titles = self._build_variant_scene_titles()
         self.eye_x = 0.0
         self.eye_y = 0.0
         self.eye_target_x = 0.0
         self.eye_target_y = 0.0
         self.eye_target_time = 0.0
         self.blink = 0.0
+
+        # Re-detect media sources and start the first scene immediately.
+        # Without this, returning to idle after a mode can leave video scenes black.
+        self._load_saga_video()
+        self._load_cringe_circle_video()
+        self._on_scene_enter()

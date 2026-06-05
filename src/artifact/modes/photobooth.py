@@ -13,11 +13,8 @@ Supports multiple themes (set PHOTOBOOTH_THEME env var):
 - loveintheair: Romantic warm-toned illustrated card style
 - feyphoria: Art toy + fantasy doodle theme
 - fiesta: Realistic Spanish-style party realism with doodle overlays
+- vnvnc-bday: 9-year birthday editorial poster theme with premium emblem refs
 """
-
-# When True, prints labels on thermal printer. When False, digital-only mode.
-PRINTING_ENABLED = False
-USE_AI_GENERATION = True  # Toggle AI generation vs local Polaroid fallback
 
 import logging
 import io
@@ -37,6 +34,11 @@ from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect, draw_line
 from artifact.graphics.text_utils import draw_centered_text, draw_text
 from artifact.utils.camera_service import camera_service
+
+# When enabled, the completed photobooth image is sent to the print manager.
+# Keep this environment-controlled so local/dev runs can stay digital-only.
+PRINTING_ENABLED = os.getenv("PHOTOBOOTH_PRINTING_ENABLED", "true").lower() not in {"0", "false", "no", "off"}
+USE_AI_GENERATION = True  # Toggle AI generation vs local Polaroid fallback
 from artifact.utils.s3_upload import (
     AsyncUploader,
     UploadResult,
@@ -48,8 +50,8 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.animation.santa_runner import SantaRunner
 from artifact.audio.engine import get_audio_engine
-from artifact.printing.label_receipt import LabelReceiptGenerator
 from artifact.modes.photobooth_themes import (
+    PhotoboothMenuVariant,
     PhotoboothTheme,
     get_current_theme,
     get_theme_by_id,
@@ -139,12 +141,17 @@ class PhotoboothMode(BaseMode):
     requires_ai = True
     estimated_duration = 30
     theme_id_override: Optional[str] = None
+    ai_style_key_override: Optional[str] = None
+    prompt_variation_index: Optional[int] = None
+    menu_display_name_override: Optional[str] = None
+    menu_description_override: Optional[str] = None
+    menu_color_override: Optional[tuple[int, int, int]] = None
     description = "Фоткайся на память!"
 
     BEEP_TIME = 0.2
     COUNTDOWN_SECONDS = 3
     FLASH_DURATION = 0.5
-    RESULT_DURATION = 60.0  # 60 seconds to scan QR
+    RESULT_DURATION = 120.0  # 2 minutes to scan QR before auto-return to idle
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
@@ -197,6 +204,12 @@ class PhotoboothMode(BaseMode):
                     "slavic_soul",
                     "slavic_tales",
                     "banya_chic",
+                    "vnvnc_bday",
+                    "mtv_night",
+                    "shadow_kingdom",
+                    "circus_maximus",
+                    "candy_shop",
+                    "street_heat",
                 }:
                     reference_filenames.insert(0, self._theme.logo_filename)
 
@@ -215,6 +228,12 @@ class PhotoboothMode(BaseMode):
                     with open(reference_path, "rb") as reference_file:
                         mime_type = "image/png" if reference_path.lower().endswith(".png") else "image/jpeg"
                         self._theme_reference_images.append((reference_file.read(), mime_type))
+                logger.info(
+                    "Loaded %d theme reference asset(s) for %s: %s",
+                    len(self._theme_reference_images),
+                    self._theme.id,
+                    ", ".join(seen_filenames) if seen_filenames else "none",
+                )
             else:
                 logger.warning(f"Logo not found: {logo_path}")
                 self._logo_rgba = None
@@ -261,8 +280,6 @@ class PhotoboothMode(BaseMode):
                     self._state.result_view = "qr"
                 else:
                     self._state.result_view = "photo"
-                # Reset timer on toggle to give more time
-                self._state.countdown_timer = self.RESULT_DURATION
                 return True
 
         # Handle input for Santa runner during AI generation
@@ -443,62 +460,98 @@ class PhotoboothMode(BaseMode):
         Returns:
             Tuple of (display_style, label_style) for 1:1 and 9:16 formats
         """
-        if self._theme.ai_style_key == "bigcitylife":
+        ai_style_key = self.ai_style_key_override or self._theme.ai_style_key
+        if ai_style_key == "bigcitylife":
             return (
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE,  # 9:16 vertical for label
             )
-        elif self._theme.ai_style_key == "fiesta":
+        elif ai_style_key == "fiesta":
             return (
                 CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_FIESTA,  # 9:16 vertical for label
             )
-        elif self._theme.ai_style_key == "feyphoria":
+        elif ai_style_key == "feyphoria":
             return (
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_FEYPHORIA,  # 9:16 vertical for label
             )
-        elif self._theme.ai_style_key == "malchishnik":
+        elif ai_style_key == "malchishnik":
             return (
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_MALCHISHNIK,  # 9:16 vertical for label
             )
-        elif self._theme.ai_style_key == "loveintheair":
+        elif ai_style_key == "loveintheair":
             return (
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR,  # 9:16 vertical for label
             )
-        elif self._theme.ai_style_key == "tripvenice":
+        elif ai_style_key == "tripvenice":
             return (
                 CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE,  # 1:1 square for display
                 CaricatureStyle.PHOTOBOOTH_VENICE,  # 9:16 vertical for label
             )
-        elif self._theme.ai_style_key == "slavic_soul":
+        elif ai_style_key == "slavic_soul":
             return (
                 CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL,
             )
-        elif self._theme.ai_style_key == "slavic_tales":
+        elif ai_style_key == "slavic_tales":
             return (
                 CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES,
             )
-        elif self._theme.ai_style_key == "banya_chic":
+        elif ai_style_key == "banya_chic":
             return (
                 CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
             )
-        elif self._theme.ai_style_key == "brainrot":
+        elif ai_style_key == "vnvnc_bday":
+            return (
+                CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY,
+            )
+        elif ai_style_key == "circus_maximus":
+            return (
+                CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS,
+            )
+        elif ai_style_key == "mtv_night":
+            return (
+                CaricatureStyle.PHOTOBOOTH_MTV_NIGHT_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_MTV_NIGHT,
+            )
+        elif ai_style_key == "shadow_kingdom":
+            return (
+                CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM,
+            )
+        elif ai_style_key == "candy_shop":
+            return (
+                CaricatureStyle.PHOTOBOOTH_CANDY_SHOP_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_CANDY_SHOP,
+            )
+        elif ai_style_key == "street_heat":
+            return (
+                CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_STREET_HEAT,
+            )
+        elif ai_style_key == "office_core":
+            return (
+                CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
+            )
+        elif ai_style_key == "brainrot":
             return (
                 CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_BRAINROT,
             )
-        elif self._theme.ai_style_key == "wedding":
+        elif ai_style_key == "wedding":
             return (
                 CaricatureStyle.PHOTOBOOTH_WEDDING_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_WEDDING,
             )
-        elif self._theme.ai_style_key == "whatsapp":
+        elif ai_style_key == "whatsapp":
             return (
                 CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_WHATSAPP,
@@ -629,6 +682,7 @@ class PhotoboothMode(BaseMode):
 
             # Themes with footer timestamps need the live Moscow time injected.
             personality_context = None
+            ai_style_key = self.ai_style_key_override or self._theme.ai_style_key
             timestamp_theme_keys = {
                 "boilingroom",
                 "malchishnik",
@@ -640,15 +694,38 @@ class PhotoboothMode(BaseMode):
                 "slavic_soul",
                 "slavic_tales",
                 "banya_chic",
+                "vnvnc_bday",
+                "mtv_night",
+                "shadow_kingdom",
+                "circus_maximus",
+                "candy_shop",
+                "street_heat",
+                "office_core",
             }
-            if self._theme.ai_style_key in timestamp_theme_keys:
+            if ai_style_key in timestamp_theme_keys:
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-                if self._theme.ai_style_key in {"slavic_soul", "slavic_tales", "banya_chic"}:
+                if ai_style_key in {
+                    "slavic_soul",
+                    "slavic_tales",
+                    "banya_chic",
+                    "vnvnc_bday",
+                    "mtv_night",
+                    "shadow_kingdom",
+                    "circus_maximus",
+                    "candy_shop",
+                    "street_heat",
+                }:
                     personality_context = (
                         f"REAL MOSCOW RUSSIAN WEEKDAY LABEL FOR THIS PHOTO: {footer_date_str}. "
                         f"REAL MOSCOW TIME FOR THIS PHOTO: {moscow_time}. "
                         f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
+                    )
+                elif ai_style_key == "office_core":
+                    personality_context = (
+                        "Do not render footer text inside the AI artwork. "
+                        "Leave the bottom 12-15% as clean pure white empty space; "
+                        "the app will stamp VNVNC.RU, the Russian weekday, Moscow time, and venue after generation."
                     )
                 else:
                     personality_context = (
@@ -663,10 +740,14 @@ class PhotoboothMode(BaseMode):
                 style=label_style,  # 9:16 vertical
                 personality_context=personality_context,
                 extra_reference_images=self._theme_reference_images or None,
+                prompt_variation_index=self.prompt_variation_index,
             )
 
             if label_result and label_result.image_data:
                 label_bytes = label_result.image_data
+                if ai_style_key == "office_core":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_office_core_footer(label_bytes, footer_date_str, moscow_time)
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
 
                 # Create center-cropped 1:1 version for LED display
@@ -703,15 +784,75 @@ class PhotoboothMode(BaseMode):
             logger.warning(f"Failed to crop to square: {e}")
             return image_bytes
 
+    def _stamp_office_core_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
+        """Paint deterministic Office Core footer text over the AI image."""
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            w, h = img.size
+            footer_h = max(int(h * 0.13), 150)
+            y0 = h - footer_h
+            draw = ImageDraw.Draw(img)
+
+            draw.rectangle((0, y0, w, h), fill=(255, 255, 255))
+            draw.line((0, y0, w, y0), fill=(20, 20, 20), width=max(2, w // 300))
+
+            def load_font(size: int):
+                font_candidates = (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Menlo.ttc",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                    "/Library/Fonts/Arial Unicode.ttf",
+                )
+                for font_path in font_candidates:
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.047)))
+            sub_font = load_font(max(22, int(w * 0.034)))
+
+            def text_bbox(font, text: str):
+                return draw.textbbox((0, 0), text, font=font)
+
+            margin_x = max(24, int(w * 0.055))
+            row1_y = y0 + max(18, int(footer_h * 0.18))
+            row2_y = y0 + max(78, int(footer_h * 0.57))
+            ink = (16, 22, 32)
+            blue = (25, 83, 205)
+            red = (210, 34, 34)
+
+            brand = "VNVNC.RU"
+            time_text = moscow_time
+            weekday = footer_date
+            venue = "КОНЮШЕННАЯ 2В"
+
+            draw.text((margin_x, row1_y), brand, font=main_font, fill=blue)
+
+            time_box = text_bbox(main_font, time_text)
+            draw.text((w - margin_x - (time_box[2] - time_box[0]), row1_y), time_text, font=main_font, fill=red)
+
+            draw.text((margin_x, row2_y), weekday, font=sub_font, fill=ink)
+
+            venue_box = text_bbox(sub_font, venue)
+            venue_w = venue_box[2] - venue_box[0]
+            draw.text((w - margin_x - venue_w, row2_y), venue, font=sub_font, fill=ink)
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp Office Core footer: {e}")
+            return image_bytes
+
     def _upload_ai_result_async(self) -> None:
         """Upload AI-generated photo booth image for gallery sharing.
 
-        When PRINTING_ENABLED=False (digital-only mode):
-        - Uploads raw AI image directly (no label footer/QR baked in)
-        - Sets unified gallery QR code for display
-
-        When PRINTING_ENABLED=True:
-        - Renders label with footer + QR, uploads the label preview
+        Gallery uploads must stay full-color AI artwork. Printing is handled
+        separately by the print manager, which may render a monochrome RP80
+        receipt, but that print artifact must never replace the gallery image.
         """
         # Get image for upload
         caricature_bytes = self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
@@ -728,60 +869,15 @@ class PhotoboothMode(BaseMode):
         self._state.qr_image = generate_qr_image(pre_info.short_url)
         provision_short_url_redirect(pre_info)
 
-        if not PRINTING_ENABLED:
-            # Digital-only mode: upload raw AI image (clean, no footer)
-            self._uploader.upload_bytes(
-                caricature_bytes,
-                prefix="photobooth",
-                extension="png",
-                content_type="image/png",
-                callback=self._on_upload_complete,
-                pre_info=pre_info,
-            )
-        else:
-            # Printing mode: render label with footer + QR
-            try:
-                logger.info(f"Pre-generated short URL: {pre_info.short_url}")
-
-                label_gen = LabelReceiptGenerator()
-                print_data = {
-                    "caricature": caricature_bytes,
-                    "photo": self._state.photo_bytes,
-                    "qr_url": pre_info.short_url,
-                    "short_url": pre_info.short_url,
-                    "date": datetime.now().strftime("%d.%m.%Y"),
-                }
-
-                receipt = label_gen.generate_receipt("photobooth", print_data)
-                label_png = receipt.preview_image
-
-                if label_png:
-                    self._uploader.upload_bytes(
-                        label_png,
-                        prefix="photobooth",
-                        extension="png",
-                        content_type="image/png",
-                        callback=self._on_upload_complete,
-                        pre_info=pre_info,
-                    )
-                else:
-                    logger.warning("Label render failed, uploading raw image")
-                    self._uploader.upload_bytes(
-                        caricature_bytes,
-                        prefix="photobooth",
-                        extension="png",
-                        content_type="image/png",
-                        callback=self._on_upload_complete,
-                    )
-            except Exception as e:
-                logger.error(f"Label render/upload failed: {e}")
-                self._uploader.upload_bytes(
-                    caricature_bytes,
-                    prefix="photobooth",
-                    extension="png",
-                    content_type="image/png",
-                    callback=self._on_upload_complete,
-                )
+        logger.info("Uploading full-color AI image: %d bytes", len(caricature_bytes))
+        self._uploader.upload_bytes(
+            caricature_bytes,
+            prefix="photobooth",
+            extension="png",
+            content_type="image/png",
+            callback=self._on_upload_complete,
+            pre_info=pre_info,
+        )
 
     def _upload_photo_async(self) -> None:
         """Upload photo for QR sharing using shared AsyncUploader."""
@@ -1079,79 +1175,100 @@ class PhotoboothMode(BaseMode):
             return "      ЖМИ     "[:16]
 
 
-class BrainrotPhotoboothMode(PhotoboothMode):
-    """Italian brainrot party booth."""
-
-    name = "brainrot_booth"
-    display_name = "BRAINROT"
-    description = "ЛИЦА В БРЕЙНРОТЕ"
-    theme_id_override = "brainrot"
-
-
-class WeddingPhotoboothMode(PhotoboothMode):
-    """2000s Russian countryside wedding booth."""
-
-    name = "wedding_booth"
-    display_name = "ЛЮБОВЬ\nИ ГОЛУБИ"
-    description = "СЕЛЬСКАЯ СВАДЬБА"
-    theme_id_override = "wedding"
-
-
-class WhatsAppPhotoboothMode(PhotoboothMode):
-    """Grandma-postcard WhatsApp booth."""
-
-    name = "whatsapp_booth"
-    display_name = "WA\nОТКРЫТКИ"
-    description = "ОТКРЫТКА В ЧАТ"
-    theme_id_override = "whatsapp"
-
-
-class SlavicSoulPhotoboothMode(PhotoboothMode):
-    """Славянский люкс, фолк-гламур и тёплое золото."""
-
-    name = "slavic_soul_booth"
-    display_name = "СЛАВ.\nДУША"
-    description = "СЛАВЯНСКАЯ ДУША"
-    theme_id_override = "slavic_soul"
-
-
-class SlavicTalesPhotoboothMode(PhotoboothMode):
-    """Тёмная славянская сказка с богатой орнаментальной магией."""
-
-    name = "slavic_tales_booth"
-    display_name = "СЛАВ.\nСКАЗКИ"
-    description = "СЛАВЯНСКИЕ СКАЗКИ"
-    theme_id_override = "slavic_tales"
-
-
-class BanyaChicPhotoboothMode(PhotoboothMode):
-    """Пар, самовар, икра и декадентский банный шик."""
-
-    name = "banya_chic_booth"
-    display_name = "БАННЫЙ\nШИК"
-    description = "БАННЫЙ ШИК"
-    theme_id_override = "banya_chic"
-
-
-PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Type[PhotoboothMode]]" = OrderedDict(
+PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
     [
-        ("classic", PhotoboothMode),
-        ("slavic_soul", SlavicSoulPhotoboothMode),
-        ("slavic_tales", SlavicTalesPhotoboothMode),
-        ("banya_chic", BanyaChicPhotoboothMode),
-        ("brainrot", BrainrotPhotoboothMode),
-        ("wedding", WeddingPhotoboothMode),
-        ("whatsapp", WhatsAppPhotoboothMode),
+        ("classic", None),
+        ("slavic_soul", "slavic_soul"),
+        ("slavic_tales", "slavic_tales"),
+        ("banya_chic", "banya_chic"),
+        ("brainrot", "brainrot"),
+        ("wedding", "wedding"),
+        ("whatsapp", "whatsapp"),
+        ("mtv_night", "mtv-night"),
+        ("shadow_kingdom", "shadow-kingdom"),
+        ("candy_shop", "candy-shop"),
+        ("street_heat", "street-heat"),
+        ("office_core", "office-core"),
     ]
 )
 
-DEFAULT_PHOTOBOOTH_MENU_MODES = ("slavic_soul", "slavic_tales", "banya_chic")
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("office_core", "candy_shop", "slavic_soul", "slavic_tales")
+
+
+def _get_theme_menu_display_name(theme: PhotoboothTheme) -> str:
+    return theme.menu_display_name or theme.event_name
+
+
+
+def _get_theme_menu_description(theme: PhotoboothTheme) -> str:
+    return theme.menu_description or theme.description or theme.event_name
+
+
+
+def _build_theme_photobooth_mode(slot_index: int, theme_id: str) -> Type[PhotoboothMode]:
+    theme = get_theme_by_id(theme_id)
+    class_name = f"PhotoboothMenuMode{slot_index}"
+    return type(
+        class_name,
+        (PhotoboothMode,),
+        {
+            "name": f"photobooth_mode_{slot_index}",
+            "display_name": _get_theme_menu_display_name(theme),
+            "description": _get_theme_menu_description(theme),
+            "theme_id_override": theme.id,
+        },
+    )
+
+
+
+def _build_current_theme_variant_mode(
+    slot_index: int,
+    theme: PhotoboothTheme,
+    variant: PhotoboothMenuVariant,
+) -> Type[PhotoboothMode]:
+    class_name = f"PhotoboothCurrentThemeVariantMode{slot_index}"
+    return type(
+        class_name,
+        (PhotoboothMode,),
+        {
+            "name": f"photobooth_mode_{slot_index}",
+            "display_name": variant.display_name,
+            "description": variant.description,
+            "theme_id_override": theme.id,
+            "ai_style_key_override": theme.ai_style_key,
+            "prompt_variation_index": variant.prompt_variation_index,
+            "menu_display_name_override": variant.display_name,
+            "menu_description_override": variant.description,
+            "menu_color_override": variant.color,
+        },
+    )
+
+
+
+def _append_classic_photobooth_modes(
+    resolved: list[Type[PhotoboothMode]],
+    themed_slot_index: int,
+) -> int:
+    current_theme = get_current_theme()
+    if current_theme.menu_variants:
+        for variant in current_theme.menu_variants:
+            resolved.append(_build_current_theme_variant_mode(themed_slot_index, current_theme, variant))
+            themed_slot_index += 1
+        return themed_slot_index
+
+    if PhotoboothMode.name not in {mode_cls.name for mode_cls in resolved}:
+        resolved.append(PhotoboothMode)
+    return themed_slot_index
+
 
 
 def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:
     """Return photobooth variants to register in menu order.
 
-    Configure with PHOTOBOOTH_MENU_MODES as a comma-separated list of registry keys.
+    Configure with PHOTOBOOTH_MENU_MODES as a comma-separated list of theme ids.
+    Stable registered mode names stay generic (`photobooth`, `photobooth_mode_1`, ...),
+    while labels/descriptions are derived from the selected theme automatically.
+
     Example:
         PHOTOBOOTH_MENU_MODES=classic
         PHOTOBOOTH_MENU_MODES=slavic_soul,slavic_tales,banya_chic
@@ -1163,17 +1280,24 @@ def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:
         requested = list(DEFAULT_PHOTOBOOTH_MENU_MODES)
 
     resolved: list[Type[PhotoboothMode]] = []
-    seen_mode_names: set[str] = set()
+    seen_theme_ids: set[str] = set()
+    themed_slot_index = 1
 
     for key in requested:
-        mode_cls = PHOTOBOOTH_MENU_REGISTRY.get(key)
-        if mode_cls is None:
+        if key == "classic":
+            themed_slot_index = _append_classic_photobooth_modes(resolved, themed_slot_index)
+            continue
+
+        theme_id = PHOTOBOOTH_MENU_REGISTRY.get(key)
+        if theme_id is None:
             logger.warning("Unknown PHOTOBOOTH_MENU_MODES entry: %s", key)
             continue
-        if mode_cls.name in seen_mode_names:
+        if theme_id in seen_theme_ids:
             continue
-        resolved.append(mode_cls)
-        seen_mode_names.add(mode_cls.name)
+
+        resolved.append(_build_theme_photobooth_mode(themed_slot_index, theme_id))
+        seen_theme_ids.add(theme_id)
+        themed_slot_index += 1
 
     if not resolved:
         logger.warning(
@@ -1181,6 +1305,10 @@ def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:
             raw,
             DEFAULT_PHOTOBOOTH_MENU_MODES,
         )
-        resolved = [PHOTOBOOTH_MENU_REGISTRY[key] for key in DEFAULT_PHOTOBOOTH_MENU_MODES]
+        resolved = [
+            _build_theme_photobooth_mode(index, PHOTOBOOTH_MENU_REGISTRY[key])
+            for index, key in enumerate(DEFAULT_PHOTOBOOTH_MENU_MODES, start=1)
+            if PHOTOBOOTH_MENU_REGISTRY.get(key)
+        ]
 
     return resolved

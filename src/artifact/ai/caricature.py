@@ -62,6 +62,20 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_SLAVIC_TALES_SQUARE = "photobooth_slavic_tales_square"  # 1:1 square - slavic fairy-tale mode
     PHOTOBOOTH_BANYA_CHIC = "photobooth_banya_chic"  # 9:16 vertical - decadent bathhouse mode
     PHOTOBOOTH_BANYA_CHIC_SQUARE = "photobooth_banya_chic_square"  # 1:1 square - decadent bathhouse mode
+    PHOTOBOOTH_VNVNC_BDAY = "photobooth_vnvnc_bday"  # 9:16 vertical - VNVNC birthday premium poster mode
+    PHOTOBOOTH_VNVNC_BDAY_SQUARE = "photobooth_vnvnc_bday_square"  # 1:1 square - VNVNC birthday premium poster mode
+    PHOTOBOOTH_CIRCUS_MAXIMUS = "photobooth_circus_maximus"  # 9:16 vertical - creepy circus mode
+    PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE = "photobooth_circus_maximus_square"  # 1:1 square - creepy circus mode
+    PHOTOBOOTH_MTV_NIGHT = "photobooth_mtv_night"  # 9:16 vertical - glossy MTV night poster mode
+    PHOTOBOOTH_MTV_NIGHT_SQUARE = "photobooth_mtv_night_square"  # 1:1 square - glossy MTV night poster mode
+    PHOTOBOOTH_SHADOW_KINGDOM = "photobooth_shadow_kingdom"  # 9:16 vertical - gothic shadow kingdom mode
+    PHOTOBOOTH_SHADOW_KINGDOM_SQUARE = "photobooth_shadow_kingdom_square"  # 1:1 square - gothic shadow kingdom mode
+    PHOTOBOOTH_CANDY_SHOP = "photobooth_candy_shop"  # 9:16 vertical - white candy shop luxury mode
+    PHOTOBOOTH_CANDY_SHOP_SQUARE = "photobooth_candy_shop_square"  # 1:1 square - white candy shop luxury mode
+    PHOTOBOOTH_STREET_HEAT = "photobooth_street_heat"  # 9:16 vertical - west coast polaroid mode
+    PHOTOBOOTH_STREET_HEAT_SQUARE = "photobooth_street_heat_square"  # 1:1 square - west coast polaroid mode
+    PHOTOBOOTH_OFFICE_CORE = "photobooth_office_core"  # 9:16 vertical - pixelated office-core mode
+    PHOTOBOOTH_OFFICE_CORE_SQUARE = "photobooth_office_core_square"  # 1:1 square - pixelated office-core mode
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -1874,6 +1888,818 @@ Square 1:1 single-image Slavic bathhouse luxury poster.
 ]
 
 
+VNVNC_BDAY_VARIATIONS = [
+    """HAPPY B'DAY VNVNC — LUXURY BIRTHDAY POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO panels. Full-bleed vertical poster.
+
+CRITICAL LIKENESS:
+- Preserve the exact real human faces from the source photo
+- If multiple people are present, preserve the exact full group and exact people count
+- Never collapse a group into one hero and never turn extra people into background décor
+- Preserve visible clothing text and logos letter-for-letter
+- Faces, skin, eyes, and recognizability stay photoreal and unmistakable
+
+VISUAL DIRECTION:
+- Pure black void only, no room interior, no floor, no reflections, no fake frame
+- Premium Octane-style editorial birthday spectacle: matte cream frosting, dark crimson satin, crystal champagne, gold lacquer, pearl accents, candlelight, anthracite luxury materials
+- Massive 3-tier ornate birthday cake is the main hero object near the people, with 9 lit candles and warm amber flame glow
+- Floating celebration props orbit around the people: crystal coupe, satin crimson balloon, wrapped anthracite gift box, confetti discs, berries, pearl beads, dried rose petals, ribbon curls
+- Controlled luxury only: expensive, sharp, material-rich, never childish, never cartoon, never plastic slop
+- Use the attached emblem references only as branding anchors; prefer the gift-box 9 emblem, but sometimes echo the chrome oval emblem language in small secondary branding
+
+TEXT AND BRANDING:
+- the ONLY huge decorative title is exactly "HAPPY B'DAY VNVNC"
+- title should feel like premium dark-chrome / crimson-neon birthday branding inspired by the attached emblem references
+- required footer text somewhere elegant in the composition:
+  * "VNVNC.RU"
+  * exact Russian weekday from personality_context
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no other text
+
+OUTPUT:
+- one centered luxury birthday editorial poster
+- black void, floating premium props, cake hero, candlelight, exact likeness
+- vertical 9:16
+""",
+    """ПОСТОЯННИК ВИНОВНИЦЫ — VIP LICENSE POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO panels. Full-bleed vertical poster.
+
+CRITICAL LIKENESS:
+- Preserve the exact real human faces from the source photo
+- If multiple people are present, preserve the exact full group and exact people count inside one shared composition
+- Preserve visible clothing text and logos letter-for-letter
+- Faces must remain photoreal and recognizable, not airbrushed, not doll-like
+
+VISUAL DIRECTION:
+- Build the image around one oversized realistic club-membership / driver's-license artifact floating on a pure black void
+- The central object is a tactile laminated VIP card with realistic transparent plastic wrap, scuffs, edge wear, holographic foil, embossed numerals, ink texture, barcode-style micro details, pressure marks, shrink-wrap ripples, and subtle fingerprints
+- The real person or real group appears as the official portrait printed inside the card, still clearly recognizable
+- Surround the card with premium VNVNC birthday props: crimson satin ribbon, chrome edge hardware, small cake crumb accents, confetti, pearls, rose petals, mini candle stubs, luxury gift-tag fragments
+- The mood is elite regular / permanent guest / club relic energy — textured, fetishistically realistic, expensive, archival, not parody comedy
+- Use the attached emblem references only as small badge / seal branding anchors on the card design; sometimes prefer the chrome oval emblem instead of the gift-box emblem for the seal treatment
+
+TEXT AND BRANDING:
+- the ONLY huge decorative title is exactly "ПОСТОЯННИК ВИНОВНИЦЫ"
+- required supporting text integrated into the card design:
+  * "VALID SINCE АПРЕЛЬ 2017"
+  * "∞"
+  * "VNVNC.RU"
+  * exact Russian weekday from personality_context
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no other text
+
+OUTPUT:
+- one centered hyper-real laminated membership-card poster
+- black void, tactile plastic, chrome foil, premium wear, exact likeness
+- vertical 9:16
+""",
+    """RAP GOD — HYPER-LUXURY HIP-HOP POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO panels. Full-bleed vertical poster.
+
+CRITICAL LIKENESS:
+- Preserve the exact real human faces from the source photo
+- If multiple people are present, preserve the exact full group and exact people count
+- Preserve visible clothing text and logos letter-for-letter
+- Faces remain human, photoreal, and sharply recognizable
+
+VISUAL DIRECTION:
+- Pure black void only, no club interior, no street set, no fake stage floor
+- Premium Octane-style hip-hop fantasy with ultra-expensive materials and strong silhouette design — somewhere between Kanye maximalism, Eminem aggression, and MAYOT glossy flex, but without imitating any real person literally
+- Build the people as the center of a luxury rap-cover universe with giant chrome microphone hardware, lacquer-red speaker stacks, anthracite trunks, chain jewelry, iced-out typography fragments, crimson satin cords, heavy medallions, glossy vinyl, and sharp rim light
+- Floating props should feel collectible and editorial, not cheap urban cliché: studio mic, chain links, red gems, speaker cones, ballistic cases, champagne spray mist, confetti shards, satin bows, money-burst energy
+- The whole thing must feel trend-forward, cocky, glossy, cinematic, hard, and cool as hell — no cartoon graffiti, no cheap poster effects, no cringe meme energy
+- Use the attached emblem references only as subtle VNVNC badge anchors or chain-medallion branding elements
+
+TEXT AND BRANDING:
+- the ONLY huge decorative title is exactly "RAP GOD"
+- title should feel like luxury chrome-meets-crimson rap-cover lettering
+- required footer text somewhere elegant in the composition:
+  * "VNVNC.RU"
+  * exact Russian weekday from personality_context
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no other text
+
+OUTPUT:
+- one centered high-fashion hip-hop birthday poster
+- black void, chrome mic world, crimson highlights, exact likeness
+- vertical 9:16
+""",
+]
+
+
+VNVNC_BDAY_SQUARE_VARIATIONS = [
+    """HAPPY B'DAY VNVNC — LUXURY BIRTHDAY POSTER (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no four frames.
+Keep the exact real faces and full group from the source photo.
+
+Use a pure black void with premium birthday still-life objects: giant cream-and-crimson cake, 9 candles,
+crystal champagne, satin balloon, anthracite gift box, confetti, pearls, berries, and rose petals.
+The attached emblem references are only branding anchors; prefer the gift-box 9 emblem, but sometimes echo the chrome oval emblem.
+
+Huge title exactly "HAPPY B'DAY VNVNC".
+Required text:
+"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 luxury birthday editorial poster.
+""",
+    """ПОСТОЯННИК ВИНОВНИЦЫ — VIP LICENSE POSTER (SQUARE 1:1)
+
+One square single-image composition only.
+Keep the exact real faces and full group from the source photo, printed inside one oversized hyper-real laminated club card.
+The card should have tactile plastic-wrap texture, embossed foil, scratches, hologram details, barcode micro-elements, and premium wear.
+Use the attached emblem references as small seal/badge anchors on the card, with occasional chrome oval emphasis.
+
+Huge title exactly "ПОСТОЯННИК ВИНОВНИЦЫ".
+Required text:
+"VALID SINCE АПРЕЛЬ 2017", "∞", "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 luxury VIP-card birthday poster.
+""",
+    """RAP GOD — HYPER-LUXURY HIP-HOP POSTER (SQUARE 1:1)
+
+One square single-image composition only.
+Keep the exact real faces and full group from the source photo.
+Place them in a premium black-void rap-cover world with giant chrome microphone hardware, anthracite speaker stacks,
+chain jewelry, lacquer-red details, satin cords, medallions, glossy vinyl objects, and razor-sharp rim light.
+Use the attached emblem references only as subtle medallion / badge branding anchors.
+
+Huge title exactly "RAP GOD".
+Required text:
+"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 hyper-luxury hip-hop birthday poster.
+""",
+]
+
+
+
+
+MTV_NIGHT_VARIATIONS = [
+    """MTV NIGHT — GLOSSY 90S CLUB POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO panels. Full-bleed vertical poster.
+
+CRITICAL LIKENESS:
+- Preserve the exact real human faces from the source photo
+- If multiple people are present, preserve the exact full group and exact people count
+- Preserve visible clothing text and logos letter-for-letter
+- Faces remain unmistakably photoreal, sharp, and alive
+
+VISUAL DIRECTION:
+- Build a glossy late-90s MTV promo universe around the people, not a generic nightclub poster
+- Use deep black negative space with liquid chrome, translucent candy plastic, glossy acrylic, chrome stars, bubble letters, metallic spheres, lens flares, halftone dots, checker curves, warped grids, and slick Y2K broadcast graphics
+- The logo treatment must feel like a premium Octane-style beauty render: ultra-glossy chrome, mirrored metal, deep bevels, thick extrusion, hot pink and electric blue reflections, magenta/cyan neon edge light
+- Include a large title reading exactly "MTV NIGHT", but its mark structure must be derived from the supplied real party logo reference, not an invented MTV-like parody
+- Reproduce the supplied logo branding language faithfully: same bold blocky TV-network logo attitude, same silhouette logic, same overall mark geometry family as the reference asset
+- The scene should feel hyper-designed, expensive, editorial, playful, and iconic — no cheap meme clutter, no ugly AI glow soup
+- Use direct-flash fashion photography energy with crisp highlights, polished reflections, and tactile print texture
+
+TEXT AND BRANDING:
+- the ONLY huge decorative title is exactly "MTV NIGHT"
+- The "MTV" part of that title must literally appear as the supplied MTV logo mark itself — not plain text, not a substitute font treatment, not a fake reinterpretation
+- Build the full title as one coherent lockup: the real MTV logo for "MTV", plus "NIGHT" typeset beside or beneath it in a matching premium broadcast-brand style
+- Typography must feel intentional and designer-made: bold, sharp, balanced spacing, clean silhouette hierarchy, no random AI-font nonsense, no generic club flyer lettering
+- title should feel like oversized glossy TV-network branding, chrome-meets-candy, sharp and legible
+- Do NOT invent a fake MTV symbol, fake channel mark, or random logo shape: use the supplied real party logo reference as the exact branding anchor
+- required footer text somewhere elegant in the composition:
+  * "VNVNC.RU"
+  * exact Russian weekday from personality_context
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no other text
+
+OUTPUT:
+- one centered glossy 90s MTV editorial poster
+- black void, chrome/candy-plastic objects, iconic logo energy, exact likeness
+- vertical 9:16
+""",
+    """MTV NIGHT — HYPER-BRANDED LOGO COLLAGE (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO panels. Full-bleed vertical poster.
+
+CRITICAL LIKENESS:
+- Preserve the exact real human faces from the source photo
+- If multiple people are present, preserve the exact full group in one shared composition
+- Preserve visible clothing text and logos letter-for-letter
+- Faces must stay human, not doll-like, not airbrushed plastic
+
+VISUAL DIRECTION:
+- Build the composition like a lost 1999 MTV promo key visual with one hero photo of the real people surrounded by oversized branding objects
+- Use floating chrome cubes, inflated glossy arrows, jelly stars, translucent vinyl discs, candy-plastic speaker parts, warped TV frames, and metallic droplets
+- Let the supplied real party logo language appear as badges, medallions, stickers, and TV-bug style anchors throughout the design
+- Every repeated logo badge must stay in the same branding family as the provided logo reference; no substitute fake MTV-inspired marks
+- The hero title/logo finish should read as premium 3D Octane-style glossy chrome with hot pink and electric blue reflections, polished mirror metal, and neon rim light
+- Keep it slick, fashion-forward, and tactile: lacquer, chrome, acrylic, gel plastic, magazine print, halftone, screen glow
+- The vibe is celebratory, clubby, and pop-cultural, never grungy or dirty
+
+TEXT AND BRANDING:
+- the ONLY huge decorative title is exactly "MTV NIGHT"
+- The "MTV" portion must use the supplied MTV logo mark as the actual title element, while "NIGHT" must be custom-set to match it as one unified lockup
+- Make the typography look premium and deliberate: proper hierarchy, spacing, alignment, and brand-fit — not generic AI text, not random rave fonts, not sloppy sticker lettering
+- required footer text somewhere elegant in the composition:
+  * "VNVNC.RU"
+  * exact Russian weekday from personality_context
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- no other text
+
+OUTPUT:
+- one centered logo-heavy glossy MTV campaign poster
+- exact likeness, branded object collage, premium 90s TV identity energy
+- vertical 9:16
+""",
+]
+
+
+MTV_NIGHT_SQUARE_VARIATIONS = [
+    """MTV NIGHT — GLOSSY 90S CLUB POSTER (SQUARE 1:1)
+
+One square single-image composition only.
+Keep the exact real faces and full group from the source photo.
+
+Use a deep black studio void with glossy MTV-era broadcast objects: chrome stars, metallic spheres, jelly arrows, acrylic blocks, warped grids, halftone dots, and a huge crisp title exactly "MTV NIGHT".
+Use the supplied real party logo reference as the exact branding anchor. The logo family must clearly read as the real MTV-based mark from that logo reference, not a newly invented MTV-like symbol.
+The title/logo finish should be premium 3D Octane-style chrome with deep bevels, mirror reflections, and hot pink plus electric blue neon light.
+The "MTV" part of the title must literally be the MTV logo mark itself, with "NIGHT" typeset as a matching lockup rather than generic text.
+
+Required text:
+"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 glossy MTV editorial poster.
+""",
+    """MTV NIGHT — HYPER-BRANDED LOGO COLLAGE (SQUARE 1:1)
+
+One square single-image composition only.
+Keep the exact real faces and full group from the source photo.
+
+Build a premium Y2K TV-network collage around them with chrome cubes, inflated plastic icons, translucent discs, liquid-metal droplets, TV bug graphics, and sharp logo badges.
+Huge title exactly "MTV NIGHT".
+Use the supplied real party logo reference for every logo badge and title treatment. Do not improvise a different MTV-like icon or alternate fake mark.
+The main logo treatment should read like an expensive Octane 3D glossy chrome object with hot pink and electric blue reflections on black.
+The "MTV" portion of the title must literally be the MTV logo mark itself, with a deliberate matching "NIGHT" lockup.
+
+Required text:
+"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text.
+
+Square 1:1 MTV logo-fever poster.
+""",
+]
+
+
+
+# SHADOW KINGDOM VARIATIONS - Gothic chrome castle poster (9:16 vertical)
+SHADOW_KINGDOM_VARIATIONS = [
+    """КОРОЛЕВСТВО ТЕНЕЙ — EMBLEM-LED GOTHIC CASTLE POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. NO 2x2 grid. NO strip. NO split panels. NO black-and-white output.
+
+ABSOLUTE #1 PRIORITY — EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
+- Preserve the exact real human faces from the source photo; faces must look like the original people, not generic fantasy models.
+- If multiple people are present, preserve the exact full group and exact people count in one shared hero composition.
+- Keep real facial structure, eyes, nose, mouth, hairline, hairstyle, facial hair, glasses, makeup, and proportions recognizable.
+- Preserve visible clothing text/logos letter-for-letter unless transformed into black royal wardrobe on top while keeping identity intact.
+- Do not over-beautify, do not plasticize, do not turn them into dolls; human skin must remain real and alive.
+
+BRANDING — USE THE ATTACHED EMBLEM AS-IS:
+- A supplied extra reference image is the official КОРОЛЕВСТВО ТЕНЕЙ / SHADOW KINGDOM emblem.
+- Use that attached emblem/logo lockup as the title/branding anchor as directly as possible: crown, shield, sword point, red jewel, chrome bevels, black void, Cyrillic wording.
+- Do NOT invent a new title/logo style from scratch. Do NOT replace it with plain generated "SHADOW KINGDOM" text.
+- The big top/hero branding should preserve the attached emblem's design language and wording; if text is rendered, it should follow the supplied emblem, not a random AI font.
+- The emblem is branding only; never replace the real people with the emblem.
+
+VISUAL DIRECTION:
+- Premium full-color cinematic dark fantasy key art, super clean rendering, not messy AI fantasy.
+- Gothic stone castle backdrop at night, moonlit storm clouds, deep parallax: distant castle towers, midground banners/fire braziers, foreground people and chrome frame.
+- Glossy black steel armor, black leather cloaks, dark royal wardrobe, polished chrome trim, beveled sword/crown details.
+- Red royal banners, blue jewel corner accents, ruby/candle/fire accents, ember particles, cinematic depth.
+- Expensive black-metal/chrome frame, sharp bevels, controlled cinematic contrast, high depth.
+
+MANDATORY EVENT FOOTER — MUST APPEAR ON THE POSTER:
+- Include exactly "VNVNC.RU".
+- Include the exact Russian weekday from personality_context.
+- Include the exact time from personality_context.
+- Include exactly "КОНЮШЕННАЯ 2В".
+- Footer should be elegant metallic event text at the bottom of the poster.
+- No fake dates, no year, no per-frame timestamps, no "МСК", no extra random text.
+
+LAYOUT:
+- Top/crest area: attached official emblem/logo lockup integrated into the frame.
+- Center: exact people from photo as rulers/knights of the shadow kingdom, upper-body hero group composition, faces unobstructed and photoreal.
+- Background: gothic castle with towers, moon/storm sky, red banners, fire braziers, depth and parallax.
+- Frame: ornate black-steel/chrome border with angular gothic corners, blue jewels, subtle red glints, premium depth.
+- Bottom: mandatory footer with VNVNC.RU + weekday + time + КОНЮШЕННАЯ 2В.
+
+QUALITY / NEGATIVES:
+- FULL COLOR ONLY. No monochrome, no black-and-white, no thermal-printer look.
+- No waxy/plastic skin, no generic AI glow soup, no muddy faces, no malformed eyes, no random unreadable typography.
+- No cartoon, no anime, no cheap game UI, no collage, no sticker clutter.
+
+OUTPUT: vertical 9:16 single premium gothic castle poster, exact likeness, official attached emblem branding, mandatory event footer.""",
+
+    """КОРОЛЕВСТВО ТЕНЕЙ — ROYAL BLACK STEEL HERO POSTER (VERTICAL 9:16)
+
+Create ONE single full-color 9:16 poster. Not a grid, not a photobooth strip, not a collage, not black-and-white.
+
+CRITICAL LIKENESS:
+- The people must remain the exact people from the input photo; preserve face identity above everything else.
+- Include every person from the photo if it is a group, with equal presence and no missing faces.
+- Keep eyes, facial hair, hair color/style, expression, skin texture, and body proportions recognizable.
+- Clothing may become dark royal armor/cloaks, but identity and any visible clothing text must not be lost if it remains visible.
+
+OFFICIAL EMBLEM / BRANDING:
+- Use the attached КОРОЛЕВСТВО ТЕНЕЙ emblem as the actual title/branding source.
+- Preserve the emblem's crown, shield, sword, ruby, chrome bevels, black steel mood, and Cyrillic title language.
+- Do not create a generic "SHADOW KINGDOM" wordmark; the attached emblem is the visual reference and should drive the title area.
+- It may be integrated as a crest/top plaque/metal medallion, but the design must clearly come from the supplied emblem.
+
+STYLE:
+- Ultra-premium full-color dark fantasy event poster: black steel, chrome silver, glass jewels, red rubies, firelight, moonlit castle atmosphere.
+- People are staged like a royal court / knight order, with realistic faces and black leather/armor wardrobe.
+- Strong parallax: foreground ornate border and weapons, midground people, background castle and storm moon.
+- High-end beauty lighting: cool moon rim light plus warm fire accents, crisp specular highlights, no haze covering faces.
+
+MANDATORY EVENT TEXT:
+- Footer must include exactly "VNVNC.RU".
+- Footer must include the exact Russian weekday from personality_context.
+- Footer must include the exact time from personality_context.
+- Footer must include exactly "КОНЮШЕННАЯ 2В".
+- No fake date, no year, no per-frame timestamps, no "МСК", no extra words.
+
+FRAME / CARD:
+- Ornate black iron and polished chrome rectangular frame, angular gothic corners, crown/sword motif, red ruby center accent, blue jewel corners.
+- The poster should feel like an expensive fantasy event key visual printed on glossy black metal/card stock.
+
+NEGATIVE CONSTRAINTS:
+- No 2x2 layout, no four frames, no comic strip, no generic fantasy game loading screen.
+- No plastic doll faces, no over-smoothing, no face replacement, no unreadable extra text.
+- FULL COLOR ONLY; never convert to black and white.
+
+Vertical 9:16. Official attached emblem branding. Exact human likeness. Mandatory event footer.""",
+]
+
+
+SHADOW_KINGDOM_SQUARE_VARIATIONS = [
+    """КОРОЛЕВСТВО ТЕНЕЙ — EMBLEM-LED GOTHIC POSTER (SQUARE 1:1)
+
+This square prompt is retained only as a fallback; the live photobooth should not call it for paid generation.
+If used, create one full-color square single-image composition only. NO grid, NO panels, NO black-and-white.
+
+Keep the exact real faces and full group from the source photo. Human faces must stay photoreal, sharp, recognizable, and unobstructed.
+
+Use the attached КОРОЛЕВСТВО ТЕНЕЙ emblem as the actual branding/title source, preserving its chrome gothic crown/shield/sword/ruby language. Do not invent a generic SHADOW KINGDOM title.
+
+Include mandatory event text: "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, and "КОНЮШЕННАЯ 2В".
+
+Full-color premium gothic castle poster: black steel, chrome bevels, moonlit castle, red banners, fire braziers, blue jewels, ruby accents.""",
+
+    """КОРОЛЕВСТВО ТЕНЕЙ — ROYAL BLACK STEEL PORTRAIT (SQUARE 1:1)
+
+This square prompt is retained only as a fallback; the live photobooth should not call it for paid generation.
+One square hero poster, full color only. Preserve exact likeness and all people from the input photo.
+
+Use the attached official emblem as the title/branding anchor: crown, shield, sword point, red jewel, chrome bevels, Cyrillic wording.
+Transform the scene into a gothic Shadow Kingdom royal court: black cloaks, black leather, polished steel armor accents, moonlit castle, red banners, firelight, angular metallic frame.
+
+Footer/event text must include: "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No random extra words. No black-and-white.""",
+]
+
+
+# CANDY SHOP VARIATIONS - Pure white pink Octane 3D candy boutique poster (9:16 vertical)
+CANDY_SHOP_VARIATIONS = [
+    """CANDY SHOP - WHITE PINK CANDY BOUTIQUE POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. NO grid. NO strip. NO panels.
+
+ABSOLUTE #1 PRIORITY - EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
+- Preserve the exact real human faces from the source photo; faces must look like the original people, not generic models or improved lookalikes.
+- If multiple people are present, preserve the exact full group and exact people count in one shared hero composition.
+- Keep eyes, nose, mouth, jawline, face shape, skin tone, skin texture, hairline, hairstyle, hair color, facial hair, glasses, expression, height relationship, and body proportions the same as the source.
+- Preserve the real clothing silhouette, color, visible text, and logos letter-for-letter; do not replace the outfit with a costume.
+- Style the scene and props only; do not beautify, age, slim, widen, gender-swap, ethnicity-shift, change hair, change skin tone, change expression, or otherwise redesign any person.
+- People remain photoreal and human, not dolls, not cartoons, not airbrushed plastic.
+
+VISUAL DIRECTION:
+- Pure white background only: clean #FFFFFF studio void, no black background, no gray wall, no room, no floor line.
+- Premium Octane-style 3D candy still-life around the people, kept minimal: glossy pink hard candy, one or two glass lollipops, translucent sugar shards, wrapped bonbons, sugar pearls, pale chrome candy scoops, soft rose reflections.
+- Use the strong single-image luxury layout discipline of the best previous photobooth themes: exact likeness, centered hero group, polished editorial object placement, clean hierarchy, elegant footer, no visual clutter.
+- Composition should feel expensive, modern, sweet, sharp, and tactile - never childish clip art, never messy AI clutter, never folk-themed.
+- Keep the white negative space beautiful and intentional, with only a few candy objects floating around the people like a luxury perfume campaign.
+
+WARDROBE / STYLING:
+- Keep each person's real outfit from the source photo intact. Add only light candy-shop accessories or nearby props: glossy pink candy jewelry, sugar-glass brooches, pearl accents, white satin accents, soft chrome highlights, pale-pink ribbon details.
+- If multiple people are present, keep their real styling distinct; unify the poster with surrounding boutique details, not by changing their identities.
+- Real faces stay unobstructed and readable.
+
+TEXT AND BRANDING:
+- The supplied candy-shop emblem reference is the official party emblem. Use that emblem as the actual huge decorative title/logo, not just as inspiration.
+- The ONLY huge decorative title is exactly "CANDY SHOP", matching the supplied emblem's layout, bubble-letter shapes, candy-swirl details, awning/header shape, border language, and pink/white/chrome material treatment as closely as possible.
+- Do not invent alternate CANDY SHOP lettering, do not remove the emblem shape, and do not replace it with plain text.
+- Required footer text somewhere elegant in the composition:
+  * "VNVNC.RU"
+  * exact Russian weekday from personality_context
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- Do not write "VNVNC PHOTOBOOTH". Do not write "PHOTOBOOTH". No extra text, no fake dates, no year, no per-frame timestamps, no "МСК".
+
+OUTPUT:
+- one centered candy-shop luxury poster
+- pure white background, minimal glossy pink candy still-life, exact likeness
+- vertical 9:16
+""",
+    """CANDY SHOP - WHITE GLOSS CANDY ALTAR (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. No grid, no strip, no separate frames.
+
+CRITICAL LIKENESS:
+- Preserve exact real faces and the full group from the input photo; no generic replacement faces and no improved lookalikes.
+- Every person remains photoreal, recognizable, and equal in importance.
+- Keep hair, hair color, skin tone, face shape, expression, body proportions, pose, and real outfit identity from the source.
+- Preserve visible clothing logos and text letter-for-letter.
+- Do not over-beautify, do not make waxy faces, do not change apparent age, do not change ethnicity, do not replace people with candy characters.
+
+VISUAL DIRECTION:
+- Absolute pure white #FFFFFF background, museum-clean, bright, high-key, no shadows swallowing the white.
+- Build a luxurious candy-shop altar around the people using Octane 3D material realism: glass sugar, pale chrome wrappers, pink candy drops, milky white porcelain, pearl sprinkles, transparent lollipops, ribbon candy, caramel spirals, marshmallow blocks.
+- Keep the object world minimal and modern: no folk motifs, no red lacquer, no gold filigree, no busy collage.
+- The scene must read as an expensive product-campaign poster, not a kid birthday flyer.
+- Keep object placement balanced and airy so the white background remains pure and the people remain the hero.
+
+TEXT:
+- The supplied candy-shop emblem reference is mandatory branding. Recreate it as the top emblem/title as closely as possible.
+- Huge title exactly "CANDY SHOP", preserving the reference emblem's overall shape, bubble lettering, candy-swirl "O" logic, awning/header feel, and pink glossy material.
+- Do not invent a different title design and do not use plain generic text.
+- Include exactly "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, and "КОНЮШЕННАЯ 2В" in a neat footer.
+- No other words. No "photobooth" wording. No fake dates. No "МСК".
+
+OUTPUT:
+- premium white-background candy-core poster, exact likeness, glossy Octane materials
+- vertical 9:16
+""",
+]
+
+
+CANDY_SHOP_SQUARE_VARIATIONS = [
+    """CANDY SHOP - WHITE PINK CANDY BOUTIQUE POSTER (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no panels.
+Keep the exact real faces and full group from the source photo. Preserve hair, skin tone, face shape, expression, body proportions, clothing silhouette, and visible clothing text exactly; style only the surrounding scene and added props.
+
+Use a pure white #FFFFFF background with premium Octane 3D candy objects around the people:
+glass lollipops, hard candy, sugar shards, wrapped bonbons, pearl sprinkles, ribbon candy, pale pink drops,
+soft chrome wrappers, white enamel, and lots of clean negative space.
+The people stay photoreal and recognizable; add candy jewelry, pearl accents, white satin, and pale-pink ribbons only as light accessories without replacing faces, hair, bodies, or outfits.
+
+Huge title exactly "CANDY SHOP" using the supplied candy-shop emblem reference as the actual top logo; preserve its overall shape, lettering style, candy-swirl detail, and pink glossy material as closely as possible.
+Required text: "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text and no "photobooth" wording.
+
+Square 1:1 single-image candy-shop poster on a pure white background.
+""",
+    """CANDY SHOP - WHITE GLOSS CANDY ALTAR (SQUARE 1:1)
+
+One square full-color poster. Preserve exact likeness and every person from the input photo: same face, hair, skin tone, expression, body proportions, clothing silhouette, and visible clothing text.
+
+Pure white studio void. Premium candy still-life: translucent lollipops, caramel spirals, marshmallow blocks,
+pink candy drops, pearl sugar, porcelain white surfaces, soft chrome wrappers, minimal boutique object placement,
+and balanced high-key product-campaign lighting.
+
+Huge title exactly "CANDY SHOP", based directly on the supplied candy-shop emblem reference rather than invented lettering.
+Footer text must include: "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No random words, no fake dates, no "photobooth" wording.
+
+Square 1:1 white-background luxury candy poster.
+""",
+]
+
+
+# STREET HEAT VARIATIONS - White background west coast polaroid luxury (9:16 vertical)
+STREET_HEAT_VARIATIONS = [
+    """STREET HEAT - WEST COAST POLAROID PASS (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. No grid. No strip. No panels.
+
+ABSOLUTE #1 PRIORITY - EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
+- Preserve the exact real human faces from the source photo; faces must remain the same people, not improved lookalikes or glamorized replacements.
+- If multiple people are present, preserve the exact full group in one shared composition.
+- Keep hairline, hair texture, hair color, eyebrow shape, eye spacing, eyelids, nose width, lips, jawline, cheek volume, skin texture, skin tone, body proportions, and visible clothing text/logos exactly.
+- Do not beautify, slim, age-shift, ethnicity-shift, makeup-shift, expression-shift, or costume-swap the people.
+- The real face identity is more important than stylistic embellishment. If there is any tradeoff, keep the exact face and reduce styling instead.
+
+VISUAL DIRECTION:
+- Pure white background only: bright premium white studio void, no black background, no room, no wall vignette, no floor line.
+- The image must feel like a premium tactile Polaroid / instant-film campaign, not a pink candy boutique, not a pastel beauty poster, not a glossy toy still-life.
+- Primary accent colors are YELLOW and PURPLE. Small controlled support accents may include basketball orange, chrome silver, asphalt black, and tiny hits of warm gold. Pink should be absent or near-zero.
+- Add a curated West Coast street still-life around the people with restraint: traffic cones, basketball cues, chrome palm details, graffiti tag energy, lowrider chrome flashes, dice, chain details, yellow-and-purple street objects.
+- Graffiti should appear as real graphic tags / mural accents, not cute stickers and not random decorative scribbles.
+- The Polaroid object itself must feel amazing and tactile: creamy off-white instant-film border, slightly warm paper tone, subtle fiber texture, fine print grain, real glossy photo chemistry, gentle edge wear, believable instant-photo depth.
+- Keep it super neat and premium, like a collector's fashion Polaroid pinned into a white studio campaign layout.
+
+HARD NEGATIVES:
+- No pink palette drift.
+- No blush, rose, candy pink, pastel pink, baby pink, or hot-pink object world.
+- No random text on props, walls, signs, balloons, stickers, or objects.
+- No Cyrillic words on objects. No English warning signs. No stray labels. No fake signage text.
+- The ONLY allowed readable text in the whole image is the official STREET HEAT title/logo plus the required footer text.
+- No speech bubbles. No decorative octagons with words. No floating signs with extra copy.
+- No disco ball. No lollipops. No candy props. No boutique objects.
+
+STYLING / ATTITUDE:
+- West Coast street style hip hop attitude: confident, cool, athletic, sexy, clean, expensive, no parody.
+- Preserve the real outfits, but allow light additions in surrounding props only.
+- No gang cosplay, no caricature tattoos, no cheap clip-art graffiti, no overdone urban clichés.
+- Think white-background fashion street campaign with GTA San Andreas / LA / basketball / traffic-cone / mural energy, but premium and very controlled.
+
+TEXT AND BRANDING:
+- The supplied STREET HEAT emblem reference is the official party emblem. Use it as the actual top emblem/title, matching its silhouette and blackletter/palm logic as closely as possible.
+- Huge title exactly "STREET HEAT" based on the supplied emblem, not generic text.
+- Required footer text somewhere elegant in the composition:
+  * "VNVNC.RU"
+  * exact Russian weekday from personality_context
+  * exact time from personality_context
+  * "КОНЮШЕННАЯ 2В"
+- No extra text. No fake dates. No "photobooth" wording. No "МСК".
+
+OUTPUT:
+- one centered white-background west coast Polaroid poster
+- exact likeness, premium tactile instant-film texture, yellow/purple/graffiti/traffic-cone accents
+- vertical 9:16
+""",
+    """STREET HEAT - LA COURT POLAROID (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. No strip. No four-frame booth layout.
+
+CRITICAL LIKENESS:
+- Preserve the exact real faces and full people count from the input photo.
+- Keep hair, skin, expression, body proportions, and visible clothing text/logos exactly.
+- People remain photoreal and human. No waxy skin, no mannequin faces, no game-character redesign.
+
+VISUAL DIRECTION:
+- Absolute pure white #FFFFFF background, clean and editorial.
+- Make the image feel like an expensive instant-photo / Polaroid keepsake from a fictional West Coast night: subtle warm print cast, creamy paper borders, slightly embossed instant-film edge, believable flash falloff, tactile analog photo surface.
+- Accent palette must be controlled around yellow and purple first, with basketball orange and chrome as support. Pink should be absent.
+- Add a minimal world of West Coast props around the people: polished basketball, traffic cone, chrome palm details, graffiti tags, lowrider metal reflections, dice, chain details.
+- It should nod to LA street courts, GTA San Andreas mood, and hip-hop flyer energy without becoming gamer fan-art.
+- Keep the composition airy, super neat, premium, and white.
+
+TEXT:
+- Recreate the supplied STREET HEAT emblem as the huge top title/logo as closely as possible.
+- Use the supplied STREET HEAT scene reference image as the persistent composition/world reference: keep the same overall scene language, same white-background Polaroid presentation, same family of objects, same mood, and same yellow/purple West Coast court energy.
+- Include exactly "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, and "КОНЮШЕННАЯ 2В" in a neat footer.
+- No other words anywhere in the image.
+- No fake signs, no object labels, no warning text, no random graffiti words.
+
+OUTPUT:
+- premium white-background west coast instant-film poster
+- exact likeness and polished analog Polaroid feel
+- vertical 9:16
+""",
+]
+
+
+STREET_HEAT_SQUARE_VARIATIONS = [
+    """STREET HEAT - WEST COAST POLAROID PASS (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no panels.
+Keep the exact real faces and full group from the source photo. Preserve hair, skin tone, face shape, expression, body proportions, clothing silhouette, and visible clothing text exactly.
+
+Use a pure white background with premium West Coast still-life props kept minimal: traffic cone, basketball cues, chrome palm details, graffiti tag energy, dice, chain jewelry reflections, lowrider metal flashes. Primary accents are yellow and purple; pink should be absent.
+Make the image feel like a tactile premium Polaroid object: creamy white instant-film border, subtle fiber texture, glossy print chemistry, gentle analog grain.
+
+Huge title exactly "STREET HEAT" using the supplied emblem reference as the actual top logo.
+Required text: "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No extra text and no "photobooth" wording. No random object text.
+
+Square 1:1 white-background west coast luxury Polaroid poster.
+""",
+    """STREET HEAT - LA COURT POLAROID (SQUARE 1:1)
+
+One square full-color poster. Preserve exact likeness and every person from the input photo: same face, hair, skin tone, expression, body proportions, clothing silhouette, and visible clothing text.
+
+Pure white studio void. Premium West Coast still-life with traffic cone, basketball, chrome palm details, graffiti accents, dice, chain motifs, lowrider reflections, and tactile analog instant-film texture. Keep everything neat, restrained, expensive, and yellow/purple-led.
+
+Huge title exactly "STREET HEAT", based directly on the supplied emblem reference rather than invented lettering.
+Footer text must include: "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
+No random words, no fake dates, no "photobooth" wording, no text on props.
+
+Square 1:1 premium white-background West Coast Polaroid poster.
+""",
+]
+
+
+# OFFICE CORE VARIATIONS - pure white pixelated office object poster (9:16 vertical)
+OFFICE_CORE_VARIATIONS = [
+    """OFFICE CORE - PURE WHITE PIXEL OFFICE POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. No grid. No strip. No separate frames.
+
+ABSOLUTE #1 PRIORITY - EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
+- Preserve the exact real faces and full people count from the source photo.
+- Keep hair, skin tone, expression, body proportions, pose, clothing silhouette, and visible clothing text/logos exactly.
+- People remain recognizable and human; do not replace them with generic office workers.
+- Apply the theme to the surrounding scene, props, border, and light accessories only.
+
+VISUAL DIRECTION:
+- Pure white #FFFFFF background only. No black background, no gray wall, no room, no floor line.
+- Pixelated 2D office-core style inspired by 1990s desktop UI and clean pixel-art object sheets.
+- Use crisp square pixels, limited palette, sharp black outlines, chunky dithering, and retro PC icon logic.
+- Surround the people with straight office objects in this style: red corded telephone, beige CRT computer, old keyboard, fax machine, dot-matrix printer, copier paper, manila folders, floppy disks, stapler, calculator, mouse cursor, error dialog, paper jam strips.
+- Keep the object placement neat, cool, graphic, and readable. The background must stay mostly white.
+- No dark cyber tunnel, no black void, no cluttered collage, no photorealistic 3D props.
+
+TEXT AND BRANDING:
+- Use the supplied OFFICE CORE emblem reference as the official top logo/title.
+- Huge title exactly "OFFICE CORE", matching the emblem's pixel-office lockup and red/blue/green accent language as closely as possible.
+- Leave the bottom 12-15% of the poster as clean pure white empty space for a system-rendered footer.
+- Do not write VNVNC.RU, weekday, time, venue, fake dates, year, or "МСК" anywhere. The app adds the real footer after generation.
+- No other readable words except the OFFICE CORE title and tiny UI glyphs that are not text.
+
+OUTPUT:
+- one centered pure-white pixelated office-core poster
+- exact likeness, crisp 2D pixel office objects, premium clean layout
+- vertical 9:16
+""",
+    """OFFICE CORE - WHITE DESKTOP ICON SHEET POSTER (VERTICAL 9:16)
+
+Create a single vertical 9:16 poster on a pure white background.
+
+IDENTITY LOCK:
+- Preserve exact likeness and every person from the input photo.
+- Same face, hair, skin tone, expression, body proportions, and real outfit identity.
+- Preserve visible clothing text and logos letter-for-letter.
+- Do not beautify, costume-swap, cartoon-replace, or turn people into generic avatars.
+
+STYLE:
+- Clean pixelated 2D office-core art, like a premium 1990s computer icon set expanded into a party poster.
+- People may be lightly pixel-rendered while remaining unmistakably the same real people.
+- Office objects are the hero styling: red telephone with coiled cord, beige CRT monitor, old printer, fax machine, paper trays, file folders, floppy disks, calculator, stapler, chunky mouse cursor, tiny error-window shapes.
+- Pure white negative space is mandatory. Use blue, green, red, beige, and black accents with tight control.
+- Make it cool and graphic, not corporate, not clip art, not messy AI clutter.
+
+BRANDING:
+- Recreate the supplied OFFICE CORE emblem as the huge top logo/title as closely as possible.
+- Leave the bottom 12-15% of the poster as clean pure white empty space for the system footer.
+- Do not write VNVNC.RU, weekday, time, venue, fake UI messages, fake dates, or "photobooth" wording. The app adds the real footer after generation.
+- No other readable text beyond the OFFICE CORE title.
+
+OUTPUT:
+- pure white office-core pixel poster, exact likeness, straight office equipment objects
+- vertical 9:16
+""",
+]
+
+
+OFFICE_CORE_SQUARE_VARIATIONS = [
+    """OFFICE CORE - PURE WHITE PIXEL OFFICE POSTER (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no panels.
+Preserve exact real faces, full group, hair, skin tone, expression, body proportions, clothing silhouette, and visible clothing text exactly.
+
+Use a pure white #FFFFFF background with crisp pixelated 2D office objects around the people:
+red corded telephone, beige CRT computer, old keyboard, fax machine, dot-matrix printer, copier paper, folders, floppy disks, stapler, calculator, mouse cursor, and tiny 1990s desktop UI shapes.
+Keep the composition clean, cool, and mostly white. No black void and no 3D render.
+
+Huge title exactly "OFFICE CORE" using the supplied emblem reference as the actual top logo.
+Do not write VNVNC.RU, weekday, time, venue, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+No extra readable text beyond the OFFICE CORE title.
+
+Square 1:1 pure-white pixel office-core poster.
+""",
+    """OFFICE CORE - WHITE DESKTOP ICON POSTER (SQUARE 1:1)
+
+One square full-color poster. Preserve exact likeness and every person from the input photo.
+Pure white studio void. Premium pixelated 2D object-sheet style with blue, green, red, beige, and black accents.
+
+Surround the people with straight office equipment: red telephone, CRT monitor, fax, printer, paper stack, folders, floppy disks, calculator, stapler, keyboard, and cursor icons.
+The office objects should be crisp, readable, and cool; no messy collage, no dark background, no photorealistic 3D props.
+
+Huge title exactly "OFFICE CORE", based directly on the supplied emblem reference rather than invented lettering.
+Do not write VNVNC.RU, weekday, time, venue, random words, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+No extra readable text beyond the OFFICE CORE title.
+
+Square 1:1 white-background pixel office poster.
+""",
+]
+
+
+# CIRCUS MAXIMUS VARIATIONS - Octane 3D Creepy Circus (9:16 vertical)
+CIRCUS_MAXIMUS_VARIATIONS = [
+    """CIRCUS MAXIMUS — CREEPY CIRCUS POSTER (VERTICAL 9:16)
+
+Octane 3D render style. Premium photorealistic 3D quality — NOT cartoon, NOT flat illustration.
+
+STYLE: Haunted carnival poster come to life. Red and white candy-stripe tent pattern elements frame the edges. 
+Slightly sinister atmosphere — creepy clowns, twisted balloons, flickering carnival lights.
+Dark shadows with volumetric uplighting from below casting eerie illumination.
+
+SUBJECT: Person from the reference photo rendered as a creepy ringmaster / carnival performer. 
+Preserve EXACT facial likeness and ALL text on clothing letter-for-letter.
+If multiple people, include ALL of them as circus performers together.
+
+BACKGROUND: Pure black (#000000) void with floating circus elements — torn tickets, balloon animals, spotlight beams.
+
+CARD/BORDER: Vintage circus poster frame with ornate red-and-white striped border. 
+Slightly weathered paper texture, gold foil accents. Faint creepy clown silhouettes in the border corners.
+
+TEXT:
+TOP: "CIRCUS MAXIMUS" in bold theatrical 3D chrome-red circus lettering with slight glow
+BOTTOM: "VNVNC.RU" left, time right, "Конюшенная 2В" below
+
+NO per-frame timestamps. Date appears once only. No МСК suffix.
+Strictly single-image composition — no grid, no strip, no four-frame layout.
+BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.""",
+
+    """CIRCUS MAXIMUS — DARK CARNIVAL PORTRAIT (VERTICAL 9:16)
+
+Octane 3D render. Premium dark-toy style — glossy vinyl skin, enlarged glassy eyes, unnervingly perfect.
+
+STYLE: Nightmarish carnival diorama. Red and white striped tent canopy overhead. 
+Creepy clown dolls peering from shadows. Twisted carousel horses. Flickering neon ticket booth glow.
+Deep crimson, bone white, and absolute black palette. Eerie volumetric fog.
+
+SUBJECT: Reference photo person as a vinyl collectible doll carnival performer — ringmaster coat, top hat with playing cards tucked in band.
+Preserve EXACT likeness and ALL clothing text. All people from source included.
+
+BACKGROUND: Pure black void. Floating playing cards, torn circus posters, balloon strings dangling down.
+
+CARD: Thick worn circus poster border. Red candy stripes with tarnished gold trim. 
+Faded blood splatter pattern around the inner frame edge. Stamped admission ticket in corner.
+
+TEXT:
+TOP: "CIRCUS MAXIMUS" in cracked blood-red marquee lettering
+BOTTOM: "VNVNC.RU" left, time right, "Конюшенная 2В" below
+
+NO per-frame timestamps. Single image. No grid.
+BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.""",
+
+    """CIRCUS MAXIMUS — FUNHOUSE MIRROR POSTER (VERTICAL 9:16)
+
+Octane 3D render. Photorealistic funhouse mirror aesthetic.
+
+STYLE: Twisted carnival funhouse — distorted mirrors, creaking floorboards, flickering Edison bulbs.
+Red and white tent stripes wrapping around the frame like a candy wrapper. 
+Haunted circus atmosphere with subtle menace — a clown's painted grin in the shadows.
+Predominantly black with blood-red and bone-white accents.
+
+SUBJECT: Person from reference photo as a haunted funhouse attraction — slightly distorted mirror effect on edges, normal in center.
+Preserve EXACT facial likeness and ALL clothing text letter-for-letter. Keep full group if multiple people.
+
+BACKGROUND: Pure black (#000000). Scattered juggling pins, a unicycle wheel, floating confetti frozen mid-air.
+
+CARD: Distressed carnival admission ticket style border. Red and white stripes with torn edges.
+Rustic rope border detail. Old-fashioned perforated edge on one side.
+
+TEXT:
+TOP: "CIRCUS MAXIMUS" in vintage circus woodblock print lettering
+BOTTOM: "VNVNC.RU" left, time right, "Конюшенная 2В" below
+
+NO per-frame timestamps. Date once only. Single image composition. No grid.
+BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.""",
+]
+
+# CIRCUS MAXIMUS SQUARE VARIATIONS - Octane 3D Creepy Circus (1:1 square)
+CIRCUS_MAXIMUS_SQUARE_VARIATIONS = [
+    """CIRCUS MAXIMUS — CREEPY CIRCUS (SQUARE 1:1)
+
+Octane 3D render style. Premium photorealistic 3D.
+
+Haunted carnival portrait. Red and white candy-stripe frame elements. 
+Eerie clown motifs in the border. Deep crimson, bone white, pure black.
+Person from reference photo as a creepy ringmaster — preserve EXACT likeness and ALL clothing text.
+
+Pure black background. Floating circus elements — balloons, spotlight beams, torn tickets.
+Vintage circus poster border with red stripes and gold trim. Weathered paper texture.
+
+BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.
+Single image — no grid, no strip, no collage.""",
+
+    """CIRCUS MAXIMUS — DARK TOY CIRCUS (SQUARE 1:1)
+
+Octane 3D render. Dark vinyl collectible doll style.
+
+Glossy doll-skin figure of the reference person as a creepy circus performer.
+Red and white striped big top elements. Haunted carnival atmosphere.
+Bone white, blood red, absolute black palette.
+
+Pure black void background. Floating balloon animals, playing cards, carousel lights.
+Ornate circus poster frame with candy-stripe border. Tarnished gold edge detail.
+
+BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.
+Single image — no grid, no collage, no split panels.""",
+]
+
 # GUESS VARIATIONS - Detective investigation board
 GUESS_VARIATIONS = [
     """BLACK AND WHITE portrait as a MYSTERY CASE FILE.
@@ -2394,6 +3220,60 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE: "BANYA_CHIC_SQUARE_VARIATION",
 
     # =========================================================================
+    # PHOTOBOOTH VNVNC B'DAY MODE - 9:16 vertical luxury birthday poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY: "VNVNC_BDAY_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH VNVNC B'DAY SQUARE MODE - 1:1 square luxury birthday poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY_SQUARE: "VNVNC_BDAY_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH CIRCUS MAXIMUS MODE - 9:16 vertical creepy circus poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS: "CIRCUS_MAXIMUS_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH CIRCUS MAXIMUS SQUARE MODE - 1:1 square creepy circus poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE: "CIRCUS_MAXIMUS_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH MTV NIGHT MODE - 9:16 vertical glossy MTV poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_MTV_NIGHT: "MTV_NIGHT_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH MTV NIGHT SQUARE MODE - 1:1 square glossy MTV poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_MTV_NIGHT_SQUARE: "MTV_NIGHT_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH SHADOW KINGDOM MODE - 9:16 vertical gothic chrome castle poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM: "SHADOW_KINGDOM_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH SHADOW KINGDOM SQUARE MODE - 1:1 square gothic chrome castle poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM_SQUARE: "SHADOW_KINGDOM_SQUARE_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH CANDY SHOP MODE - 9:16 vertical white candy luxury poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_CANDY_SHOP: "CANDY_SHOP_VARIATION",
+
+    # =========================================================================
+    # PHOTOBOOTH CANDY SHOP SQUARE MODE - 1:1 square white candy luxury poster
+    # =========================================================================
+    CaricatureStyle.PHOTOBOOTH_CANDY_SHOP_SQUARE: "CANDY_SHOP_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_STREET_HEAT: "STREET_HEAT_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE: "STREET_HEAT_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_OFFICE_CORE: "OFFICE_CORE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE: "OFFICE_CORE_SQUARE_VARIATION",
+
+    # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
@@ -2429,6 +3309,7 @@ class CaricatureService:
         size: Tuple[int, int] = (384, 384),
         personality_context: Optional[str] = None,
         extra_reference_images: Optional[List[Tuple[bytes, str]]] = None,
+        prompt_variation_index: Optional[int] = None,
     ) -> Optional[Caricature]:
         """Generate a caricature based on a reference photo.
 
@@ -2490,6 +3371,20 @@ class CaricatureService:
                 "SLAVIC_TALES_SQUARE_VARIATION": SLAVIC_TALES_SQUARE_VARIATIONS,
                 "BANYA_CHIC_VARIATION": BANYA_CHIC_VARIATIONS,
                 "BANYA_CHIC_SQUARE_VARIATION": BANYA_CHIC_SQUARE_VARIATIONS,
+                "VNVNC_BDAY_VARIATION": VNVNC_BDAY_VARIATIONS,
+                "VNVNC_BDAY_SQUARE_VARIATION": VNVNC_BDAY_SQUARE_VARIATIONS,
+                "CIRCUS_MAXIMUS_VARIATION": CIRCUS_MAXIMUS_VARIATIONS,
+                "CIRCUS_MAXIMUS_SQUARE_VARIATION": CIRCUS_MAXIMUS_SQUARE_VARIATIONS,
+                "MTV_NIGHT_VARIATION": MTV_NIGHT_VARIATIONS,
+                "MTV_NIGHT_SQUARE_VARIATION": MTV_NIGHT_SQUARE_VARIATIONS,
+                "SHADOW_KINGDOM_VARIATION": SHADOW_KINGDOM_VARIATIONS,
+                "SHADOW_KINGDOM_SQUARE_VARIATION": SHADOW_KINGDOM_SQUARE_VARIATIONS,
+                "CANDY_SHOP_VARIATION": CANDY_SHOP_VARIATIONS,
+                "CANDY_SHOP_SQUARE_VARIATION": CANDY_SHOP_SQUARE_VARIATIONS,
+                "STREET_HEAT_VARIATION": STREET_HEAT_VARIATIONS,
+                "STREET_HEAT_SQUARE_VARIATION": STREET_HEAT_SQUARE_VARIATIONS,
+                "OFFICE_CORE_VARIATION": OFFICE_CORE_VARIATIONS,
+                "OFFICE_CORE_SQUARE_VARIATION": OFFICE_CORE_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -2504,7 +3399,11 @@ class CaricatureService:
                 "BAD_SANTA_VARIATION": BAD_SANTA_VARIATIONS,
             }
             if style_prompt in variation_map:
-                style_prompt = random.choice(variation_map[style_prompt])
+                variations = variation_map[style_prompt]
+                if prompt_variation_index is None:
+                    style_prompt = random.choice(variations)
+                else:
+                    style_prompt = variations[prompt_variation_index % len(variations)]
 
             # Build personality-aware prompt
             personality_hint = ""
@@ -2521,9 +3420,11 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
             if extra_reference_images:
                 reference_asset_hint = """
 ADDITIONAL REFERENCE IMAGES:
-- Extra reference images are style or branding anchors, not extra people
-- If a party emblem/logo is provided, preserve its exact party name and use it for correct branding
-- Never replace the real people from the photo with the emblem or logo
+- Extra reference images are official style or branding anchors, not extra people.
+- The first extra reference image is the official party emblem/logo for this theme. Treat it as a brand lockup, not loose inspiration.
+- Reproduce the emblem's exact wording, layout, typography attitude, border/shape language, and visual hierarchy as closely as the model allows.
+- Do not invent a new event logo or substitute generic lettering when an official emblem reference is attached.
+- Never replace the real people from the photo with the emblem or logo.
 """
 
             # Determine if this style should be full color (photobooth) or B&W (thermal print styles)
@@ -2554,6 +3455,20 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
                 CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY,
+                CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS,
+                CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_MTV_NIGHT,
+                CaricatureStyle.PHOTOBOOTH_MTV_NIGHT_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM,
+                CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_CANDY_SHOP,
+                CaricatureStyle.PHOTOBOOTH_CANDY_SHOP_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_STREET_HEAT,
+                CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
+                CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -2603,6 +3518,35 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
                 CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE,
             )
+            is_vnvnc_bday_style = style in (
+                CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY,
+                CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY_SQUARE,
+            )
+
+            is_circus_maximus_style = style in (
+                CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS,
+                CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE,
+            )
+            is_mtv_night_style = style in (
+                CaricatureStyle.PHOTOBOOTH_MTV_NIGHT,
+                CaricatureStyle.PHOTOBOOTH_MTV_NIGHT_SQUARE,
+            )
+            is_shadow_kingdom_style = style in (
+                CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM,
+                CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM_SQUARE,
+            )
+            is_candy_shop_style = style in (
+                CaricatureStyle.PHOTOBOOTH_CANDY_SHOP,
+                CaricatureStyle.PHOTOBOOTH_CANDY_SHOP_SQUARE,
+            )
+            is_street_heat_style = style in (
+                CaricatureStyle.PHOTOBOOTH_STREET_HEAT,
+                CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE,
+            )
+            is_office_core_style = style in (
+                CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
+                CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
+            )
 
             if is_brainrot_style:
                 color_instruction = """- FULL COLOR — cursed meme palette: toxic lime, oversaturated cyan, tomato red, fake gold, candy magenta, JPEG-white glow
@@ -2643,6 +3587,66 @@ ADDITIONAL REFERENCE IMAGES:
 - Human faces must stay photoreal and exact while props, styling, and atmosphere become glossy decadent bathhouse editorial
 - If multiple people are present, keep the full group together in one shared bathhouse ritual scene
 - Huge ornamental gold title lettering and elegant footer branding are required"""
+            elif is_vnvnc_bday_style:
+                color_instruction = """- FULL COLOR — luxury birthday palette: matte cake cream, velvet black, lacquer crimson, chrome silver, pearl white, candle amber, champagne gold
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Prefer pure black void or black editorial negative space with floating premium props
+- Human faces must stay photoreal and exact; birthday objects may become hyper-polished luxury still life
+- If multiple people are present, keep the full group together in one shared hero composition
+- Huge title lettering, elegant footer branding, and emblem-driven VNVNC visual language are required"""
+            elif is_circus_maximus_style:
+                color_instruction = """- FULL COLOR — creepy circus palette: blood crimson, bone white, pitch black, tarnished gold, candy-stripe red-and-white
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Prefer pure black void background with floating circus elements
+- Octane 3D premium render quality — glossy materials, volumetric eerie uplighting, cinematic shadows
+- Red and white candy-stripe border pattern, vintage circus poster frame aesthetic
+- Haunted carnival atmosphere — slightly sinister, never cute or whimsical
+- If multiple people are present, keep the full group together in one shared circus scene
+- Bold theatrical "CIRCUS MAXIMUS" title lettering in chrome-red circus font is required"""
+            elif is_mtv_night_style:
+                color_instruction = """- FULL COLOR — glossy 90s MTV palette: liquid chrome, LCD white, electric magenta, deep-space black, candy purple, cyan highlights
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Prefer black editorial negative space with floating chrome, acrylic, and gel-plastic broadcast objects
+- Human faces must stay photoreal and exact while props and layout become hyper-designed TV-network pop spectacle
+- If multiple people are present, keep the full group together in one shared hero composition
+- Huge sharp MTV-style title lettering, premium logo language, and elegant footer branding are required
+- No AI slop: no waxy skin, no muddy glow fog, no generic club flyer clutter"""
+            elif is_shadow_kingdom_style:
+                color_instruction = """- FULL COLOR — Shadow Kingdom palette: moonlit black, gunmetal, mirror chrome, cold silver, ruby red, dark wine banners, blue jewel highlights, fire amber
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Premium Octane 3D gothic castle poster: black steel, chrome bevels, crown/sword motifs, storm sky, castle towers, red banners, fire braziers, deep parallax
+- Human faces must stay photoreal and exact; wardrobe/frame/environment may become polished dark fantasy royal key art
+- If multiple people are present, keep the full group together in one shared royal hero composition
+- Huge clean chrome gothic title lettering reading exactly SHADOW KINGDOM and elegant footer branding are required
+- No AI slop: no waxy skin, no muddy fog over faces, no random extra text, no generic fantasy-game clutter"""
+            elif is_candy_shop_style:
+                color_instruction = """- FULL COLOR — pure white and pink candy boutique palette: #FFFFFF background, soft pink, blush, pearl white, pale chrome, rose reflections
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Pure white studio background is mandatory; no black void, no room, no heavy texture
+- Human appearance is identity-locked: exact face, hair, skin tone, expression, body proportions, pose, and outfit identity from the source photo must stay unchanged
+- Props, surrounding objects, typography, background, lighting, and light accessories may become a polished modern candy-boutique campaign
+- Keep objects minimal: a few lollipops, sugar glass, wrapped candies, pearl sprinkles, soft chrome; no folk motifs and no busy collage
+- If multiple people are present, keep the full group together in one shared hero composition
+- Use the supplied candy-shop emblem reference as the official top logo/title; match its layout and candy-boutique emblem shape as closely as possible
+- Huge clean title lettering reading exactly CANDY SHOP and elegant footer branding are required
+- No AI slop: no waxy skin, no muddy glow, no random extra text, no childish flyer clutter"""
+            elif is_street_heat_style:
+                color_instruction = """- FULL COLOR — premium West Coast palette on a pure white background: creamy white, warm paper white, rich denim blue, basketball orange, polished gold, pale chrome, deep asphalt accents
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Photoreal people with tactile instant-film / Polaroid object realism: creamy border, subtle fiber paper texture, soft analog grain, glossy flash chemistry
+- West Coast street-luxury props only as restrained still-life accents: chrome palms, basketball, polished dice, chain motifs, lowrider chrome flashes
+- White negative space must stay clean and premium
+- No AI slop: no waxy skin, no cartoon game-art faces, no cheap graffiti clip-art, no random extra text, no muddy clutter
+"""
+            elif is_office_core_style:
+                color_instruction = """- FULL COLOR — pure white pixel office palette: #FFFFFF background, IBM blue, error red, terminal green, beige plastic, copier-paper white, black pixel outlines
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Pure white studio background is mandatory; no black void, no gray wall, no room, no dark cyber tunnel
+- Crisp pixelated 2D office-object art is mandatory: red corded telephone, beige CRT, old keyboard, fax, printer, paper stacks, folders, floppy disks, calculator, stapler, mouse cursor
+- Human identity stays exact; theme changes only the rendered art style, props, typography, and non-obscuring accessories
+- Keep the layout clean, mostly white, and premium; no messy collage and no random extra text
+- Use the supplied office-core emblem reference as the official top logo/title; match its pixel-office lockup as closely as possible
+"""
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
@@ -2690,10 +3694,12 @@ ADDITIONAL REFERENCE IMAGES:
             prompt = f"""Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo.
 
 CRITICAL REQUIREMENTS:
-- This must capture THE REAL PERSON OR REAL GROUP IN THE PHOTO - likeness is essential
-- Recognize their distinctive features and incorporate them naturally
-- If the reference photo contains multiple people, preserve the exact people count and keep every visible person in the final image
-- Never crop a group photo down to one hero, never merge two people into one, and never replace a person with a prop or logo
+- IDENTITY LOCK: preserve THE EXACT REAL PERSON OR REAL GROUP IN THE PHOTO. The output must look like the same people, not prettier substitutes, generic models, characters, or lookalikes.
+- Preserve face shape, eyes, nose, mouth, jawline, skin tone, skin texture, hairline, hairstyle, hair color, facial hair, glasses, expression, height relationship, body proportions, pose, clothing silhouette, and visible clothing text/logos from the source photo.
+- Style modifications are allowed only in the environment, color palette, lighting, typography, props, and non-obscuring accessories. Do not change personal appearance.
+- Do not beautify, age, de-age, slim, widen, gender-swap, ethnicity-shift, change hair, change skin tone, change expression, change outfit identity, or cover/replace faces.
+- If the reference photo contains multiple people, preserve the exact people count and keep every visible person in the final image with equal importance.
+- Never crop a group photo down to one hero, never merge two people into one, and never replace a person with a prop or logo.
 {color_instruction}
 - TEXT LANGUAGE RULES (CRITICAL!!!):
   * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C
@@ -2725,6 +3731,13 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL,
                 CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES,
                 CaricatureStyle.PHOTOBOOTH_BANYA_CHIC,
+                CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY,
+                CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS,
+                CaricatureStyle.PHOTOBOOTH_MTV_NIGHT,
+                CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM,
+                CaricatureStyle.PHOTOBOOTH_CANDY_SHOP,
+                CaricatureStyle.PHOTOBOOTH_STREET_HEAT,
+                CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -2744,6 +3757,16 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Cinematic Slavic fairy-tale fashion tableau, enchanted moonlit environment, carved terem and forest magic details, premium live-action storybook fantasy, ensemble cast staging, exact photoreal human faces preserved"
             elif is_banya_chic_style:
                 image_style = "Decadent Slavic bathhouse editorial portrait, steamy cedar-and-brass interior, humid luxury atmosphere, caviar-and-champagne absurd glamour, shared group scene, exact photoreal human faces preserved"
+            elif is_mtv_night_style:
+                image_style = "Glossy late-90s MTV network campaign poster, direct-flash fashion photography, liquid chrome and translucent candy-plastic objects, Y2K broadcast graphics, halftone print texture, exact photoreal human faces preserved"
+            elif is_shadow_kingdom_style:
+                image_style = "Premium Octane 3D gothic dark-fantasy castle poster, black steel and mirror chrome frame, beveled silver typography, crown and sword emblem, ruby red banners, blue jewel accents, firelight, storm moon, deep parallax, exact photoreal human faces preserved"
+            elif is_candy_shop_style:
+                image_style = "Premium Octane 3D modern candy boutique poster, pure white studio background, soft pink glossy candy objects, pale chrome and pearl accents, minimal luxury campaign layout, exact photoreal human faces preserved"
+            elif is_street_heat_style:
+                image_style = "Premium white-background West Coast instant-film campaign poster, tactile Polaroid object realism, creamy paper border, subtle analog grain, polished chrome palm and lowrider still-life accents, basketball energy, luxe dice, chain details, exact photoreal human faces preserved"
+            elif is_office_core_style:
+                image_style = "Pure white pixelated 2D office-core poster, crisp 1990s desktop UI icon style, chunky dithering, beige CRT computers, red corded telephone, fax machine, printer paper, folders, exact human likeness preserved"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

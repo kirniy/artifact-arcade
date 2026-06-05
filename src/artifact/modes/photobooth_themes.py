@@ -25,6 +25,16 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, List
 
 
+@dataclass(frozen=True)
+class PhotoboothMenuVariant:
+    """Selector metadata for one menu slot under a single active theme."""
+
+    display_name: str
+    description: str
+    color: Optional[Tuple[int, int, int]] = None
+    prompt_variation_index: Optional[int] = None
+
+
 @dataclass
 class PhotoboothTheme:
     """Configuration for a photobooth theme."""
@@ -50,6 +60,10 @@ class PhotoboothTheme:
     party_date_rollover_hour: Optional[int] = None  # Use previous date before this Moscow hour
     footer_date_mode: str = "date"  # "date" or "weekday_ru"
     reference_image_filenames: Tuple[str, ...] = ()
+    menu_display_name: Optional[str] = None  # Optional selector label override
+    menu_description: Optional[str] = None  # Optional selector ticker description
+    menu_color: Optional[Tuple[int, int, int]] = None  # Optional selector accent color
+    menu_variants: Tuple[PhotoboothMenuVariant, ...] = ()
 
 
 # =============================================================================
@@ -192,6 +206,9 @@ BRAINROT_THEME = PhotoboothTheme(
     ticker_idle="КРИНЖ ПАТИ",
     lcd_prefix="BRAINR",
     description="ИТАЛЬЯНСКИЙ БРЕЙНРОТ",
+    menu_display_name="BRAINROT",
+    menu_description="КРИНЖ ПАТИ",
+    menu_color=(255, 232, 72),
     ai_style_key="brainrot",
 )
 
@@ -210,6 +227,9 @@ WEDDING_THEME = PhotoboothTheme(
     ticker_idle="ФАВТФАА ПЭПЭ",
     lcd_prefix="СВАД04",
     description="СЕЛЬСКИЙ ГЛАМУР",
+    menu_display_name="ЛЮБОВЬ\nИ ГОЛУБИ",
+    menu_description="СЕЛЬСКАЯ СВАДЬБА",
+    menu_color=(255, 214, 232),
     ai_style_key="wedding",
 )
 
@@ -228,6 +248,9 @@ WHATSAPP_THEME = PhotoboothTheme(
     ticker_idle="ПЭПЭШНЕЙШЕ",
     lcd_prefix="WAPP",
     description="БАБУШКИН ЧАТ",
+    menu_display_name="WA\nОТКРЫТКИ",
+    menu_description="ОТКРЫТКА В ЧАТ",
+    menu_color=(80, 215, 120),
     ai_style_key="whatsapp",
 )
 
@@ -246,6 +269,9 @@ SLAVIC_SOUL_THEME = PhotoboothTheme(
     ticker_idle="ДУША",
     lcd_prefix="ДУША",
     description="СЛАВЯНСКАЯ ДУША",
+    menu_display_name="HAPPY B'DAY\nVNVNC",
+    menu_description="LUXURY BIRTHDAY POSTER",
+    menu_color=(255, 210, 126),
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="slavic_soul",
@@ -267,6 +293,9 @@ SLAVIC_TALES_THEME = PhotoboothTheme(
     ticker_idle="СКАЗКИ",
     lcd_prefix="СКАЗК",
     description="СЛАВЯНСКИЕ СКАЗКИ",
+    menu_display_name="ПОСТОЯННИК\nВИНОВНИЦЫ",
+    menu_description="VIP LICENSE POSTER",
+    menu_color=(214, 92, 106),
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="slavic_tales",
@@ -288,10 +317,214 @@ BANYA_CHIC_THEME = PhotoboothTheme(
     ticker_idle="БАНЯ",
     lcd_prefix="БАНЯ",
     description="БАННЫЙ ШИК",
+    menu_display_name="RAP\nGOD",
+    menu_description="HYPER-LUXURY HIP-HOP POSTER",
+    menu_color=(255, 226, 150),
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="banya_chic",
     reference_image_filenames=("slaviccore-vnvnc.png",),
+)
+
+
+# =============================================================================
+# THEME: VNVNC B'DAY (9 years)
+# =============================================================================
+VNVNC_BDAY_THEME = PhotoboothTheme(
+    id="vnvnc-bday",
+    event_name="VNVNC B'DAY",
+    event_date="9 YEARS",
+    logo_filename="vnvnc-bday.png",
+    theme_chrome=(214, 216, 221),
+    theme_red=(179, 19, 23),
+    theme_black=(11, 11, 13),
+    ticker_idle="BDAYVNV",
+    lcd_prefix="B'DAY",
+    description="VNVNC B'DAY",
+    menu_display_name="B'DAY\nMODE",
+    menu_description="VNVNC B'DAY",
+    menu_color=(214, 216, 221),
+    menu_variants=(
+        PhotoboothMenuVariant(
+            display_name="B'DAY\nMODE",
+            description="LUXURY BIRTHDAY POSTER",
+            color=(255, 210, 126),
+            prompt_variation_index=0,
+        ),
+        PhotoboothMenuVariant(
+            display_name="КАРТА\nVNVNC",
+            description="VIP LICENSE POSTER",
+            color=(214, 92, 106),
+            prompt_variation_index=1,
+        ),
+        PhotoboothMenuVariant(
+            display_name="RAP\nGOD",
+            description="HYPER-LUXURY HIP-HOP POSTER",
+            color=(255, 226, 150),
+            prompt_variation_index=2,
+        ),
+    ),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="vnvnc_bday",
+    reference_image_filenames=("emblem-v1-chrome-oval.png",),
+)
+
+
+# =============================================================================
+# THEME: MTV NIGHT — glossy 90s MTV club poster
+# =============================================================================
+MTV_NIGHT_THEME = PhotoboothTheme(
+    id="mtv-night",
+    event_name="MTV NIGHT",
+    event_date="",
+    logo_filename="mtv-night.png",
+    theme_chrome=(233, 236, 255),
+    theme_red=(255, 41, 143),
+    theme_black=(8, 6, 18),
+    ticker_idle="MTVNIGHT",
+    lcd_prefix="MTVNT",
+    description="MTV NIGHT",
+    menu_display_name="MTV\nNIGHT",
+    menu_description="GLOSSY 90S POSTER",
+    menu_color=(233, 236, 255),
+    menu_variants=(
+        PhotoboothMenuVariant(
+            display_name="MTV\nNIGHT",
+            description="GLOSSY 90S POSTER",
+            color=(233, 236, 255),
+            prompt_variation_index=0,
+        ),
+        PhotoboothMenuVariant(
+            display_name="LOGO\nFEVER",
+            description="HYPER-BRANDED MTV COLLAGE",
+            color=(255, 41, 143),
+            prompt_variation_index=1,
+        ),
+    ),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="mtv_night",
+    reference_image_filenames=(),
+)
+
+
+# =============================================================================
+# THEME: КОРОЛЕВСТВО ТЕНЕЙ — gothic chrome castle poster
+# =============================================================================
+SHADOW_KINGDOM_THEME = PhotoboothTheme(
+    id="shadow-kingdom",
+    event_name="КОРОЛЕВСТВО ТЕНЕЙ",
+    event_date="",
+    logo_filename="shadow-kingdom.png",
+    theme_chrome=(224, 232, 242),
+    theme_red=(164, 18, 42),
+    theme_black=(3, 6, 10),
+    ticker_idle="SHADOW",
+    lcd_prefix="SHADOW",
+    description="КОРОЛЕВСТВО ТЕНЕЙ",
+    menu_display_name="SHADOW\nKINGDOM",
+    menu_description="GOTHIC CASTLE POSTER",
+    menu_color=(224, 232, 242),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="shadow_kingdom",
+    reference_image_filenames=("shadow-kingdom.png",),
+)
+
+
+# =============================================================================
+# THEME: CIRCUS MAXIMUS — Octane 3D Creepy Circus
+# =============================================================================
+CIRCUS_MAXIMUS_THEME = PhotoboothTheme(
+    id="circus-maximus",
+    event_name="CIRCUS MAXIMUS",
+    event_date="",
+    logo_filename="circus-maximus.png",
+    theme_chrome=(255, 40, 40),
+    theme_red=(180, 20, 20),
+    theme_black=(0, 0, 0),
+    ticker_idle="MAXIMUS",
+    lcd_prefix="MAXIMUS",
+    description="CIRCUS MAXIMUS — Creepy Circus",
+    menu_display_name="CIRCUS\nMAXIMUS",
+    menu_description="CREEPY CIRCUS",
+    menu_color=(255, 40, 40),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="circus_maximus",
+)
+
+
+# =============================================================================
+# THEME: CANDY SHOP — Pure white pink candy boutique
+# =============================================================================
+CANDY_SHOP_THEME = PhotoboothTheme(
+    id="candy-shop",
+    event_name="CANDY SHOP",
+    event_date="22.05",
+    logo_filename="candy-shop.png",
+    theme_chrome=(255, 68, 126),
+    theme_red=(192, 24, 48),
+    theme_black=(255, 255, 255),
+    ticker_idle="CANDY",
+    lcd_prefix="CANDY",
+    description="CANDY SHOP",
+    menu_display_name="CANDY\nSHOP",
+    menu_description="WHITE CANDY BOUTIQUE",
+    menu_color=(255, 68, 126),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="candy_shop",
+    reference_image_filenames=("candy-shop.png",),
+)
+
+
+# =============================================================================
+# THEME: STREET HEAT — west coast polaroid luxury
+# =============================================================================
+STREET_HEAT_THEME = PhotoboothTheme(
+    id="street-heat",
+    event_name="STREET HEAT",
+    event_date="",
+    logo_filename="street-heat.png",
+    theme_chrome=(205, 167, 106),
+    theme_red=(160, 48, 32),
+    theme_black=(255, 255, 255),
+    ticker_idle="STHEAT",
+    lcd_prefix="HEAT",
+    description="WEST COAST POLAROID",
+    menu_display_name="STREET\nHEAT",
+    menu_description="WEST COAST POLAROID",
+    menu_color=(205, 167, 106),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="street_heat",
+    reference_image_filenames=("street-heat.png", "street-heat-scene-reference.jpg"),
+)
+
+
+# =============================================================================
+# THEME: OFFICE CORE — pixel office equipment on pure white
+# =============================================================================
+OFFICE_CORE_THEME = PhotoboothTheme(
+    id="office-core",
+    event_name="OFFICE CORE",
+    event_date="",
+    logo_filename="office-core.png",
+    theme_chrome=(28, 84, 196),
+    theme_red=(216, 38, 38),
+    theme_black=(255, 255, 255),
+    ticker_idle="OFFICE",
+    lcd_prefix="OFFICE",
+    description="OFFICE CORE",
+    menu_display_name="OFFICE\nCORE",
+    menu_description="PIXEL OFFICE POSTER",
+    menu_color=(28, 84, 196),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="office_core",
+    reference_image_filenames=("office-core.png",),
 )
 
 
@@ -312,10 +545,17 @@ THEMES = {
     "slavic_soul": SLAVIC_SOUL_THEME,
     "slavic_tales": SLAVIC_TALES_THEME,
     "banya_chic": BANYA_CHIC_THEME,
+    "vnvnc-bday": VNVNC_BDAY_THEME,
+    "mtv-night": MTV_NIGHT_THEME,
+    "shadow-kingdom": SHADOW_KINGDOM_THEME,
+    "circus-maximus": CIRCUS_MAXIMUS_THEME,
+    "candy-shop": CANDY_SHOP_THEME,
+    "street-heat": STREET_HEAT_THEME,
+    "office-core": OFFICE_CORE_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "slavic_soul"
+DEFAULT_THEME = "office-core"
 
 
 def get_current_theme() -> PhotoboothTheme:
@@ -327,6 +567,7 @@ def get_current_theme() -> PhotoboothTheme:
     - export PHOTOBOOTH_THEME=malchishnik
     - export PHOTOBOOTH_THEME=feyphoria
     - export PHOTOBOOTH_THEME=fiesta
+    - export PHOTOBOOTH_THEME=vnvnc-bday
 
     Returns:
         PhotoboothTheme instance for the active theme
