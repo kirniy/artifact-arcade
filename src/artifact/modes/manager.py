@@ -16,6 +16,7 @@ from artifact.animation.reveal_effects import RevealAnimator, RevealStyle
 from artifact.graphics.renderer import Renderer
 from artifact.graphics.display_coordinator import DisplayCoordinator, CrossDisplayEffect
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
+from artifact.modes.photobooth_themes import get_current_theme, get_theme_by_id
 from artifact.modes.rapgod import RapGodMode
 from artifact.audio.engine import get_audio_engine
 
@@ -374,9 +375,9 @@ MODE_LABELS_RU = {
     "brainrot_booth": "BRAINROT",
     "wedding_booth": "ЛЮБОВЬ И ГОЛУБИ",
     "whatsapp_booth": "WA ОТКРЫТКИ",
-    "slavic_soul_booth": "СЛАВЯНСКАЯ ДУША",
-    "slavic_tales_booth": "СЛАВЯНСКИЕ СКАЗКИ",
-    "banya_chic_booth": "БАННЫЙ ШИК",
+    "slavic_soul_booth": "HAPPY B'DAY VNVNC",
+    "slavic_tales_booth": "ПОСТОЯННИК ВИНОВНИЦЫ",
+    "banya_chic_booth": "RAP GOD",
     "y2k": "НУЛЕВЫЕ",
     "bad_santa": "ПЛОХОЙ САНТА",
 }
@@ -390,9 +391,9 @@ MODE_DESCRIPTIONS_RU = {
     "brainrot_booth": "КРИНЖ ПАТИ",
     "wedding_booth": "ФАВТФАА ПЭПЭ",
     "whatsapp_booth": "ПЭПЭШНЕЙШЕ",
-    "slavic_soul_booth": "ФОЛК ГЛАМУР И ЗОЛОТО",
-    "slavic_tales_booth": "СКАЗКИ, ОРНАМЕНТ, МАГИЯ",
-    "banya_chic_booth": "ПАР, САМОВАР, ИКРА",
+    "slavic_soul_booth": "LUXURY BIRTHDAY POSTER",
+    "slavic_tales_booth": "VIP LICENSE POSTER",
+    "banya_chic_booth": "HYPER-LUXURY HIP-HOP POSTER",
     "roast": "ПРОЖАРКА СТЕБЕМ ПО ФОТО",
     "zodiac": "Что говорят звезды?",
     "quiz": "Проверь себя!",
@@ -402,15 +403,67 @@ MODE_DESCRIPTIONS_RU = {
     "brick_breaker": "Ломай кирпичи!",
     "video": "Смотри видео",
     "rap_god": "Запиши свой трек!",
-    "guess_me": "ИИ угадает кто ты",
-    "autopsy": "Вскрытие личности",
+    "guess_me": "Угадай кто я?",
+    "autopsy": "Посмотри что внутри!",
     "pong": "Олдскул пинг понг",
     "snake_classic": "Ешь и расти!",
     "flappy": "Лети и не падай!",
-    "gallery": "Галерея фоток",
-    "y2k": "Тест на знание нулевых!",
-    "bad_santa": "Заслужил ли ты подарки?",
+    "flow_field": "Потоки частиц",
+    "glitch_mirror": "Глюк в матрице",
+    "dither_art": "Портрет в пикселях",
+    "ascii_art": "Текстовый портрет",
+    "particle_sculptor": "Лепим из частиц",
+    "bar_runner": "Наливай и беги!",
+    "gallery": "Смотри лучшие кадры",
+    "y2k": "Ретро вайб нулевых",
+    "bad_santa": "Непослушный праздник",
 }
+
+
+def _get_theme_for_mode_cls(mode_cls: Type[BaseMode]):
+    theme_id = getattr(mode_cls, "theme_id_override", None)
+    if theme_id:
+        return get_theme_by_id(theme_id)
+    if getattr(mode_cls, "name", None) == "photobooth":
+        return get_current_theme()
+    return None
+
+
+
+def _resolve_mode_display_name(mode_cls: Type[BaseMode]) -> str:
+    explicit_display_name = getattr(mode_cls, "menu_display_name_override", None)
+    if explicit_display_name:
+        return explicit_display_name
+    theme = _get_theme_for_mode_cls(mode_cls)
+    if theme is not None:
+        return theme.menu_display_name or getattr(mode_cls, "display_name", theme.event_name)
+    return MODE_LABELS_RU.get(mode_cls.name, mode_cls.display_name)
+
+
+
+def _resolve_mode_description(mode_cls: Type[BaseMode], display_name: str) -> str:
+    explicit_description = getattr(mode_cls, "menu_description_override", None)
+    if explicit_description:
+        return explicit_description
+    theme = _get_theme_for_mode_cls(mode_cls)
+    if theme is not None:
+        return theme.menu_description or theme.description or display_name
+    return MODE_DESCRIPTIONS_RU.get(
+        mode_cls.name,
+        getattr(mode_cls, "description", getattr(mode_cls, "__doc__", "") or display_name),
+    )
+
+
+
+def _resolve_mode_color(mode_cls: Type[BaseMode]) -> tuple[int, int, int]:
+    explicit_color = getattr(mode_cls, "menu_color_override", None)
+    if explicit_color is not None:
+        return explicit_color
+    theme = _get_theme_for_mode_cls(mode_cls)
+    if theme is not None:
+        return theme.menu_color or theme.theme_chrome
+    return MODE_COLORS.get(mode_cls.name, (255, 200, 0))
+
 
 
 @dataclass
@@ -784,14 +837,14 @@ class ModeManager:
             mode_cls: The mode class to register
             enabled: Whether mode is available for selection
         """
-        display_name = MODE_LABELS_RU.get(mode_cls.name, mode_cls.display_name)
+        display_name = _resolve_mode_display_name(mode_cls)
         info = ModeInfo(
             cls=mode_cls,
             name=mode_cls.name,
             display_name=display_name,
             icon=mode_cls.icon,
             style=mode_cls.style,
-            description=getattr(mode_cls, "description", getattr(mode_cls, "__doc__", "") or display_name),
+            description=_resolve_mode_description(mode_cls, display_name),
             enabled=enabled
         )
         self._registered_modes[mode_cls.name] = info
@@ -821,6 +874,22 @@ class ModeManager:
             return None
         name = self._mode_order[self._selected_index % len(self._mode_order)]
         return self._registered_modes.get(name)
+
+    def _get_mode_title(self, mode_name: str) -> str:
+        mode_info = self._registered_modes.get(mode_name)
+        if mode_info is not None:
+            return mode_info.display_name
+        return MODE_LABELS_RU.get(mode_name, mode_name.upper())
+
+    def _get_mode_color(self, mode: Optional[ModeInfo]) -> tuple[int, int, int]:
+        if mode is None:
+            return (255, 200, 0)
+        return _resolve_mode_color(mode.cls)
+
+    def _get_mode_description_text(self, mode: Optional[ModeInfo]) -> str:
+        if mode is None:
+            return ""
+        return mode.description or mode.display_name
 
     def _get_result_image(self) -> Optional[bytes]:
         """Get image data from result, checking all known image keys.
@@ -1442,8 +1511,8 @@ class ModeManager:
         elif self._state == ManagerState.MODE_SELECT:
             mode = self.get_selected_mode()
             if mode:
-                # Use mode.display_name, truncate to fit with arrows (16 - 4 chars for "< " and " >")
-                name = mode.display_name[:12]
+                # LCD is single-line only: collapse explicit line breaks safely.
+                name = " ".join((mode.display_name or mode.name).split())[:12]
                 return f"<{name}>".center(16)[:16]
             return "<< РЕЖИМ >>".center(16)
 
@@ -1508,7 +1577,7 @@ class ModeManager:
             return
 
         # Get mode color with pulsing effect
-        mode_color = MODE_COLORS.get(mode.name, (255, 200, 0))
+        mode_color = self._get_mode_color(mode)
         pulse = 0.7 + 0.3 * math.sin(t * 4)
         glow_color = tuple(int(c * pulse) for c in mode_color)
 
@@ -1544,26 +1613,27 @@ class ModeManager:
 
         label = (mode.display_name or mode.name).strip().upper()
         font = load_font("cyrillic")
-        max_width = 116  # Allow up to 116px for text (fits 9+ Cyrillic chars at scale 2)
-        max_height = panel_y2 - panel_y1 - 6
+        max_width = 120  # Give labels nearly the full safe width to avoid needless cropping
+        max_height = panel_y2 - panel_y1 - 4
 
         def layout_lines(scale: int, max_lines: int):
             lines = smart_wrap_text(label, max_width, font, scale)
             if len(lines) > max_lines:
-                lines = lines[:max_lines]
-                last = lines[-1].rstrip()
-                while last and font.measure_text(last + "...")[0] * scale > max_width:
-                    last = last[:-1]
-                lines[-1] = (last + "...") if last else "..."
+                return None, None, None
             line_height = CHAR_HEIGHT * scale + 2
             total_height = len(lines) * line_height
             return lines, line_height, total_height
 
         scale = 2
         lines, line_height, total_height = layout_lines(scale, 2)
-        if total_height > max_height:
+        if not lines or total_height > max_height:
             scale = 1
-            lines, line_height, total_height = layout_lines(scale, 3)
+            lines, line_height, total_height = layout_lines(scale, 4)
+
+        if not lines:
+            lines = label.splitlines()[:4] or [label]
+            line_height = CHAR_HEIGHT + 2
+            total_height = len(lines) * line_height
 
         text_y = panel_y1 + (panel_y2 - panel_y1 - total_height) // 2
         for line in lines:
@@ -1622,7 +1692,7 @@ class ModeManager:
 
         # Get current mode's unique color
         mode = self.get_selected_mode()
-        mode_color = MODE_COLORS.get(mode.name, (255, 200, 0)) if mode else (255, 200, 0)
+        mode_color = self._get_mode_color(mode)
 
         # Mirror horizontally for selfie view
         frame = np.fliplr(frame)
@@ -1840,7 +1910,7 @@ class ModeManager:
 
         # Get current mode's unique color
         mode = self.get_selected_mode()
-        mode_color = MODE_COLORS.get(mode.name, (255, 200, 0)) if mode else (255, 200, 0)
+        mode_color = self._get_mode_color(mode)
         mr, mg, mb = mode_color
 
         # Create coordinate arrays
@@ -1920,7 +1990,7 @@ class ModeManager:
         mode = self.get_selected_mode()
         if mode:
             # Clean "Word Cycle" ticker (RSVP style) - No horizontal scrolling
-            description = MODE_DESCRIPTIONS_RU.get(mode.name, mode.display_name)
+            description = self._get_mode_description_text(mode)
             words = description.split()
             if not words:
                 words = [mode.display_name]
@@ -1983,7 +2053,7 @@ class ModeManager:
         if self._last_result:
             # Get mode display name
             mode_name = self._last_result.mode_name
-            mode_title = MODE_LABELS_RU.get(mode_name, mode_name.upper())
+            mode_title = self._get_mode_title(mode_name)
 
             # Show mode name and navigation hint
             if self._state == ManagerState.PRINTING:
@@ -2074,7 +2144,7 @@ class ModeManager:
             # Prediction text view with PAGINATION (no scrolling!)
             # Get mode display name for title (not hardcoded!)
             mode_name = self._last_result.mode_name if self._last_result else "РЕЗУЛЬТАТ"
-            mode_title = MODE_LABELS_RU.get(mode_name, mode_name.upper())
+            mode_title = self._get_mode_title(mode_name)
 
             # Calculate UNIFIED total pages: text pages + extra views (photo, QR)
             text_page_count = len(self._result_text_pages) if self._result_text_pages else 1

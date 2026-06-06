@@ -218,7 +218,9 @@
             background: rgba(255, 255, 255, 0.1);
             color: #fff;
             font-size: 11px;
+            line-height: 1.2;
             text-align: center;
+            white-space: pre-line;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -308,17 +310,7 @@
     <!-- Mode Selection -->
     <div class="control-section">
         <div class="section-title">Режимы</div>
-        <div class="mode-grid">
-            <button class="mode-btn" data-mode="fortune"><span class="icon">🔮</span>Гадание</button>
-            <button class="mode-btn" data-mode="ai_prophet"><span class="icon">🧙</span>Пророк</button>
-            <button class="mode-btn" data-mode="photobooth"><span class="icon">📸</span>Фото</button>
-            <button class="mode-btn" data-mode="slavic_soul_booth"><span class="icon">👑</span>СЛАВЯНСКАЯ ДУША</button>
-            <button class="mode-btn" data-mode="slavic_tales_booth"><span class="icon">🪆</span>СЛАВЯНСКИЕ СКАЗКИ</button>
-            <button class="mode-btn" data-mode="banya_chic_booth"><span class="icon">🧖</span>БАННЫЙ ШИК</button>
-            <button class="mode-btn" data-mode="roast"><span class="icon">🔥</span>Роуст</button>
-            <button class="mode-btn" data-mode="quiz"><span class="icon">❓</span>Викторина</button>
-            <button class="mode-btn" data-mode="squid_game"><span class="icon">🦑</span>Игра</button>
-        </div>
+        <div class="mode-grid" id="modeGrid"></div>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -406,14 +398,35 @@
             });
         });
 
-        // Mode buttons
-        document.querySelectorAll('[data-mode]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const mode = e.currentTarget.dataset.mode;
-                vibrate(30);
-                sendCommand('start_mode', { mode });
-            });
+        // Mode buttons (delegated because buttons are rendered from live config)
+        document.getElementById('modeGrid').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-mode]');
+            if (!btn) return;
+            const mode = btn.dataset.mode;
+            vibrate(30);
+            sendCommand('start_mode', { mode });
         });
+
+        // Load mode buttons from live server config
+        async function loadModes() {
+            const modeGrid = document.getElementById('modeGrid');
+            if (!modeGrid) return;
+
+            try {
+                const response = await fetch('/api/modes');
+                if (!response.ok) throw new Error('modes fetch failed');
+                const data = await response.json();
+                const modes = Array.isArray(data.modes) ? data.modes : [];
+                modeGrid.innerHTML = modes.map(mode => `
+                    <button class="mode-btn" data-mode="${mode.name}">
+                        <span class="icon">${mode.icon || '🎮'}</span>${mode.label || mode.name}
+                    </button>
+                `).join('');
+            } catch (e) {
+                console.error('Mode list load failed:', e);
+                modeGrid.innerHTML = '<button class="mode-btn" data-mode="photobooth"><span class="icon">📸</span>Фото</button>';
+            }
+        }
 
         // Volume slider
         const volumeSlider = document.getElementById('volumeSlider');
@@ -444,6 +457,7 @@
 
         // Update status every 5 seconds
         setInterval(updateStatus, 5000);
+        loadModes();
         updateStatus();
 
         // Telegram WebApp integration

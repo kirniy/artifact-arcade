@@ -708,7 +708,13 @@ def upload_bytes_to_s3(
                     kwargs={"prefix": prefix},
                     daemon=True,
                 ).start()
-            elif pre_info is None:
+            if pre_info is not None:
+                threading.Thread(
+                    target=provision_short_url_redirect,
+                    args=(pre_info,),
+                    daemon=True,
+                ).start()
+            else:
                 threading.Thread(
                     target=_upload_redirect_html,
                     args=(short_id, url),

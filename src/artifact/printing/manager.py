@@ -13,15 +13,16 @@ from io import BytesIO
 from typing import Optional, Dict, Any, Union
 
 from artifact.core.events import EventBus, Event, EventType
-from artifact.hardware.printer import (
-    create_label_printer,
-    IP802Printer,
-    MockLabelPrinter,
-    # Legacy support
-    create_printer,
-    EM5820Printer,
+from artifact.hardware.printer.em5820 import EM5820Printer, create_printer
+from artifact.hardware.printer.ip802 import IP802Printer, MockLabelPrinter, create_label_printer
+from artifact.hardware.printer.rp80 import (
+    MockRP80ReceiptPrinter,
+    RP80ReceiptPrinter,
+    auto_detect_rp80_printer,
+    create_rp80_printer,
 )
 from artifact.printing.label_receipt import LabelReceiptGenerator, LabelReceipt
+from artifact.printing.photobooth_roll import PhotoboothRollReceipt, PhotoboothRollReceiptGenerator
 from artifact.printing.receipt import ReceiptGenerator, Receipt
 
 logger = logging.getLogger(__name__)
@@ -52,14 +53,15 @@ MODE_NAMES_RU = {
 class PrintManager:
     """Queue-based printing manager for thermal label stickers.
 
-    Uses the AIYIN IP-802 label printer (58×100mm labels) as default.
-    Falls back to EM5820 receipt printer if label printer unavailable.
+    Uses the RP80 receipt printer for photobooth when present, otherwise the
+    AIYIN IP-802 label printer. Falls back to EM5820 only when explicitly
+    requested with ARTIFACT_USE_LEGACY_PRINTER=true.
     """
 
     def __init__(
         self,
         event_bus: EventBus,
-        printer: Optional[Union[IP802Printer, EM5820Printer]] = None,
+        printer: Optional[Union[IP802Printer, EM5820Printer, RP80ReceiptPrinter]] = None,
         mock: bool = False,
         use_legacy_printer: bool = False,
     ) -> None:
@@ -73,17 +75,25 @@ class PrintManager:
         """
         self._event_bus = event_bus
         self._use_legacy = use_legacy_printer
+        self._use_rp80 = False
+        self._mock_requested = mock
 
         if printer:
             self._printer = printer
             self._use_legacy = isinstance(printer, EM5820Printer)
+            self._use_rp80 = isinstance(printer, RP80ReceiptPrinter)
         elif use_legacy_printer:
             self._printer = create_printer(mock=mock)
+        elif not mock and auto_detect_rp80_printer():
+            self._printer = create_rp80_printer(mock=False)
+            self._use_rp80 = True
         else:
             self._printer = create_label_printer(mock=mock)
 
         # Choose appropriate receipt generator
-        if self._use_legacy:
+        if self._use_rp80:
+            self._generator = PhotoboothRollReceiptGenerator()
+        elif self._use_legacy:
             self._generator = ReceiptGenerator()
         else:
             self._generator = LabelReceiptGenerator()
@@ -93,10 +103,40 @@ class PrintManager:
         self._running = False
         self._telegram_bot = None  # Lazy-loaded to avoid circular imports
 
+    async def _select_rp80_printer(self) -> bool:
+        """Switch this manager to the RP80 receipt printer when USB is present."""
+        detected = auto_detect_rp80_printer()
+        if not detected:
+            return False
+
+        if self._printer and getattr(self._printer, "is_connected", False):
+            try:
+                await self._printer.disconnect()
+            except Exception as exc:
+                logger.debug("Ignoring disconnect error while switching to RP80: %s", exc)
+
+        self._printer = create_rp80_printer(mock=False)
+        self._generator = PhotoboothRollReceiptGenerator()
+        self._use_legacy = False
+        self._use_rp80 = True
+        logger.info("RP80 USB printer detected; photobooth prints will use 80mm receipt output")
+        return True
+
+    async def _maybe_select_rp80_for_job(self, mode_name: str) -> None:
+        """Hot-plug RP80 for photobooth jobs without requiring app restart."""
+        if self._mock_requested or self._use_legacy or self._use_rp80 or mode_name != "photobooth":
+            return
+        await self._select_rp80_printer()
+
     @property
     def is_label_printer(self) -> bool:
         """Check if using label printer (not legacy receipt printer)."""
-        return not self._use_legacy
+        return not self._use_legacy and not self._use_rp80
+
+    @property
+    def is_rp80_printer(self) -> bool:
+        """Check if using the RP80 photobooth receipt printer."""
+        return self._use_rp80
 
     @property
     def printer_info(self) -> Dict[str, Any]:
@@ -104,12 +144,12 @@ class PrintManager:
         if hasattr(self._printer, 'get_status'):
             # IP802 has async get_status
             return {
-                "type": "label" if self.is_label_printer else "receipt",
+                "type": "rp80" if self.is_rp80_printer else "label" if self.is_label_printer else "receipt",
                 "connected": self._printer.is_connected,
                 "busy": self._printer.is_busy,
             }
         return {
-            "type": "label" if self.is_label_printer else "receipt",
+            "type": "rp80" if self.is_rp80_printer else "label" if self.is_label_printer else "receipt",
             "connected": getattr(self._printer, 'is_connected', False),
             "busy": getattr(self._printer, 'is_busy', False),
         }
@@ -119,10 +159,11 @@ class PrintManager:
         if self._running:
             return
         self._running = True
-        await self._ensure_connected()
+        if not await self._ensure_connected():
+            logger.warning("Printer not connected at startup; printing remains optional until a printer appears")
         self._task = asyncio.create_task(self._run())
         logger.info(
-            f"PrintManager started with {'label' if self.is_label_printer else 'receipt'} printer"
+            f"PrintManager started with {'rp80' if self.is_rp80_printer else 'label' if self.is_label_printer else 'receipt'} printer"
         )
 
     async def stop(self) -> None:
@@ -283,18 +324,27 @@ class PrintManager:
                 break
 
             try:
-                if not await self._ensure_connected():
-                    raise RuntimeError("Printer not connected")
-
                 mode_name = (
                     data.get("type") or
                     data.get("mode") or
                     data.get("mode_name") or
                     "generic"
                 )
+                await self._maybe_select_rp80_for_job(mode_name)
 
-                # Generate receipt using appropriate generator
-                receipt = self._generator.generate_receipt(mode_name, data)
+                if not await self._ensure_connected():
+                    if mode_name == "photobooth":
+                        logger.warning("Photobooth print skipped because optional printer is not connected")
+                        continue
+                    raise RuntimeError("Printer not connected")
+
+                # Generate receipt using appropriate generator. The RP80 layout is
+                # intentionally photobooth-specific; other modes still use the
+                # generic receipt renderer if they reach this printer.
+                if self._use_rp80 and mode_name != "photobooth":
+                    receipt = ReceiptGenerator().generate_receipt(mode_name, data)
+                else:
+                    receipt = self._generator.generate_receipt(mode_name, data)
 
                 # Print the receipt
                 ok = await self._print_receipt(receipt)
@@ -307,8 +357,11 @@ class PrintManager:
                     ))
                     # Broadcast to Telegram subscribers
                     await self._broadcast_to_telegram(mode_name, data)
-                    logger.info(f"Printed {mode_name} label successfully")
+                    logger.info(f"Printed {mode_name} successfully")
                 else:
+                    if self._use_rp80 and mode_name == "photobooth":
+                        logger.warning("Photobooth print skipped because RP80 did not accept the job")
+                        continue
                     raise RuntimeError("Printer rejected receipt")
 
             except Exception as exc:
@@ -321,11 +374,20 @@ class PrintManager:
             finally:
                 self._queue.task_done()
 
-    async def _print_receipt(self, receipt: Union[LabelReceipt, Receipt]) -> bool:
+    async def _print_receipt(self, receipt: Union[LabelReceipt, Receipt, PhotoboothRollReceipt]) -> bool:
         """Print a receipt/label.
 
         Handles both LabelReceipt (IP802) and Receipt (EM5820) formats.
         """
+        if isinstance(receipt, PhotoboothRollReceipt):
+            if isinstance(self._printer, RP80ReceiptPrinter):
+                return await self._printer.print_raw(receipt.raw_commands)
+            if isinstance(self._printer, MockRP80ReceiptPrinter):
+                logger.info("=== MOCK RP80 PHOTOBOOTH PRINT ===")
+                logger.info("Preview image: %d bytes", len(receipt.preview_image))
+                return True
+            return await self._printer.print_raw(receipt.raw_commands)
+
         if isinstance(receipt, LabelReceipt):
             # Label printer - send raw commands directly
             if isinstance(self._printer, IP802Printer):
@@ -371,7 +433,7 @@ class PrintManager:
         status = {
             "running": self._running,
             "queue_size": self._queue.qsize(),
-            "printer_type": "label" if self.is_label_printer else "receipt",
+            "printer_type": "rp80" if self.is_rp80_printer else "label" if self.is_label_printer else "receipt",
         }
 
         if hasattr(self._printer, 'get_status'):

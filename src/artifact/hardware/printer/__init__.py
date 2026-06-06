@@ -3,6 +3,7 @@
 Supports two printer types:
 - EM5820: 58mm thermal receipt printer (continuous roll, UART/USB-serial)
 - IP802: AIYIN IP-802 80mm thermal label printer (58x100mm labels, USB, TSPL protocol)
+- RP80: 80mm ESC/POS USB receipt printer with cutter for photobooth prints
 
 The IP802 is now the primary printer for ARTIFACT arcade.
 Uses TSPL protocol (not ESC/POS) for proper label printing.
@@ -19,6 +20,14 @@ from artifact.hardware.printer.ip802 import (
     PYUSB_AVAILABLE,
     USB_VENDOR_ID,
     USB_PRODUCT_ID,
+)
+from artifact.hardware.printer.rp80 import (
+    RP80ReceiptPrinter,
+    MockRP80ReceiptPrinter,
+    create_rp80_printer,
+    auto_detect_rp80_printer,
+    USB_VENDOR_ID as RP80_USB_VENDOR_ID,
+    USB_PRODUCT_ID as RP80_USB_PRODUCT_ID,
 )
 
 __all__ = [
@@ -37,4 +46,11 @@ __all__ = [
     "PYUSB_AVAILABLE",
     "USB_VENDOR_ID",
     "USB_PRODUCT_ID",
+    # RP80 photobooth receipt printer
+    "RP80ReceiptPrinter",
+    "MockRP80ReceiptPrinter",
+    "create_rp80_printer",
+    "auto_detect_rp80_printer",
+    "RP80_USB_VENDOR_ID",
+    "RP80_USB_PRODUCT_ID",
 ]

@@ -99,6 +99,8 @@ class GeminiClient:
         self.config = config
         self._client = None  # Default client (v1)
         self._client_beta = None  # v1beta client for image generation
+        self._vertex_token: Optional[str] = None
+        self._vertex_token_expiry: float = 0.0
         self._initialized = True
         self._image_generation_model = self._resolve_image_generation_model()
         self._openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
@@ -250,8 +252,49 @@ class GeminiClient:
             f"https://aiplatform.googleapis.com/{api_version}/"
             f"projects/{self.config.project}/locations/{self.config.location}/"
             f"publishers/google/models/{model}:generateContent"
-            f"?key={self.config.api_key}"
         )
+
+    def _get_vertex_access_token(self) -> str:
+        """Return a cached Google Cloud OAuth token for Vertex AI."""
+        import time
+
+        if self._vertex_token and time.time() < self._vertex_token_expiry - 60:
+            return self._vertex_token
+
+        # artifact.service runs as root on the Pi, but the ADC login used for
+        # Vertex is owned by kirniy. Point google-auth at that Cloud SDK config
+        # unless an explicit credentials path/config was already provided.
+        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not os.environ.get("CLOUDSDK_CONFIG"):
+            adc_config_dir = "/home/kirniy/.config/gcloud"
+            adc_path = os.path.join(adc_config_dir, "application_default_credentials.json")
+            if os.path.exists(adc_path):
+                os.environ["CLOUDSDK_CONFIG"] = adc_config_dir
+
+        import google.auth
+        from google.auth.transport.requests import Request
+
+        credentials, project = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        credentials.refresh(Request())
+        token = credentials.token
+        if not token:
+            raise RuntimeError("Google ADC did not return an access token")
+
+        expiry = getattr(credentials, "expiry", None)
+        self._vertex_token = token
+        self._vertex_token_expiry = expiry.timestamp() if expiry else time.time() + 3000
+        if project and not self.config.project:
+            self.config.project = project
+        return token
+
+    def _auth_headers(self, api_key: str) -> Dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self.config.provider == "vertex":
+            headers["Authorization"] = f"Bearer {self._get_vertex_access_token()}"
+        else:
+            headers["x-goog-api-key"] = api_key
+        return headers
 
     async def _post_generate_content_rest(
         self,
@@ -277,10 +320,7 @@ class GeminiClient:
             async with session.post(
                 endpoint,
                 json=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": api_key,
-                },
+                headers=self._auth_headers(api_key),
                 timeout=aiohttp.ClientTimeout(total=self.config.timeout * timeout_multiplier),
             ) as response:
                 if not response.ok:
@@ -641,8 +681,14 @@ class GeminiClient:
         Returns:
             Image bytes (PNG) or None on error
         """
-        if not self.config.api_key and self._image_generation_provider != "openrouter":
+        if (
+            not self.config.api_key
+            and self._image_generation_provider not in {"openrouter", "vertex"}
+        ):
             logger.error("Cannot generate image: no Gemini API key")
+            return None
+        if self._image_generation_provider == "vertex" and not self.config.project:
+            logger.error("Cannot generate image: Vertex provider requires GOOGLE_CLOUD_PROJECT")
             return None
         if self._image_generation_provider == "openrouter" and not self._openrouter_api_key:
             logger.error("Cannot generate image: ARTIFACT_IMAGE_PROVIDER=openrouter but OPENROUTER_API_KEY is not set")
@@ -743,10 +789,7 @@ class GeminiClient:
                         async with session.post(
                             endpoint,
                             json=payload,
-                            headers={
-                                "Content-Type": "application/json",
-                                "x-goog-api-key": self.config.api_key,
-                            },
+                            headers=self._auth_headers(self.config.api_key),
                             timeout=aiohttp.ClientTimeout(total=self.config.timeout * 2),
                         ) as response:
                             if response.status == 503:
@@ -939,6 +982,8 @@ class GeminiClient:
     @property
     def is_available(self) -> bool:
         """Check if AI features are available."""
+        if self.config.provider == "vertex":
+            return bool(self.config.project)
         return bool(self.config.api_key)
 
     @property

@@ -191,8 +191,9 @@ async def run_hardware() -> None:
     # DISABLED: Blocks startup with network requests
     # start_gallery_preloader()
 
-    # Initialize printer manager
-    # IP-802 label printer is default; set ARTIFACT_USE_LEGACY_PRINTER=true for EM5820
+    # Initialize printer manager.
+    # RP80 is auto-selected when present for photobooth roll prints.
+    # Set ARTIFACT_USE_LEGACY_PRINTER=true for EM5820.
     mock_printer = os.getenv("ARTIFACT_MOCK_PRINTER", "false").lower() == "true"
     mock_printer = mock_printer or os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
     use_legacy_printer = os.getenv("ARTIFACT_USE_LEGACY_PRINTER", "false").lower() == "true"
@@ -203,8 +204,10 @@ async def run_hardware() -> None:
     )
     if use_legacy_printer:
         logger.info("Using legacy EM5820 receipt printer")
+    elif printer_manager.is_rp80_printer:
+        logger.info("Using RP80 USB receipt printer with cutter")
     else:
-        logger.info("Using IP-802 label printer (default)")
+        logger.info("Using IP-802 label printer")
     event_bus.subscribe(EventType.PRINT_START, printer_manager.handle_print_start)
     # Start printer in background (don't block main loop!)
     asyncio.create_task(printer_manager.start())

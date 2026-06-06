@@ -58,7 +58,9 @@ Thumbs.db
 # Project specific
 *.bak
 temp/
+tmp/
 cache/
+.deploy/
 vnvnc_ai_logs/
 machine-backups/
 

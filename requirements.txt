@@ -11,9 +11,10 @@ python-dotenv>=1.0.0
 # AI
 google-genai>=0.3.0
 aiohttp>=3.9.0
+aiohttp-socks>=0.10.0
 
-# Camera (for simulator)
-opencv-python>=4.8.0
+# Camera and idle video decoding. Use headless OpenCV to avoid SDL conflicts with pygame.
+opencv-python-headless>=4.8.0
 mediapipe>=0.10.11; python_version < "3.12"
 
 # QR code generation (for photobooth)

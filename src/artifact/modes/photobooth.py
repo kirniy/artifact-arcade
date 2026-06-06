@@ -44,7 +44,6 @@ from artifact.utils.s3_upload import (
     UploadResult,
     generate_qr_image,
     pre_generate_upload_info,
-    provision_short_url_redirect,
 )
 from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyle
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
@@ -867,7 +866,6 @@ class PhotoboothMode(BaseMode):
         pre_info = pre_generate_upload_info("photobooth", "png")
         self._state.qr_url = pre_info.short_url
         self._state.qr_image = generate_qr_image(pre_info.short_url)
-        provision_short_url_redirect(pre_info)
 
         logger.info("Uploading full-color AI image: %d bytes", len(caricature_bytes))
         self._uploader.upload_bytes(
@@ -1192,7 +1190,7 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
     ]
 )
 
-DEFAULT_PHOTOBOOTH_MENU_MODES = ("office_core", "candy_shop", "slavic_soul", "slavic_tales")
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("office_core",)
 
 
 def _get_theme_menu_display_name(theme: PhotoboothTheme) -> str:

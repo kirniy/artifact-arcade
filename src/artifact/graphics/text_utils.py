@@ -265,6 +265,7 @@ def smart_wrap_text(
     - Measures actual pixel widths
     - Respects word boundaries
     - Handles long words gracefully
+    - Preserves explicit newline breaks from callers
 
     Args:
         text: Text to wrap
@@ -278,47 +279,54 @@ def smart_wrap_text(
     if not text:
         return []
 
-    words = text.split()
-    lines: List[str] = []
-    current_line = ""
+    wrapped_lines: List[str] = []
+    paragraphs = text.splitlines() or [text]
 
-    for word in words:
-        # Try adding word to current line
-        test_line = current_line + " " + word if current_line else word
-        test_width, _ = font.measure_text(test_line)
-        test_width *= scale
+    for paragraph in paragraphs:
+        words = paragraph.split()
+        if not words:
+            wrapped_lines.append("")
+            continue
 
-        if test_width <= max_width_pixels:
-            current_line = test_line
-        else:
-            # Word doesn't fit, start new line
-            if current_line:
-                lines.append(current_line)
+        current_line = ""
 
-            # Check if single word is too long
-            word_width, _ = font.measure_text(word)
-            word_width *= scale
+        for word in words:
+            # Try adding word to current line
+            test_line = current_line + " " + word if current_line else word
+            test_width, _ = font.measure_text(test_line)
+            test_width *= scale
 
-            if word_width > max_width_pixels:
-                # Word too long, need to break it
-                current_line = ""
-                for char in word:
-                    test_line = current_line + char
-                    test_width, _ = font.measure_text(test_line)
-                    test_width *= scale
-                    if test_width <= max_width_pixels:
-                        current_line = test_line
-                    else:
-                        if current_line:
-                            lines.append(current_line)
-                        current_line = char
+            if test_width <= max_width_pixels:
+                current_line = test_line
             else:
-                current_line = word
+                # Word doesn't fit, start new line
+                if current_line:
+                    wrapped_lines.append(current_line)
 
-    if current_line:
-        lines.append(current_line)
+                # Check if single word is too long
+                word_width, _ = font.measure_text(word)
+                word_width *= scale
 
-    return lines
+                if word_width > max_width_pixels:
+                    # Word too long, need to break it
+                    current_line = ""
+                    for char in word:
+                        test_line = current_line + char
+                        test_width, _ = font.measure_text(test_line)
+                        test_width *= scale
+                        if test_width <= max_width_pixels:
+                            current_line = test_line
+                        else:
+                            if current_line:
+                                wrapped_lines.append(current_line)
+                            current_line = char
+                else:
+                    current_line = word
+
+        if current_line:
+            wrapped_lines.append(current_line)
+
+    return wrapped_lines
 
 
 def calc_max_chars_per_line(scale: int = 1, display_width: int = MAIN_DISPLAY_WIDTH, margin: int = 4) -> int:

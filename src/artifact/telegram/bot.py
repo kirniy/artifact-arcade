@@ -26,6 +26,8 @@ from telegram.ext import (
     filters,
 )
 
+from artifact.modes.photobooth import get_configured_photobooth_modes
+
 logger = logging.getLogger(__name__)
 
 # Configuration
@@ -372,7 +374,7 @@ class ArcadeControl:
 
 
 class ArcadeBot:
-    """VNVNC Arcade Telegram Bot."""
+    """Main Telegram bot for VNVNC arcade."""
 
     PRIZE_LABELS = {
         "COCKTL": "Бесплатный коктейль",
@@ -382,12 +384,24 @@ class ArcadeBot:
         "MERCHX": "Мерч VNVNC",
     }
 
-    # Available modes for mode selection
-    AVAILABLE_MODES = [
-        "fortune", "ai_prophet", "photobooth", "brainrot_booth", "wedding_booth", "whatsapp_booth", "roast",
-        "squid_game", "quiz", "tower_stack", "brick_breaker", "video",
-        "sorting_hat", "guess_me", "roulette", "autopsy"
-    ]
+    # Available non-photobooth modes for remote selection.
+    # Keep empty unless a mode is explicitly re-enabled in artifact.main.
+    BASE_AVAILABLE_MODES: List[str] = []
+
+    MODE_BUTTON_META: Dict[str, Dict[str, str]] = {
+        "fortune": {"icon": "🔮", "label": "Гадание"},
+        "ai_prophet": {"icon": "🧙", "label": "Пророк"},
+        "roast": {"icon": "🔥", "label": "Роуст"},
+        "squid_game": {"icon": "🦑", "label": "Игра"},
+        "quiz": {"icon": "❓", "label": "Викторина"},
+        "tower_stack": {"icon": "🧱", "label": "Башня"},
+        "brick_breaker": {"icon": "🟨", "label": "Арканоид"},
+        "video": {"icon": "🎬", "label": "Видео"},
+        "sorting_hat": {"icon": "🎩", "label": "Шляпа"},
+        "guess_me": {"icon": "🕵️", "label": "Угадай"},
+        "roulette": {"icon": "🎰", "label": "Рулетка"},
+        "autopsy": {"icon": "🧪", "label": "Вскрытие"},
+    }
 
     def __init__(self, token: str = BOT_TOKEN, data_dir: Path = DATA_DIR):
         self.token = token
@@ -395,6 +409,41 @@ class ArcadeBot:
         self.control = ArcadeControl()
         self.app: Optional[Application] = None
         self._running = False
+
+    @classmethod
+    def get_available_mode_buttons(cls) -> List[Dict[str, str]]:
+        photobooth_modes = [
+            {
+                "name": mode_cls.name,
+                "icon": getattr(mode_cls, "icon", "📸"),
+                "label": getattr(mode_cls, "display_name", mode_cls.name).strip(),
+            }
+            for mode_cls in get_configured_photobooth_modes()
+        ]
+        ordered_names = [*cls.BASE_AVAILABLE_MODES[:2], *[m["name"] for m in photobooth_modes], *cls.BASE_AVAILABLE_MODES[2:]]
+        photobooth_by_name = {item["name"]: item for item in photobooth_modes}
+
+        buttons: List[Dict[str, str]] = []
+        seen: Set[str] = set()
+        for mode_name in ordered_names:
+            if mode_name in seen:
+                continue
+            seen.add(mode_name)
+            if mode_name in photobooth_by_name:
+                buttons.append(photobooth_by_name[mode_name])
+                continue
+            meta = cls.MODE_BUTTON_META.get(mode_name, {})
+            buttons.append(
+                {
+                    "name": mode_name,
+                    "icon": meta.get("icon", "🎮"),
+                    "label": meta.get("label", mode_name.replace("_", " ").title()),
+                }
+            )
+        return buttons
+
+    def _get_available_modes(self) -> List[str]:
+        return [item["name"] for item in self.get_available_mode_buttons()]
 
     async def start(self) -> None:
         """Start the bot."""
@@ -772,7 +821,7 @@ class ArcadeBot:
             return
 
         if not context.args:
-            modes = "\n".join(f"• {m}" for m in self.AVAILABLE_MODES)
+            modes = "\n".join(f"• {m}" for m in self._get_available_modes())
             await update.message.reply_text(
                 f"Доступные режимы:\n{modes}\n\n"
                 "Использование: /mode <название>"
@@ -781,7 +830,8 @@ class ArcadeBot:
 
         mode_name = context.args[0].lower()
 
-        if mode_name in self.AVAILABLE_MODES:
+        available_modes = self._get_available_modes()
+        if mode_name in available_modes:
             self.control.start_mode(mode_name)
             await update.message.reply_text(f"🎮 Запускаю режим: {mode_name}")
         else:
@@ -1130,6 +1180,7 @@ class RemoteServer:
         """Setup HTTP routes."""
         self.app.router.add_get("/remote", self._handle_remote)
         self.app.router.add_get("/api/status", self._handle_status)
+        self.app.router.add_get("/api/modes", self._handle_modes)
         self.app.router.add_post("/api/control", self._handle_control)
 
     async def _handle_remote(self, request: web.Request) -> web.Response:
@@ -1143,6 +1194,10 @@ class RemoteServer:
         """Return arcade status."""
         status = self.control.get_status()
         return web.json_response(status)
+
+    async def _handle_modes(self, request: web.Request) -> web.Response:
+        """Return remote-control mode buttons built from live config."""
+        return web.json_response({"modes": ArcadeBot.get_available_mode_buttons()})
 
     async def _handle_control(self, request: web.Request) -> web.Response:
         """Handle control commands."""

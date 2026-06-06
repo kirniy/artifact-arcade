@@ -7,9 +7,6 @@ Supports two printer types:
 The IP802 label printer is now the default for ARTIFACT arcade.
 """
 
-# Print manager (handles both printer types)
-from artifact.printing.manager import PrintManager
-
 # Label printing (IP802 - primary)
 from artifact.printing.label_layout import (
     LabelLayoutEngine,
@@ -28,6 +25,10 @@ from artifact.printing.label_receipt import LabelReceiptGenerator, LabelReceipt
 
 # Legacy receipt printing (EM5820)
 from artifact.printing.receipt import ReceiptGenerator, Receipt
+from artifact.printing.photobooth_roll import (
+    PhotoboothRollReceipt,
+    PhotoboothRollReceiptGenerator,
+)
 from artifact.printing.layout import (
     LayoutEngine,
     ReceiptLayout,
@@ -59,6 +60,8 @@ __all__ = [
     # Legacy receipt printing
     "ReceiptGenerator",
     "Receipt",
+    "PhotoboothRollReceipt",
+    "PhotoboothRollReceiptGenerator",
     "LayoutEngine",
     "ReceiptLayout",
     "TextBlock",
@@ -66,3 +69,12 @@ __all__ = [
     "SeparatorBlock",
     "SpacerBlock",
 ]
+
+
+def __getattr__(name):
+    """Lazy-load PrintManager to avoid printer/receipt import cycles."""
+    if name == "PrintManager":
+        from artifact.printing.manager import PrintManager
+
+        return PrintManager
+    raise AttributeError(name)

@@ -78,6 +78,10 @@ class JetpackRider:
             self.BG = (12, 8, 5)       # Near-black — nightclub darkness
             self.CYAN = (210, 170, 60)  # Dirty amber gold — analog film
             self.MAGENTA = (180, 35, 35)  # Blood red — Hangover chaos
+        elif self._theme.id == "mtv-night":
+            self.BG = (4, 4, 12)          # Deep black club void
+            self.CYAN = (66, 196, 255)    # Electric blue neon
+            self.MAGENTA = (255, 48, 170) # Hot pink neon
         else:
             self.BG = (6, 3, 15)  # Dark for Boiling Room / default
         self._load_logo()
