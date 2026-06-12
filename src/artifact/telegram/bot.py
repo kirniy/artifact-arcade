@@ -19,7 +19,7 @@ from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from aiohttp import web
-from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 from artifact.modes.photobooth import get_configured_photobooth_modes
@@ -772,6 +772,11 @@ class ArcadeBot:
 
     async def _send_photo_with_fallback(self, admin_id: int, event: dict[str, Any], caption: str) -> None:
         url = str(event["url"])
+        source_photo_path = Path(str(event.get("source_photo_path") or ""))
+        if source_photo_path.exists():
+            await self._send_result_and_source_photo(admin_id, event, caption, source_photo_path)
+            return
+
         try:
             await self.app.bot.send_photo(chat_id=admin_id, photo=url, caption=caption)
             return
@@ -788,6 +793,38 @@ class ArcadeBot:
             logger.warning("Telegram byte photo upload failed; sending link only: %s", e)
 
         await self.app.bot.send_message(chat_id=admin_id, text=caption)
+
+    async def _send_result_and_source_photo(
+        self,
+        admin_id: int,
+        event: dict[str, Any],
+        caption: str,
+        source_photo_path: Path,
+    ) -> None:
+        url = str(event["url"])
+        try:
+            result_data = await asyncio.to_thread(self._download_photo_bytes, url)
+            source_data = await asyncio.to_thread(source_photo_path.read_bytes)
+            result_photo = io.BytesIO(result_data)
+            result_photo.name = str(event.get("filename") or "photobooth.png")
+            source_photo = io.BytesIO(source_data)
+            source_photo.name = source_photo_path.name
+            await self.app.bot.send_media_group(
+                chat_id=admin_id,
+                media=[
+                    InputMediaPhoto(media=result_photo, caption=caption),
+                    InputMediaPhoto(media=source_photo, caption="Исходное фото"),
+                ],
+            )
+            return
+        except Exception as e:
+            logger.warning("Telegram media group upload failed; sending result only: %s", e)
+
+        await self._send_photo_with_fallback(
+            admin_id,
+            {key: value for key, value in event.items() if key != "source_photo_path"},
+            caption,
+        )
 
     @staticmethod
     def _download_photo_bytes(url: str) -> bytes:

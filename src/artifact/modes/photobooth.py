@@ -24,6 +24,7 @@ from collections import OrderedDict
 from typing import Optional, Type
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 import numpy as np
 from PIL import Image as PILImage
@@ -120,6 +121,7 @@ class PhotoboothState:
     show_result: bool = False
     result_view: str = "photo"  # "photo" or "qr"
     generation_progress: float = 0.0  # 0.0 to 1.0
+    bot_source_photo_path: Optional[str] = None
 
 
 class PhotoboothMode(BaseMode):
@@ -888,6 +890,7 @@ class PhotoboothMode(BaseMode):
         pre_info = pre_generate_upload_info("photobooth", "png")
         self._state.qr_url = pre_info.short_url
         self._state.qr_image = generate_qr_image(pre_info.short_url)
+        source_photo_path = self._persist_bot_source_photo(pre_info.short_id)
 
         logger.info("Uploading full-color AI image: %d bytes", len(caricature_bytes))
         self._uploader.upload_bytes(
@@ -897,6 +900,7 @@ class PhotoboothMode(BaseMode):
             content_type="image/png",
             callback=self._on_upload_complete,
             pre_info=pre_info,
+            metadata={"source_photo_path": source_photo_path} if source_photo_path else None,
         )
 
     def _upload_photo_async(self) -> None:
@@ -925,6 +929,7 @@ class PhotoboothMode(BaseMode):
             "theme_name": getattr(self._theme, "display_name", ""),
             "result_bytes": len(self._state.ai_label_bytes or self._state.ai_display_bytes or b""),
             "source_photo_bytes": len(self._state.photo_bytes or b""),
+            "source_photo_path": self._state.bot_source_photo_path,
         }
         if result.success:
             self._state.qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
@@ -950,6 +955,29 @@ class PhotoboothMode(BaseMode):
                     "error": result.error,
                 },
             )
+
+    def _persist_bot_source_photo(self, short_id: str) -> Optional[str]:
+        """Persist the raw camera JPEG so the Telegram bot can send it with the result."""
+        if self._state.bot_source_photo_path:
+            return self._state.bot_source_photo_path
+        if not self._state.photo_bytes:
+            return None
+
+        try:
+            data_dir = Path(os.environ.get("ARCADE_DATA_DIR", "/home/kirniy/modular-arcade/data"))
+            source_dir = data_dir / "bot_source_photos"
+            source_dir.mkdir(parents=True, exist_ok=True)
+            path = source_dir / f"source_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{short_id}.jpg"
+            path.write_bytes(self._state.photo_bytes)
+            try:
+                path.chmod(0o666)
+            except OSError:
+                pass
+            self._state.bot_source_photo_path = str(path)
+            return self._state.bot_source_photo_path
+        except Exception as e:
+            logger.warning("Failed to persist source photo for Telegram bot: %s", e)
+            return None
 
     def _start_printing_now(self) -> None:
         """Start printing immediately when result screen appears.

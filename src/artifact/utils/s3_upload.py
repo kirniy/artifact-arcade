@@ -22,7 +22,7 @@ import hashlib
 import hmac
 from urllib.parse import quote, urlparse
 from datetime import datetime, timezone
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -289,6 +289,7 @@ class PendingUpload:
     file_path: str
     meta_path: str
     short_id: Optional[str] = None
+    metadata: dict[str, Any] | None = None
 
 
 def _ensure_spool_dir(prefix: str) -> Path:
@@ -316,6 +317,7 @@ def _create_pending_upload(
     content_type: str,
     s3_key: str,
     short_id: Optional[str] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> PendingUpload:
     file_path, meta_path = _pending_paths(prefix, filename)
 
@@ -331,6 +333,7 @@ def _create_pending_upload(
         "short_id": short_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "file_path": str(file_path),
+        "metadata": metadata or {},
     }
     meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -343,6 +346,7 @@ def _create_pending_upload(
         short_id=short_id,
         file_path=str(file_path),
         meta_path=str(meta_path),
+        metadata=metadata or {},
     )
 
 
@@ -362,6 +366,7 @@ def _load_pending_upload(meta_path: Path) -> Optional[PendingUpload]:
             short_id=payload.get("short_id"),
             file_path=str(file_path),
             meta_path=str(meta_path),
+            metadata=payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {},
         )
     except Exception as e:
         logger.warning("Failed to read pending upload %s: %s", meta_path, e)
@@ -785,6 +790,7 @@ def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict
                             "result_bytes": Path(pending.file_path).stat().st_size,
                             "source_photo_bytes": 0,
                             "uploaded_by": "upload_spool_daemon",
+                            **(pending.metadata or {}),
                         },
                     )
                 except Exception:
@@ -842,6 +848,7 @@ def upload_bytes_to_s3(
     extension: str = "jpg",
     content_type: str = "image/jpeg",
     pre_info: Optional[PreUploadInfo] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> UploadResult:
     """Upload bytes to Selectel S3 synchronously.
 
@@ -886,6 +893,7 @@ def upload_bytes_to_s3(
             content_type=content_type,
             s3_key=s3_key,
             short_id=short_id,
+            metadata=metadata,
         )
 
         logger.info(f"Uploading to Selectel S3: {s3_key} ({len(data)} bytes)")
@@ -1073,6 +1081,7 @@ class AsyncUploader:
         content_type: str = "image/jpeg",
         callback: Optional[Callable[[UploadResult], None]] = None,
         pre_info: Optional[PreUploadInfo] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Start background upload of bytes.
 
@@ -1088,7 +1097,7 @@ class AsyncUploader:
         self._callback = callback
 
         def _upload():
-            result = upload_bytes_to_s3(data, prefix, extension, content_type, pre_info=pre_info)
+            result = upload_bytes_to_s3(data, prefix, extension, content_type, pre_info=pre_info, metadata=metadata)
             try:
                 retry_pending_uploads(prefix=prefix, limit=10)
             except Exception as e:
