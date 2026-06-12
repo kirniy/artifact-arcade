@@ -32,7 +32,11 @@ from numpy.typing import NDArray
 from artifact.modes.base import BaseMode, ModeContext, ModeResult, ModePhase
 from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect, draw_line
-from artifact.graphics.text_utils import draw_centered_text, draw_text
+from artifact.graphics.text_utils import (
+    draw_centered_text,
+    draw_text,
+    render_idle_style_ticker_text,
+)
 from artifact.utils.camera_service import camera_service
 
 # When enabled, the completed photobooth image is sent to the print manager.
@@ -151,6 +155,17 @@ class PhotoboothMode(BaseMode):
     COUNTDOWN_SECONDS = 3
     FLASH_DURATION = 0.5
     RESULT_DURATION = 120.0  # 2 minutes to scan QR before auto-return to idle
+    WAITING_COPY = (
+        ("НЕ УХОДИ", "ФОТО ПЕЧАТАЕТСЯ"),
+        ("СТОЙ ТУТ", "ОСТАЛОСЬ НЕДОЛГО"),
+        ("Я НЕ ЗАВИС", "ФОТО УЖЕ В ПУТИ"),
+        ("ЖДИ ТУТ", "ФОТО БУДЕТ ГОТОВО"),
+    )
+    WAITING_COUNTDOWN_SECONDS = 120
+    WAITING_BG = (0, 0, 0)
+    WAITING_TEXT = (255, 255, 255)
+    WAITING_ACCENT = (255, 40, 40)
+    WAITING_DIM = (70, 70, 70)
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
@@ -540,6 +555,11 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
             )
+        elif ai_style_key == "summer_camp":
+            return (
+                CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
+            )
         elif ai_style_key == "brainrot":
             return (
                 CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
@@ -700,6 +720,7 @@ class PhotoboothMode(BaseMode):
                 "candy_shop",
                 "street_heat",
                 "office_core",
+                "summer_camp",
             }
             if ai_style_key in timestamp_theme_keys:
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
@@ -720,7 +741,7 @@ class PhotoboothMode(BaseMode):
                         f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
-                elif ai_style_key == "office_core":
+                elif ai_style_key in {"office_core", "summer_camp"}:
                     personality_context = (
                         "Do not render footer text inside the AI artwork. "
                         "Leave the bottom 12-15% as clean pure white empty space; "
@@ -744,9 +765,9 @@ class PhotoboothMode(BaseMode):
 
             if label_result and label_result.image_data:
                 label_bytes = label_result.image_data
-                if ai_style_key == "office_core":
+                if ai_style_key in {"office_core", "summer_camp"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-                    label_bytes = self._stamp_office_core_footer(label_bytes, footer_date_str, moscow_time)
+                    label_bytes = self._stamp_white_theme_footer(label_bytes, footer_date_str, moscow_time)
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
 
                 # Create center-cropped 1:1 version for LED display
@@ -783,8 +804,8 @@ class PhotoboothMode(BaseMode):
             logger.warning(f"Failed to crop to square: {e}")
             return image_bytes
 
-    def _stamp_office_core_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
-        """Paint deterministic Office Core footer text over the AI image."""
+    def _stamp_white_theme_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
+        """Paint deterministic white-theme footer text over the AI image."""
         try:
             from PIL import Image, ImageDraw, ImageFont
 
@@ -820,18 +841,18 @@ class PhotoboothMode(BaseMode):
             row1_y = y0 + max(18, int(footer_h * 0.18))
             row2_y = y0 + max(78, int(footer_h * 0.57))
             ink = (16, 22, 32)
-            blue = (25, 83, 205)
-            red = (210, 34, 34)
+            accent = tuple(self._theme.theme_chrome) if self._theme.theme_chrome else (25, 83, 205)
+            secondary = tuple(self._theme.theme_red) if self._theme.theme_red else (210, 34, 34)
 
             brand = "VNVNC.RU"
             time_text = moscow_time
             weekday = footer_date
             venue = "КОНЮШЕННАЯ 2В"
 
-            draw.text((margin_x, row1_y), brand, font=main_font, fill=blue)
+            draw.text((margin_x, row1_y), brand, font=main_font, fill=accent)
 
             time_box = text_bbox(main_font, time_text)
-            draw.text((w - margin_x - (time_box[2] - time_box[0]), row1_y), time_text, font=main_font, fill=red)
+            draw.text((w - margin_x - (time_box[2] - time_box[0]), row1_y), time_text, font=main_font, fill=secondary)
 
             draw.text((margin_x, row2_y), weekday, font=sub_font, fill=ink)
 
@@ -843,7 +864,7 @@ class PhotoboothMode(BaseMode):
             img.save(buf, format="PNG")
             return buf.getvalue()
         except Exception as e:
-            logger.warning(f"Failed to stamp Office Core footer: {e}")
+            logger.warning(f"Failed to stamp white-theme footer: {e}")
             return image_bytes
 
     def _upload_ai_result_async(self) -> None:
@@ -1022,41 +1043,40 @@ class PhotoboothMode(BaseMode):
                     draw_centered_text(buffer, num_str, 40 + oy, self.THEME_BLACK, scale=5)
         draw_centered_text(buffer, num_str, 40, self.THEME_CHROME, scale=5)
 
+    def _render_waiting_screen(self, buffer: NDArray[np.uint8]) -> None:
+        """Render a full-screen waiting state with stable high-contrast text."""
+        time_ms = int(self._time_in_phase)
+        elapsed_seconds = max(0, time_ms // 1000)
+        seconds_left = max(0, self.WAITING_COUNTDOWN_SECONDS - elapsed_seconds)
+        countdown_text = f"{seconds_left // 60}:{seconds_left % 60:02d}"
+        countdown_progress = min(1.0, elapsed_seconds / self.WAITING_COUNTDOWN_SECONDS)
+        message_index = (time_ms // 3500) % len(self.WAITING_COPY)
+        main_text, second_text = self.WAITING_COPY[message_index]
+
+        fill(buffer, self.WAITING_BG)
+        draw_rect(buffer, 0, 0, 128, 2, self.WAITING_ACCENT)
+        draw_rect(buffer, 0, 126, 128, 2, self.WAITING_ACCENT)
+        draw_rect(buffer, 0, 0, 2, 128, self.WAITING_ACCENT)
+        draw_rect(buffer, 126, 0, 2, 128, self.WAITING_ACCENT)
+
+        draw_centered_text(buffer, main_text, 10, self.WAITING_TEXT, scale=2)
+        draw_centered_text(buffer, countdown_text, 34, self.WAITING_TEXT, scale=4)
+        draw_centered_text(buffer, "ДО ПЕЧАТИ", 68, self.WAITING_TEXT, scale=1)
+        draw_centered_text(buffer, second_text, 81, self.WAITING_ACCENT, scale=1)
+        draw_centered_text(buffer, "НЕ НАЖИМАЙ КНОПКИ", 93, self.WAITING_TEXT, scale=1)
+        draw_centered_text(buffer, "ОСТАВАЙСЯ РЯДОМ", 104, self.WAITING_TEXT, scale=1)
+
+        bar_x = 10
+        bar_y = 113
+        bar_w = 108
+        bar_h = 7
+        fill_w = max(4, int(bar_w * countdown_progress))
+        draw_rect(buffer, bar_x, bar_y, bar_w, bar_h, self.WAITING_DIM)
+        draw_rect(buffer, bar_x, bar_y, fill_w, bar_h, self.WAITING_ACCENT)
+
     def _render_generating(self, buffer: NDArray[np.uint8]) -> None:
-        """Render Santa runner minigame while AI is generating, with captured photo as background."""
-        # Render the Santa runner game with captured photo as background
-        if self._santa_runner:
-            self._santa_runner.render(buffer, background=self._state.photo_frame)
-
-            # Add compact progress bar at the top
-            bar_w, bar_h = 100, 4
-            bar_x = (128 - bar_w) // 2
-            bar_y = 2
-
-            # Semi-transparent dark background for progress bar
-            draw_rect(buffer, bar_x - 2, bar_y - 1, bar_w + 4, bar_h + 2, self.THEME_RED)
-
-            # Use the SmartProgressTracker's render method for the progress bar
-            self._progress_tracker.render_progress_bar(
-                buffer, bar_x, bar_y, bar_w, bar_h,
-                bar_color=self.THEME_CHROME,
-                bg_color=self.THEME_BLACK,
-                time_ms=self._time_in_phase
-            )
-
-            # Show compact status at bottom
-            status_message = self._progress_tracker.get_message()
-            # Semi-transparent dark strip for text
-            draw_rect(buffer, 0, 104, 128, 24, self.THEME_BLACK)
-            draw_centered_text(buffer, status_message, 106, self.THEME_CHROME, scale=1)
-            # Website message
-            draw_centered_text(buffer, "ФОТО БУДЕТ НА САЙТЕ", 116, self.THEME_RED, scale=1)
-
-        else:
-            # Fallback to simple generating screen if no game
-            fill(buffer, self.THEME_BLACK)
-            draw_centered_text(buffer, "ГЕНЕРАЦИЯ", 50, self.THEME_CHROME, scale=1)
-            draw_centered_text(buffer, "ФОТО БУДЕТ НА САЙТЕ", 65, self.THEME_RED, scale=1)
+        """Render the full-screen waiting state while AI is generating."""
+        self._render_waiting_screen(buffer)
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
         """Render ready state."""
@@ -1145,23 +1165,19 @@ class PhotoboothMode(BaseMode):
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render ticker display."""
-        fill(buffer, self.THEME_BLACK)
+        fill(buffer, (0, 0, 0))
 
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            # Show countdown on ticker
-            text = f"   {self._state.countdown}   "
-            draw_centered_text(buffer, text, 1, self.THEME_CHROME, scale=1)
+            render_idle_style_ticker_text(buffer, str(self._state.countdown), (255, 255, 255), self._time_in_phase)
         elif self._state.is_generating:
-            # Use Santa Runner's ticker progress bar (cycles continuously)
-            if self._santa_runner:
-                self._santa_runner.render_ticker(buffer, self._state.generation_progress, self._time_in_phase)
+            render_idle_style_ticker_text(buffer, "НЕ УХОДИ", (255, 40, 40), self._time_in_phase)
         elif self._state.show_result:
             if self._state.result_view == "qr":
-                draw_centered_text(buffer, "QR", 1, self.THEME_CHROME, scale=1)
+                render_idle_style_ticker_text(buffer, "QR", (255, 255, 255), self._time_in_phase)
             else:
-                draw_centered_text(buffer, "ГОТОВО", 1, self.THEME_CHROME, scale=1)
+                render_idle_style_ticker_text(buffer, "ГОТОВО", (255, 255, 255), self._time_in_phase)
         else:
-            draw_centered_text(buffer, self._theme.ticker_idle, 1, self.THEME_CHROME, scale=1)
+            render_idle_style_ticker_text(buffer, self._theme.ticker_idle, (255, 255, 255), self._time_in_phase)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
@@ -1187,10 +1203,11 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("candy_shop", "candy-shop"),
         ("street_heat", "street-heat"),
         ("office_core", "office-core"),
+        ("summer_camp", "summer-camp"),
     ]
 )
 
-DEFAULT_PHOTOBOOTH_MENU_MODES = ("office_core",)
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("summer_camp",)
 
 
 def _get_theme_menu_display_name(theme: PhotoboothTheme) -> str:

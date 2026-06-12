@@ -291,7 +291,10 @@ class GeminiClient:
     def _auth_headers(self, api_key: str) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if self.config.provider == "vertex":
-            headers["Authorization"] = f"Bearer {self._get_vertex_access_token()}"
+            if api_key:
+                headers["x-goog-api-key"] = api_key
+            else:
+                headers["Authorization"] = f"Bearer {self._get_vertex_access_token()}"
         else:
             headers["x-goog-api-key"] = api_key
         return headers
@@ -785,7 +788,7 @@ class GeminiClient:
             max_attempts = max(self.config.max_retries, len(self._api_keys))
             for attempt in range(max_attempts):
                 try:
-                    async with aiohttp.ClientSession(trust_env=True) as session:
+                    async with aiohttp.ClientSession(trust_env=self._image_generation_provider != "vertex") as session:
                         async with session.post(
                             endpoint,
                             json=payload,

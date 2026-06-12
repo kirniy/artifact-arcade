@@ -58,7 +58,6 @@ async def run_hardware() -> None:
     from artifact.core.events import Event, EventType
     from artifact.printing.manager import PrintManager
     from artifact.utils.camera_service import camera_service
-    from artifact.utils.s3_upload import retry_pending_uploads
 
     # Import curated game modes (same as simulator)
     from artifact.modes.roast import RoastMeMode             # ПРОЖАРКА (first!)
@@ -166,17 +165,22 @@ async def run_hardware() -> None:
 
     logger.info(f"Registered {len(mode_manager._registered_modes)} modes")
 
-    def retry_spooled_uploads() -> None:
-        while True:
-            try:
-                summary = retry_pending_uploads(limit=100)
-                if summary["retried"] or summary["failed"]:
-                    logger.info("Pending upload retry pass: %s", summary)
-            except Exception:
-                logger.exception("Pending upload retry pass crashed")
-            time.sleep(60)
+    if os.getenv("ARTIFACT_UPLOAD_RETRY_IN_PROCESS", "").lower() in {"1", "true", "yes", "on"}:
+        from artifact.utils.s3_upload import retry_pending_uploads
 
-    threading.Thread(target=retry_spooled_uploads, daemon=True).start()
+        def retry_spooled_uploads() -> None:
+            while True:
+                try:
+                    summary = retry_pending_uploads(limit=100)
+                    if summary["retried"] or summary["failed"]:
+                        logger.info("Pending upload retry pass: %s", summary)
+                except Exception:
+                    logger.exception("Pending upload retry pass crashed")
+                time.sleep(60)
+
+        threading.Thread(target=retry_spooled_uploads, daemon=True).start()
+    else:
+        logger.info("In-process upload retry disabled; artifact-upload-spool service owns spool draining")
 
     # Initialize hardware
     if not runner.init():

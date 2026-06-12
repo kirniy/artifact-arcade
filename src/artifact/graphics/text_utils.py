@@ -1374,6 +1374,54 @@ def render_ticker_static(
         draw_text_bitmap(buffer, text, x, 0, color, font, scale=1)
 
 
+def render_idle_style_ticker_text(
+    buffer: NDArray[np.uint8],
+    text: str,
+    color: Tuple[int, int, int],
+    time_ms: float,
+) -> None:
+    """Render ticker text using the exact static idle-scene ticker layout."""
+    # Approximate character width at scale=1 (including spacing)
+    char_width = 6
+    text_width = len(text) * char_width
+    ticker_width = buffer.shape[1]  # 48 pixels
+
+    if text_width <= ticker_width:
+        # Short text - just center it
+        draw_centered_text(buffer, text, 0, color, scale=1)
+    else:
+        # Long text - horizontal scroll
+        # Scroll speed: complete scroll in ~2.5 seconds (fits within 3s display time)
+        scroll_duration = 2500  # ms
+        pause_at_start = 300  # ms pause before scrolling
+        pause_at_end = 200  # ms pause at end
+
+        # Calculate scroll position
+        t_in_display = time_ms % 3000  # Time within this text's display cycle
+
+        if t_in_display < pause_at_start:
+            # Pause at start - show beginning
+            x_offset = 0
+        elif t_in_display > (scroll_duration + pause_at_start):
+            # Pause at end - show end
+            x_offset = text_width - ticker_width
+        else:
+            # Scrolling
+            scroll_progress = (t_in_display - pause_at_start) / scroll_duration
+            scroll_progress = min(1.0, max(0.0, scroll_progress))
+            # Ease in-out for smooth scrolling
+            if scroll_progress < 0.5:
+                eased = 2 * scroll_progress * scroll_progress
+            else:
+                eased = 1 - pow(-2 * scroll_progress + 2, 2) / 2
+            x_offset = int(eased * (text_width - ticker_width))
+
+        # Draw text at offset position
+        draw_text(buffer, text, -x_offset, 0, color, scale=1)
+
+    # Sparkles removed - on the 48x8 LED ticker they look like noise
+
+
 def draw_centered_ticker(
     buffer: NDArray[np.uint8],
     text: str,

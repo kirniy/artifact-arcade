@@ -76,6 +76,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_STREET_HEAT_SQUARE = "photobooth_street_heat_square"  # 1:1 square - west coast polaroid mode
     PHOTOBOOTH_OFFICE_CORE = "photobooth_office_core"  # 9:16 vertical - pixelated office-core mode
     PHOTOBOOTH_OFFICE_CORE_SQUARE = "photobooth_office_core_square"  # 1:1 square - pixelated office-core mode
+    PHOTOBOOTH_SUMMER_CAMP = "photobooth_summer_camp"  # 9:16 vertical - pixelated summer sports camp mode
+    PHOTOBOOTH_SUMMER_CAMP_SQUARE = "photobooth_summer_camp_square"  # 1:1 square - pixelated summer sports camp mode
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -2594,6 +2596,101 @@ Square 1:1 white-background pixel office poster.
 ]
 
 
+# SUMMER CAMP VARIATIONS - pure white pixelated elite sports camp poster (9:16 vertical)
+SUMMER_CAMP_VARIATIONS = [
+    """SUMMER CAMP - PURE WHITE PIXEL SPORTS POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. No grid. No strip. No separate frames.
+
+ABSOLUTE #1 PRIORITY - EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
+- Preserve the exact real faces and full people count from the source photo.
+- Keep hair, skin tone, expression, body proportions, pose, clothing silhouette, and visible clothing text/logos exactly.
+- People remain recognizable and human; do not replace them with generic athletes.
+- Apply the theme to the surrounding scene, props, border, and light accessories only.
+
+VISUAL DIRECTION:
+- Pure white #FFFFFF background only. No black background, no gray wall, no room, no floor line.
+- Pixelated 2D style inherited from the Office Core theme: crisp square pixels, sharp outlines, chunky dithering, premium object-sheet layout.
+- Replace all office objects with elite summer sports camp objects: tennis balls, white tennis rackets, lime-green yoga mat, basketball, soccer ball, whistle, sweatbands, sport socks, sunscreen tube, water bottle, folded polo shirt, score card shapes, palm leaves, hedge texture strips, and country-club lawn accents.
+- Palette: tennis-ball neon yellow-green, deep athletic forest green, cream white, navy shadow accents, tiny sunset peach highlights.
+- Keep object placement neat, expensive, graphic, and readable. The background must stay mostly white.
+- No office props, no CRTs, no red telephones, no printers, no desk items, no corporate vibe, no photorealistic 3D props.
+
+TEXT AND BRANDING:
+- Use the supplied SUMMER CAMP emblem reference as the official top logo/title.
+- Huge title exactly "SUMMER CAMP", matching the emblem's varsity sports lockup and tennis-ball green palette as closely as possible.
+- Leave the bottom 12-15% of the poster as clean pure white empty space for a system-rendered footer.
+- Do not write VNVNC.RU, weekday, time, venue, fake dates, year, or "МСК" anywhere. The app adds the real footer after generation.
+- No other readable words except the SUMMER CAMP title and tiny non-readable scoreboard glyphs.
+
+OUTPUT:
+- one centered pure-white pixelated elite summer sports camp poster
+- exact likeness, crisp 2D sports objects, premium clean layout
+- vertical 9:16
+""",
+    """SUMMER CAMP - WHITE TENNIS CLUB ICON POSTER (VERTICAL 9:16)
+
+Create a single vertical 9:16 poster on a pure white background.
+
+IDENTITY LOCK:
+- Preserve exact likeness and every person from the input photo.
+- Same face, hair, skin tone, expression, body proportions, and real outfit identity.
+- Preserve visible clothing text and logos letter-for-letter.
+- Do not beautify, costume-swap, cartoon-replace, or turn people into generic tennis players.
+
+STYLE:
+- Clean pixelated 2D summer sports camp art, like a premium 1990s icon set expanded into a country-club party poster.
+- People may be lightly pixel-rendered while remaining unmistakably the same real people.
+- Sports camp objects are the hero styling: tennis balls, white rackets, rolled lime yoga mat, basketball, soccer ball, whistle, water bottle, sweatbands, sunglasses, sunscreen, socks, palm leaves, ivy hedge strips, and tiny court-line geometry.
+- Pure white negative space is mandatory. Use tennis yellow-green, forest green, cream, navy, and small peach highlights with tight control.
+- Make it cool and graphic, not clip art, not messy AI clutter, not a generic fitness ad.
+
+BRANDING:
+- Recreate the supplied SUMMER CAMP emblem as the huge top logo/title as closely as possible.
+- Leave the bottom 12-15% of the poster as clean pure white empty space for the system footer.
+- Do not write VNVNC.RU, weekday, time, venue, fake scoreboard text, fake dates, or "photobooth" wording. The app adds the real footer after generation.
+- No other readable text beyond the SUMMER CAMP title.
+
+OUTPUT:
+- pure white Summer Camp pixel poster, exact likeness, elite sports-camp objects
+- vertical 9:16
+""",
+]
+
+
+SUMMER_CAMP_SQUARE_VARIATIONS = [
+    """SUMMER CAMP - PURE WHITE PIXEL SPORTS POSTER (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no panels.
+Preserve exact real faces, full group, hair, skin tone, expression, body proportions, clothing silhouette, and visible clothing text exactly.
+
+Use a pure white #FFFFFF background with crisp pixelated 2D elite sports camp objects around the people:
+tennis balls, white tennis rackets, lime yoga mat, basketball, soccer ball, whistle, sweatbands, socks, sunscreen tube, water bottle, palm leaves, hedge strips, and court-line shapes.
+Keep the composition clean, expensive, graphic, and mostly white. No office props, no black void, and no 3D render.
+
+Huge title exactly "SUMMER CAMP" using the supplied emblem reference as the actual top logo.
+Do not write VNVNC.RU, weekday, time, venue, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+No extra readable text beyond the SUMMER CAMP title.
+
+Square 1:1 pure-white pixel summer sports camp poster.
+""",
+    """SUMMER CAMP - WHITE TENNIS CLUB ICON POSTER (SQUARE 1:1)
+
+One square full-color poster. Preserve exact likeness and every person from the input photo.
+Pure white studio void. Premium pixelated 2D object-sheet style with tennis-ball yellow-green, deep forest green, cream white, and navy accents.
+
+Surround the people with elite sports camp objects: tennis balls, rackets, yoga mat, basketball, soccer ball, whistle, water bottle, sunscreen, sweatbands, palm leaves, ivy hedge strips, and court lines.
+The sports objects should be crisp, readable, and cool; no messy collage, no dark background, no photorealistic 3D props.
+
+Huge title exactly "SUMMER CAMP", based directly on the supplied emblem reference rather than invented lettering.
+Do not write VNVNC.RU, weekday, time, venue, random words, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+No extra readable text beyond the SUMMER CAMP title.
+
+Square 1:1 white-background pixel sports-camp poster.
+""",
+]
+
+
 # CIRCUS MAXIMUS VARIATIONS - Octane 3D Creepy Circus (9:16 vertical)
 CIRCUS_MAXIMUS_VARIATIONS = [
     """CIRCUS MAXIMUS — CREEPY CIRCUS POSTER (VERTICAL 9:16)
@@ -3272,6 +3369,8 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE: "STREET_HEAT_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_OFFICE_CORE: "OFFICE_CORE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE: "OFFICE_CORE_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP: "SUMMER_CAMP_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE: "SUMMER_CAMP_SQUARE_VARIATION",
 
     # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
@@ -3385,6 +3484,8 @@ class CaricatureService:
                 "STREET_HEAT_SQUARE_VARIATION": STREET_HEAT_SQUARE_VARIATIONS,
                 "OFFICE_CORE_VARIATION": OFFICE_CORE_VARIATIONS,
                 "OFFICE_CORE_SQUARE_VARIATION": OFFICE_CORE_SQUARE_VARIATIONS,
+                "SUMMER_CAMP_VARIATION": SUMMER_CAMP_VARIATIONS,
+                "SUMMER_CAMP_SQUARE_VARIATION": SUMMER_CAMP_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -3469,6 +3570,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
+                CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -3546,6 +3649,10 @@ ADDITIONAL REFERENCE IMAGES:
             is_office_core_style = style in (
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
+            )
+            is_summer_camp_style = style in (
+                CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
+                CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
             )
 
             if is_brainrot_style:
@@ -3647,6 +3754,15 @@ ADDITIONAL REFERENCE IMAGES:
 - Keep the layout clean, mostly white, and premium; no messy collage and no random extra text
 - Use the supplied office-core emblem reference as the official top logo/title; match its pixel-office lockup as closely as possible
 """
+            elif is_summer_camp_style:
+                color_instruction = """- FULL COLOR — pure white elite summer sports palette: #FFFFFF background, tennis-ball neon yellow-green, deep athletic forest green, cream white, navy outline accents, small sunset peach highlights
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Pure white studio background is mandatory; no black void, no gray wall, no generic gym, no dark field
+- Crisp pixelated 2D sports-camp object art is mandatory: tennis balls, white rackets, yoga mat, basketball, soccer ball, whistle, water bottle, sweatbands, sunscreen, palm leaves, ivy hedge strips, court-line shapes
+- Human identity stays exact; theme changes only the rendered art style, props, typography, and non-obscuring accessories
+- Keep the layout clean, mostly white, elite, and premium; no messy collage and no random extra text
+- Use the supplied SUMMER CAMP emblem reference as the official top logo/title; match its varsity sports lockup as closely as possible
+"""
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
@@ -3738,6 +3854,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_CANDY_SHOP,
                 CaricatureStyle.PHOTOBOOTH_STREET_HEAT,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
+                CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -3767,6 +3884,8 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Premium white-background West Coast instant-film campaign poster, tactile Polaroid object realism, creamy paper border, subtle analog grain, polished chrome palm and lowrider still-life accents, basketball energy, luxe dice, chain details, exact photoreal human faces preserved"
             elif is_office_core_style:
                 image_style = "Pure white pixelated 2D office-core poster, crisp 1990s desktop UI icon style, chunky dithering, beige CRT computers, red corded telephone, fax machine, printer paper, folders, exact human likeness preserved"
+            elif is_summer_camp_style:
+                image_style = "Pure white pixelated 2D elite summer sports camp poster, crisp tennis-club icon style, chunky dithering, tennis balls, white rackets, lime yoga mat, basketball, soccer ball, whistle, palm leaves, exact human likeness preserved"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

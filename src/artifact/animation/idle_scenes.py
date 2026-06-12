@@ -407,6 +407,8 @@ class RotatingIdleAnimation:
             return "street_heat"
         if theme_id == "office-core":
             return "office_core"
+        if theme_id == "summer-camp":
+            return "summer_camp"
         if requested_modes & slavic_keys:
             return "slavic"
         return "cringe"
@@ -432,6 +434,8 @@ class RotatingIdleAnimation:
             self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "HEAT"
         elif self.idle_variant == "office_core":
             self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "OFFICE"
+        elif self.idle_variant == "summer_camp":
+            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "CAMP"
         else:
             self.idle_event_date = self._theme.event_date.strip() or "03.04-05.04"
 
@@ -475,6 +479,10 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "OFFICE CORE",
             }
+        if self.idle_variant == "summer_camp":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "SUMMER CAMP",
+            }
 
         return {
             IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
@@ -502,6 +510,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "street_heat":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "office_core":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "summer_camp":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
 
         playlist = [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -931,6 +941,21 @@ class RotatingIdleAnimation:
             else:
                 logger.warning(f"Office Core idle video not found: {video_path}")
             return
+        if self.idle_variant == "summer_camp":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "summer_camp"
+                / "video"
+                / "summer-camp-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded Summer Camp idle video: {video_path.name}")
+            else:
+                logger.warning(f"Summer Camp idle video not found: {video_path}")
+            return
         if self.idle_variant == "slavic":
             video_path = (
                 Path(__file__).parent.parent.parent.parent
@@ -1263,6 +1288,24 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: "OFFICE",
                 IdleScene.CRINGE_WHATSAPP: "VNVNC",
                 IdleScene.VNVNC_ENTRANCE: "OFFICE",
+                IdleScene.CAMERA_EFFECTS: "КАМЕРА",
+                IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
+                IdleScene.SAGA_LIVE: "САГА",
+                IdleScene.POSTER_SLIDESHOW: "АФИШИ",
+                IdleScene.DNA_HELIX: "ДНК",
+                IdleScene.SNOWFALL: "СНЕГ",
+                IdleScene.FIREPLACE: "КАМИН",
+                IdleScene.HYPERCUBE: "ГИПЕР",
+            }
+        elif self.idle_variant == "summer_camp":
+            names = {
+                IdleScene.CRINGE_HERO: "SUMMER",
+                IdleScene.CRINGE_CIRCLE_VIDEO: "SUMMER",
+                IdleScene.CRINGE_VENUE: "CAMP",
+                IdleScene.CRINGE_BRAINROT: "CAMP",
+                IdleScene.CRINGE_WEDDING: "CAMP",
+                IdleScene.CRINGE_WHATSAPP: "VNVNC",
+                IdleScene.VNVNC_ENTRANCE: "SUMMER",
                 IdleScene.CAMERA_EFFECTS: "КАМЕРА",
                 IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
                 IdleScene.SAGA_LIVE: "САГА",
@@ -4461,47 +4504,9 @@ class RotatingIdleAnimation:
 
     def _render_ticker_static_winter(self, buffer: NDArray[np.uint8], text: str, color: tuple, t: float) -> None:
         """Render static ticker text with winter sparkle effects and scrolling for long text."""
-        from artifact.graphics.text_utils import draw_centered_text, draw_text
+        from artifact.graphics.text_utils import render_idle_style_ticker_text
 
-        # Approximate character width at scale=1 (including spacing)
-        char_width = 6
-        text_width = len(text) * char_width
-        ticker_width = buffer.shape[1]  # 48 pixels
-
-        if text_width <= ticker_width:
-            # Short text - just center it
-            draw_centered_text(buffer, text, 0, color, scale=1)
-        else:
-            # Long text - horizontal scroll
-            # Scroll speed: complete scroll in ~2.5 seconds (fits within 3s display time)
-            scroll_duration = 2500  # ms
-            pause_at_start = 300  # ms pause before scrolling
-            pause_at_end = 200  # ms pause at end
-
-            # Calculate scroll position
-            t_in_display = t % 3000  # Time within this text's display cycle
-
-            if t_in_display < pause_at_start:
-                # Pause at start - show beginning
-                x_offset = 0
-            elif t_in_display > (scroll_duration + pause_at_start):
-                # Pause at end - show end
-                x_offset = text_width - ticker_width
-            else:
-                # Scrolling
-                scroll_progress = (t_in_display - pause_at_start) / scroll_duration
-                scroll_progress = min(1.0, max(0.0, scroll_progress))
-                # Ease in-out for smooth scrolling
-                if scroll_progress < 0.5:
-                    eased = 2 * scroll_progress * scroll_progress
-                else:
-                    eased = 1 - pow(-2 * scroll_progress + 2, 2) / 2
-                x_offset = int(eased * (text_width - ticker_width))
-
-            # Draw text at offset position
-            draw_text(buffer, text, -x_offset, 0, color, scale=1)
-
-        # Sparkles removed - on the 48x8 LED ticker they look like noise
+        render_idle_style_ticker_text(buffer, text, color, t)
 
     def _render_ticker_flip(self, buffer: NDArray[np.uint8], old_text: str, new_text: str,
                             old_color: tuple, new_color: tuple, progress: float, t: float) -> None:

@@ -529,6 +529,30 @@ OFFICE_CORE_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: SUMMER CAMP — elite pixel sports camp on pure white
+# =============================================================================
+SUMMER_CAMP_THEME = PhotoboothTheme(
+    id="summer-camp",
+    event_name="SUMMER CAMP",
+    event_date="",
+    logo_filename="summer-camp.png",
+    theme_chrome=(198, 236, 56),
+    theme_red=(34, 92, 54),
+    theme_black=(255, 255, 255),
+    ticker_idle="SUMMER",
+    lcd_prefix="CAMP",
+    description="ELITE SPORTS CAMP",
+    menu_display_name="SUMMER\nCAMP",
+    menu_description="PIXEL SPORTS POSTER",
+    menu_color=(198, 236, 56),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="summer_camp",
+    reference_image_filenames=("summer-camp.png",),
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -552,10 +576,11 @@ THEMES = {
     "candy-shop": CANDY_SHOP_THEME,
     "street-heat": STREET_HEAT_THEME,
     "office-core": OFFICE_CORE_THEME,
+    "summer-camp": SUMMER_CAMP_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "office-core"
+DEFAULT_THEME = "summer-camp"
 
 
 def get_current_theme() -> PhotoboothTheme:

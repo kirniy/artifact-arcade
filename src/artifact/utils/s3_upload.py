@@ -17,6 +17,10 @@ import tempfile
 import threading
 import shutil
 import os
+import configparser
+import hashlib
+import hmac
+from urllib.parse import quote, urlparse
 from datetime import datetime, timezone
 from typing import Optional, Callable
 from dataclasses import dataclass
@@ -24,12 +28,20 @@ from pathlib import Path
 
 import numpy as np
 
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    requests = None
+    HAS_REQUESTS = False
+
 logger = logging.getLogger(__name__)
 
 S3_MAIN_UPLOAD_TIMEOUT = 180
 S3_REDIRECT_UPLOAD_TIMEOUT = 45
 S3_MANIFEST_TIMEOUT = 180
 S3_UPLOAD_RETRIES = 3
+AWS_COMMAND_LOCK = threading.Lock()
 
 _THIS_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _THIS_DIR.parent.parent.parent
@@ -59,6 +71,155 @@ AWS_CLI_PATH = _find_aws_cli()
 AWS_CLI_AVAILABLE = AWS_CLI_PATH is not None
 if not AWS_CLI_AVAILABLE:
     logger.warning("AWS CLI not found - S3 uploads will be disabled. Install: brew install awscli")
+
+
+def _prepare_aws_args(args: list[str]) -> list[str]:
+    """Run AWS as the arcade user from the root hardware service."""
+    if (
+        os.getenv("ARTIFACT_ENV") == "hardware"
+        and hasattr(os, "geteuid")
+        and os.geteuid() == 0
+        and os.path.isdir("/home/kirniy")
+        and os.path.exists("/usr/bin/sudo")
+    ):
+        return [
+            "/usr/bin/sudo",
+            "-u",
+            "kirniy",
+            "-H",
+            "env",
+            "HOME=/home/kirniy",
+            *args,
+        ]
+
+    return args
+
+
+def _aws_home_dir() -> Path:
+    if (
+        os.getenv("ARTIFACT_ENV") == "hardware"
+        and os.path.isdir("/home/kirniy")
+    ):
+        return Path("/home/kirniy")
+    return Path(os.path.expanduser("~"))
+
+
+def _load_selectel_credentials() -> Optional[dict[str, str]]:
+    credentials_path = _aws_home_dir() / ".aws" / "credentials"
+    if not credentials_path.exists():
+        return None
+
+    parser = configparser.RawConfigParser()
+    parser.read(credentials_path)
+    if not parser.has_section("selectel"):
+        return None
+
+    access_key = parser.get("selectel", "aws_access_key_id", fallback="").strip()
+    secret_key = parser.get("selectel", "aws_secret_access_key", fallback="").strip()
+    session_token = parser.get("selectel", "aws_session_token", fallback="").strip()
+    if not access_key or not secret_key:
+        return None
+
+    return {
+        "access_key": access_key,
+        "secret_key": secret_key,
+        "session_token": session_token,
+    }
+
+
+def _signing_key(secret_key: str, date_stamp: str, region: str, service: str) -> bytes:
+    def sign(key: bytes, message: str) -> bytes:
+        return hmac.new(key, message.encode("utf-8"), hashlib.sha256).digest()
+
+    date_key = sign(("AWS4" + secret_key).encode("utf-8"), date_stamp)
+    region_key = sign(date_key, region)
+    service_key = sign(region_key, service)
+    return sign(service_key, "aws4_request")
+
+
+def _upload_local_path_to_s3_direct(
+    local_path: str,
+    s3_key: str,
+    content_type: str,
+    *,
+    cache_control: Optional[str] = None,
+) -> subprocess.CompletedProcess[bytes]:
+    """Upload directly with SigV4 HTTPS PUT, bypassing AWS CLI transport issues."""
+    if not HAS_REQUESTS:
+        return subprocess.CompletedProcess([], 1, b"", b"requests is not installed")
+
+    credentials = _load_selectel_credentials()
+    if credentials is None:
+        return subprocess.CompletedProcess([], 1, b"", b"Selectel credentials not found")
+
+    parsed = urlparse(SELECTEL_ENDPOINT)
+    host = parsed.netloc
+    encoded_key = quote(s3_key, safe="/")
+    canonical_uri = f"/{SELECTEL_BUCKET}/{encoded_key}"
+    url = f"{SELECTEL_ENDPOINT}{canonical_uri}"
+    payload = Path(local_path).read_bytes()
+    payload_hash = hashlib.sha256(payload).hexdigest()
+    now = datetime.now(timezone.utc)
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = now.strftime("%Y%m%d")
+
+    headers = {
+        "content-type": content_type,
+        "host": host,
+        "x-amz-acl": "public-read",
+        "x-amz-content-sha256": payload_hash,
+        "x-amz-date": amz_date,
+    }
+    if cache_control:
+        headers["cache-control"] = cache_control
+    if credentials["session_token"]:
+        headers["x-amz-security-token"] = credentials["session_token"]
+
+    signed_header_names = sorted(headers)
+    canonical_headers = "".join(f"{name}:{headers[name]}\n" for name in signed_header_names)
+    signed_headers = ";".join(signed_header_names)
+    canonical_request = "\n".join(
+        [
+            "PUT",
+            canonical_uri,
+            "",
+            canonical_headers,
+            signed_headers,
+            payload_hash,
+        ]
+    )
+    credential_scope = f"{date_stamp}/ru-7/s3/aws4_request"
+    string_to_sign = "\n".join(
+        [
+            "AWS4-HMAC-SHA256",
+            amz_date,
+            credential_scope,
+            hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+        ]
+    )
+    signature = hmac.new(
+        _signing_key(credentials["secret_key"], date_stamp, "ru-7", "s3"),
+        string_to_sign.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    headers["authorization"] = (
+        f"AWS4-HMAC-SHA256 Credential={credentials['access_key']}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+
+    try:
+        with AWS_COMMAND_LOCK:
+            response = requests.put(url, data=payload, headers=headers, timeout=S3_MAIN_UPLOAD_TIMEOUT)
+        if 200 <= response.status_code < 300:
+            return subprocess.CompletedProcess([], 0, response.content, b"")
+        return subprocess.CompletedProcess(
+            [],
+            response.status_code,
+            response.content,
+            f"HTTP {response.status_code}: {response.text[:500]}".encode("utf-8", errors="replace"),
+        )
+    except Exception as e:
+        return subprocess.CompletedProcess([], 1, b"", str(e).encode("utf-8", errors="replace"))
 
 # Selectel S3 configuration
 SELECTEL_ENDPOINT = "https://s3.ru-7.storage.selcloud.ru"
@@ -344,7 +505,8 @@ def _run_aws_command(
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):
         try:
-            return subprocess.run(args, capture_output=True, timeout=timeout)
+            with AWS_COMMAND_LOCK:
+                return subprocess.run(_prepare_aws_args(args), capture_output=True, timeout=timeout)
         except subprocess.TimeoutExpired as exc:
             last_error = exc
             logger.warning(
@@ -360,26 +522,52 @@ def _run_aws_command(
     raise last_error
 
 
-def _upload_local_path_to_s3(local_path: str, s3_key: str, content_type: str) -> subprocess.CompletedProcess[bytes]:
+def _upload_local_path_to_s3(
+    local_path: str,
+    s3_key: str,
+    content_type: str,
+    *,
+    timeout: int = S3_MAIN_UPLOAD_TIMEOUT,
+    cache_control: Optional[str] = None,
+) -> subprocess.CompletedProcess[bytes]:
     """Upload an existing local file to the configured S3 key."""
-    return _run_aws_command(
-        [
-            AWS_CLI_PATH,
-            '--endpoint-url',
-            SELECTEL_ENDPOINT,
-            '--profile',
-            'selectel',
-            's3',
-            'cp',
+    if not AWS_CLI_AVAILABLE:
+        return _upload_local_path_to_s3_direct(
             local_path,
-            f's3://{SELECTEL_BUCKET}/{s3_key}',
-            '--acl',
-            'public-read',
-            '--content-type',
+            s3_key,
             content_type,
-        ],
-        timeout=S3_MAIN_UPLOAD_TIMEOUT,
-        retries=S3_UPLOAD_RETRIES,
+            cache_control=cache_control,
+        )
+
+    args = [
+        AWS_CLI_PATH,
+        '--endpoint-url',
+        SELECTEL_ENDPOINT,
+        '--profile',
+        'selectel',
+        's3',
+        'cp',
+        local_path,
+        f's3://{SELECTEL_BUCKET}/{s3_key}',
+        '--acl',
+        'public-read',
+        '--content-type',
+        content_type,
+    ]
+    if cache_control:
+        args.extend(["--cache-control", cache_control])
+
+    result = _run_aws_command(args, timeout=timeout, retries=S3_UPLOAD_RETRIES)
+    if result.returncode == 0:
+        return result
+
+    stderr = result.stderr.decode(errors="replace") if result.stderr else ""
+    logger.warning("AWS CLI upload failed for %s; trying direct HTTPS fallback: %s", s3_key, stderr[:500])
+    return _upload_local_path_to_s3_direct(
+        local_path,
+        s3_key,
+        content_type,
+        cache_control=cache_control,
     )
 
 
@@ -410,16 +598,13 @@ def _upload_redirect_html(short_id: str, target_url: str) -> bool:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as tmp:
             tmp.write(html_content)
             tmp_path = tmp.name
+        os.chmod(tmp_path, 0o644)
 
-        result = _run_aws_command(
-            [AWS_CLI_PATH, '--endpoint-url', SELECTEL_ENDPOINT,
-             '--profile', 'selectel',
-             's3', 'cp', tmp_path,
-             f's3://{SELECTEL_BUCKET}/{s3_key}',
-             '--acl', 'public-read',
-             '--content-type', 'text/html; charset=utf-8'],
+        result = _upload_local_path_to_s3(
+            tmp_path,
+            s3_key,
+            'text/html; charset=utf-8',
             timeout=S3_REDIRECT_UPLOAD_TIMEOUT,
-            retries=2,
         )
 
         try:
@@ -519,27 +704,14 @@ def refresh_public_photo_manifest(prefix: str = "photobooth", max_items: int = 5
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
             tmp.write(json.dumps(manifest, ensure_ascii=False).encode("utf-8"))
             tmp_path = tmp.name
+        os.chmod(tmp_path, 0o644)
 
-        upload = _run_aws_command(
-            [
-                AWS_CLI_PATH,
-                "--endpoint-url",
-                SELECTEL_ENDPOINT,
-                "--profile",
-                "selectel",
-                "s3",
-                "cp",
-                tmp_path,
-                f"s3://{SELECTEL_BUCKET}/{manifest_key}",
-                "--acl",
-                "public-read",
-                "--content-type",
-                "application/json; charset=utf-8",
-                "--cache-control",
-                "no-cache, no-store, must-revalidate",
-            ],
+        upload = _upload_local_path_to_s3(
+            tmp_path,
+            manifest_key,
+            "application/json; charset=utf-8",
             timeout=S3_MANIFEST_TIMEOUT,
-            retries=2,
+            cache_control="no-cache, no-store, must-revalidate",
         )
 
         try:
@@ -573,6 +745,7 @@ def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict
     retried = 0
     succeeded = 0
     failed = 0
+    manifest_prefixes: set[str] = set()
 
     for meta_path in meta_files[:limit]:
         pending = _load_pending_upload(meta_path)
@@ -593,11 +766,7 @@ def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict
             if pending.short_id:
                 _upload_redirect_html(pending.short_id, url)
             if pending.prefix == "photobooth":
-                threading.Thread(
-                    target=refresh_public_photo_manifest,
-                    kwargs={"prefix": pending.prefix},
-                    daemon=True,
-                ).start()
+                manifest_prefixes.add(pending.prefix)
 
             _delete_pending_upload(pending)
             succeeded += 1
@@ -605,6 +774,9 @@ def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict
         except Exception as e:
             failed += 1
             logger.warning("Pending upload retry failed for %s: %s", pending.filename, e)
+
+    for manifest_prefix in manifest_prefixes:
+        refresh_public_photo_manifest(prefix=manifest_prefix)
 
     return {"retried": retried, "succeeded": succeeded, "failed": failed}
 
@@ -790,15 +962,11 @@ def upload_file_to_s3(
         except:
             logger.info(f"Uploading file to Selectel S3: {s3_key}")
 
-        result = subprocess.run(
-            [AWS_CLI_PATH, '--endpoint-url', SELECTEL_ENDPOINT,
-             '--profile', 'selectel',
-             's3', 'cp', file_path,
-             f's3://{SELECTEL_BUCKET}/{s3_key}',
-             '--acl', 'public-read',
-             '--content-type', content_type],
-            capture_output=True,
-            timeout=90
+        result = _upload_local_path_to_s3(
+            file_path,
+            s3_key,
+            content_type,
+            timeout=90,
         )
 
         if result.returncode == 0:

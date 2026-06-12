@@ -1,0 +1,19 @@
+[Unit]
+Description=ARTIFACT Upload Spool Drainer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kirniy
+WorkingDirectory=/home/kirniy/modular-arcade
+Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+Environment=ARTIFACT_ENV=uploader
+Environment=ARTIFACT_UPLOAD_RETRY_INTERVAL=30
+Environment=ARTIFACT_UPLOAD_RETRY_LIMIT=100
+ExecStart=/home/kirniy/modular-arcade/.venv/bin/python /home/kirniy/modular-arcade/scripts/upload_spool_daemon.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
