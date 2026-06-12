@@ -11,6 +11,7 @@ WorkingDirectory=/home/kirniy/modular-arcade
 Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
 Environment=ARCADE_DATA_DIR=/home/kirniy/modular-arcade/data
 Environment=ARCADE_CONTROL_FILE=/home/kirniy/modular-arcade/data/control.json
+EnvironmentFile=-/home/kirniy/modular-arcade/data/arcade-bot.env
 
 ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.telegram.bot
 

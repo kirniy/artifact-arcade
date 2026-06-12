@@ -1,380 +1,133 @@
-"""VNVNC Arcade Telegram Bot.
+"""Russian admin Telegram bot for the VNVNC arcade machine."""
 
-A Telegram bot for arcade management:
-- Coupon verification and redemption for staff
-- Photo/image broadcasting to subscribers
-- Log access and statistics
-"""
+from __future__ import annotations
 
 import asyncio
+import html
+import json
 import logging
 import os
-import json
+import time
+import uuid
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any, Set, List
-from dataclasses import dataclass, field, asdict
+from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 from aiohttp import web
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, WebAppInfo
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters,
-)
+from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 from artifact.modes.photobooth import get_configured_photobooth_modes
+from artifact.telegram.events import EVENT_LOG, read_bot_events
+
 
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 
-# Configuration
-BOT_TOKEN = os.environ.get("ARCADE_BOT_TOKEN", "7956425465:AAFRm30H40TVteVp8584I0F421BFJpAhr8A")
+MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 DATA_DIR = Path(os.environ.get("ARCADE_DATA_DIR", "/home/kirniy/modular-arcade/data"))
-ADMIN_IDS: Set[int] = {433491, 804410245}  # Telegram IDs with full access
-STAFF_IDS: Set[int] = {433491, 804410245, 429156227, 404497105}  # Staff who can validate coupons
+CONTROL_FILE = Path(os.environ.get("ARCADE_CONTROL_FILE", str(DATA_DIR / "control.json")))
+STATUS_FILE = Path(os.environ.get("ARCADE_STATUS_FILE", str(DATA_DIR / "status.json")))
+CONTROL_RESPONSE_DIR = Path(os.environ.get("ARCADE_CONTROL_RESPONSE_DIR", str(DATA_DIR / "control_responses")))
+AI_LOG_DIR = Path(os.environ.get("VNVNC_AI_LOG_DIR", "/home/kirniy/modular-arcade/vnvnc_ai_logs"))
+UPLOAD_SPOOL_DIR = Path(os.environ.get("ARCADE_UPLOAD_SPOOL_DIR", "/home/kirniy/modular-arcade/data/upload_spool"))
 
-# Control file for arcade communication
-CONTROL_FILE = Path(os.environ.get("ARCADE_CONTROL_FILE", "/home/kirniy/modular-arcade/data/control.json"))
+
+def _parse_ids(value: str, default: set[int]) -> set[int]:
+    ids: set[int] = set()
+    for item in value.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            ids.add(int(item))
+        except ValueError:
+            logger.warning("Ignoring invalid Telegram id: %s", item)
+    return ids or default
+
+
+ADMIN_IDS = _parse_ids(os.environ.get("ARCADE_ADMIN_IDS", "433491"), {433491})
+TRIAL_CREDIT_USD = float(os.environ.get("ARCADE_TRIAL_CREDIT_USD", "300"))
+IMAGE_CALL_COST_USD = float(os.environ.get("ARCADE_GEMINI_IMAGE_COST_USD", "0.04"))
+TEXT_CALL_COST_USD = float(os.environ.get("ARCADE_GEMINI_TEXT_COST_USD", "0.002"))
+
+
+def _now() -> datetime:
+    return datetime.now(MOSCOW_TZ)
+
+
+def _format_dt(ts: float | str | None) -> str:
+    if ts is None:
+        return "нет данных"
+    try:
+        if isinstance(ts, (int, float)):
+            dt = datetime.fromtimestamp(float(ts), MOSCOW_TZ)
+        else:
+            dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=MOSCOW_TZ)
+            else:
+                dt = dt.astimezone(MOSCOW_TZ)
+        return dt.strftime("%d.%m.%Y %H:%M:%S")
+    except Exception:
+        return str(ts)
+
+
+def _event_dt(event: dict[str, Any]) -> datetime:
+    ts = event.get("timestamp")
+    if isinstance(ts, (int, float)):
+        return datetime.fromtimestamp(float(ts), MOSCOW_TZ)
+    if isinstance(ts, str):
+        try:
+            parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            return parsed.astimezone(MOSCOW_TZ) if parsed.tzinfo else parsed.replace(tzinfo=MOSCOW_TZ)
+        except ValueError:
+            pass
+    return _now()
+
+
+def _club_night_window(now: Optional[datetime] = None) -> tuple[datetime, datetime]:
+    current = now or _now()
+    if current.hour < 7:
+        start_date = current.date() - timedelta(days=1)
+        end_date = current.date()
+    elif current.hour >= 23:
+        start_date = current.date()
+        end_date = current.date() + timedelta(days=1)
+    else:
+        start_date = current.date() - timedelta(days=1)
+        end_date = current.date()
+    return (
+        datetime.combine(start_date, datetime.min.time(), MOSCOW_TZ).replace(hour=23),
+        datetime.combine(end_date, datetime.min.time(), MOSCOW_TZ).replace(hour=7),
+    )
+
+
+def _report_window_for_day(day: datetime) -> tuple[datetime, datetime]:
+    end = datetime.combine(day.date(), datetime.min.time(), MOSCOW_TZ).replace(hour=7)
+    return end - timedelta(hours=8), end
 
 
 @dataclass
 class Coupon:
-    """A prize coupon."""
     code: str
-    prize_type: str  # COCKTL, SHOTFR, etc.
+    prize_type: str
     prize_label: str
-    source: str  # ARCADE_QUIZ, ARCADE_SQUID, etc.
+    source: str
     created_at: str
     expires_at: str
     is_redeemed: bool = False
     redeemed_at: Optional[str] = None
-    redeemed_by: Optional[int] = None  # Telegram ID of staff who redeemed
-
-
-@dataclass
-class ArcadeStats:
-    """Arcade usage statistics."""
-    total_sessions: int = 0
-    sessions_today: int = 0
-    coupons_issued: int = 0
-    coupons_redeemed: int = 0
-    photos_taken: int = 0
-    last_activity: Optional[str] = None
-    mode_counts: Dict[str, int] = field(default_factory=dict)
+    redeemed_by: Optional[int] = None
 
 
 class CouponStore:
-    """Persistent coupon storage using JSON file."""
-
-    def __init__(self, data_dir: Path):
-        self.data_dir = data_dir
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.coupons_file = data_dir / "coupons.json"
-        self.stats_file = data_dir / "stats.json"
-        self.subscribers_file = data_dir / "subscribers.json"
-        self._coupons: Dict[str, Coupon] = {}
-        self._stats = ArcadeStats()
-        self._subscribers: Set[int] = set()
-        self._load()
-
-    def _load(self) -> None:
-        """Load data from files."""
-        # Load coupons
-        if self.coupons_file.exists():
-            try:
-                with open(self.coupons_file, "r") as f:
-                    data = json.load(f)
-                    self._coupons = {
-                        code: Coupon(**coupon_data)
-                        for code, coupon_data in data.items()
-                    }
-                logger.info(f"Loaded {len(self._coupons)} coupons")
-            except Exception as e:
-                logger.error(f"Failed to load coupons: {e}")
-
-        # Load stats
-        if self.stats_file.exists():
-            try:
-                with open(self.stats_file, "r") as f:
-                    data = json.load(f)
-                    self._stats = ArcadeStats(**data)
-                logger.info("Loaded arcade stats")
-            except Exception as e:
-                logger.error(f"Failed to load stats: {e}")
-
-        # Load subscribers
-        if self.subscribers_file.exists():
-            try:
-                with open(self.subscribers_file, "r") as f:
-                    self._subscribers = set(json.load(f))
-                logger.info(f"Loaded {len(self._subscribers)} subscribers")
-            except Exception as e:
-                logger.error(f"Failed to load subscribers: {e}")
-
-    def _save_coupons(self) -> None:
-        """Save coupons to file."""
-        try:
-            with open(self.coupons_file, "w") as f:
-                json.dump(
-                    {code: asdict(coupon) for code, coupon in self._coupons.items()},
-                    f,
-                    indent=2,
-                    ensure_ascii=False
-                )
-        except Exception as e:
-            logger.error(f"Failed to save coupons: {e}")
-
-    def _save_stats(self) -> None:
-        """Save stats to file."""
-        try:
-            with open(self.stats_file, "w") as f:
-                json.dump(asdict(self._stats), f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            logger.error(f"Failed to save stats: {e}")
-
-    def _save_subscribers(self) -> None:
-        """Save subscribers to file."""
-        try:
-            with open(self.subscribers_file, "w") as f:
-                json.dump(list(self._subscribers), f)
-        except Exception as e:
-            logger.error(f"Failed to save subscribers: {e}")
-
-    def create_coupon(
-        self,
-        code: str,
-        prize_type: str,
-        prize_label: str,
-        source: str,
-        validity_days: int = 14,
-    ) -> Coupon:
-        """Create a new coupon."""
-        now = datetime.now()
-        expires = now + timedelta(days=validity_days)
-
-        coupon = Coupon(
-            code=code,
-            prize_type=prize_type,
-            prize_label=prize_label,
-            source=source,
-            created_at=now.isoformat(),
-            expires_at=expires.isoformat(),
-        )
-
-        self._coupons[code] = coupon
-        self._stats.coupons_issued += 1
-        self._save_coupons()
-        self._save_stats()
-
-        logger.info(f"Created coupon: {code} ({prize_label})")
-        return coupon
-
-    def get_coupon(self, code: str) -> Optional[Coupon]:
-        """Get coupon by code."""
-        return self._coupons.get(code.upper().strip())
-
-    def validate_coupon(self, code: str) -> Dict[str, Any]:
-        """Validate a coupon code."""
-        code = code.upper().strip()
-        coupon = self._coupons.get(code)
-
-        if not coupon:
-            return {"valid": False, "error": "NOT_FOUND", "message": "Купон не найден"}
-
-        now = datetime.now()
-        expires_at = datetime.fromisoformat(coupon.expires_at)
-
-        if expires_at < now:
-            return {
-                "valid": False,
-                "error": "EXPIRED",
-                "message": "Купон истёк",
-                "coupon": coupon,
-            }
-
-        if coupon.is_redeemed:
-            return {
-                "valid": False,
-                "error": "ALREADY_REDEEMED",
-                "message": "Купон уже использован",
-                "coupon": coupon,
-            }
-
-        return {
-            "valid": True,
-            "coupon": coupon,
-            "message": "Купон действителен",
-        }
-
-    def redeem_coupon(self, code: str, staff_id: int) -> Dict[str, Any]:
-        """Redeem a coupon."""
-        validation = self.validate_coupon(code)
-
-        if not validation["valid"]:
-            return validation
-
-        coupon = validation["coupon"]
-        coupon.is_redeemed = True
-        coupon.redeemed_at = datetime.now().isoformat()
-        coupon.redeemed_by = staff_id
-
-        self._stats.coupons_redeemed += 1
-        self._save_coupons()
-        self._save_stats()
-
-        logger.info(f"Redeemed coupon: {code} by staff {staff_id}")
-
-        return {
-            "success": True,
-            "coupon": coupon,
-            "message": "Купон погашен!",
-        }
-
-    def get_stats(self) -> ArcadeStats:
-        """Get current stats."""
-        return self._stats
-
-    def update_stats(self, **kwargs) -> None:
-        """Update stats."""
-        for key, value in kwargs.items():
-            if hasattr(self._stats, key):
-                if isinstance(getattr(self._stats, key), int) and isinstance(value, int):
-                    setattr(self._stats, key, getattr(self._stats, key) + value)
-                else:
-                    setattr(self._stats, key, value)
-        self._stats.last_activity = datetime.now().isoformat()
-        self._save_stats()
-
-    def increment_mode(self, mode_name: str) -> None:
-        """Increment mode play count."""
-        self._stats.mode_counts[mode_name] = self._stats.mode_counts.get(mode_name, 0) + 1
-        self._stats.total_sessions += 1
-        self._stats.last_activity = datetime.now().isoformat()
-        self._save_stats()
-
-    def add_subscriber(self, user_id: int) -> bool:
-        """Add a subscriber for photo broadcasts."""
-        if user_id in self._subscribers:
-            return False
-        self._subscribers.add(user_id)
-        self._save_subscribers()
-        return True
-
-    def remove_subscriber(self, user_id: int) -> bool:
-        """Remove a subscriber."""
-        if user_id not in self._subscribers:
-            return False
-        self._subscribers.discard(user_id)
-        self._save_subscribers()
-        return True
-
-    def get_subscribers(self) -> Set[int]:
-        """Get all subscribers."""
-        return self._subscribers.copy()
-
-    def get_recent_coupons(self, limit: int = 10) -> List[Coupon]:
-        """Get recent coupons."""
-        sorted_coupons = sorted(
-            self._coupons.values(),
-            key=lambda c: c.created_at,
-            reverse=True
-        )
-        return sorted_coupons[:limit]
-
-
-class ArcadeControl:
-    """Control interface for arcade machine via shared file.
-
-    Commands are written to control.json and read by the arcade main loop.
-    """
-
-    def __init__(self, control_file: Path = CONTROL_FILE):
-        self.control_file = control_file
-        self.control_file.parent.mkdir(parents=True, exist_ok=True)
-
-    def _write_command(self, command: str, **kwargs) -> None:
-        """Write a command to the control file."""
-        now = datetime.now()
-        data = {
-            "command": command,
-            "timestamp": now.timestamp(),
-            "timestamp_iso": now.isoformat(),
-            **kwargs
-        }
-        try:
-            with open(self.control_file, "w") as f:
-                json.dump(data, f, indent=2)
-            logger.info(f"Control command: {command} {kwargs}")
-        except Exception as e:
-            logger.error(f"Failed to write control command: {e}")
-
-    def set_volume(self, level: float) -> None:
-        """Set master volume (0.0 - 1.0)."""
-        self._write_command("volume", level=max(0.0, min(1.0, level)))
-
-    def volume_up(self, step: float = 0.1) -> None:
-        """Increase volume."""
-        self._write_command("volume_up", step=step)
-
-    def volume_down(self, step: float = 0.1) -> None:
-        """Decrease volume."""
-        self._write_command("volume_down", step=step)
-
-    def mute(self) -> None:
-        """Mute audio."""
-        self._write_command("mute")
-
-    def unmute(self) -> None:
-        """Unmute audio."""
-        self._write_command("unmute")
-
-    def toggle_mute(self) -> None:
-        """Toggle mute state."""
-        self._write_command("toggle_mute")
-
-    def set_idle_scene(self, scene_index: int) -> None:
-        """Set idle animation scene by index."""
-        self._write_command("idle_scene", index=scene_index)
-
-    def next_idle_scene(self) -> None:
-        """Switch to next idle scene."""
-        self._write_command("idle_next")
-
-    def prev_idle_scene(self) -> None:
-        """Switch to previous idle scene."""
-        self._write_command("idle_prev")
-
-    def start_mode(self, mode_name: str) -> None:
-        """Start a specific mode."""
-        self._write_command("start_mode", mode=mode_name)
-
-    def press_button(self, button: str) -> None:
-        """Simulate button press (start, left, right, back)."""
-        valid_buttons = ["start", "left", "right", "back", "reboot"]
-        if button.lower() in valid_buttons:
-            self._write_command("button", button=button.lower())
-
-    def reboot(self) -> None:
-        """Reboot arcade to idle state."""
-        self._write_command("reboot")
-
-    def get_status(self) -> Dict[str, Any]:
-        """Read current arcade status from status file."""
-        status_file = self.control_file.parent / "status.json"
-        if status_file.exists():
-            try:
-                with open(status_file, "r") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return {}
-
-
-class ArcadeBot:
-    """Main Telegram bot for VNVNC arcade."""
+    """Compatibility store for older arcade modes that still issue coupons."""
 
     PRIZE_LABELS = {
         "COCKTL": "Бесплатный коктейль",
@@ -384,902 +137,734 @@ class ArcadeBot:
         "MERCHX": "Мерч VNVNC",
     }
 
-    # Available non-photobooth modes for remote selection.
-    # Keep empty unless a mode is explicitly re-enabled in artifact.main.
-    BASE_AVAILABLE_MODES: List[str] = []
+    def __init__(self, data_dir: Path) -> None:
+        self.data_dir = data_dir
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.path = data_dir / "coupons.json"
+        self._coupons: dict[str, Coupon] = {}
+        self._load()
 
-    MODE_BUTTON_META: Dict[str, Dict[str, str]] = {
-        "fortune": {"icon": "🔮", "label": "Гадание"},
-        "ai_prophet": {"icon": "🧙", "label": "Пророк"},
-        "roast": {"icon": "🔥", "label": "Роуст"},
-        "squid_game": {"icon": "🦑", "label": "Игра"},
-        "quiz": {"icon": "❓", "label": "Викторина"},
-        "tower_stack": {"icon": "🧱", "label": "Башня"},
-        "brick_breaker": {"icon": "🟨", "label": "Арканоид"},
-        "video": {"icon": "🎬", "label": "Видео"},
-        "sorting_hat": {"icon": "🎩", "label": "Шляпа"},
-        "guess_me": {"icon": "🕵️", "label": "Угадай"},
-        "roulette": {"icon": "🎰", "label": "Рулетка"},
-        "autopsy": {"icon": "🧪", "label": "Вскрытие"},
-    }
+    def _load(self) -> None:
+        if not self.path.exists():
+            return
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            self._coupons = {code: Coupon(**data) for code, data in payload.items()}
+        except Exception as e:
+            logger.warning("Could not load coupons: %s", e)
 
-    def __init__(self, token: str = BOT_TOKEN, data_dir: Path = DATA_DIR):
-        self.token = token
-        self.store = CouponStore(data_dir)
+    def _save(self) -> None:
+        self.path.write_text(
+            json.dumps({code: asdict(coupon) for code, coupon in self._coupons.items()}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def create_coupon(self, code: str, prize_type: str, source: str) -> Coupon:
+        now = _now()
+        coupon = Coupon(
+            code=code.upper(),
+            prize_type=prize_type,
+            prize_label=self.PRIZE_LABELS.get(prize_type, prize_type),
+            source=source,
+            created_at=now.isoformat(),
+            expires_at=(now + timedelta(days=7)).isoformat(),
+        )
+        self._coupons[coupon.code] = coupon
+        self._save()
+        return coupon
+
+    def get_recent(self, limit: int = 10) -> list[Coupon]:
+        return sorted(self._coupons.values(), key=lambda item: item.created_at, reverse=True)[:limit]
+
+
+class ArcadeControl:
+    """File-based control channel read by the root hardware runner."""
+
+    def __init__(self, control_file: Path = CONTROL_FILE) -> None:
+        self.control_file = control_file
+        self.control_file.parent.mkdir(parents=True, exist_ok=True)
+        CONTROL_RESPONSE_DIR.mkdir(parents=True, exist_ok=True)
+
+    def write_command(self, command: str, **kwargs: Any) -> str:
+        command_id = uuid.uuid4().hex
+        payload = {
+            "command_id": command_id,
+            "command": command,
+            "timestamp": time.time(),
+            "timestamp_iso": _now().isoformat(),
+            **kwargs,
+        }
+        self.control_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            self.control_file.chmod(0o666)
+        except OSError:
+            pass
+        logger.info("Wrote control command %s (%s)", command, command_id)
+        return command_id
+
+    async def wait_response(self, command_id: str, timeout: float = 10.0) -> Optional[dict[str, Any]]:
+        path = CONTROL_RESPONSE_DIR / f"{command_id}.json"
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if path.exists():
+                try:
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    path.unlink(missing_ok=True)
+                    return payload
+                except Exception as e:
+                    return {"ok": False, "error": str(e)}
+            await asyncio.sleep(0.2)
+        return None
+
+    def status(self) -> dict[str, Any]:
+        if not STATUS_FILE.exists():
+            return {}
+        try:
+            return json.loads(STATUS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def button(self, button: str) -> None:
+        self.write_command("button", button=button)
+
+    def mode(self, mode: str) -> None:
+        self.write_command("start_mode", mode=mode)
+
+    def idle_next(self) -> None:
+        self.write_command("idle_next")
+
+    def idle_prev(self) -> None:
+        self.write_command("idle_prev")
+
+    def mute(self) -> None:
+        self.write_command("mute")
+
+    def unmute(self) -> None:
+        self.write_command("unmute")
+
+    def machine_reboot(self) -> str:
+        return self.write_command("system_reboot")
+
+    async def capture_photo(self) -> Optional[dict[str, Any]]:
+        command_id = self.write_command("capture_photo")
+        return await self.wait_response(command_id, timeout=12.0)
+
+
+class StatsReader:
+    def __init__(self, data_dir: Path = DATA_DIR) -> None:
+        self.data_dir = data_dir
+
+    def events(self) -> list[dict[str, Any]]:
+        return list(read_bot_events(EVENT_LOG) or [])
+
+    def photo_events(self, start: Optional[datetime] = None, end: Optional[datetime] = None) -> list[dict[str, Any]]:
+        photos: list[dict[str, Any]] = []
+        for event in self.events():
+            if event.get("type") != "photobooth_photo":
+                continue
+            dt = _event_dt(event)
+            if start and dt < start:
+                continue
+            if end and dt >= end:
+                continue
+            photos.append(event)
+        return photos
+
+    def _count_ai_logs(self, start: Optional[datetime], end: Optional[datetime]) -> tuple[int, int]:
+        image_count = 0
+        text_count = 0
+        if not AI_LOG_DIR.exists():
+            return image_count, text_count
+
+        for meta_path in AI_LOG_DIR.glob("*/metadata/*_meta.json"):
+            if self._log_in_window(meta_path, start, end):
+                image_count += 1
+        for text_path in AI_LOG_DIR.glob("*/text/*.json"):
+            if self._log_in_window(text_path, start, end):
+                text_count += 1
+        return image_count, text_count
+
+    @staticmethod
+    def _log_in_window(path: Path, start: Optional[datetime], end: Optional[datetime]) -> bool:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            value = payload.get("timestamp")
+            if not value:
+                return False
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            dt = dt.astimezone(MOSCOW_TZ) if dt.tzinfo else dt.replace(tzinfo=MOSCOW_TZ)
+            return (start is None or dt >= start) and (end is None or dt < end)
+        except Exception:
+            return False
+
+    def pending_uploads(self) -> int:
+        if not UPLOAD_SPOOL_DIR.exists():
+            return 0
+        return len(list(UPLOAD_SPOOL_DIR.glob("*/*.json")))
+
+    def build_stats(self, start: Optional[datetime] = None, end: Optional[datetime] = None) -> dict[str, Any]:
+        photos = self.photo_events(start, end)
+        successful = [event for event in photos if event.get("success")]
+        failed = [event for event in photos if not event.get("success")]
+        image_calls, text_calls = self._count_ai_logs(start, end)
+        spent = image_calls * IMAGE_CALL_COST_USD + text_calls * TEXT_CALL_COST_USD
+        return {
+            "photos": len(photos),
+            "successful_photos": len(successful),
+            "failed_photos": len(failed),
+            "image_calls": image_calls,
+            "text_calls": text_calls,
+            "spent": spent,
+            "trial_left": max(0.0, TRIAL_CREDIT_USD - spent),
+            "pending_uploads": self.pending_uploads(),
+            "last_photo": successful[-1] if successful else None,
+        }
+
+
+class ArcadeBot:
+    def __init__(self, token: Optional[str] = None, data_dir: Path = DATA_DIR) -> None:
+        self.token = token if token is not None else os.environ.get("ARCADE_BOT_TOKEN", "").strip()
+        self.data_dir = data_dir
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.state_path = self.data_dir / "bot_state.json"
+        self.coupons = CouponStore(data_dir)
         self.control = ArcadeControl()
+        self.stats = StatsReader(data_dir)
         self.app: Optional[Application] = None
         self._running = False
+        self._event_task: Optional[asyncio.Task] = None
+        self._report_task: Optional[asyncio.Task] = None
+        self._state = self._load_state()
 
     @classmethod
-    def get_available_mode_buttons(cls) -> List[Dict[str, str]]:
-        photobooth_modes = [
-            {
-                "name": mode_cls.name,
-                "icon": getattr(mode_cls, "icon", "📸"),
-                "label": getattr(mode_cls, "display_name", mode_cls.name).strip(),
-            }
-            for mode_cls in get_configured_photobooth_modes()
-        ]
-        ordered_names = [*cls.BASE_AVAILABLE_MODES[:2], *[m["name"] for m in photobooth_modes], *cls.BASE_AVAILABLE_MODES[2:]]
-        photobooth_by_name = {item["name"]: item for item in photobooth_modes}
-
-        buttons: List[Dict[str, str]] = []
-        seen: Set[str] = set()
-        for mode_name in ordered_names:
-            if mode_name in seen:
-                continue
-            seen.add(mode_name)
-            if mode_name in photobooth_by_name:
-                buttons.append(photobooth_by_name[mode_name])
-                continue
-            meta = cls.MODE_BUTTON_META.get(mode_name, {})
+    def get_available_mode_buttons(cls) -> list[dict[str, str]]:
+        buttons: list[dict[str, str]] = []
+        for mode_cls in get_configured_photobooth_modes():
             buttons.append(
                 {
-                    "name": mode_name,
-                    "icon": meta.get("icon", "🎮"),
-                    "label": meta.get("label", mode_name.replace("_", " ").title()),
+                    "name": mode_cls.name,
+                    "icon": getattr(mode_cls, "icon", "📸"),
+                    "label": getattr(mode_cls, "display_name", mode_cls.name).strip(),
                 }
             )
         return buttons
 
-    def _get_available_modes(self) -> List[str]:
-        return [item["name"] for item in self.get_available_mode_buttons()]
+    def _load_state(self) -> dict[str, Any]:
+        if not self.state_path.exists():
+            return {"event_offset": 0, "last_report_date": ""}
+        try:
+            return json.loads(self.state_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {"event_offset": 0, "last_report_date": ""}
+
+    def _save_state(self) -> None:
+        self.state_path.write_text(json.dumps(self._state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def is_admin(self, user_id: int) -> bool:
+        return user_id in ADMIN_IDS
 
     async def start(self) -> None:
-        """Start the bot."""
-        logger.info("Starting VNVNC Arcade Bot...")
+        if not self.token:
+            raise RuntimeError("ARCADE_BOT_TOKEN is not set")
 
         self.app = Application.builder().token(self.token).build()
-
-        # Register handlers
         self.app.add_handler(CommandHandler("start", self._cmd_start))
         self.app.add_handler(CommandHandler("help", self._cmd_help))
-        self.app.add_handler(CommandHandler("check", self._cmd_check))
-        self.app.add_handler(CommandHandler("redeem", self._cmd_redeem))
+        self.app.add_handler(CommandHandler("status", self._cmd_status))
         self.app.add_handler(CommandHandler("stats", self._cmd_stats))
-        self.app.add_handler(CommandHandler("subscribe", self._cmd_subscribe))
-        self.app.add_handler(CommandHandler("unsubscribe", self._cmd_unsubscribe))
-        self.app.add_handler(CommandHandler("recent", self._cmd_recent))
-        self.app.add_handler(CommandHandler("logs", self._cmd_logs))
-        # Admin control commands
+        self.app.add_handler(CommandHandler("report", self._cmd_report))
+        self.app.add_handler(CommandHandler("photo", self._cmd_photo))
+        self.app.add_handler(CommandHandler("reboot", self._cmd_reboot))
         self.app.add_handler(CommandHandler("control", self._cmd_control))
-        self.app.add_handler(CommandHandler("volume", self._cmd_volume))
-        self.app.add_handler(CommandHandler("mute", self._cmd_mute))
-        self.app.add_handler(CommandHandler("scene", self._cmd_scene))
         self.app.add_handler(CommandHandler("mode", self._cmd_mode))
         self.app.add_handler(CommandHandler("button", self._cmd_button))
-        self.app.add_handler(CommandHandler("reboot", self._cmd_reboot))
-        self.app.add_handler(CommandHandler("status", self._cmd_status))
-        self.app.add_handler(CommandHandler("remote", self._cmd_remote))
+        self.app.add_handler(CommandHandler("logs", self._cmd_logs))
+        self.app.add_handler(CommandHandler("coupons", self._cmd_coupons))
         self.app.add_handler(CallbackQueryHandler(self._handle_callback))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
 
-        # Set bot commands
-        await self.app.bot.set_my_commands([
-            BotCommand("start", "Начать"),
-            BotCommand("help", "Помощь"),
-            BotCommand("check", "Проверить купон"),
-            BotCommand("redeem", "Погасить купон"),
-            BotCommand("stats", "Статистика"),
-            BotCommand("subscribe", "Подписаться на фото"),
-            BotCommand("unsubscribe", "Отписаться от фото"),
-            BotCommand("recent", "Последние купоны"),
-            BotCommand("control", "Панель управления"),
-            BotCommand("status", "Статус аркады"),
-            BotCommand("remote", "Пульт управления"),
-        ])
-
-        # Start polling
         await self.app.initialize()
+        try:
+            await self.app.bot.set_my_commands(
+                [
+                    BotCommand("start", "Главное меню"),
+                    BotCommand("status", "Статус автомата"),
+                    BotCommand("stats", "Статистика сейчас"),
+                    BotCommand("report", "Отчет за клубную ночь"),
+                    BotCommand("photo", "Сделать фото с камеры"),
+                    BotCommand("control", "Пульт управления"),
+                    BotCommand("mode", "Запустить режим"),
+                    BotCommand("reboot", "Перезагрузить машину"),
+                    BotCommand("logs", "Последние логи"),
+                ]
+            )
+        except Exception as e:
+            logger.warning("Could not set Telegram command menu: %s", e)
         await self.app.start()
         await self.app.updater.start_polling(drop_pending_updates=True)
-
         self._running = True
-        logger.info("VNVNC Arcade Bot started!")
+        self._event_task = asyncio.create_task(self._event_loop())
+        self._report_task = asyncio.create_task(self._daily_report_loop())
+        await self.notify_admins("Бот VNVNC запущен. Я на связи.")
+        logger.info("VNVNC admin bot started")
 
     async def stop(self) -> None:
-        """Stop the bot."""
-        if self.app and self._running:
-            logger.info("Stopping VNVNC Arcade Bot...")
-            await self.app.updater.stop()
-            await self.app.stop()
-            await self.app.shutdown()
-            self._running = False
-            logger.info("VNVNC Arcade Bot stopped")
-
-    def is_admin(self, user_id: int) -> bool:
-        """Check if user is admin."""
-        return user_id in ADMIN_IDS
-
-    # =========================================================================
-    # COMMAND HANDLERS
-    # =========================================================================
-
-    async def _cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /start command."""
-        user = update.effective_user
-
-        text = (
-            f"Привет, {user.first_name}! 👋\n\n"
-            "Я бот аркадного автомата VNVNC ARCADE.\n\n"
-            "🎟 <b>Для персонала:</b>\n"
-            "/check <code>КОД</code> — проверить купон\n"
-            "/redeem <code>КОД</code> — погасить купон\n"
-            "/recent — последние купоны\n\n"
-            "📸 <b>Для всех:</b>\n"
-            "/subscribe — получать фото с аркады\n"
-            "/stats — статистика автомата\n\n"
-            "Или просто отправь код купона для проверки!"
-        )
-
-        await update.message.reply_text(text, parse_mode="HTML")
-
-    async def _cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /help command."""
-        text = (
-            "📖 <b>Команды бота:</b>\n\n"
-            "<b>Проверка и погашение:</b>\n"
-            "/check VNVNC-XXXX-XXXX-XXXX — проверить купон\n"
-            "/redeem VNVNC-XXXX-XXXX-XXXX — погасить купон\n"
-            "/recent — последние 10 купонов\n\n"
-            "<b>Подписка на фото:</b>\n"
-            "/subscribe — подписаться\n"
-            "/unsubscribe — отписаться\n\n"
-            "<b>Статистика:</b>\n"
-            "/stats — статистика аркады\n\n"
-            "💡 Можно просто отправить код купона!"
-        )
-
-        await update.message.reply_text(text, parse_mode="HTML")
-
-    async def _cmd_check(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /check command - validate coupon."""
-        if not context.args:
-            await update.message.reply_text(
-                "❌ Укажите код купона:\n"
-                "/check <code>VNVNC-XXXX-XXXX-XXXX</code>",
-                parse_mode="HTML"
-            )
-            return
-
-        code = context.args[0].upper().strip()
-        await self._check_coupon(update, code)
-
-    async def _cmd_redeem(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /redeem command - redeem coupon."""
-        if not context.args:
-            await update.message.reply_text(
-                "❌ Укажите код купона:\n"
-                "/redeem <code>VNVNC-XXXX-XXXX-XXXX</code>",
-                parse_mode="HTML"
-            )
-            return
-
-        code = context.args[0].upper().strip()
-        await self._redeem_coupon(update, code)
-
-    async def _cmd_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /stats command."""
-        stats = self.store.get_stats()
-
-        mode_lines = []
-        for mode, count in sorted(stats.mode_counts.items(), key=lambda x: -x[1]):
-            mode_lines.append(f"  • {mode}: {count}")
-        modes_text = "\n".join(mode_lines) if mode_lines else "  Нет данных"
-
-        last_activity = "Нет данных"
-        if stats.last_activity:
+        for task in (self._event_task, self._report_task):
+            if task:
+                task.cancel()
+        if self.app:
             try:
-                dt = datetime.fromisoformat(stats.last_activity)
-                last_activity = dt.strftime("%d.%m.%Y %H:%M")
-            except:
-                pass
-
-        text = (
-            "📊 <b>Статистика VNVNC ARCADE</b>\n\n"
-            f"🎮 Всего сессий: <b>{stats.total_sessions}</b>\n"
-            f"📸 Фото сделано: <b>{stats.photos_taken}</b>\n"
-            f"🎟 Купонов выдано: <b>{stats.coupons_issued}</b>\n"
-            f"✅ Купонов погашено: <b>{stats.coupons_redeemed}</b>\n"
-            f"👥 Подписчиков: <b>{len(self.store.get_subscribers())}</b>\n\n"
-            f"<b>По режимам:</b>\n{modes_text}\n\n"
-            f"🕐 Последняя активность: {last_activity}"
-        )
-
-        await update.message.reply_text(text, parse_mode="HTML")
-
-    async def _cmd_subscribe(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /subscribe command."""
-        user_id = update.effective_user.id
-
-        if self.store.add_subscriber(user_id):
-            await update.message.reply_text(
-                "✅ Вы подписались на фото с аркады!\n"
-                "Вы будете получать все фото и изображения, созданные на автомате."
-            )
-        else:
-            await update.message.reply_text("Вы уже подписаны! 📸")
-
-    async def _cmd_unsubscribe(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /unsubscribe command."""
-        user_id = update.effective_user.id
-
-        if self.store.remove_subscriber(user_id):
-            await update.message.reply_text("✅ Вы отписались от фото с аркады.")
-        else:
-            await update.message.reply_text("Вы не были подписаны.")
-
-    async def _cmd_recent(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /recent command - show recent coupons."""
-        coupons = self.store.get_recent_coupons(10)
-
-        if not coupons:
-            await update.message.reply_text("Нет купонов.")
-            return
-
-        lines = ["🎟 <b>Последние купоны:</b>\n"]
-
-        for coupon in coupons:
-            status = "✅" if coupon.is_redeemed else "🟡"
+                if self._running and self.app.updater:
+                    await self.app.updater.stop()
+            except Exception:
+                logger.debug("Bot updater stop failed", exc_info=True)
             try:
-                created = datetime.fromisoformat(coupon.created_at).strftime("%d.%m %H:%M")
-            except:
-                created = "?"
-
-            lines.append(
-                f"{status} <code>{coupon.code}</code>\n"
-                f"   {coupon.prize_label} • {created}"
-            )
-
-        await update.message.reply_text("\n".join(lines), parse_mode="HTML")
-
-    async def _cmd_logs(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /logs command - admin only."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        # Try to read recent log entries
-        log_file = Path("/home/kirniy/modular-arcade/logs/artifact.log")
-
-        if not log_file.exists():
-            await update.message.reply_text("Файл логов не найден.")
-            return
-
-        try:
-            # Read last 50 lines
-            with open(log_file, "r") as f:
-                lines = f.readlines()[-50:]
-
-            text = "📋 <b>Последние логи:</b>\n\n<pre>"
-            text += "".join(lines)[-3500:]  # Telegram limit
-            text += "</pre>"
-
-            await update.message.reply_text(text, parse_mode="HTML")
-        except Exception as e:
-            await update.message.reply_text(f"Ошибка чтения логов: {e}")
-
-    # =========================================================================
-    # ADMIN CONTROL COMMANDS
-    # =========================================================================
-
-    async def _cmd_control(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /control command - show control panel."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        keyboard = [
-            [
-                InlineKeyboardButton("🔊 Громче", callback_data="ctrl:vol_up"),
-                InlineKeyboardButton("🔇 Тише", callback_data="ctrl:vol_down"),
-            ],
-            [
-                InlineKeyboardButton("🔈 Вкл", callback_data="ctrl:unmute"),
-                InlineKeyboardButton("🔇 Выкл", callback_data="ctrl:mute"),
-            ],
-            [
-                InlineKeyboardButton("⬅️ Сцена", callback_data="ctrl:scene_prev"),
-                InlineKeyboardButton("➡️ Сцена", callback_data="ctrl:scene_next"),
-            ],
-            [
-                InlineKeyboardButton("⏪", callback_data="ctrl:btn_left"),
-                InlineKeyboardButton("▶️ СТАРТ", callback_data="ctrl:btn_start"),
-                InlineKeyboardButton("⏩", callback_data="ctrl:btn_right"),
-            ],
-            [
-                InlineKeyboardButton("↩️ Назад", callback_data="ctrl:btn_back"),
-                InlineKeyboardButton("🔄 Перезагрузка", callback_data="ctrl:reboot"),
-            ],
-        ]
-
-        status = self.control.get_status()
-        mode_name = status.get("mode", "idle")
-        scene_name = status.get("idle_scene", "?")
-        volume = status.get("volume", "?")
-        muted = status.get("muted", False)
-
-        text = (
-            "🎮 <b>Панель управления VNVNC ARCADE</b>\n\n"
-            f"📍 Режим: <code>{mode_name}</code>\n"
-            f"🎬 Сцена: <code>{scene_name}</code>\n"
-            f"🔊 Громкость: <code>{volume}</code>\n"
-            f"🔇 Звук: {'выкл' if muted else 'вкл'}\n\n"
-            "Выберите действие:"
-        )
-
-        await update.message.reply_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    async def _cmd_volume(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /volume command."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        if not context.args:
-            await update.message.reply_text(
-                "Использование:\n"
-                "/volume <number> - установить громкость (0-100)\n"
-                "/volume up - увеличить\n"
-                "/volume down - уменьшить"
-            )
-            return
-
-        arg = context.args[0].lower()
-
-        if arg == "up":
-            self.control.volume_up()
-            await update.message.reply_text("🔊 Громкость увеличена")
-        elif arg == "down":
-            self.control.volume_down()
-            await update.message.reply_text("🔉 Громкость уменьшена")
-        else:
+                if self._running:
+                    await self.app.stop()
+            except Exception:
+                logger.debug("Bot application stop failed", exc_info=True)
             try:
-                level = int(arg) / 100.0
-                self.control.set_volume(level)
-                await update.message.reply_text(f"🔊 Громкость: {int(level * 100)}%")
-            except ValueError:
-                await update.message.reply_text("❌ Неверное значение")
+                await self.app.shutdown()
+            except Exception:
+                logger.debug("Bot application shutdown failed", exc_info=True)
+        self._running = False
 
-    async def _cmd_mute(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /mute command."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
+    async def notify_admins(self, message: str, **kwargs: Any) -> None:
+        if not self.app:
             return
-
-        arg = context.args[0].lower() if context.args else "toggle"
-
-        if arg in ["on", "1", "да"]:
-            self.control.mute()
-            await update.message.reply_text("🔇 Звук выключен")
-        elif arg in ["off", "0", "нет"]:
-            self.control.unmute()
-            await update.message.reply_text("🔊 Звук включен")
-        else:
-            self.control.toggle_mute()
-            await update.message.reply_text("🔊 Звук переключен")
-
-    async def _cmd_scene(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /scene command."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        if not context.args:
-            await update.message.reply_text(
-                "Использование:\n"
-                "/scene <number> - выбрать сцену\n"
-                "/scene next - следующая\n"
-                "/scene prev - предыдущая"
-            )
-            return
-
-        arg = context.args[0].lower()
-
-        if arg == "next":
-            self.control.next_idle_scene()
-            await update.message.reply_text("➡️ Следующая сцена")
-        elif arg == "prev":
-            self.control.prev_idle_scene()
-            await update.message.reply_text("⬅️ Предыдущая сцена")
-        else:
-            try:
-                index = int(arg)
-                self.control.set_idle_scene(index)
-                await update.message.reply_text(f"🎬 Сцена: {index}")
-            except ValueError:
-                await update.message.reply_text("❌ Неверное значение")
-
-    async def _cmd_mode(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /mode command."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        if not context.args:
-            modes = "\n".join(f"• {m}" for m in self._get_available_modes())
-            await update.message.reply_text(
-                f"Доступные режимы:\n{modes}\n\n"
-                "Использование: /mode <название>"
-            )
-            return
-
-        mode_name = context.args[0].lower()
-
-        available_modes = self._get_available_modes()
-        if mode_name in available_modes:
-            self.control.start_mode(mode_name)
-            await update.message.reply_text(f"🎮 Запускаю режим: {mode_name}")
-        else:
-            await update.message.reply_text(f"❌ Неизвестный режим: {mode_name}")
-
-    async def _cmd_button(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /button command."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        if not context.args:
-            await update.message.reply_text(
-                "Кнопки:\n"
-                "/button start - Старт/Подтвердить\n"
-                "/button left - Влево\n"
-                "/button right - Вправо\n"
-                "/button back - Назад"
-            )
-            return
-
-        button = context.args[0].lower()
-        valid = ["start", "left", "right", "back", "reboot"]
-
-        if button in valid:
-            self.control.press_button(button)
-            await update.message.reply_text(f"🎮 Нажата кнопка: {button}")
-        else:
-            await update.message.reply_text(f"❌ Неизвестная кнопка: {button}")
-
-    async def _cmd_reboot(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /reboot command."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        self.control.reboot()
-        await update.message.reply_text("🔄 Аркада перезагружается в режим ожидания...")
-
-    async def _cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /status command."""
-        status = self.control.get_status()
-
-        if not status:
-            await update.message.reply_text(
-                "📡 <b>Статус аркады</b>\n\n"
-                "⚠️ Нет данных о статусе.\n"
-                "Возможно, аркада не запущена.",
-                parse_mode="HTML"
-            )
-            return
-
-        mode = status.get("mode", "unknown")
-        scene = status.get("idle_scene", "?")
-        volume = status.get("volume", "?")
-        muted = "🔇 Выкл" if status.get("muted") else "🔊 Вкл"
-        uptime = status.get("uptime", "?")
-        fps = status.get("fps", "?")
-
-        await update.message.reply_text(
-            f"📡 <b>Статус VNVNC ARCADE</b>\n\n"
-            f"🎮 Режим: <code>{mode}</code>\n"
-            f"🎬 Сцена: <code>{scene}</code>\n"
-            f"🔊 Громкость: <code>{volume}</code>\n"
-            f"🔈 Звук: {muted}\n"
-            f"⏱ Аптайм: {uptime}\n"
-            f"📊 FPS: {fps}",
-            parse_mode="HTML"
-        )
-
-    async def _cmd_remote(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /remote command - open web app remote control."""
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("⛔ Только для администраторов")
-            return
-
-        # Get the Pi's hostname/IP for the remote URL
-        remote_url = "http://artifact.local:8081/remote"
-
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "🎮 Открыть пульт",
-                web_app=WebAppInfo(url=remote_url)
-            )]
-        ])
-
-        await update.message.reply_text(
-            "🕹️ <b>Пульт управления VNVNC ARCADE</b>\n\n"
-            "Нажмите кнопку ниже, чтобы открыть пульт управления "
-            "с полным контролем над аркадой.\n\n"
-            f"📡 Прямая ссылка: {remote_url}",
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
-
-    # =========================================================================
-    # MESSAGE HANDLERS
-    # =========================================================================
-
-    async def _handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle text messages - check if it's a coupon code."""
-        text = update.message.text.strip().upper()
-
-        # Check if it looks like a coupon code
-        if text.startswith("VNVNC-") or (len(text) >= 8 and "-" in text):
-            await self._check_coupon(update, text)
-        else:
-            await update.message.reply_text(
-                "Не понял. Отправьте код купона или используйте /help"
-            )
-
-    async def _handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle callback queries from inline buttons."""
-        query = update.callback_query
-        data = query.data
-
-        # Handle control panel callbacks
-        if data.startswith("ctrl:"):
-            if not self.is_admin(query.from_user.id):
-                await query.answer("⛔ Только для администраторов", show_alert=True)
-                return
-
-            action = data.split(":", 1)[1]
-            response = "✅"
-
-            if action == "vol_up":
-                self.control.volume_up()
-                response = "🔊 Громче"
-            elif action == "vol_down":
-                self.control.volume_down()
-                response = "🔉 Тише"
-            elif action == "mute":
-                self.control.mute()
-                response = "🔇 Звук выключен"
-            elif action == "unmute":
-                self.control.unmute()
-                response = "🔊 Звук включен"
-            elif action == "scene_next":
-                self.control.next_idle_scene()
-                response = "➡️ Следующая сцена"
-            elif action == "scene_prev":
-                self.control.prev_idle_scene()
-                response = "⬅️ Предыдущая сцена"
-            elif action == "btn_start":
-                self.control.press_button("start")
-                response = "▶️ СТАРТ"
-            elif action == "btn_left":
-                self.control.press_button("left")
-                response = "⬅️"
-            elif action == "btn_right":
-                self.control.press_button("right")
-                response = "➡️"
-            elif action == "btn_back":
-                self.control.press_button("back")
-                response = "↩️ Назад"
-            elif action == "reboot":
-                self.control.reboot()
-                response = "🔄 Перезагрузка..."
-
-            await query.answer(response)
-            return
-
-        await query.answer()
-
-        if data.startswith("redeem:"):
-            code = data.split(":", 1)[1]
-            result = self.store.redeem_coupon(code, query.from_user.id)
-
-            if result.get("success"):
-                coupon = result["coupon"]
-                await query.edit_message_text(
-                    f"✅ <b>Купон погашен!</b>\n\n"
-                    f"🎟 Код: <code>{coupon.code}</code>\n"
-                    f"🎁 Приз: {coupon.prize_label}\n"
-                    f"👤 Погасил: {query.from_user.first_name}",
-                    parse_mode="HTML"
-                )
-            else:
-                await query.edit_message_text(
-                    f"❌ {result.get('message', 'Ошибка')}",
-                    parse_mode="HTML"
-                )
-
-    # =========================================================================
-    # HELPER METHODS
-    # =========================================================================
-
-    async def _check_coupon(self, update: Update, code: str) -> None:
-        """Check a coupon and show result with redeem button."""
-        result = self.store.validate_coupon(code)
-
-        if not result["valid"]:
-            error = result.get("error", "UNKNOWN")
-            coupon = result.get("coupon")
-
-            if error == "NOT_FOUND":
-                text = f"❌ Купон <code>{code}</code> не найден"
-            elif error == "EXPIRED":
-                text = f"⏰ Купон <code>{code}</code> истёк"
-            elif error == "ALREADY_REDEEMED":
-                redeemed_at = "?"
-                if coupon and coupon.redeemed_at:
-                    try:
-                        dt = datetime.fromisoformat(coupon.redeemed_at)
-                        redeemed_at = dt.strftime("%d.%m.%Y %H:%M")
-                    except:
-                        pass
-                text = (
-                    f"⚠️ Купон уже использован!\n\n"
-                    f"🎟 Код: <code>{code}</code>\n"
-                    f"🎁 Приз: {coupon.prize_label if coupon else '?'}\n"
-                    f"📅 Погашен: {redeemed_at}"
-                )
-            else:
-                text = f"❌ {result.get('message', 'Ошибка')}"
-
-            await update.message.reply_text(text, parse_mode="HTML")
-            return
-
-        coupon = result["coupon"]
-        expires_at = "?"
-        try:
-            dt = datetime.fromisoformat(coupon.expires_at)
-            expires_at = dt.strftime("%d.%m.%Y %H:%M")
-        except:
-            pass
-
-        text = (
-            f"✅ <b>Купон действителен!</b>\n\n"
-            f"🎟 Код: <code>{coupon.code}</code>\n"
-            f"🎁 Приз: <b>{coupon.prize_label}</b>\n"
-            f"📍 Источник: {coupon.source}\n"
-            f"⏰ Действует до: {expires_at}"
-        )
-
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Погасить", callback_data=f"redeem:{coupon.code}")]
-        ])
-
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
-
-    async def _redeem_coupon(self, update: Update, code: str) -> None:
-        """Redeem a coupon directly."""
-        result = self.store.redeem_coupon(code, update.effective_user.id)
-
-        if result.get("success"):
-            coupon = result["coupon"]
-            await update.message.reply_text(
-                f"✅ <b>Купон погашен!</b>\n\n"
-                f"🎟 Код: <code>{coupon.code}</code>\n"
-                f"🎁 Приз: {coupon.prize_label}",
-                parse_mode="HTML"
-            )
-        else:
-            await update.message.reply_text(
-                f"❌ {result.get('message', 'Ошибка погашения')}",
-                parse_mode="HTML"
-            )
-
-    # =========================================================================
-    # PUBLIC API (called by arcade)
-    # =========================================================================
-
-    def create_coupon(
-        self,
-        code: str,
-        prize_type: str,
-        source: str = "ARCADE",
-    ) -> Coupon:
-        """Create a new coupon (called by arcade on prize win)."""
-        prize_label = self.PRIZE_LABELS.get(prize_type, prize_type)
-        return self.store.create_coupon(
-            code=code,
-            prize_type=prize_type,
-            prize_label=prize_label,
-            source=source,
-        )
-
-    def record_session(self, mode_name: str) -> None:
-        """Record a game session."""
-        self.store.increment_mode(mode_name)
-
-    def record_photo(self) -> None:
-        """Record a photo taken."""
-        self.store.update_stats(photos_taken=1)
-
-    async def broadcast_photo(
-        self,
-        photo_data: bytes,
-        caption: str = "",
-        source: str = "ARCADE",
-    ) -> int:
-        """Broadcast a photo to all subscribers. Returns count sent."""
-        if not self.app or not self._running:
-            logger.warning("Bot not running, cannot broadcast")
-            return 0
-
-        subscribers = self.store.get_subscribers()
-        sent = 0
-
-        for user_id in subscribers:
-            try:
-                await self.app.bot.send_photo(
-                    chat_id=user_id,
-                    photo=photo_data,
-                    caption=f"📸 {caption}\n\n🎮 {source}" if caption else f"📸 🎮 {source}",
-                )
-                sent += 1
-            except Exception as e:
-                logger.warning(f"Failed to send photo to {user_id}: {e}")
-
-        logger.info(f"Broadcast photo to {sent}/{len(subscribers)} subscribers")
-        return sent
-
-    async def notify_admins(self, message: str) -> None:
-        """Send notification to admins."""
-        if not self.app or not self._running:
-            return
-
         for admin_id in ADMIN_IDS:
             try:
-                await self.app.bot.send_message(
-                    chat_id=admin_id,
-                    text=message,
-                    parse_mode="HTML",
-                )
+                await self.app.bot.send_message(chat_id=admin_id, text=message, parse_mode="HTML", **kwargs)
             except Exception as e:
-                logger.warning(f"Failed to notify admin {admin_id}: {e}")
+                logger.warning("Could not notify admin %s: %s", admin_id, e)
 
+    async def _admin_only(self, update: Update) -> bool:
+        user = update.effective_user
+        if user and self.is_admin(user.id):
+            return True
+        if update.effective_message:
+            await update.effective_message.reply_text("Доступ закрыт.")
+        return False
 
-# =============================================================================
-# WEB SERVER FOR REMOTE CONTROL
-# =============================================================================
+    async def _cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        await update.message.reply_text(self._main_text(), parse_mode="HTML", reply_markup=self._main_keyboard())
+
+    async def _cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        await update.message.reply_text(
+            "Команды:\n"
+            "/status — состояние автомата\n"
+            "/stats — сводка и деньги\n"
+            "/report — отчет за последнюю клубную ночь 23:00-07:00\n"
+            "/photo — сделать фото с камеры автомата\n"
+            "/control — кнопки управления\n"
+            "/mode — список режимов, /mode <name> — запуск\n"
+            "/reboot — перезагрузка Raspberry Pi\n"
+            "/logs — последние логи",
+        )
+
+    async def _cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        await update.message.reply_text(self._format_status(), parse_mode="HTML")
+
+    async def _cmd_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        start, end = _club_night_window()
+        await update.message.reply_text(self._format_stats(start, end, "Текущая/последняя клубная ночь"), parse_mode="HTML")
+
+    async def _cmd_report(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        start, end = _report_window_for_day(_now())
+        await update.message.reply_text(self._format_stats(start, end, "Отчет 23:00-07:00"), parse_mode="HTML")
+
+    async def _cmd_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        msg = await update.message.reply_text("Делаю фото с камеры автомата...")
+        response = await self.control.capture_photo()
+        if not response:
+            await msg.edit_text("Камера не ответила за 12 секунд.")
+            return
+        if not response.get("ok"):
+            await msg.edit_text(f"Не удалось сделать фото: {html.escape(str(response.get('error', 'ошибка')))}")
+            return
+        path = Path(str(response.get("path", "")))
+        if not path.exists():
+            await msg.edit_text("Фото сделано, но файл не найден.")
+            return
+        await msg.delete()
+        with path.open("rb") as f:
+            await update.message.reply_photo(
+                photo=f,
+                caption=f"Фото с камеры автомата\nРазмер: {response.get('bytes', '?')} байт\nВремя: {_format_dt(response.get('timestamp'))}",
+            )
+
+    async def _cmd_reboot(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        await update.message.reply_text(
+            "Перезагрузить всю машину?",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Да, перезагрузить", callback_data="reboot:confirm")]]
+            ),
+        )
+
+    async def _cmd_control(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        await update.message.reply_text(self._format_status(), parse_mode="HTML", reply_markup=self._control_keyboard())
+
+    async def _cmd_mode(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        modes = self.get_available_mode_buttons()
+        if not context.args:
+            await update.message.reply_text(
+                "Режимы:\n" + "\n".join(f"{item['icon']} <code>{item['name']}</code> — {html.escape(item['label'])}" for item in modes),
+                parse_mode="HTML",
+            )
+            return
+        mode = context.args[0].strip()
+        if mode not in {item["name"] for item in modes}:
+            await update.message.reply_text("Такого режима нет. Список: /mode")
+            return
+        self.control.mode(mode)
+        await update.message.reply_text(f"Запускаю режим <code>{html.escape(mode)}</code>", parse_mode="HTML")
+
+    async def _cmd_button(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        if not context.args or context.args[0] not in {"start", "left", "right", "back", "up", "down"}:
+            await update.message.reply_text("Кнопки: /button start|left|right|back|up|down")
+            return
+        self.control.button(context.args[0])
+        await update.message.reply_text(f"Нажал: {context.args[0]}")
+
+    async def _cmd_logs(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        text = await asyncio.to_thread(self._read_recent_logs)
+        await update.message.reply_text(text, parse_mode="HTML")
+
+    async def _cmd_coupons(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        coupons = self.coupons.get_recent(10)
+        if not coupons:
+            await update.message.reply_text("Купонов нет.")
+            return
+        lines = ["Последние купоны:"]
+        for coupon in coupons:
+            status = "погашен" if coupon.is_redeemed else "активен"
+            lines.append(f"<code>{html.escape(coupon.code)}</code> — {html.escape(coupon.prize_label)} — {status}")
+        await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+    async def _handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not await self._admin_only(update):
+            return
+        await update.message.reply_text(self._main_text(), parse_mode="HTML", reply_markup=self._main_keyboard())
+
+    async def _handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        query = update.callback_query
+        if not query:
+            return
+        await query.answer()
+        if not self.is_admin(query.from_user.id):
+            await query.edit_message_text("Доступ закрыт.")
+            return
+
+        data = query.data or ""
+        if data == "main":
+            await query.edit_message_text(self._main_text(), parse_mode="HTML", reply_markup=self._main_keyboard())
+        elif data == "stats":
+            start, end = _club_night_window()
+            await query.edit_message_text(self._format_stats(start, end, "Текущая/последняя клубная ночь"), parse_mode="HTML", reply_markup=self._main_keyboard())
+        elif data == "status":
+            await query.edit_message_text(self._format_status(), parse_mode="HTML", reply_markup=self._control_keyboard())
+        elif data == "photo":
+            await query.edit_message_text("Делаю фото с камеры автомата...")
+            response = await self.control.capture_photo()
+            if response and response.get("ok") and Path(str(response.get("path", ""))).exists():
+                path = Path(str(response["path"]))
+                with path.open("rb") as f:
+                    await query.message.reply_photo(photo=f, caption="Фото с камеры автомата")
+                await query.message.reply_text(self._main_text(), parse_mode="HTML", reply_markup=self._main_keyboard())
+            else:
+                await query.message.reply_text(f"Фото не получилось: {response or 'нет ответа'}", reply_markup=self._main_keyboard())
+        elif data == "reboot:confirm":
+            self.control.machine_reboot()
+            await query.edit_message_text("Команда перезагрузки отправлена. Машина сейчас уйдет в reboot.")
+        elif data.startswith("ctrl:"):
+            action = data.split(":", 1)[1]
+            self._handle_control_action(action)
+            await query.edit_message_text(self._format_status(), parse_mode="HTML", reply_markup=self._control_keyboard())
+
+    def _handle_control_action(self, action: str) -> None:
+        if action == "left":
+            self.control.button("left")
+        elif action == "start":
+            self.control.button("start")
+        elif action == "right":
+            self.control.button("right")
+        elif action == "back":
+            self.control.button("back")
+        elif action == "idle_prev":
+            self.control.idle_prev()
+        elif action == "idle_next":
+            self.control.idle_next()
+        elif action == "mute":
+            self.control.mute()
+        elif action == "unmute":
+            self.control.unmute()
+
+    def _main_keyboard(self) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("Статус", callback_data="status"), InlineKeyboardButton("Статистика", callback_data="stats")],
+                [InlineKeyboardButton("Сделать фото", callback_data="photo")],
+                [InlineKeyboardButton("Перезагрузка", callback_data="reboot:confirm")],
+            ]
+        )
+
+    def _control_keyboard(self) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("Влево", callback_data="ctrl:left"),
+                    InlineKeyboardButton("Старт", callback_data="ctrl:start"),
+                    InlineKeyboardButton("Вправо", callback_data="ctrl:right"),
+                ],
+                [
+                    InlineKeyboardButton("Сцена -", callback_data="ctrl:idle_prev"),
+                    InlineKeyboardButton("Сцена +", callback_data="ctrl:idle_next"),
+                ],
+                [
+                    InlineKeyboardButton("Звук выкл", callback_data="ctrl:mute"),
+                    InlineKeyboardButton("Звук вкл", callback_data="ctrl:unmute"),
+                ],
+                [InlineKeyboardButton("Назад", callback_data="ctrl:back"), InlineKeyboardButton("Главное", callback_data="main")],
+            ]
+        )
+
+    def _main_text(self) -> str:
+        return (
+            "<b>VNVNC ARCADE</b>\n"
+            "Админ-бот автомата.\n\n"
+            "Я присылаю каждое готовое фото, считаю ночную статистику и в 07:00 отправляю отчет за клубную ночь."
+        )
+
+    def _format_status(self) -> str:
+        status = self.control.status()
+        if not status:
+            return "<b>Статус автомата</b>\nНет свежего status.json. Возможно, сервис artifact не запущен."
+        ts = status.get("timestamp")
+        age = int(time.time() - float(ts)) if isinstance(ts, (int, float)) else None
+        return (
+            "<b>Статус автомата</b>\n"
+            f"Режим: <code>{html.escape(str(status.get('mode', '?')))}</code>\n"
+            f"Сцена: <code>{html.escape(str(status.get('scene', status.get('idle_scene', '?'))))}</code>\n"
+            f"Кадр: <code>{html.escape(str(status.get('frame', '?')))}</code>\n"
+            f"Громкость: <code>{html.escape(str(status.get('volume', '?')))}</code>\n"
+            f"Звук: {'выкл' if status.get('muted') else 'вкл'}\n"
+            f"Работает: {'да' if status.get('running') else 'нет'}\n"
+            f"Обновлено: {_format_dt(ts)}" + (f" ({age} сек назад)" if age is not None else "")
+        )
+
+    def _format_stats(self, start: datetime, end: datetime, title: str) -> str:
+        stats = self.stats.build_stats(start, end)
+        last_photo = stats["last_photo"]
+        last_line = "нет"
+        if last_photo:
+            last_line = f"{_format_dt(last_photo.get('timestamp'))} — {html.escape(str(last_photo.get('short_url') or last_photo.get('url') or ''))}"
+        return (
+            f"<b>{html.escape(title)}</b>\n"
+            f"Период: {start.strftime('%d.%m %H:%M')} - {end.strftime('%d.%m %H:%M')}\n\n"
+            f"Фото всего: <b>{stats['photos']}</b>\n"
+            f"Успешно загружено: <b>{stats['successful_photos']}</b>\n"
+            f"Ошибки загрузки: <b>{stats['failed_photos']}</b>\n"
+            f"Очередь Selectel: <b>{stats['pending_uploads']}</b>\n\n"
+            f"AI image calls: <b>{stats['image_calls']}</b>\n"
+            f"AI text calls: <b>{stats['text_calls']}</b>\n"
+            f"Оценка расходов: <b>${stats['spent']:.2f}</b>\n"
+            f"Оценка остатка trial $300: <b>${stats['trial_left']:.2f}</b>\n"
+            "Это расчет по локальным логам, не официальный баланс Google/OpenRouter.\n\n"
+            f"Последнее фото: {last_line}"
+        )
+
+    def _read_recent_logs(self) -> str:
+        candidates = [
+            Path("/var/log/syslog"),
+            Path("/home/kirniy/modular-arcade/logs/artifact.log"),
+        ]
+        for path in candidates:
+            if not path.exists():
+                continue
+            try:
+                lines = path.read_text(errors="ignore").splitlines()[-60:]
+                escaped = html.escape("\n".join(lines)[-3500:])
+                return f"<b>Последние логи</b>\n<pre>{escaped}</pre>"
+            except Exception:
+                continue
+        return "Логи не найдены."
+
+    async def _event_loop(self) -> None:
+        while True:
+            try:
+                await self._send_new_events()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Bot event loop failed")
+            await asyncio.sleep(5)
+
+    async def _send_new_events(self) -> None:
+        events = self.stats.events()
+        offset = int(self._state.get("event_offset", 0))
+        if offset > len(events):
+            offset = 0
+        for event in events[offset:]:
+            await self._send_event(event)
+            offset += 1
+            self._state["event_offset"] = offset
+            self._save_state()
+
+    async def _send_event(self, event: dict[str, Any]) -> None:
+        if event.get("type") != "photobooth_photo":
+            return
+        caption = self._photo_caption(event)
+        for admin_id in ADMIN_IDS:
+            try:
+                if event.get("success") and event.get("url"):
+                    await self.app.bot.send_photo(chat_id=admin_id, photo=event["url"], caption=caption)
+                else:
+                    await self.app.bot.send_message(chat_id=admin_id, text=caption)
+            except Exception as e:
+                logger.warning("Failed to send event %s to %s: %s", event.get("id"), admin_id, e)
+
+    @staticmethod
+    def _photo_caption(event: dict[str, Any]) -> str:
+        if event.get("success"):
+            return (
+                "Новое фото готово\n"
+                f"Время: {_format_dt(event.get('timestamp'))}\n"
+                f"Тема: {event.get('theme_name') or event.get('theme_id') or 'unknown'}\n"
+                f"Файл: {event.get('url') or ''}\n"
+                f"Короткая ссылка: {event.get('short_url') or 'нет'}\n"
+                f"Размер результата: {event.get('result_bytes', 0)} байт\n"
+                f"Размер исходника: {event.get('source_photo_bytes', 0)} байт"
+            )
+        return (
+            "Ошибка фото/загрузки\n"
+            f"Время: {_format_dt(event.get('timestamp'))}\n"
+            f"Тема: {event.get('theme_name') or event.get('theme_id') or 'unknown'}\n"
+            f"Ошибка: {event.get('error') or 'unknown'}"
+        )
+
+    async def _daily_report_loop(self) -> None:
+        while True:
+            try:
+                now = _now()
+                today_key = now.strftime("%Y-%m-%d")
+                if now.hour == 7 and now.minute < 10 and self._state.get("last_report_date") != today_key:
+                    start, end = _report_window_for_day(now)
+                    await self.notify_admins(self._format_stats(start, end, "Утренний отчет за клубную ночь"))
+                    self._state["last_report_date"] = today_key
+                    self._save_state()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Daily report loop failed")
+            await asyncio.sleep(60)
+
+    def create_coupon(self, code: str, prize_type: str, source: str = "ARCADE") -> Coupon:
+        return self.coupons.create_coupon(code, prize_type, source)
+
+    def record_session(self, mode_name: str) -> None:
+        logger.info("Session recorded by compatibility API: %s", mode_name)
+
+    def record_photo(self) -> None:
+        logger.info("Photo recorded by compatibility API")
+
+    async def broadcast_photo(self, photo_data: bytes, caption: str = "", source: str = "ARCADE") -> int:
+        if not self.app or not self._running:
+            return 0
+        sent = 0
+        for admin_id in ADMIN_IDS:
+            try:
+                await self.app.bot.send_photo(chat_id=admin_id, photo=photo_data, caption=caption or source)
+                sent += 1
+            except Exception as e:
+                logger.warning("Could not broadcast compatibility photo: %s", e)
+        return sent
+
 
 class RemoteServer:
-    """HTTP server for remote control web app."""
-
-    def __init__(self, control: ArcadeControl, port: int = 8081):
+    def __init__(self, control: ArcadeControl, port: int = 8081) -> None:
         self.control = control
         self.port = port
         self.app = web.Application()
-        self._setup_routes()
-        self._runner: Optional[web.AppRunner] = None
-
-    def _setup_routes(self) -> None:
-        """Setup HTTP routes."""
         self.app.router.add_get("/remote", self._handle_remote)
         self.app.router.add_get("/api/status", self._handle_status)
         self.app.router.add_get("/api/modes", self._handle_modes)
         self.app.router.add_post("/api/control", self._handle_control)
+        self._runner: Optional[web.AppRunner] = None
 
     async def _handle_remote(self, request: web.Request) -> web.Response:
-        """Serve the remote control HTML."""
         remote_html = Path(__file__).parent / "remote.html"
         if remote_html.exists():
             return web.FileResponse(remote_html)
         return web.Response(text="Remote control not found", status=404)
 
     async def _handle_status(self, request: web.Request) -> web.Response:
-        """Return arcade status."""
-        status = self.control.get_status()
-        return web.json_response(status)
+        return web.json_response(self.control.status())
 
     async def _handle_modes(self, request: web.Request) -> web.Response:
-        """Return remote-control mode buttons built from live config."""
         return web.json_response({"modes": ArcadeBot.get_available_mode_buttons()})
 
     async def _handle_control(self, request: web.Request) -> web.Response:
-        """Handle control commands."""
-        try:
-            data = await request.json()
-            command = data.get("command")
-            message = "OK"
-
-            if command == "button":
-                button = data.get("button", "start")
-                self.control.press_button(button)
-                message = f"Button: {button}"
-            elif command == "volume":
-                level = float(data.get("level", 1.0))
-                self.control.set_volume(level)
-                message = f"Volume: {int(level * 100)}%"
-            elif command == "volume_up":
-                self.control.volume_up()
-                message = "Volume up"
-            elif command == "volume_down":
-                self.control.volume_down()
-                message = "Volume down"
-            elif command == "mute":
-                self.control.mute()
-                message = "Muted"
-            elif command == "unmute":
-                self.control.unmute()
-                message = "Unmuted"
-            elif command == "toggle_mute":
-                self.control.toggle_mute()
-                message = "Mute toggled"
-            elif command == "idle_next":
-                self.control.next_idle_scene()
-                message = "Next scene"
-            elif command == "idle_prev":
-                self.control.prev_idle_scene()
-                message = "Previous scene"
-            elif command == "idle_scene":
-                index = int(data.get("index", 0))
-                self.control.set_idle_scene(index)
-                message = f"Scene: {index}"
-            elif command == "start_mode":
-                mode = data.get("mode", "")
-                self.control.start_mode(mode)
-                message = f"Mode: {mode}"
-            elif command == "reboot":
-                self.control.reboot()
-                message = "Rebooting..."
-            else:
-                return web.json_response({"error": "Unknown command"}, status=400)
-
-            return web.json_response({"success": True, "message": message})
-
-        except Exception as e:
-            logger.error(f"Control error: {e}")
-            return web.json_response({"error": str(e)}, status=500)
+        data = await request.json()
+        command = data.get("command", "")
+        if command == "button":
+            self.control.button(data.get("button", "start"))
+        elif command == "start_mode":
+            self.control.mode(data.get("mode", ""))
+        elif command == "idle_next":
+            self.control.idle_next()
+        elif command == "idle_prev":
+            self.control.idle_prev()
+        elif command == "mute":
+            self.control.mute()
+        elif command == "unmute":
+            self.control.unmute()
+        elif command == "reboot":
+            self.control.machine_reboot()
+        else:
+            return web.json_response({"error": "unknown command"}, status=400)
+        return web.json_response({"ok": True})
 
     async def start(self) -> None:
-        """Start the web server."""
         self._runner = web.AppRunner(self.app)
         await self._runner.setup()
         site = web.TCPSite(self._runner, "0.0.0.0", self.port)
         await site.start()
-        logger.info(f"Remote control server started on port {self.port}")
+        logger.info("Remote server started on %s", self.port)
 
     async def stop(self) -> None:
-        """Stop the web server."""
         if self._runner:
             await self._runner.cleanup()
-            logger.info("Remote control server stopped")
 
-
-# =============================================================================
-# GLOBAL INSTANCES
-# =============================================================================
 
 _arcade_bot: Optional[ArcadeBot] = None
 _remote_server: Optional[RemoteServer] = None
 
 
 def get_arcade_bot() -> ArcadeBot:
-    """Get or create global bot instance."""
     global _arcade_bot
     if _arcade_bot is None:
         _arcade_bot = ArcadeBot()
@@ -1287,22 +872,23 @@ def get_arcade_bot() -> ArcadeBot:
 
 
 async def run_bot() -> None:
-    """Run the bot and remote control server."""
     global _remote_server
-
     bot = get_arcade_bot()
-
-    # Start remote control server
     _remote_server = RemoteServer(bot.control)
     await _remote_server.start()
-
-    # Start bot
-    await bot.start()
-
-    # Keep running
+    while True:
+        try:
+            await bot.start()
+            break
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Telegram bot startup failed; retrying in 30 seconds")
+            await bot.stop()
+            await asyncio.sleep(30)
     try:
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(3600)
     except (KeyboardInterrupt, asyncio.CancelledError):
         pass
     finally:
@@ -1312,8 +898,5 @@ async def run_bot() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     asyncio.run(run_bot())

@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import os
+import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +30,14 @@ CONTROL_FILE = Path(os.environ.get(
 STATUS_FILE = Path(os.environ.get(
     "ARCADE_STATUS_FILE",
     "/home/kirniy/modular-arcade/data/status.json"
+))
+CONTROL_RESPONSE_DIR = Path(os.environ.get(
+    "ARCADE_CONTROL_RESPONSE_DIR",
+    "/home/kirniy/modular-arcade/data/control_responses"
+))
+BOT_CAPTURE_DIR = Path(os.environ.get(
+    "ARCADE_BOT_CAPTURE_DIR",
+    "/home/kirniy/modular-arcade/data/bot_captures"
 ))
 
 # Pygame is used for HDMI output and event handling
@@ -369,6 +378,7 @@ class HardwareRunner:
 
             command = data.get("command")
             timestamp = data.get("timestamp", 0)
+            command_id = data.get("command_id")
 
             # Ignore stale commands (older than 5 seconds)
             if now - timestamp > 5:
@@ -449,10 +459,69 @@ class HardwareRunner:
                 self.play_sound('error')
                 self.event_bus.emit(Event(EventType.REBOOT, source="remote"))
 
+            elif command == "capture_photo":
+                self._handle_remote_photo_capture(command_id)
+
+            elif command == "system_reboot":
+                logger.warning("System reboot requested via Telegram bot")
+                self._write_control_response(command_id, {"ok": True, "message": "rebooting"})
+                subprocess.Popen(["systemctl", "reboot"])
+
         except json.JSONDecodeError as e:
             logger.warning(f"Invalid control file JSON: {e}")
         except Exception as e:
             logger.warning(f"Error reading control file: {e}")
+
+    def _write_control_response(self, command_id: Optional[str], payload: Dict[str, Any]) -> None:
+        """Write a command response for the Telegram bot to read."""
+        if not command_id:
+            return
+        try:
+            CONTROL_RESPONSE_DIR.mkdir(parents=True, exist_ok=True)
+            response_path = CONTROL_RESPONSE_DIR / f"{command_id}.json"
+            response = {
+                "command_id": command_id,
+                "timestamp": time.time(),
+                **payload,
+            }
+            response_path.write_text(json.dumps(response, ensure_ascii=False), encoding="utf-8")
+            try:
+                response_path.chmod(0o666)
+            except OSError:
+                pass
+        except Exception as e:
+            logger.warning("Failed to write control response: %s", e)
+
+    def _handle_remote_photo_capture(self, command_id: Optional[str]) -> None:
+        """Capture one camera frame for the admin bot."""
+        try:
+            from ..utils.camera_service import camera_service
+
+            BOT_CAPTURE_DIR.mkdir(parents=True, exist_ok=True)
+            photo = camera_service.capture_jpeg(quality=92)
+            if not photo:
+                self._write_control_response(command_id, {"ok": False, "error": "camera returned no data"})
+                return
+
+            filename = f"bot_capture_{time.strftime('%Y%m%d_%H%M%S')}_{command_id or 'manual'}.jpg"
+            path = BOT_CAPTURE_DIR / filename
+            path.write_bytes(photo)
+            try:
+                path.chmod(0o666)
+            except OSError:
+                pass
+            self._write_control_response(
+                command_id,
+                {
+                    "ok": True,
+                    "path": str(path),
+                    "bytes": len(photo),
+                },
+            )
+            logger.info("Captured Telegram bot photo: %s (%d bytes)", path, len(photo))
+        except Exception as e:
+            logger.warning("Telegram bot photo capture failed: %s", e)
+            self._write_control_response(command_id, {"ok": False, "error": str(e)})
 
     def _write_status(self) -> None:
         """Write current status for Telegram bot to read."""

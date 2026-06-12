@@ -38,6 +38,7 @@ from artifact.graphics.text_utils import (
     render_idle_style_ticker_text,
 )
 from artifact.utils.camera_service import camera_service
+from artifact.telegram.events import append_bot_event
 
 # When enabled, the completed photobooth image is sent to the print manager.
 # Keep this environment-controlled so local/dev runs can stay digital-only.
@@ -918,12 +919,37 @@ class PhotoboothMode(BaseMode):
     def _on_upload_complete(self, result: UploadResult) -> None:
         """Handle upload completion callback."""
         self._state.is_uploading = False
+        photo_event = {
+            "mode": self.name,
+            "theme_id": getattr(self._theme, "theme_id", ""),
+            "theme_name": getattr(self._theme, "display_name", ""),
+            "result_bytes": len(self._state.ai_label_bytes or self._state.ai_display_bytes or b""),
+            "source_photo_bytes": len(self._state.photo_bytes or b""),
+        }
         if result.success:
             self._state.qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
             self._state.qr_image = result.qr_image
             logger.info(f"Photo uploaded successfully: {self._state.qr_url}")
+            append_bot_event(
+                "photobooth_photo",
+                {
+                    **photo_event,
+                    "success": True,
+                    "url": result.url,
+                    "short_url": result.short_url,
+                    "short_id": result.short_id,
+                },
+            )
         else:
             logger.error(f"Photo upload failed: {result.error}")
+            append_bot_event(
+                "photobooth_photo",
+                {
+                    **photo_event,
+                    "success": False,
+                    "error": result.error,
+                },
+            )
 
     def _start_printing_now(self) -> None:
         """Start printing immediately when result screen appears.

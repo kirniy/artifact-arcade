@@ -1,12 +1,16 @@
-"""VNVNC Arcade Telegram Bot.
+"""Telegram integration for the VNVNC arcade."""
 
-Handles:
-- Coupon verification and redemption
-- Log broadcasting
-- Photo/image sharing
-- Arcade statistics
-"""
+from __future__ import annotations
 
-from artifact.telegram.bot import ArcadeBot, get_arcade_bot
+from typing import Any
+
 
 __all__ = ["ArcadeBot", "get_arcade_bot"]
+
+
+def __getattr__(name: str) -> Any:
+    if name in __all__:
+        from artifact.telegram.bot import ArcadeBot, get_arcade_bot
+
+        return {"ArcadeBot": ArcadeBot, "get_arcade_bot": get_arcade_bot}[name]
+    raise AttributeError(name)
