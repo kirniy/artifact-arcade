@@ -763,10 +763,32 @@ def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict
                 continue
 
             url = f"{SELECTEL_PUBLIC_URL}/{pending.s3_key}"
+            short_url = f"https://vnvnc.ru/p/{pending.short_id}" if pending.short_id else None
             if pending.short_id:
                 _upload_redirect_html(pending.short_id, url)
             if pending.prefix == "photobooth":
                 manifest_prefixes.add(pending.prefix)
+                try:
+                    from artifact.telegram.events import append_bot_event
+
+                    append_bot_event(
+                        "photobooth_photo",
+                        {
+                            "success": True,
+                            "mode": "photobooth",
+                            "theme_id": "",
+                            "theme_name": "Photobooth",
+                            "url": url,
+                            "short_url": short_url,
+                            "short_id": pending.short_id,
+                            "filename": pending.filename,
+                            "result_bytes": Path(pending.file_path).stat().st_size,
+                            "source_photo_bytes": 0,
+                            "uploaded_by": "upload_spool_daemon",
+                        },
+                    )
+                except Exception:
+                    logger.debug("Could not append Telegram success event for pending upload", exc_info=True)
 
             _delete_pending_upload(pending)
             succeeded += 1

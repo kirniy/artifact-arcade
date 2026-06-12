@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import html
+import io
 import json
 import logging
 import os
+import subprocess
 import time
+import urllib.request
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
@@ -698,20 +701,32 @@ class ArcadeBot:
         )
 
     def _read_recent_logs(self) -> str:
-        candidates = [
-            Path("/var/log/syslog"),
-            Path("/home/kirniy/modular-arcade/logs/artifact.log"),
+        commands = [
+            [
+                "journalctl",
+                "-u",
+                "artifact",
+                "-u",
+                "arcade-bot",
+                "-u",
+                "artifact-upload-spool",
+                "-n",
+                "80",
+                "--no-pager",
+                "--output=short-iso",
+            ],
+            ["journalctl", "-n", "80", "--no-pager", "--output=short-iso"],
         ]
-        for path in candidates:
-            if not path.exists():
-                continue
+        for command in commands:
             try:
-                lines = path.read_text(errors="ignore").splitlines()[-60:]
-                escaped = html.escape("\n".join(lines)[-3500:])
-                return f"<b>Последние логи</b>\n<pre>{escaped}</pre>"
+                result = subprocess.run(command, capture_output=True, text=True, timeout=5)
+                output = (result.stdout or result.stderr or "").strip()
+                if output:
+                    escaped = html.escape(output[-3500:])
+                    return f"<b>Последние логи</b>\n<pre>{escaped}</pre>"
             except Exception:
-                continue
-        return "Логи не найдены."
+                logger.debug("Could not read logs with command: %s", command, exc_info=True)
+        return "Логи не найдены. journalctl не отдал данные пользователю bot."
 
     async def _event_loop(self) -> None:
         while True:
@@ -729,23 +744,69 @@ class ArcadeBot:
         if offset > len(events):
             offset = 0
         for event in events[offset:]:
-            await self._send_event(event)
+            delivered = await self._send_event(event)
+            if not delivered:
+                break
             offset += 1
             self._state["event_offset"] = offset
             self._save_state()
 
-    async def _send_event(self, event: dict[str, Any]) -> None:
+    async def _send_event(self, event: dict[str, Any]) -> bool:
         if event.get("type") != "photobooth_photo":
-            return
+            return True
+        if self._is_retryable_upload_failure(event):
+            logger.info("Skipping retryable upload failure event %s", event.get("id"))
+            return True
         caption = self._photo_caption(event)
+        delivered = True
         for admin_id in ADMIN_IDS:
             try:
                 if event.get("success") and event.get("url"):
-                    await self.app.bot.send_photo(chat_id=admin_id, photo=event["url"], caption=caption)
+                    await self._send_photo_with_fallback(admin_id, event, caption)
                 else:
                     await self.app.bot.send_message(chat_id=admin_id, text=caption)
             except Exception as e:
+                delivered = False
                 logger.warning("Failed to send event %s to %s: %s", event.get("id"), admin_id, e)
+        return delivered
+
+    async def _send_photo_with_fallback(self, admin_id: int, event: dict[str, Any], caption: str) -> None:
+        url = str(event["url"])
+        try:
+            await self.app.bot.send_photo(chat_id=admin_id, photo=url, caption=caption)
+            return
+        except Exception as e:
+            logger.warning("Telegram could not fetch photo URL directly; uploading bytes: %s", e)
+
+        try:
+            data = await asyncio.to_thread(self._download_photo_bytes, url)
+            photo = io.BytesIO(data)
+            photo.name = str(event.get("filename") or "photobooth.png")
+            await self.app.bot.send_photo(chat_id=admin_id, photo=photo, caption=caption)
+            return
+        except Exception as e:
+            logger.warning("Telegram byte photo upload failed; sending link only: %s", e)
+
+        await self.app.bot.send_message(chat_id=admin_id, text=caption)
+
+    @staticmethod
+    def _download_photo_bytes(url: str) -> bytes:
+        request = urllib.request.Request(url, headers={"User-Agent": "VNVNC-Arcade-Bot/1.0"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return response.read(20 * 1024 * 1024)
+
+    @staticmethod
+    def _is_retryable_upload_failure(event: dict[str, Any]) -> bool:
+        if event.get("success"):
+            return False
+        error = str(event.get("error") or "")
+        retryable_markers = (
+            "SSLEOFError",
+            "UNEXPECTED_EOF_WHILE_READING",
+            "Max retries exceeded",
+            "s3.ru-7.storage.selcloud.ru",
+        )
+        return any(marker in error for marker in retryable_markers)
 
     @staticmethod
     def _photo_caption(event: dict[str, Any]) -> str:
