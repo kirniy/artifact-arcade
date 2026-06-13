@@ -122,6 +122,8 @@ class PhotoboothState:
     result_view: str = "photo"  # "photo" or "qr"
     generation_progress: float = 0.0  # 0.0 to 1.0
     bot_source_photo_path: Optional[str] = None
+    waiting_finish_timer: float = 0.0
+    waiting_finish_from_seconds: int = 0
 
 
 class PhotoboothMode(BaseMode):
@@ -169,6 +171,7 @@ class PhotoboothMode(BaseMode):
     WAITING_TEXT = (255, 255, 255)
     WAITING_ACCENT = (255, 40, 40)
     WAITING_DIM = (70, 70, 70)
+    WAITING_FINISH_SPIN_SECONDS = 0.85
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
@@ -414,6 +417,12 @@ class PhotoboothMode(BaseMode):
                 # Show result
                 self._state.show_result = True
                 self._state.countdown_timer = self.RESULT_DURATION
+                elapsed_waiting_seconds = max(0, int(self._time_in_phase // 1000))
+                self._state.waiting_finish_from_seconds = max(
+                    0,
+                    self.WAITING_COUNTDOWN_SECONDS - elapsed_waiting_seconds,
+                )
+                self._state.waiting_finish_timer = self.WAITING_FINISH_SPIN_SECONDS
                 self.change_phase(ModePhase.RESULT)
 
                 # Start printing IMMEDIATELY when result appears (if enabled)
@@ -1017,6 +1026,11 @@ class PhotoboothMode(BaseMode):
 
         if self._state.flash_timer > 0:
             self._state.flash_timer -= delta_ms / 1000.0
+        if self._state.waiting_finish_timer > 0:
+            self._state.waiting_finish_timer = max(
+                0.0,
+                self._state.waiting_finish_timer - delta_ms / 1000.0,
+            )
 
         if self._state.countdown_timer <= 0:
             # Auto-return to ready state
@@ -1060,6 +1074,10 @@ class PhotoboothMode(BaseMode):
             self._render_generating(buffer)
             return
 
+        if self._state.show_result and self._state.waiting_finish_timer > 0:
+            self._render_waiting_screen(buffer)
+            return
+
         if self._state.show_result:
             # Show result with QR code
             self._render_result(buffer)
@@ -1100,10 +1118,16 @@ class PhotoboothMode(BaseMode):
     def _render_waiting_screen(self, buffer: NDArray[np.uint8]) -> None:
         """Render a full-screen waiting state with stable high-contrast text."""
         time_ms = int(self._time_in_phase)
-        elapsed_seconds = max(0, time_ms // 1000)
-        seconds_left = max(0, self.WAITING_COUNTDOWN_SECONDS - elapsed_seconds)
+        if self._state.waiting_finish_timer > 0:
+            finish_progress = 1.0 - (self._state.waiting_finish_timer / self.WAITING_FINISH_SPIN_SECONDS)
+            finish_progress = min(1.0, max(0.0, finish_progress))
+            seconds_left = max(0, int(round(self._state.waiting_finish_from_seconds * (1.0 - finish_progress))))
+            countdown_progress = min(1.0, 1.0 - (seconds_left / self.WAITING_COUNTDOWN_SECONDS))
+        else:
+            elapsed_seconds = max(0, time_ms // 1000)
+            seconds_left = max(0, self.WAITING_COUNTDOWN_SECONDS - elapsed_seconds)
+            countdown_progress = min(1.0, elapsed_seconds / self.WAITING_COUNTDOWN_SECONDS)
         countdown_text = f"{seconds_left // 60}:{seconds_left % 60:02d}"
-        countdown_progress = min(1.0, elapsed_seconds / self.WAITING_COUNTDOWN_SECONDS)
         message_index = (time_ms // 3500) % len(self.WAITING_COPY)
         main_text, second_text = self.WAITING_COPY[message_index]
 

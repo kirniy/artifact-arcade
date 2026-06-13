@@ -8,6 +8,7 @@ import io
 import json
 import logging
 import os
+import re
 import subprocess
 import time
 import urllib.request
@@ -307,12 +308,21 @@ class StatsReader:
 
     def build_stats(self, start: Optional[datetime] = None, end: Optional[datetime] = None) -> dict[str, Any]:
         photos = self.photo_events(start, end)
-        successful = [event for event in photos if event.get("success")]
-        failed = [event for event in photos if not event.get("success")]
+        photo_groups: dict[str, list[dict[str, Any]]] = {}
+        for event in photos:
+            photo_groups.setdefault(self._photo_key(event), []).append(event)
+
+        final_photos = [self._final_photo_event(events) for events in photo_groups.values()]
+        successful = [event for event in final_photos if event.get("success")]
+        failed = [
+            event
+            for event in final_photos
+            if not event.get("success") and not self._is_retryable_upload_failure(event)
+        ]
         image_calls, text_calls = self._count_ai_logs(start, end)
         spent = image_calls * IMAGE_CALL_COST_USD + text_calls * TEXT_CALL_COST_USD
         return {
-            "photos": len(photos),
+            "photos": len(final_photos),
             "successful_photos": len(successful),
             "failed_photos": len(failed),
             "image_calls": image_calls,
@@ -322,6 +332,37 @@ class StatsReader:
             "pending_uploads": self.pending_uploads(),
             "last_photo": successful[-1] if successful else None,
         }
+
+    @staticmethod
+    def _photo_key(event: dict[str, Any]) -> str:
+        for field in ("filename", "short_id"):
+            value = event.get(field)
+            if value:
+                return str(value)
+        for field in ("url", "error"):
+            value = str(event.get(field) or "")
+            match = re.search(r"(photobooth_\d{8}_\d{6}_[a-f0-9]+\.png)", value)
+            if match:
+                return match.group(1)
+        return str(event.get("id") or event.get("timestamp") or uuid.uuid4().hex)
+
+    @staticmethod
+    def _final_photo_event(events: list[dict[str, Any]]) -> dict[str, Any]:
+        successful = [event for event in events if event.get("success")]
+        if successful:
+            return successful[-1]
+        return events[-1]
+
+    @staticmethod
+    def _is_retryable_upload_failure(event: dict[str, Any]) -> bool:
+        error = str(event.get("error") or "")
+        retryable_markers = (
+            "SSLEOFError",
+            "UNEXPECTED_EOF_WHILE_READING",
+            "Max retries exceeded",
+            "s3.ru-7.storage.selcloud.ru",
+        )
+        return any(marker in error for marker in retryable_markers)
 
 
 class ArcadeBot:
