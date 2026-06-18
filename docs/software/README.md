@@ -9,6 +9,7 @@ This directory contains technical documentation for ARTIFACT's software architec
 | [architecture.md](architecture.md) | System architecture, layers, and component overview |
 | [animation-system.md](animation-system.md) | Timeline-based animation engine and effects |
 | [ai-integration.md](ai-integration.md) | Gemini AI integration for predictions and caricatures |
+| [2026-06-18-2k17-photobooth-tv-wall-handoff.md](2026-06-18-2k17-photobooth-tv-wall-handoff.md) | 2K17 photobooth, optional TV wall wiring, and safe deploy flow |
 
 ## Quick Start
 
