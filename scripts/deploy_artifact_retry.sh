@@ -179,6 +179,7 @@ if [[ -x .venv/bin/python ]]; then
 fi
 
 if command -v systemctl >/dev/null 2>&1; then
+  ./scripts/activate-2k17-photobooth.sh || true
   ARTIFACT_MARK_RESTART_PENDING=1 ./scripts/restart-artifact-if-idle.sh || true
 fi
 
