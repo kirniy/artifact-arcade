@@ -55,6 +55,7 @@ from artifact.ai.caricature import CaricatureService, Caricature, CaricatureStyl
 from artifact.graphics.progress import SmartProgressTracker, ProgressPhase
 from artifact.animation.santa_runner import SantaRunner
 from artifact.audio.engine import get_audio_engine
+from artifact.utils.hdmi_capture import hdmi_capture_service
 from artifact.modes.photobooth_themes import (
     PhotoboothMenuVariant,
     PhotoboothTheme,
@@ -124,6 +125,8 @@ class PhotoboothState:
     bot_source_photo_path: Optional[str] = None
     waiting_finish_timer: float = 0.0
     waiting_finish_from_seconds: int = 0
+    awaiting_camera_selection: bool = False
+    selected_camera_id: str = "primary"
 
 
 class PhotoboothMode(BaseMode):
@@ -192,6 +195,15 @@ class PhotoboothMode(BaseMode):
         else:
             self._theme = get_current_theme()
         logger.info(f"Photobooth using theme: {self._theme.id} ({self._theme.event_name})")
+
+        selector_flag = os.getenv("PHOTOBOOTH_CAMERA_SELECTOR_ENABLED", "auto").lower()
+        if selector_flag == "auto":
+            self._camera_selector_enabled = self._theme.ai_style_key == "2k17"
+        else:
+            self._camera_selector_enabled = selector_flag in {"1", "true", "yes", "on"}
+        self._camera2_ai_enabled = os.getenv(
+            "PHOTOBOOTH_HDMI_CAPTURE_AI_ENABLED", "false"
+        ).lower() in {"1", "true", "yes", "on"}
 
         # Theme-derived properties
         self.description = self._theme.description
@@ -282,6 +294,8 @@ class PhotoboothMode(BaseMode):
         self._working = False
         self._ai_task = None
         self._progress_tracker.reset()
+        self._state.awaiting_camera_selection = self._camera_selector_enabled
+        self._state.selected_camera_id = "primary"
         self.change_phase(ModePhase.ACTIVE)
 
     def on_exit(self) -> None:
@@ -317,6 +331,16 @@ class PhotoboothMode(BaseMode):
                         self._audio.play_ui_click()
                 return True
 
+        if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
+            if event.type in (
+                EventType.BUTTON_PRESS,
+                EventType.ARCADE_LEFT,
+                EventType.ARCADE_RIGHT,
+                EventType.KEYPAD_INPUT,
+            ):
+                return self._handle_camera_selection_input(event)
+            return False
+
         if event.type not in (EventType.BUTTON_PRESS, EventType.KEYPAD_INPUT):
             return False
 
@@ -332,6 +356,34 @@ class PhotoboothMode(BaseMode):
 
         if self.phase == ModePhase.ACTIVE:
             # Start countdown
+            self._working = True
+            self._start_countdown()
+            return True
+
+        return False
+
+    def _handle_camera_selection_input(self, event: Event) -> bool:
+        """Switch/confirm the live camera preview before countdown."""
+        if event.type == EventType.ARCADE_LEFT:
+            self._state.selected_camera_id = "primary"
+            self._audio.play_ui_click()
+            return True
+        if event.type == EventType.ARCADE_RIGHT:
+            self._state.selected_camera_id = "hdmi"
+            self._audio.play_ui_click()
+            return True
+        if event.type == EventType.KEYPAD_INPUT:
+            key = str(event.data.get("key", ""))
+            if key == "1":
+                self._state.selected_camera_id = "primary"
+                return True
+            if key == "2":
+                self._state.selected_camera_id = "hdmi"
+                return True
+            return True
+
+        if event.type == EventType.BUTTON_PRESS:
+            self._state.awaiting_camera_selection = False
             self._working = True
             self._start_countdown()
             return True
@@ -434,11 +486,15 @@ class PhotoboothMode(BaseMode):
         self._state.flash_timer = self.FLASH_DURATION
         self._state.countdown = 0
 
-        # Capture photo using camera_service
-        jpeg_bytes = camera_service.capture_jpeg(quality=90)
+        jpeg_bytes = self._capture_selected_camera_jpeg(quality=90)
         if jpeg_bytes:
             self._state.photo_bytes = jpeg_bytes
             self._state.photo_frame = self._decode_photo_frame(jpeg_bytes)
+
+            if self._state.selected_camera_id == "hdmi" and not self._camera2_ai_enabled:
+                logger.info("HDMI capture selected; skipping AI generation and uploading raw frame")
+                self._finish_raw_capture_result()
+                return
 
             # Start AI generation
             self._state.is_generating = True
@@ -465,7 +521,27 @@ class PhotoboothMode(BaseMode):
             # No photo captured, go to error state
             logger.error("Photo capture failed")
             self._working = False
+            self._state.awaiting_camera_selection = self._camera_selector_enabled
             self.change_phase(ModePhase.ACTIVE)
+
+    def _capture_selected_camera_jpeg(self, quality: int = 90) -> Optional[bytes]:
+        if self._state.selected_camera_id == "hdmi":
+            return hdmi_capture_service.capture_jpeg(quality=quality)
+        return camera_service.capture_jpeg(quality=quality)
+
+    def _finish_raw_capture_result(self) -> None:
+        """Finish a no-AI HDMI capture-card photobooth session."""
+        self._state.ai_display_bytes = self._state.photo_bytes
+        self._state.ai_display_frame = self._state.photo_frame
+        self._state.ai_label_bytes = None
+        self._state.is_generating = False
+        self._state.show_result = True
+        self._state.countdown_timer = self.RESULT_DURATION
+        self._state.waiting_finish_timer = 0.0
+        self._upload_raw_capture_async()
+        self.change_phase(ModePhase.RESULT)
+        if PRINTING_ENABLED:
+            self._start_printing_now()
 
     def _decode_photo_frame(self, jpeg_bytes: bytes) -> Optional[NDArray[np.uint8]]:
         """Decode captured JPEG into a 128x128 RGB frame for preview."""
@@ -479,6 +555,11 @@ class PhotoboothMode(BaseMode):
             return np.array(img, dtype=np.uint8)
         except Exception:
             return None
+
+    def _get_selected_preview_frame(self) -> Optional[NDArray[np.uint8]]:
+        if self._state.selected_camera_id == "hdmi":
+            return hdmi_capture_service.get_frame(timeout=0)
+        return camera_service.get_frame(timeout=0)
 
     def _get_caricature_styles(self) -> tuple:
         """Get the CaricatureStyle enums for current theme.
@@ -998,6 +1079,30 @@ class PhotoboothMode(BaseMode):
             metadata={"source_photo_path": source_photo_path} if source_photo_path else None,
         )
 
+    def _upload_raw_capture_async(self) -> None:
+        """Upload the unprocessed HDMI capture-card photo for gallery sharing."""
+        if not self._state.photo_bytes:
+            logger.warning("No raw HDMI capture bytes available for upload")
+            return
+
+        logger.info("Uploading raw HDMI capture photo...")
+        self._state.is_uploading = True
+
+        pre_info = pre_generate_upload_info("photobooth", "jpg")
+        self._state.qr_url = pre_info.short_url
+        self._state.qr_image = generate_qr_image(pre_info.short_url)
+        source_photo_path = self._persist_bot_source_photo(pre_info.short_id)
+
+        self._uploader.upload_bytes(
+            self._state.photo_bytes,
+            prefix="photobooth",
+            extension="jpg",
+            content_type="image/jpeg",
+            callback=self._on_upload_complete,
+            pre_info=pre_info,
+            metadata={"source_photo_path": source_photo_path} if source_photo_path else None,
+        )
+
     def _upload_photo_async(self) -> None:
         """Upload photo for QR sharing using shared AsyncUploader."""
         if not self._state.photo_bytes:
@@ -1020,8 +1125,9 @@ class PhotoboothMode(BaseMode):
         self._state.is_uploading = False
         photo_event = {
             "mode": self.name,
-            "theme_id": getattr(self._theme, "theme_id", ""),
-            "theme_name": getattr(self._theme, "display_name", ""),
+            "theme_id": getattr(self._theme, "id", ""),
+            "theme_name": getattr(self._theme, "event_name", ""),
+            "camera_id": self._state.selected_camera_id,
             "result_bytes": len(self._state.ai_label_bytes or self._state.ai_display_bytes or b""),
             "source_photo_bytes": len(self._state.photo_bytes or b""),
             "source_photo_path": self._state.bot_source_photo_path,
@@ -1169,14 +1275,17 @@ class PhotoboothMode(BaseMode):
             self._render_result(buffer)
             return
 
-        # Get camera background for active/countdown states
-        frame = camera_service.get_frame(timeout=0)
+        # Get selected camera background for active/countdown states
+        frame = self._get_selected_preview_frame()
         if frame is not None and frame.shape[:2] == (128, 128):
             np.copyto(buffer, frame)
         else:
             fill(buffer, (20, 15, 30))
 
-        if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
+        if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
+            self._render_camera_selector(buffer)
+
+        elif self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             # Show countdown number - big and centered
             self._render_countdown(buffer)
 
@@ -1200,6 +1309,26 @@ class PhotoboothMode(BaseMode):
                 if ox != 0 or oy != 0:
                     draw_centered_text(buffer, num_str, 40 + oy, self.THEME_BLACK, scale=5)
         draw_centered_text(buffer, num_str, 40, self.THEME_CHROME, scale=5)
+
+    def _render_camera_selector(self, buffer: NDArray[np.uint8]) -> None:
+        """Render live camera selector over the currently selected preview."""
+        selected_hdmi = self._state.selected_camera_id == "hdmi"
+        label = "HDMI 2" if selected_hdmi else "КАМЕРА 1"
+        accent = self.THEME_CHROME if not selected_hdmi else self.THEME_RED
+        dim = (120, 120, 120)
+
+        draw_rect(buffer, 3, 3, 122, 14, (0, 0, 0))
+        draw_centered_text(buffer, label, 6, (255, 255, 255), scale=1)
+
+        draw_rect(buffer, 0, 92, 128, 36, (0, 0, 0))
+        draw_text(buffer, "1", 12, 105, self.THEME_CHROME if not selected_hdmi else dim, scale=2)
+        draw_text(buffer, "2", 104, 105, self.THEME_RED if selected_hdmi else dim, scale=2)
+        draw_centered_text(buffer, "ЖМИ", 96, (255, 255, 255), scale=1)
+        draw_centered_text(buffer, "ВЫБРАТЬ", 116, accent, scale=1)
+
+        if selected_hdmi and hdmi_capture_service.wall_is_owner() and not hdmi_capture_service.has_fresh_shared_frame():
+            draw_rect(buffer, 13, 45, 102, 20, (0, 0, 0))
+            draw_centered_text(buffer, "ЖДУ HDMI", 51, (255, 224, 23), scale=1)
 
     def _render_waiting_screen(self, buffer: NDArray[np.uint8]) -> None:
         """Render a full-screen waiting state with stable high-contrast text."""
@@ -1331,7 +1460,10 @@ class PhotoboothMode(BaseMode):
         """Render ticker display."""
         fill(buffer, (0, 0, 0))
 
-        if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
+        if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
+            ticker_text = "HDMI2" if self._state.selected_camera_id == "hdmi" else "CAM1"
+            render_idle_style_ticker_text(buffer, ticker_text, (255, 255, 255), self._time_in_phase)
+        elif self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             render_idle_style_ticker_text(buffer, str(self._state.countdown), (255, 255, 255), self._time_in_phase)
         elif self._state.is_generating:
             render_idle_style_ticker_text(buffer, "НЕ УХОДИ", (255, 40, 40), self._time_in_phase)
@@ -1345,6 +1477,10 @@ class PhotoboothMode(BaseMode):
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
+        if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
+            if self._state.selected_camera_id == "hdmi":
+                return " HDMI CAPTURE 2 "[:16].ljust(16)
+            return "   CAMERA 1     "[:16].ljust(16)
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             return f" {self._theme.lcd_prefix}: {self._state.countdown}   "[:16].ljust(16)
         elif self._state.show_result:
