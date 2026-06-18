@@ -567,6 +567,11 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
             )
+        elif ai_style_key == "2k17":
+            return (
+                CaricatureStyle.PHOTOBOOTH_2K17_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_2K17,
+            )
         elif ai_style_key == "summer_camp":
             return (
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
@@ -732,6 +737,7 @@ class PhotoboothMode(BaseMode):
                 "candy_shop",
                 "street_heat",
                 "office_core",
+                "2k17",
                 "summer_camp",
             }
             if ai_style_key in timestamp_theme_keys:
@@ -753,7 +759,7 @@ class PhotoboothMode(BaseMode):
                         f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
-                elif ai_style_key in {"office_core", "summer_camp"}:
+                elif ai_style_key in {"office_core", "summer_camp", "2k17"}:
                     personality_context = (
                         "Do not render footer text inside the AI artwork. "
                         "Leave the bottom 12-15% as clean pure white empty space; "
@@ -777,7 +783,10 @@ class PhotoboothMode(BaseMode):
 
             if label_result and label_result.image_data:
                 label_bytes = label_result.image_data
-                if ai_style_key in {"office_core", "summer_camp"}:
+                if ai_style_key == "2k17":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_2k17_footer(label_bytes, footer_date_str, moscow_time)
+                elif ai_style_key in {"office_core", "summer_camp"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(label_bytes, footer_date_str, moscow_time)
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
@@ -877,6 +886,83 @@ class PhotoboothMode(BaseMode):
             return buf.getvalue()
         except Exception as e:
             logger.warning(f"Failed to stamp white-theme footer: {e}")
+            return image_bytes
+
+    def _stamp_2k17_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
+        """Paint deterministic 2K17 black-label footer text over the AI image."""
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            w, h = img.size
+            footer_h = max(int(h * 0.15), 170)
+            y0 = h - footer_h
+            draw = ImageDraw.Draw(img)
+
+            draw.rectangle((0, y0, w, h), fill=(255, 255, 255))
+
+            def load_font(size: int):
+                font_candidates = (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/System/Library/Fonts/SFNSMono.ttf",
+                    "/System/Library/Fonts/Supplemental/Andale Mono.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                    "/Library/Fonts/Arial Unicode.ttf",
+                )
+                for font_path in font_candidates:
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.047)))
+            sub_font = load_font(max(24, int(w * 0.038)))
+
+            def label_size(font, text: str, pad_x: int, pad_y: int) -> tuple[int, int]:
+                box = draw.textbbox((0, 0), text, font=font)
+                return (box[2] - box[0] + pad_x * 2, box[3] - box[1] + pad_y * 2)
+
+            def draw_label(x: int, y: int, text: str, font, pad_x: int, pad_y: int) -> tuple[int, int]:
+                label_w, label_h = label_size(font, text, pad_x, pad_y)
+                draw.rectangle((x, y, x + label_w, y + label_h), fill=(0, 0, 0))
+                box = draw.textbbox((0, 0), text, font=font)
+                text_x = x + pad_x - box[0]
+                text_y = y + pad_y - box[1]
+                draw.text((text_x, text_y), text, font=font, fill=(255, 255, 255))
+                return label_w, label_h
+
+            margin_x = max(22, int(w * 0.05))
+            pad_x = max(14, int(w * 0.018))
+            pad_y = max(8, int(footer_h * 0.045))
+            gap_y = max(10, int(footer_h * 0.07))
+
+            brand = "VNVNC.RU"
+            time_text = moscow_time
+            weekday = footer_date
+            venue = "КОНЮШЕННАЯ 2В"
+
+            row1_y = y0 + max(18, int(footer_h * 0.12))
+            row2_y = row1_y + label_size(main_font, brand, pad_x, pad_y)[1] + gap_y
+
+            brand_w, _ = draw_label(margin_x, row1_y, brand, main_font, pad_x, pad_y)
+            time_w, _ = label_size(main_font, time_text, pad_x, pad_y)
+            if margin_x + brand_w + max(10, int(w * 0.025)) + time_w <= w - margin_x:
+                draw_label(w - margin_x - time_w, row1_y, time_text, main_font, pad_x, pad_y)
+
+            weekday_w, _ = draw_label(margin_x, row2_y, weekday, sub_font, pad_x, pad_y)
+            venue_w, _ = label_size(sub_font, venue, pad_x, pad_y)
+            if margin_x + weekday_w + max(10, int(w * 0.025)) + venue_w <= w - margin_x:
+                draw_label(w - margin_x - venue_w, row2_y, venue, sub_font, pad_x, pad_y)
+            else:
+                row3_y = row2_y + label_size(sub_font, weekday, pad_x, pad_y)[1] + gap_y
+                if row3_y + label_size(sub_font, venue, pad_x, pad_y)[1] <= h - max(8, int(footer_h * 0.04)):
+                    draw_label(margin_x, row3_y, venue, sub_font, pad_x, pad_y)
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp 2K17 footer: {e}")
             return image_bytes
 
     def _upload_ai_result_async(self) -> None:
@@ -1281,11 +1367,12 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("candy_shop", "candy-shop"),
         ("street_heat", "street-heat"),
         ("office_core", "office-core"),
+        ("2k17", "2k17"),
         ("summer_camp", "summer-camp"),
     ]
 )
 
-DEFAULT_PHOTOBOOTH_MENU_MODES = ("summer_camp",)
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("2k17",)
 
 
 def _get_theme_menu_display_name(theme: PhotoboothTheme) -> str:

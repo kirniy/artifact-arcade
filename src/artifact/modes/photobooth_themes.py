@@ -529,6 +529,30 @@ OFFICE_CORE_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: 2K17 — pixel street-style throwback
+# =============================================================================
+TWO_K17_THEME = PhotoboothTheme(
+    id="2k17",
+    event_name="2K17",
+    event_date="19.06-20.06",
+    logo_filename="2k17.png",
+    theme_chrome=(255, 224, 23),
+    theme_red=(255, 28, 0),
+    theme_black=(0, 0, 0),
+    ticker_idle="2K17",
+    lcd_prefix="2K17",
+    description="2K17",
+    menu_display_name="2K17",
+    menu_description="PIXEL STREET POSTER",
+    menu_color=(255, 224, 23),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="2k17",
+    reference_image_filenames=("2k17.png", "2k17-black-label-reference.jpg"),
+)
+
+
+# =============================================================================
 # THEME: SUMMER CAMP — elite pixel sports camp on pure white
 # =============================================================================
 SUMMER_CAMP_THEME = PhotoboothTheme(
@@ -576,11 +600,12 @@ THEMES = {
     "candy-shop": CANDY_SHOP_THEME,
     "street-heat": STREET_HEAT_THEME,
     "office-core": OFFICE_CORE_THEME,
+    "2k17": TWO_K17_THEME,
     "summer-camp": SUMMER_CAMP_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "summer-camp"
+DEFAULT_THEME = "2k17"
 
 
 def get_current_theme() -> PhotoboothTheme:

@@ -76,6 +76,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_STREET_HEAT_SQUARE = "photobooth_street_heat_square"  # 1:1 square - west coast polaroid mode
     PHOTOBOOTH_OFFICE_CORE = "photobooth_office_core"  # 9:16 vertical - pixelated office-core mode
     PHOTOBOOTH_OFFICE_CORE_SQUARE = "photobooth_office_core_square"  # 1:1 square - pixelated office-core mode
+    PHOTOBOOTH_2K17 = "photobooth_2k17"  # 9:16 vertical - pixelated 2K17 street-style mode
+    PHOTOBOOTH_2K17_SQUARE = "photobooth_2k17_square"  # 1:1 square - pixelated 2K17 street-style mode
     PHOTOBOOTH_SUMMER_CAMP = "photobooth_summer_camp"  # 9:16 vertical - pixelated summer sports camp mode
     PHOTOBOOTH_SUMMER_CAMP_SQUARE = "photobooth_summer_camp_square"  # 1:1 square - pixelated summer sports camp mode
     Y2K = "y2k"                # 2000s era character portrait
@@ -2596,6 +2598,109 @@ Square 1:1 white-background pixel office poster.
 ]
 
 
+# 2K17 VARIATIONS - pure white pixelated street-style throwback poster (9:16 vertical)
+TWO_K17_VARIATIONS = [
+    """2K17 - PURE WHITE PIXEL STREET POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. No grid. No strip. No separate frames.
+
+ABSOLUTE #1 PRIORITY - EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
+- Preserve the exact real faces and full people count from the source photo.
+- Keep hair, skin tone, expression, body proportions, pose, clothing silhouette, and visible clothing text/logos exactly.
+- People remain recognizable and human; do not replace them with generic models.
+- Apply the 2K17 theme to the surrounding scene, props, border, and light accessories only.
+
+VISUAL DIRECTION:
+- Pure white #FFFFFF background only. No black background, no gray wall, no room, no floor line.
+- Pixelated 2D poster style inherited from Office Core and Summer Camp: crisp square pixels, sharp black outlines, chunky dithering, premium object-sheet layout.
+- Surround the people with 2017 street-style objects: fidget spinners, rosé bottle and plastic cups, iPhone 7, wired white EarPods/AirPods-style cables, cracked phone screen sticker shapes, skate stickers, disposable vape-like silhouettes, metal chain details, black chokers, fishnet-tights pattern fragments, Vans-style checkerboard shoes, track pants stripes, oversized hoodie folds, flame skate-shirt graphics, yellow caution strap details.
+- Use the supplied black-label reference for the text treatment: flat black rectangular padding strips with bold white blocky pixel font, like a 2017 VK/club dresscode meme graphic.
+- Women's styling cues may include chokers, fishnet tights, black skirts, flame shirts, heavy eyeliner, Vans, pink hair streaks, without covering faces or changing bodies.
+- Men's styling cues may include Gosha Rubchinskiy-era streetwear, track pants, socks-and-sneakers styling, black puffers, chain belts, skate tees, off-white/yellow industrial strap accents.
+- Palette: pure white, black pixel outlines, flame red, hot yellow, acid lime, deep royal blue, worn asphalt gray, small rosé pink highlights.
+- Keep object placement neat, stylish, graphic, and readable. The background must stay mostly white.
+- No office props, no sports camp props, no dark club void, no photorealistic 3D props, no messy collage.
+
+TEXT AND BRANDING:
+- Use the supplied 2K17 flame emblem reference as the official top logo/title.
+- Huge title exactly "2K17", matching the supplied flame emblem's red/yellow fire shape, bold pixel-party attitude, and visual hierarchy as closely as possible.
+- Secondary label blocks, if needed, must follow the supplied black-padding style: white pixel text on solid black rectangles with square corners and no glow.
+- Leave the bottom 12-15% of the poster as clean pure white empty space for a system-rendered footer.
+- Do not write VNVNC.RU, weekday, time, venue, fake dates, year, or "МСК" anywhere. The app adds the real footer after generation.
+- No other readable words except the 2K17 title and tiny non-readable sticker/UI glyphs.
+
+OUTPUT:
+- one centered pure-white pixelated 2K17 street-style poster
+- exact likeness, crisp 2D 2017 props, premium clean layout
+- vertical 9:16
+""",
+    """2K17 - WHITE THROWBACK ICON POSTER (VERTICAL 9:16)
+
+Create a single vertical 9:16 poster on a pure white background.
+
+IDENTITY LOCK:
+- Preserve exact likeness and every person from the input photo.
+- Same face, hair, skin tone, expression, body proportions, and real outfit identity.
+- Preserve visible clothing text and logos letter-for-letter.
+- Do not beautify, costume-swap, cartoon-replace, or turn people into generic avatars.
+
+STYLE:
+- Clean pixelated 2D 2K17 street poster, like a premium 1990s icon-sheet language applied to 2017 club kids and streetwear.
+- People may be lightly pixel-rendered while remaining unmistakably the same real people.
+- 2K17 objects are the hero styling: fidget spinners, rosé, iPhone 7, wired white earbud cables, chokers, fishnet pattern strips, flame skate shirts, Vans/checkerboard shoe details, track pants stripes, puffer jacket folds, chain belts, yellow industrial strap accents, skate stickers, phone-camera flash sparkles.
+- The supplied black-label reference is the official typography style for this theme: solid black rectangular bars behind bold white blocky pixel letters, square corners, high contrast.
+- Pure white negative space is mandatory. Use flame red, hot yellow, black, royal blue, acid lime, asphalt gray, and tiny rosé pink with tight control.
+- Make it cool and graphic, not clip art, not messy AI clutter, not a generic fashion ad.
+
+BRANDING:
+- Recreate the supplied 2K17 flame emblem as the huge top logo/title as closely as possible.
+- Any secondary design labels must be black padded strips with white pixel lettering, matching the supplied typography reference.
+- Leave the bottom 12-15% of the poster as clean pure white empty space for the system footer.
+- Do not write VNVNC.RU, weekday, time, venue, fake sticker slogans, fake dates, or "photobooth" wording. The app adds the real footer after generation.
+- No other readable text beyond the 2K17 title.
+
+OUTPUT:
+- pure white 2K17 pixel street poster, exact likeness, streetwear/camera-party props
+- vertical 9:16
+""",
+]
+
+
+TWO_K17_SQUARE_VARIATIONS = [
+    """2K17 - PURE WHITE PIXEL STREET POSTER (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no panels.
+Preserve exact real faces, full group, hair, skin tone, expression, body proportions, clothing silhouette, and visible clothing text exactly.
+
+Use a pure white #FFFFFF background with crisp pixelated 2D 2017 street-style objects around the people:
+fidget spinners, rosé bottle, iPhone 7, wired white earbud cables, chokers, fishnet pattern strips, Vans/checkerboard shoe details, flame skate-shirt graphics, track pants stripes, puffer jacket folds, chain belts, yellow industrial strap accents, and skate sticker shapes.
+Keep the composition clean, stylish, graphic, and mostly white. No office props, no sports camp props, no black void, and no 3D render.
+Use the supplied black-label reference for typography: black rectangular padding strips with bold white pixel lettering, square corners, no glow.
+
+Huge title exactly "2K17" using the supplied flame emblem reference as the actual top logo.
+Do not write VNVNC.RU, weekday, time, venue, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+No extra readable text beyond the 2K17 title.
+
+Square 1:1 pure-white pixel 2K17 street poster.
+""",
+    """2K17 - WHITE STREETWEAR ICON POSTER (SQUARE 1:1)
+
+One square full-color poster. Preserve exact likeness and every person from the input photo.
+Pure white studio void. Premium pixelated 2D object-sheet style with flame red, hot yellow, black, royal blue, acid lime, and small rosé pink highlights.
+
+Surround the people with 2K17 street-party props: spinners, rosé, iPhone 7, wired white earbuds, chokers, fishnet fragments, flame shirts, Vans/checkerboard shoes, track pants, puffer jacket shapes, chain belts, industrial yellow strap details, skate stickers.
+The objects should be crisp, readable, and cool; no messy collage, no dark background, no photorealistic 3D props.
+Use the supplied black-label reference for typography: black rectangular padding strips with bold white pixel lettering, square corners, no glow.
+
+Huge title exactly "2K17", based directly on the supplied flame emblem reference rather than invented lettering.
+Do not write VNVNC.RU, weekday, time, venue, random words, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+No extra readable text beyond the 2K17 title.
+
+Square 1:1 white-background pixel street-style poster.
+""",
+]
+
+
 # SUMMER CAMP VARIATIONS - pure white pixelated elite sports camp poster (9:16 vertical)
 SUMMER_CAMP_VARIATIONS = [
     """SUMMER CAMP - PURE WHITE PIXEL SPORTS POSTER (VERTICAL 9:16)
@@ -3369,6 +3474,8 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE: "STREET_HEAT_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_OFFICE_CORE: "OFFICE_CORE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE: "OFFICE_CORE_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_2K17: "TWO_K17_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_2K17_SQUARE: "TWO_K17_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP: "SUMMER_CAMP_VARIATION",
     CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE: "SUMMER_CAMP_SQUARE_VARIATION",
 
@@ -3484,6 +3591,8 @@ class CaricatureService:
                 "STREET_HEAT_SQUARE_VARIATION": STREET_HEAT_SQUARE_VARIATIONS,
                 "OFFICE_CORE_VARIATION": OFFICE_CORE_VARIATIONS,
                 "OFFICE_CORE_SQUARE_VARIATION": OFFICE_CORE_SQUARE_VARIATIONS,
+                "TWO_K17_VARIATION": TWO_K17_VARIATIONS,
+                "TWO_K17_SQUARE_VARIATION": TWO_K17_SQUARE_VARIATIONS,
                 "SUMMER_CAMP_VARIATION": SUMMER_CAMP_VARIATIONS,
                 "SUMMER_CAMP_SQUARE_VARIATION": SUMMER_CAMP_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
@@ -3570,6 +3679,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_STREET_HEAT_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_2K17,
+                CaricatureStyle.PHOTOBOOTH_2K17_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
             )
@@ -3649,6 +3760,10 @@ ADDITIONAL REFERENCE IMAGES:
             is_office_core_style = style in (
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE_SQUARE,
+            )
+            is_2k17_style = style in (
+                CaricatureStyle.PHOTOBOOTH_2K17,
+                CaricatureStyle.PHOTOBOOTH_2K17_SQUARE,
             )
             is_summer_camp_style = style in (
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
@@ -3754,6 +3869,16 @@ ADDITIONAL REFERENCE IMAGES:
 - Keep the layout clean, mostly white, and premium; no messy collage and no random extra text
 - Use the supplied office-core emblem reference as the official top logo/title; match its pixel-office lockup as closely as possible
 """
+            elif is_2k17_style:
+                color_instruction = """- FULL COLOR — pure white 2K17 street palette: #FFFFFF background, black pixel outlines, flame red, hot yellow, acid lime, royal blue, asphalt gray, tiny rosé pink highlights
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Pure white studio background is mandatory; no black void, no gray wall, no dark club room
+- Crisp pixelated 2D 2017 street-object art is mandatory: fidget spinners, rosé, iPhone 7, wired white earbuds, chokers, fishnet patterns, Vans/checkerboard shoe details, track pants, puffer jackets, chains, yellow industrial strap accents, skate stickers
+- Typography treatment must use the supplied black-label reference: solid black rectangular padding behind bold white blocky pixel letters, square corners, high contrast
+- Human identity stays exact; theme changes only the rendered art style, props, typography, and non-obscuring accessories
+- Keep the layout clean, mostly white, stylish, and premium; no messy collage and no random extra text
+- Use the supplied 2K17 flame emblem reference as the official top logo/title; match its flame lockup as closely as possible
+"""
             elif is_summer_camp_style:
                 color_instruction = """- FULL COLOR — pure white elite summer sports palette: #FFFFFF background, tennis-ball neon yellow-green, deep athletic forest green, cream white, navy outline accents, small sunset peach highlights
 - Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
@@ -3854,6 +3979,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_CANDY_SHOP,
                 CaricatureStyle.PHOTOBOOTH_STREET_HEAT,
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
+                CaricatureStyle.PHOTOBOOTH_2K17,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
             ):
                 aspect_ratio = "9:16"
@@ -3884,6 +4010,8 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Premium white-background West Coast instant-film campaign poster, tactile Polaroid object realism, creamy paper border, subtle analog grain, polished chrome palm and lowrider still-life accents, basketball energy, luxe dice, chain details, exact photoreal human faces preserved"
             elif is_office_core_style:
                 image_style = "Pure white pixelated 2D office-core poster, crisp 1990s desktop UI icon style, chunky dithering, beige CRT computers, red corded telephone, fax machine, printer paper, folders, exact human likeness preserved"
+            elif is_2k17_style:
+                image_style = "Pure white pixelated 2D 2K17 street-style poster, black padded label typography with bold white pixel letters, chunky dithering, fidget spinners, rose wine, iPhone 7, wired earbuds, chokers, fishnets, Vans, track pants, exact human likeness preserved"
             elif is_summer_camp_style:
                 image_style = "Pure white pixelated 2D elite summer sports camp poster, crisp tennis-club icon style, chunky dithering, tennis balls, white rackets, lime yoga mat, basketball, soccer ball, whistle, palm leaves, exact human likeness preserved"
             elif is_bigcitylife_style:
