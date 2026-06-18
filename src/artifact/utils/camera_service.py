@@ -20,6 +20,7 @@ import os
 import time
 import logging
 import threading
+from pathlib import Path
 from typing import Optional, Tuple, List
 import numpy as np
 from numpy.typing import NDArray
@@ -100,6 +101,25 @@ class CameraService:
         # Black and white mode - Pi Camera Module 3 NoIR has purple tint
         # DISABLED: Now using color camera
         self._grayscale_enabled = False
+
+        # Shared preview for the independent CRT video-wall process. The wall
+        # reads this file instead of opening Picamera2, so photobooth camera
+        # ownership remains inside this single service.
+        self._shared_preview_enabled = os.getenv(
+            "VNVNC_PRIMARY_CAMERA_SHARED_FRAME_ENABLED", "true"
+        ).lower() not in {"0", "false", "no", "off"}
+        data_dir = Path(os.environ.get("ARCADE_DATA_DIR", "/home/kirniy/modular-arcade/data"))
+        self._shared_preview_path = Path(
+            os.environ.get(
+                "VNVNC_PRIMARY_CAMERA_SHARED_FRAME",
+                str(data_dir / "video_wall" / "primary_camera_latest.jpg"),
+            )
+        )
+        self._shared_preview_interval = 1.0 / max(
+            0.1,
+            float(os.getenv("VNVNC_PRIMARY_CAMERA_SHARED_FPS", "4")),
+        )
+        self._last_shared_preview_write = 0.0
 
         logger.info("CameraService initialized")
 
@@ -211,6 +231,8 @@ class CameraService:
                             self._latest_frame = preview
                             self._frame_time = time.time()
                             self._frame_count += 1
+
+                        self._publish_shared_preview(preview)
 
                         # Update FPS
                         self._fps_frame_count += 1
@@ -357,6 +379,24 @@ class CameraService:
                 return buffer.getvalue()
             except:
                 return None
+
+    def _publish_shared_preview(self, frame: NDArray[np.uint8]) -> None:
+        """Publish latest primary-camera preview for the video wall."""
+        if not self._shared_preview_enabled:
+            return
+        now = time.time()
+        if now - self._last_shared_preview_write < self._shared_preview_interval:
+            return
+        self._last_shared_preview_write = now
+        try:
+            from PIL import Image
+
+            self._shared_preview_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp_path = self._shared_preview_path.with_suffix(".tmp.jpg")
+            Image.fromarray(frame).save(tmp_path, format="JPEG", quality=85)
+            tmp_path.replace(self._shared_preview_path)
+        except Exception as e:
+            logger.debug("Failed to publish primary camera shared preview: %s", e)
 
     def _get_hand_tracker(self):
         """Lazily initialize MediaPipe Hands tracker (optional dependency)."""
