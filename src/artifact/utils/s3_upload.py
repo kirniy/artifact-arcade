@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from typing import Optional, Callable, Any
 from dataclasses import dataclass
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import numpy as np
 
@@ -70,7 +71,7 @@ def _find_aws_cli() -> Optional[str]:
 AWS_CLI_PATH = _find_aws_cli()
 AWS_CLI_AVAILABLE = AWS_CLI_PATH is not None
 if not AWS_CLI_AVAILABLE:
-    logger.warning("AWS CLI not found - S3 uploads will be disabled. Install: brew install awscli")
+    logger.warning("AWS CLI not found - S3 uploads will use direct HTTPS fallback")
 
 
 def _prepare_aws_args(args: list[str]) -> list[str]:
@@ -220,6 +221,133 @@ def _upload_local_path_to_s3_direct(
         )
     except Exception as e:
         return subprocess.CompletedProcess([], 1, b"", str(e).encode("utf-8", errors="replace"))
+
+
+def _canonical_query(params: dict[str, str]) -> str:
+    return "&".join(
+        f"{quote(key, safe='-_.~')}={quote(value, safe='-_.~')}"
+        for key, value in sorted(params.items())
+    )
+
+
+def _signed_s3_get(params: dict[str, str], timeout: int) -> subprocess.CompletedProcess[bytes]:
+    """Run a direct signed S3 GET request, used when AWS CLI is unavailable."""
+    if not HAS_REQUESTS:
+        return subprocess.CompletedProcess([], 1, b"", b"requests is not installed")
+
+    credentials = _load_selectel_credentials()
+    if credentials is None:
+        return subprocess.CompletedProcess([], 1, b"", b"Selectel credentials not found")
+
+    parsed = urlparse(SELECTEL_ENDPOINT)
+    host = parsed.netloc
+    canonical_uri = f"/{SELECTEL_BUCKET}"
+    canonical_query = _canonical_query(params)
+    url = f"{SELECTEL_ENDPOINT}{canonical_uri}?{canonical_query}"
+    payload_hash = hashlib.sha256(b"").hexdigest()
+    now = datetime.now(timezone.utc)
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = now.strftime("%Y%m%d")
+
+    headers = {
+        "host": host,
+        "x-amz-content-sha256": payload_hash,
+        "x-amz-date": amz_date,
+    }
+    if credentials["session_token"]:
+        headers["x-amz-security-token"] = credentials["session_token"]
+
+    signed_header_names = sorted(headers)
+    canonical_headers = "".join(f"{name}:{headers[name]}\n" for name in signed_header_names)
+    signed_headers = ";".join(signed_header_names)
+    canonical_request = "\n".join(
+        [
+            "GET",
+            canonical_uri,
+            canonical_query,
+            canonical_headers,
+            signed_headers,
+            payload_hash,
+        ]
+    )
+    credential_scope = f"{date_stamp}/ru-7/s3/aws4_request"
+    string_to_sign = "\n".join(
+        [
+            "AWS4-HMAC-SHA256",
+            amz_date,
+            credential_scope,
+            hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+        ]
+    )
+    signature = hmac.new(
+        _signing_key(credentials["secret_key"], date_stamp, "ru-7", "s3"),
+        string_to_sign.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    headers["authorization"] = (
+        f"AWS4-HMAC-SHA256 Credential={credentials['access_key']}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+
+    try:
+        with AWS_COMMAND_LOCK:
+            response = requests.get(url, headers=headers, timeout=timeout)
+        if 200 <= response.status_code < 300:
+            return subprocess.CompletedProcess([], 0, response.content, b"")
+        return subprocess.CompletedProcess(
+            [],
+            response.status_code,
+            response.content,
+            f"HTTP {response.status_code}: {response.text[:500]}".encode("utf-8", errors="replace"),
+        )
+    except Exception as e:
+        return subprocess.CompletedProcess([], 1, b"", str(e).encode("utf-8", errors="replace"))
+
+
+def _list_s3_objects_direct(prefix: str, max_items: int) -> subprocess.CompletedProcess[bytes]:
+    """List S3 objects with direct SigV4 HTTPS requests and return AWS-CLI-like JSON."""
+    contents: list[dict[str, Any]] = []
+    continuation_token: Optional[str] = None
+
+    while len(contents) < max_items:
+        params = {
+            "list-type": "2",
+            "max-keys": str(min(1000, max_items - len(contents))),
+            "prefix": prefix,
+        }
+        if continuation_token:
+            params["continuation-token"] = continuation_token
+
+        result = _signed_s3_get(params, timeout=S3_MANIFEST_TIMEOUT)
+        if result.returncode != 0:
+            return result
+
+        root = ET.fromstring(result.stdout)
+        namespace = ""
+        if root.tag.startswith("{"):
+            namespace = root.tag.split("}", 1)[0] + "}"
+
+        for item in root.findall(f"{namespace}Contents"):
+            key = item.findtext(f"{namespace}Key") or ""
+            last_modified = item.findtext(f"{namespace}LastModified") or ""
+            size_text = item.findtext(f"{namespace}Size") or "0"
+            contents.append(
+                {
+                    "Key": key,
+                    "LastModified": last_modified,
+                    "Size": int(size_text),
+                }
+            )
+            if len(contents) >= max_items:
+                break
+
+        is_truncated = (root.findtext(f"{namespace}IsTruncated") or "").lower() == "true"
+        continuation_token = root.findtext(f"{namespace}NextContinuationToken")
+        if not is_truncated or not continuation_token:
+            break
+
+    payload = json.dumps({"Contents": contents}, ensure_ascii=False).encode("utf-8")
+    return subprocess.CompletedProcess([], 0, payload, b"")
 
 # Selectel S3 configuration
 SELECTEL_ENDPOINT = "https://s3.ru-7.storage.selcloud.ru"
@@ -592,9 +720,6 @@ def _upload_redirect_html(short_id: str, target_url: str) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    if not AWS_CLI_AVAILABLE:
-        return False
-
     try:
         html_content = _create_redirect_html(target_url)
         # Upload as a file directly (not index.html) so S3 serves it without directory handling
@@ -636,12 +761,7 @@ def provision_short_url_redirect(pre_info: PreUploadInfo) -> bool:
 
 def refresh_public_photo_manifest(prefix: str = "photobooth", max_items: int = 5000) -> bool:
     """Publish a public manifest for gallery consumers."""
-    if not AWS_CLI_AVAILABLE:
-        logger.warning("Cannot refresh manifest: AWS CLI not available")
-        return False
-
-    aws_creds = os.path.expanduser("~/.aws/credentials")
-    if not os.path.exists(aws_creds):
+    if _load_selectel_credentials() is None:
         logger.warning("Cannot refresh manifest: AWS credentials not configured")
         return False
 
@@ -649,29 +769,32 @@ def refresh_public_photo_manifest(prefix: str = "photobooth", max_items: int = 5
     manifest_key = f"{list_prefix}manifest.json"
 
     try:
-        result = _run_aws_command(
-            [
-                AWS_CLI_PATH,
-                "--endpoint-url",
-                SELECTEL_ENDPOINT,
-                "--profile",
-                "selectel",
-                "s3api",
-                "list-objects-v2",
-                "--bucket",
-                SELECTEL_BUCKET,
-                "--prefix",
-                list_prefix,
-                "--page-size",
-                "1000",
-                "--max-items",
-                str(max_items),
-                "--output",
-                "json",
-            ],
-            timeout=S3_MANIFEST_TIMEOUT,
-            retries=2,
-        )
+        if AWS_CLI_AVAILABLE:
+            result = _run_aws_command(
+                [
+                    AWS_CLI_PATH,
+                    "--endpoint-url",
+                    SELECTEL_ENDPOINT,
+                    "--profile",
+                    "selectel",
+                    "s3api",
+                    "list-objects-v2",
+                    "--bucket",
+                    SELECTEL_BUCKET,
+                    "--prefix",
+                    list_prefix,
+                    "--page-size",
+                    "1000",
+                    "--max-items",
+                    str(max_items),
+                    "--output",
+                    "json",
+                ],
+                timeout=S3_MANIFEST_TIMEOUT,
+                retries=2,
+            )
+        else:
+            result = _list_s3_objects_direct(list_prefix, max_items)
 
         if result.returncode != 0:
             stderr = result.stderr.decode() if result.stderr else ""
@@ -863,15 +986,7 @@ def upload_bytes_to_s3(
     Returns:
         UploadResult with success status, URL, and optional QR image
     """
-    # Check prerequisites
-    if not AWS_CLI_AVAILABLE:
-        error = "AWS CLI not installed. Run: sudo apt install awscli"
-        logger.error(error)
-        return UploadResult(success=False, error=error)
-
-    # Check for credentials file
-    aws_creds = os.path.expanduser("~/.aws/credentials")
-    if not os.path.exists(aws_creds):
+    if _load_selectel_credentials() is None:
         error = "AWS credentials not configured. Run: ~/modular-arcade/scripts/setup-aws-s3.sh"
         logger.error(error)
         return UploadResult(success=False, error=error)
@@ -968,15 +1083,7 @@ def upload_file_to_s3(
     Returns:
         UploadResult with success status, URL, and optional QR image
     """
-    # Check prerequisites
-    if not AWS_CLI_AVAILABLE:
-        error = "AWS CLI not installed. Run: sudo apt install awscli"
-        logger.error(error)
-        return UploadResult(success=False, error=error)
-
-    # Check for credentials file
-    aws_creds = os.path.expanduser("~/.aws/credentials")
-    if not os.path.exists(aws_creds):
+    if _load_selectel_credentials() is None:
         error = "AWS credentials not configured. Run: ~/modular-arcade/scripts/setup-aws-s3.sh"
         logger.error(error)
         return UploadResult(success=False, error=error)
