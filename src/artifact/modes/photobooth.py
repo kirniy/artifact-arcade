@@ -177,6 +177,8 @@ class PhotoboothMode(BaseMode):
     WAITING_ACCENT = (255, 40, 40)
     WAITING_DIM = (70, 70, 70)
     WAITING_FINISH_SPIN_SECONDS = 0.85
+    CAMERA_1_LABEL = "CAM1: СПЕРЕДИ"
+    CAMERA_2_LABEL = "CAM2: СЗАДИ"
 
     def __init__(self, context: ModeContext):
         super().__init__(context)
@@ -560,6 +562,7 @@ class PhotoboothMode(BaseMode):
 
     def _get_selected_preview_frame(self) -> Optional[NDArray[np.uint8]]:
         if self._state.selected_camera_id == "hdmi":
+            # HDMICaptureService crop-fills 16:9 capture-card video into the 128x128 LED preview.
             return hdmi_capture_service.get_frame(timeout=0)
         return camera_service.get_frame(timeout=0)
 
@@ -1315,7 +1318,7 @@ class PhotoboothMode(BaseMode):
     def _render_camera_selector(self, buffer: NDArray[np.uint8]) -> None:
         """Render live camera selector over the currently selected preview."""
         selected_hdmi = self._state.selected_camera_id == "hdmi"
-        label = "HDMI 2" if selected_hdmi else "КАМЕРА 1"
+        label = self.CAMERA_2_LABEL if selected_hdmi else self.CAMERA_1_LABEL
         accent = self.THEME_CHROME if not selected_hdmi else self.THEME_RED
         dim = (120, 120, 120)
 
@@ -1463,7 +1466,7 @@ class PhotoboothMode(BaseMode):
         fill(buffer, (0, 0, 0))
 
         if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
-            ticker_text = "HDMI2" if self._state.selected_camera_id == "hdmi" else "CAM1"
+            ticker_text = "СЗАДИ" if self._state.selected_camera_id == "hdmi" else "СПЕРЕДИ"
             render_idle_style_ticker_text(buffer, ticker_text, (255, 255, 255), self._time_in_phase)
         elif self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             render_idle_style_ticker_text(buffer, str(self._state.countdown), (255, 255, 255), self._time_in_phase)
@@ -1481,8 +1484,8 @@ class PhotoboothMode(BaseMode):
         """Get LCD display text."""
         if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
             if self._state.selected_camera_id == "hdmi":
-                return " HDMI CAPTURE 2 "[:16].ljust(16)
-            return "   CAMERA 1     "[:16].ljust(16)
+                return self.CAMERA_2_LABEL[:16].ljust(16)
+            return self.CAMERA_1_LABEL[:16].ljust(16)
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             return f" {self._theme.lcd_prefix}: {self._state.countdown}   "[:16].ljust(16)
         elif self._state.show_result:
