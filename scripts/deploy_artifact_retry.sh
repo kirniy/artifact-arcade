@@ -24,10 +24,21 @@ FILES=(
   "pyproject.toml"
   "requirements.txt"
   "requirements-hardware.txt"
+  "assets/images/2k17.png"
+  "assets/images/2k17-black-label-reference.jpg"
   "assets/images/candy-shop.png"
   "assets/idle/candy_shop"
+  "assets/video_wall/flame-logo.png"
   "data/fortunes/vnvnc_fortunes.json"
+  "scripts/activate-2k17-photobooth.sh"
+  "scripts/autopull.sh"
+  "scripts/check-vnvnc-video-wall.sh"
+  "scripts/install-vnvnc-video-wall.sh"
+  "scripts/restart-artifact-if-idle.sh"
+  "scripts/setup-autostart.sh"
   "scripts/test_rp80_photobooth.py"
+  "scripts/upload_spool_daemon.py"
+  "scripts/vnvnc-video-wall.service"
   "src/artifact/ai/caricature.py"
   "src/artifact/ai/client.py"
   "src/artifact/animation/idle_scenes.py"
@@ -40,6 +51,11 @@ FILES=(
   "src/artifact/printing/fortune_quotes.py"
   "src/artifact/printing/manager.py"
   "src/artifact/printing/photobooth_roll.py"
+  "src/artifact/utils/camera_service.py"
+  "src/artifact/utils/hdmi_capture.py"
+  "src/artifact/utils/s3_upload.py"
+  "src/artifact/video_wall/__init__.py"
+  "src/artifact/video_wall/renderer.py"
 )
 
 mkdir -p "${STATE_DIR}"
@@ -152,14 +168,18 @@ if [[ -x .venv/bin/python ]]; then
     src/artifact/hardware/printer/rp80.py \
     src/artifact/modes/photobooth.py \
     src/artifact/modes/photobooth_themes.py \
+    src/artifact/utils/camera_service.py \
+    src/artifact/utils/hdmi_capture.py \
+    src/artifact/utils/s3_upload.py \
+    src/artifact/video_wall/renderer.py \
+    scripts/upload_spool_daemon.py \
     src/artifact/printing/manager.py \
     src/artifact/printing/photobooth_roll.py \
     scripts/test_rp80_photobooth.py
 fi
 
 if command -v systemctl >/dev/null 2>&1; then
-  sudo -n systemctl restart artifact || systemctl restart artifact || true
-  sudo -n systemctl restart arcade-bot || systemctl restart arcade-bot || true
+  ARTIFACT_MARK_RESTART_PENDING=1 ./scripts/restart-artifact-if-idle.sh || true
 fi
 
 rm -f "${REMOTE_TMP}"

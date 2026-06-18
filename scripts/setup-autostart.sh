@@ -95,7 +95,7 @@ if [ -f "$AUTOPULL_SERVICE" ] && [ -f "$AUTOPULL_TIMER" ] && [ -f "$AUTOPULL_SCR
     
     # Add sudoers entry for kirniy to restart services without password
     SUDOERS_FILE="/etc/sudoers.d/arcade-autopull"
-    echo "kirniy ALL=(ALL) NOPASSWD: /bin/systemctl restart artifact, /bin/systemctl restart arcade-bot" > "$SUDOERS_FILE"
+    echo "kirniy ALL=(ALL) NOPASSWD: /bin/systemctl restart artifact, /bin/systemctl restart arcade-bot, /bin/systemctl restart artifact-upload-spool" > "$SUDOERS_FILE"
     chmod 440 "$SUDOERS_FILE"
     
     systemctl daemon-reload
