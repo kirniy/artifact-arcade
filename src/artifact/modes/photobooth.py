@@ -90,7 +90,9 @@ def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = Non
     if rollover_hour is not None and now.hour < rollover_hour:
         footer_date = now - timedelta(days=1)
 
-    if theme.footer_date_mode == "weekday_ru":
+    if theme.ai_style_key == "2k17":
+        footer_label = footer_date.strftime("%d.%m.2017")
+    elif theme.footer_date_mode == "weekday_ru":
         footer_label = RUSSIAN_WEEKDAYS[footer_date.weekday()]
     else:
         footer_label = footer_date.strftime("%d.%m")

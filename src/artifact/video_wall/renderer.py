@@ -74,6 +74,11 @@ class VideoWallConfig:
     headless_output_path: Path = Path(
         os.environ.get("VNVNC_VIDEO_WALL_HEADLESS_OUTPUT", "/tmp/vnvnc-video-wall-frame.jpg")
     )
+    display_year: Optional[int] = (
+        int(os.environ["VNVNC_VIDEO_WALL_DISPLAY_YEAR"])
+        if os.environ.get("VNVNC_VIDEO_WALL_DISPLAY_YEAR")
+        else 2017
+    )
 
 
 class VideoWallRenderer:
@@ -302,6 +307,8 @@ class VideoWallRenderer:
             return frame
 
         now = datetime.now(MOSCOW_TZ)
+        if self.config.display_year:
+            now = now.replace(year=self.config.display_year)
         time_text = now.strftime("%d.%m.%Y %H:%M:%S")
         h, w = frame.shape[:2]
         cv2.rectangle(frame, (18, 16), (18 + 270, 54), (0, 0, 0), -1)

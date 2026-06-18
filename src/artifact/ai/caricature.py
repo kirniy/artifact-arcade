@@ -2626,7 +2626,8 @@ TEXT AND BRANDING:
 - Huge title exactly "2K17", matching the supplied flame emblem's red/yellow fire shape, bold pixel-party attitude, and visual hierarchy as closely as possible.
 - Secondary label blocks, if needed, must follow the supplied black-padding style: white pixel text on solid black rectangles with square corners and no glow.
 - Leave the bottom 12-15% of the poster as clean pure white empty space for a system-rendered footer.
-- Do not write VNVNC.RU, weekday, time, venue, fake dates, year, or "МСК" anywhere. The app adds the real footer after generation.
+- Do not write VNVNC.RU, weekday, time, venue, fake dates, or "МСК" anywhere. The app adds the real footer after generation.
+- If any year appears anywhere in the design, it must be 2017. Never show 2026.
 - No other readable words except the 2K17 title and tiny non-readable sticker/UI glyphs.
 
 OUTPUT:
@@ -2657,6 +2658,7 @@ BRANDING:
 - Any secondary design labels must be black padded strips with white pixel lettering, matching the supplied typography reference.
 - Leave the bottom 12-15% of the poster as clean pure white empty space for the system footer.
 - Do not write VNVNC.RU, weekday, time, venue, fake sticker slogans, fake dates, or "photobooth" wording. The app adds the real footer after generation.
+- If any year appears anywhere in the design, it must be 2017. Never show 2026.
 - No other readable text beyond the 2K17 title.
 
 OUTPUT:
@@ -2679,6 +2681,7 @@ Use the supplied black-label reference for typography: black rectangular padding
 
 Huge title exactly "2K17" using the supplied flame emblem reference as the actual top logo.
 Do not write VNVNC.RU, weekday, time, venue, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+If any year appears anywhere in the design, it must be 2017. Never show 2026.
 No extra readable text beyond the 2K17 title.
 
 Square 1:1 pure-white pixel 2K17 street poster.
@@ -2694,6 +2697,7 @@ Use the supplied black-label reference for typography: black rectangular padding
 
 Huge title exactly "2K17", based directly on the supplied flame emblem reference rather than invented lettering.
 Do not write VNVNC.RU, weekday, time, venue, random words, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
+If any year appears anywhere in the design, it must be 2017. Never show 2026.
 No extra readable text beyond the 2K17 title.
 
 Square 1:1 white-background pixel street-style poster.

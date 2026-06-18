@@ -16,6 +16,7 @@ Environment=VNVNC_VIDEO_WALL_OUTPUT_WIDTH=720
 Environment=VNVNC_VIDEO_WALL_OUTPUT_HEIGHT=480
 Environment=VNVNC_VIDEO_WALL_OUTPUT=pygame
 Environment=VNVNC_VIDEO_WALL_DISPLAY_INDEX=1
+Environment=VNVNC_VIDEO_WALL_DISPLAY_YEAR=2017
 Environment=SDL_VIDEO_FULLSCREEN_DISPLAY=1
 ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.video_wall.renderer
 Restart=on-failure
