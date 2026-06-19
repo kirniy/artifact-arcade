@@ -676,6 +676,10 @@ class RotatingIdleAnimation:
     def _draw_cringe_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene) -> None:
         """Add lightweight scene tint, border, doodles, and event footer."""
         t = self.state.scene_time / 1000.0
+        if self.idle_variant == "2k17":
+            self._draw_2k17_overlay(buffer, scene, t)
+            return
+
         if self.idle_variant == "slavic":
             accent_map = {
                 IdleScene.CRINGE_HERO: (255, 208, 126),
@@ -740,6 +744,41 @@ class RotatingIdleAnimation:
         footer_date_color = (255, 232, 182) if self.idle_variant == "slavic" else (255, 240, 210)
         draw_centered_text(buffer, self.idle_event_date, 108, footer_date_color, scale=1)
         draw_centered_text(buffer, "VNVNC.RU", 116, accent, scale=1)
+
+    def _draw_2k17_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene, t: float) -> None:
+        """2K17 idle overlay: black label bars, white pixel type, flame-orange accents."""
+        white = (255, 255, 255)
+        orange = (255, 76, 0)
+        yellow = (255, 224, 23)
+
+        # Make text readable over the fan video without washing out the frame.
+        buffer[0:16] = (buffer[0:16].astype(np.float32) * 0.36).astype(np.uint8)
+        buffer[104:128] = (buffer[104:128].astype(np.float32) * 0.30).astype(np.uint8)
+
+        # Black-label blocks, matching the 2K17 poster/font reference.
+        buffer[2:14, 8:120] = (0, 0, 0)
+        buffer[106:118, 8:120] = (0, 0, 0)
+        buffer[118:126, 30:98] = (0, 0, 0)
+
+        pulse = 0.72 + 0.28 * math.sin(t * 2.8)
+        border = tuple(int(c * pulse) for c in yellow)
+        buffer[0:2, :] = border
+        buffer[126:128, :] = border
+        buffer[:, 0:2] = border
+        buffer[:, 126:128] = border
+
+        title = self.cringe_scene_titles.get(scene, "2K17")
+        draw_centered_text(buffer, title[:12], 4, white, scale=1)
+        draw_centered_text(buffer, "DRESSCODE", 108, white, scale=1)
+        draw_centered_text(buffer, "VNVNC.RU", 118, orange, scale=1)
+
+        # Small 2017-era sticker flashes: spinner yellow + flame orange.
+        cx = int(16 + math.sin(t * 2.2) * 3)
+        cy = 96
+        for angle in (0, 120, 240):
+            rad = math.radians(angle + t * 240)
+            draw_line(buffer, cx, cy, int(cx + math.cos(rad) * 7), int(cy + math.sin(rad) * 7), yellow)
+        self._draw_starburst(buffer, 110, 96, orange)
 
     def _draw_centered_title(
         self,
@@ -4659,6 +4698,21 @@ class RotatingIdleAnimation:
                 ]
                 idx = int((t // 2600) % len(circus_texts))
                 self._render_ticker_static_winter(buffer, circus_texts[idx], circus_colors[idx], t)
+            elif self.idle_variant == "2k17":
+                two_k17_texts = [
+                    " 2K17 ",
+                    " DRESSCODE ",
+                    " VNVNC.RU ",
+                    " НАЖМИ СТАРТ ",
+                ]
+                two_k17_colors = [
+                    (255, 255, 255),
+                    (255, 224, 23),
+                    (255, 76, 0),
+                    (255, 255, 255),
+                ]
+                idx = int((t // 2200) % len(two_k17_texts))
+                self._render_ticker_static_winter(buffer, two_k17_texts[idx], two_k17_colors[idx], t)
             else:
                 theme_texts = [
                     self.idle_ticker_text,
