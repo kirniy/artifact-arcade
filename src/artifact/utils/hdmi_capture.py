@@ -56,6 +56,12 @@ class HDMICaptureService:
         self._capture = None
         self._last_open_attempt = 0.0
         self._open_retry_seconds = 2.0
+        self._last_signal_ok = False
+        self._last_signal_warning = 0.0
+        self._min_frame_stddev = float(os.environ.get("VNVNC_HDMI_CAPTURE_MIN_STDDEV", "10.0"))
+        self._min_frame_range = int(os.environ.get("VNVNC_HDMI_CAPTURE_MIN_RANGE", "35"))
+        self._fourcc = os.environ.get("VNVNC_HDMI_CAPTURE_FOURCC", "MJPG").strip().upper()
+        self._read_failures = 0
 
     @property
     def shared_frame_path(self) -> Path:
@@ -80,20 +86,31 @@ class HDMICaptureService:
         except OSError:
             return False
 
+    def has_signal(self) -> bool:
+        """Return whether the most recent HDMI frame looked like a real camera signal."""
+        return self._last_signal_ok
+
     def get_frame(self, timeout: float = 0.0) -> Optional[NDArray[np.uint8]]:
         """Return a 128x128 RGB preview frame for the selected camera UI."""
         deadline = time.time() + max(0.0, timeout)
         while True:
             frame = self._read_shared_frame()
             if frame is not None:
-                return self._resize_frame(frame, self._preview_resolution)
+                if self._frame_has_signal(frame):
+                    self._last_signal_ok = True
+                    return self._resize_frame(frame, self._preview_resolution)
+                self._mark_no_signal("shared HDMI frame")
 
             if not self.wall_is_owner():
                 frame = self._read_direct_frame()
                 if frame is not None:
-                    return self._resize_frame(frame, self._preview_resolution)
+                    if self._frame_has_signal(frame):
+                        self._last_signal_ok = True
+                        return self._resize_frame(frame, self._preview_resolution)
+                    self._mark_no_signal("direct HDMI frame")
 
             if time.time() >= deadline:
+                self._last_signal_ok = False
                 return self._placeholder()
             time.sleep(0.03)
 
@@ -101,15 +118,26 @@ class HDMICaptureService:
         """Capture a JPEG from the HDMI capture source without disturbing the wall."""
         shared = self._read_shared_bytes_if_fresh()
         if shared is not None:
-            return shared
+            frame = self._decode_jpeg(shared)
+            if frame is not None and self._frame_has_signal(frame):
+                self._last_signal_ok = True
+                return shared
+            self._mark_no_signal("shared HDMI capture")
+            return None
 
         if self.wall_is_owner():
             logger.warning("HDMI capture unavailable: video wall owns the card but shared frame is stale")
+            self._last_signal_ok = False
             return None
 
         frame = self._read_direct_frame()
         if frame is None:
+            self._last_signal_ok = False
             return None
+        if not self._frame_has_signal(frame):
+            self._mark_no_signal("direct HDMI capture")
+            return None
+        self._last_signal_ok = True
         return self._encode_jpeg(frame, quality=quality)
 
     def close(self) -> None:
@@ -141,6 +169,14 @@ class HDMICaptureService:
             logger.debug("Failed to decode shared HDMI capture frame: %s", e)
             return None
 
+    def _decode_jpeg(self, data: bytes) -> Optional[NDArray[np.uint8]]:
+        try:
+            image = Image.open(io.BytesIO(data)).convert("RGB")
+            return np.array(image, dtype=np.uint8)
+        except Exception as e:
+            logger.debug("Failed to decode HDMI JPEG: %s", e)
+            return None
+
     def _open_direct_capture(self):
         if not self._direct_enabled:
             return None
@@ -168,11 +204,20 @@ class HDMICaptureService:
         width = int(os.environ.get("VNVNC_HDMI_CAPTURE_WIDTH", "1280"))
         height = int(os.environ.get("VNVNC_HDMI_CAPTURE_HEIGHT", "720"))
         fps = int(os.environ.get("VNVNC_HDMI_CAPTURE_FPS", "30"))
+        if self._fourcc:
+            capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self._fourcc[:4]))
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         capture.set(cv2.CAP_PROP_FPS, fps)
         self._capture = capture
-        logger.info("Opened HDMI capture device %s at %sx%s@%s", self._device, width, height, fps)
+        logger.info(
+            "Opened HDMI capture device %s at %sx%s@%s fourcc=%s",
+            self._device,
+            width,
+            height,
+            fps,
+            self._fourcc or "default",
+        )
         return self._capture
 
     def _read_direct_frame(self) -> Optional[NDArray[np.uint8]]:
@@ -185,11 +230,29 @@ class HDMICaptureService:
 
                 ok, frame_bgr = capture.read()
                 if not ok or frame_bgr is None:
+                    self._read_failures += 1
+                    if self._read_failures >= 10:
+                        logger.warning("HDMI capture read failed repeatedly; reopening device")
+                        self._release_capture_unlocked()
+                        self._read_failures = 0
                     return None
+                self._read_failures = 0
                 return cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
             except Exception as e:
                 logger.debug("Direct HDMI capture frame read failed: %s", e)
+                self._read_failures += 1
+                if self._read_failures >= 10:
+                    self._release_capture_unlocked()
+                    self._read_failures = 0
                 return None
+
+    def _release_capture_unlocked(self) -> None:
+        if self._capture is not None:
+            try:
+                self._capture.release()
+            except Exception:
+                pass
+            self._capture = None
 
     def _resize_frame(self, frame: NDArray[np.uint8], size: Tuple[int, int]) -> NDArray[np.uint8]:
         target_w, target_h = size
@@ -216,6 +279,52 @@ class HDMICaptureService:
         except Exception as e:
             logger.debug("Failed to encode HDMI capture JPEG: %s", e)
             return None
+
+    def _frame_has_signal(self, frame: NDArray[np.uint8]) -> bool:
+        """Reject capture-card placeholder/blank frames before guests can select them."""
+        if frame.size == 0:
+            return False
+        sample = frame
+        if sample.shape[0] > 160 or sample.shape[1] > 160:
+            y_step = max(1, sample.shape[0] // 160)
+            x_step = max(1, sample.shape[1] // 160)
+            sample = sample[::y_step, ::x_step]
+        stddev = float(np.std(sample))
+        value_range = int(np.max(sample)) - int(np.min(sample))
+        if self._looks_like_wireless_receiver_no_signal(sample):
+            return False
+        return stddev >= self._min_frame_stddev and value_range >= self._min_frame_range
+
+    def _looks_like_wireless_receiver_no_signal(self, sample: NDArray[np.uint8]) -> bool:
+        """Reject the HDMI receiver's own black status screen when no source is paired."""
+        if sample.ndim != 3 or sample.shape[0] < 20 or sample.shape[1] < 20:
+            return False
+
+        gray = np.mean(sample.astype(np.float32), axis=2)
+        mean = float(np.mean(gray))
+        stddev = float(np.std(gray))
+        bright_ratio = float(np.mean(gray > 185.0))
+
+        h, w = gray.shape[:2]
+        lower_left = gray[int(h * 0.70) : int(h * 0.96), : int(w * 0.36)]
+        lower_left_bright = float(np.mean(lower_left > 150.0)) if lower_left.size else 0.0
+
+        return (
+            mean < 18.0
+            and stddev > 18.0
+            and 0.003 <= bright_ratio <= 0.09
+            and lower_left_bright > 0.01
+        )
+
+    def _mark_no_signal(self, source: str) -> None:
+        self._last_signal_ok = False
+        now = time.time()
+        if now - self._last_signal_warning > 5.0:
+            logger.warning(
+                "HDMI capture has no usable signal from %s; check camera HDMI output/cable",
+                source,
+            )
+            self._last_signal_warning = now
 
     def _placeholder(self) -> NDArray[np.uint8]:
         w, h = self._preview_resolution

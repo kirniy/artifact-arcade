@@ -72,7 +72,11 @@ if [ -z "${PYTHON_BIN}" ]; then
     fi
 fi
 
-PYTHONPATH=src "${PYTHON_BIN}" -m py_compile \
+PYCACHE_DIR="${ARTIFACT_PYCACHE_DIR:-/tmp/artifact-activate-pycache}"
+rm -rf "${PYCACHE_DIR}"
+mkdir -p "${PYCACHE_DIR}"
+
+PYTHONPATH=src PYTHONPYCACHEPREFIX="${PYCACHE_DIR}" "${PYTHON_BIN}" -m py_compile \
     src/artifact/ai/caricature.py \
     src/artifact/animation/idle_scenes.py \
     src/artifact/modes/photobooth.py \
@@ -82,6 +86,8 @@ PYTHONPATH=src "${PYTHON_BIN}" -m py_compile \
     src/artifact/utils/s3_upload.py \
     src/artifact/video_wall/renderer.py \
     scripts/upload_spool_daemon.py
+
+rm -rf "${PYCACHE_DIR}"
 
 echo "2K17 photobooth env is active in ${ENV_FILE}"
 echo "Video-wall service is not enabled or started by this script."

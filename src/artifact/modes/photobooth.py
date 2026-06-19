@@ -387,6 +387,10 @@ class PhotoboothMode(BaseMode):
             return True
 
         if event.type == EventType.BUTTON_PRESS:
+            if self._state.selected_camera_id == "hdmi" and not hdmi_capture_service.has_signal():
+                logger.warning("Ignoring CAM2 selection: HDMI capture has no usable signal")
+                self._audio.play_error()
+                return True
             self._state.awaiting_camera_selection = False
             self._working = True
             self._start_countdown()
@@ -1331,7 +1335,11 @@ class PhotoboothMode(BaseMode):
         draw_centered_text(buffer, "ЖМИ", 96, (255, 255, 255), scale=1)
         draw_centered_text(buffer, "ВЫБРАТЬ", 116, accent, scale=1)
 
-        if selected_hdmi and hdmi_capture_service.wall_is_owner() and not hdmi_capture_service.has_fresh_shared_frame():
+        if selected_hdmi and not hdmi_capture_service.has_signal():
+            draw_rect(buffer, 10, 38, 108, 28, (0, 0, 0))
+            draw_centered_text(buffer, "НЕТ HDMI", 43, (255, 28, 0), scale=1)
+            draw_centered_text(buffer, "ЖМИ 1", 55, (255, 224, 23), scale=1)
+        elif selected_hdmi and hdmi_capture_service.wall_is_owner() and not hdmi_capture_service.has_fresh_shared_frame():
             draw_rect(buffer, 13, 45, 102, 20, (0, 0, 0))
             draw_centered_text(buffer, "ЖДУ HDMI", 51, (255, 224, 23), scale=1)
 
