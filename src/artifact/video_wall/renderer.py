@@ -47,6 +47,7 @@ class VideoWallConfig:
     display_index: int = int(os.environ.get("VNVNC_VIDEO_WALL_DISPLAY_INDEX", "1"))
     drm_card: str = os.environ.get("VNVNC_VIDEO_WALL_DRM_CARD", "/dev/dri/card1")
     drm_connector: str = os.environ.get("VNVNC_VIDEO_WALL_DRM_CONNECTOR", "HDMI-A-2")
+    fbdev_path: str = os.environ.get("VNVNC_VIDEO_WALL_FBDEV", "/dev/fb0")
     capture_fourcc: str = os.environ.get("VNVNC_VIDEO_WALL_CAPTURE_FOURCC", "MJPG").strip().upper()
     logo_path: Path = Path(
         os.environ.get(
@@ -96,6 +97,7 @@ class VideoWallRenderer:
         self._kms_fb = None
         self._kms_fb_view = None
         self._kms_stride = 0
+        self._fbdev = None
         self._last_capture_open_attempt = 0.0
         self._logo = self._load_logo()
         self._last_shared_publish = 0.0
@@ -181,6 +183,9 @@ class VideoWallRenderer:
         return True
 
     def _init_output(self) -> None:
+        if self.config.output == "fbdev":
+            self._init_fbdev_output()
+            return
         if self.config.output == "pykms":
             self._init_pykms_output()
             return
@@ -244,6 +249,15 @@ class VideoWallRenderer:
             self.config.drm_card,
             crtc.id,
             self._kms_plane.id,
+        )
+
+    def _init_fbdev_output(self) -> None:
+        self._fbdev = open(self.config.fbdev_path, "r+b", buffering=0)
+        logger.info(
+            "Initialized fbdev output %sx%s on %s",
+            self.config.output_width,
+            self.config.output_height,
+            self.config.fbdev_path,
         )
 
     def _next_source_frame(self) -> Optional[np.ndarray]:
@@ -410,6 +424,9 @@ class VideoWallRenderer:
             logger.debug("Failed to update video wall heartbeat: %s", e)
 
     def _show_frame(self, frame: np.ndarray) -> None:
+        if self.config.output == "fbdev":
+            self._show_frame_fbdev(frame)
+            return
         if self.config.output == "pykms":
             self._show_frame_pykms(frame)
             return
@@ -422,6 +439,23 @@ class VideoWallRenderer:
         pygame.display.flip()
         if self._clock is not None:
             self._clock.tick(self.config.capture_fps)
+
+    def _show_frame_fbdev(self, frame: np.ndarray) -> None:
+        if self._fbdev is None:
+            return
+
+        h, w = frame.shape[:2]
+        if w != self.config.output_width or h != self.config.output_height:
+            frame = self._fit_to_output(frame)
+
+        rgb = frame.astype(np.uint16, copy=False)
+        red = (rgb[:, :, 0] >> 3) & 0x1F
+        green = (rgb[:, :, 1] >> 2) & 0x3F
+        blue = (rgb[:, :, 2] >> 3) & 0x1F
+        rgb565 = ((red << 11) | (green << 5) | blue).astype("<u2", copy=False)
+
+        self._fbdev.seek(0)
+        self._fbdev.write(rgb565.tobytes())
 
     def _show_frame_pykms(self, frame: np.ndarray) -> None:
         if (
@@ -498,6 +532,12 @@ class VideoWallRenderer:
             except Exception:
                 pass
             self._capture = None
+        if self._fbdev is not None:
+            try:
+                self._fbdev.close()
+            except Exception:
+                pass
+            self._fbdev = None
         if self._screen is not None:
             try:
                 import pygame

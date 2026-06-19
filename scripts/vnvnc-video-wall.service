@@ -14,10 +14,13 @@ Environment=VNVNC_VIDEO_WALL_CAPTURE_HEIGHT=480
 Environment=VNVNC_VIDEO_WALL_CAPTURE_FPS=25
 Environment=VNVNC_VIDEO_WALL_OUTPUT_WIDTH=720
 Environment=VNVNC_VIDEO_WALL_OUTPUT_HEIGHT=480
-Environment=VNVNC_VIDEO_WALL_OUTPUT=pykms
+Environment=VNVNC_VIDEO_WALL_OUTPUT=fbdev
 Environment=VNVNC_VIDEO_WALL_DISPLAY_INDEX=1
 Environment=VNVNC_VIDEO_WALL_DRM_CARD=/dev/dri/card1
 Environment=VNVNC_VIDEO_WALL_DRM_CONNECTOR=HDMI-A-2
+Environment=VNVNC_VIDEO_WALL_FBDEV=/dev/fb0
+Environment=VNVNC_VIDEO_WALL_SWITCH_INTERVAL=0
+Environment=VNVNC_VIDEO_WALL_PRIMARY_WINDOW=0
 Environment=VNVNC_VIDEO_WALL_DISPLAY_YEAR=2017
 ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.video_wall.renderer
 Restart=on-failure
