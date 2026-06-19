@@ -849,7 +849,14 @@ class PhotoboothMode(BaseMode):
                         f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
-                elif ai_style_key in {"office_core", "summer_camp", "2k17"}:
+                elif ai_style_key == "2k17":
+                    personality_context = (
+                        "Do not render any readable text, title, date, time, footer, venue, sticker slogan, "
+                        "UI label, or decorative letters inside the AI artwork. "
+                        "The only readable text allowed is text/logos already visible on guests' real clothing; "
+                        "preserve those clothing logos letter-for-letter."
+                    )
+                elif ai_style_key in {"office_core", "summer_camp"}:
                     personality_context = (
                         "Do not render footer text inside the AI artwork. "
                         "Leave the bottom 12-15% as clean pure white empty space; "
@@ -873,10 +880,7 @@ class PhotoboothMode(BaseMode):
 
             if label_result and label_result.image_data:
                 label_bytes = label_result.image_data
-                if ai_style_key == "2k17":
-                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-                    label_bytes = self._stamp_2k17_footer(label_bytes, footer_date_str, moscow_time)
-                elif ai_style_key in {"office_core", "summer_camp"}:
+                if ai_style_key in {"office_core", "summer_camp"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(label_bytes, footer_date_str, moscow_time)
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
