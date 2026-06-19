@@ -45,6 +45,9 @@ class VideoWallConfig:
     output_height: int = int(os.environ.get("VNVNC_VIDEO_WALL_OUTPUT_HEIGHT", "480"))
     output: str = os.environ.get("VNVNC_VIDEO_WALL_OUTPUT", "pygame")
     display_index: int = int(os.environ.get("VNVNC_VIDEO_WALL_DISPLAY_INDEX", "1"))
+    drm_card: str = os.environ.get("VNVNC_VIDEO_WALL_DRM_CARD", "/dev/dri/card1")
+    drm_connector: str = os.environ.get("VNVNC_VIDEO_WALL_DRM_CONNECTOR", "HDMI-A-2")
+    capture_fourcc: str = os.environ.get("VNVNC_VIDEO_WALL_CAPTURE_FOURCC", "MJPG").strip().upper()
     logo_path: Path = Path(
         os.environ.get(
             "VNVNC_VIDEO_WALL_LOGO",
@@ -88,6 +91,12 @@ class VideoWallRenderer:
         self._capture = None
         self._screen = None
         self._clock = None
+        self._kms_crtc = None
+        self._kms_plane = None
+        self._kms_fb = None
+        self._kms_fb_view = None
+        self._kms_stride = 0
+        self._last_capture_open_attempt = 0.0
         self._logo = self._load_logo()
         self._last_shared_publish = 0.0
         self._last_frame: Optional[np.ndarray] = None
@@ -102,7 +111,7 @@ class VideoWallRenderer:
             self._run_headless()
             return
 
-        self._open_capture()
+        self._open_capture(required=False)
         self._init_output()
         try:
             frame_interval = 1.0 / max(1, self.config.capture_fps)
@@ -132,28 +141,49 @@ class VideoWallRenderer:
             self._touch_heartbeat()
         logger.info("Headless frame written to %s", self.config.headless_output_path)
 
-    def _open_capture(self) -> None:
+    def _open_capture(self, required: bool = True) -> bool:
+        now = time.time()
+        if self._capture is not None:
+            return True
+        if not required and now - self._last_capture_open_attempt < 2.0:
+            return False
+        self._last_capture_open_attempt = now
+
         try:
             import cv2
         except Exception as e:
-            raise RuntimeError(f"OpenCV is required for video wall capture: {e}") from e
+            if required:
+                raise RuntimeError(f"OpenCV is required for video wall capture: {e}") from e
+            logger.warning("OpenCV unavailable for video wall capture: %s", e)
+            return False
 
         capture = cv2.VideoCapture(self.config.device, cv2.CAP_V4L2)
         if not capture.isOpened():
-            raise RuntimeError(f"Failed to open HDMI capture card at {self.config.device}")
+            if required:
+                raise RuntimeError(f"Failed to open HDMI capture card at {self.config.device}")
+            logger.warning("Video wall HDMI capture unavailable at %s; rendering placeholder", self.config.device)
+            capture.release()
+            return False
+        if self.config.capture_fourcc:
+            capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self.config.capture_fourcc[:4]))
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.capture_width)
         capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.capture_height)
         capture.set(cv2.CAP_PROP_FPS, self.config.capture_fps)
         self._capture = capture
         logger.info(
-            "Opened HDMI capture card %s at %sx%s@%s",
+            "Opened HDMI capture card %s at %sx%s@%s fourcc=%s",
             self.config.device,
             self.config.capture_width,
             self.config.capture_height,
             self.config.capture_fps,
+            self.config.capture_fourcc or "default",
         )
+        return True
 
     def _init_output(self) -> None:
+        if self.config.output == "pykms":
+            self._init_pykms_output()
+            return
         if self.config.output != "pygame":
             raise RuntimeError(f"Unsupported video wall output: {self.config.output}")
 
@@ -177,6 +207,45 @@ class VideoWallRenderer:
             self.config.display_index,
         )
 
+    def _init_pykms_output(self) -> None:
+        try:
+            import pykms
+        except Exception as e:
+            raise RuntimeError(f"pykms is required for DRM video wall output: {e}") from e
+
+        card = pykms.Card(self.config.drm_card)
+        connector = next((c for c in card.connectors if c.fullname == self.config.drm_connector), None)
+        if connector is None:
+            raise RuntimeError(f"DRM connector not found: {self.config.drm_connector}")
+        if not connector.connected():
+            raise RuntimeError(f"DRM connector is not connected: {self.config.drm_connector}")
+
+        crtc = connector.get_current_crtc()
+        if crtc is None:
+            raise RuntimeError(f"DRM connector has no active CRTC: {self.config.drm_connector}")
+
+        width = int(getattr(crtc.mode, "hdisplay", self.config.output_width))
+        height = int(getattr(crtc.mode, "vdisplay", self.config.output_height))
+        self.config.output_width = width
+        self.config.output_height = height
+
+        fb = pykms.DumbFramebuffer(card, width, height, pykms.PixelFormat.XRGB8888)
+        self._kms_crtc = crtc
+        self._kms_plane = crtc.primary_plane
+        self._kms_fb = fb
+        self._kms_fb_view = fb.map(0).cast("B")
+        self._kms_stride = fb.stride(0)
+
+        logger.info(
+            "Initialized pykms output %sx%s on %s (%s), crtc=%s plane=%s",
+            width,
+            height,
+            self.config.drm_connector,
+            self.config.drm_card,
+            crtc.id,
+            self._kms_plane.id,
+        )
+
     def _next_source_frame(self) -> Optional[np.ndarray]:
         primary = self._read_primary_shared_frame_if_active()
         if primary is not None:
@@ -185,7 +254,9 @@ class VideoWallRenderer:
 
     def _read_capture_frame(self) -> Optional[np.ndarray]:
         if self._capture is None:
-            return None
+            self._open_capture(required=False)
+            if self._capture is None:
+                return None
         try:
             import cv2
 
@@ -339,6 +410,9 @@ class VideoWallRenderer:
             logger.debug("Failed to update video wall heartbeat: %s", e)
 
     def _show_frame(self, frame: np.ndarray) -> None:
+        if self.config.output == "pykms":
+            self._show_frame_pykms(frame)
+            return
         if self._screen is None:
             return
         import pygame
@@ -348,6 +422,52 @@ class VideoWallRenderer:
         pygame.display.flip()
         if self._clock is not None:
             self._clock.tick(self.config.capture_fps)
+
+    def _show_frame_pykms(self, frame: np.ndarray) -> None:
+        if (
+            self._kms_crtc is None
+            or self._kms_plane is None
+            or self._kms_fb is None
+            or self._kms_fb_view is None
+        ):
+            return
+
+        h, w = frame.shape[:2]
+        if w != self.config.output_width or h != self.config.output_height:
+            frame = self._fit_to_output(frame)
+            h, w = frame.shape[:2]
+
+        xrgb = np.empty((h, w, 4), dtype=np.uint8)
+        xrgb[:, :, 0] = frame[:, :, 2]
+        xrgb[:, :, 1] = frame[:, :, 1]
+        xrgb[:, :, 2] = frame[:, :, 0]
+        xrgb[:, :, 3] = 0
+
+        row_bytes = w * 4
+        raw = xrgb.reshape(-1)
+        if self._kms_stride == row_bytes:
+            self._kms_fb_view[: row_bytes * h] = raw.tobytes()
+        else:
+            for y in range(h):
+                dst_start = y * self._kms_stride
+                src_start = y * row_bytes
+                self._kms_fb_view[dst_start : dst_start + row_bytes] = raw[
+                    src_start : src_start + row_bytes
+                ].tobytes()
+
+        self._kms_fb.flush()
+        self._kms_crtc.set_plane(
+            self._kms_plane,
+            self._kms_fb,
+            0,
+            0,
+            w,
+            h,
+            0,
+            0,
+            float(w),
+            float(h),
+        )
 
     def _load_logo(self) -> Optional[Image.Image]:
         try:
