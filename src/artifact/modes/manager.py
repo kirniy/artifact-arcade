@@ -1538,9 +1538,13 @@ class ModeManager:
         from artifact.graphics.text_utils import draw_centered_text, MAIN_SAFE_BOTTOM_S2
         from artifact.graphics.primitives import draw_rect
 
+        mode = self.get_selected_mode()
+        prompt_color = self._get_mode_color(mode) if mode is not None else (178, 80, 255)
+        arrow_color = tuple(max(0, min(255, int(c * 0.75))) for c in prompt_color)
+
         # Blinking "НАЖМИ" at bottom - positioned within safe zone for scale=2
         if int(self._time_in_state / 500) % 2 == 0:
-            draw_centered_text(buffer, "НАЖМИ", 92, (255, 200, 0), scale=2)
+            draw_centered_text(buffer, "НАЖМИ", 92, prompt_color, scale=2)
 
         # Arrow pointing down (to button) - wide at top, point at bottom
         # Position adjusted to stay within safe zone
@@ -1552,7 +1556,7 @@ class ModeManager:
             width = (4 - i) * 2 - 1  # 7, 5, 3, 1
             x_start = cx - width // 2
             y_pos = min(base_y + bounce + i, 123)  # Clamp to avoid overflow
-            draw_rect(buffer, x_start, y_pos, width, 1, (255, 100, 100))
+            draw_rect(buffer, x_start, y_pos, width, 1, arrow_color)
 
     def _render_mode_select(self, buffer) -> None:
         """Render beautiful mode selection with FULL SCREEN live camera effect."""
@@ -1674,7 +1678,8 @@ class ModeManager:
 
         # === STEP 6: BOTTOM PROMPT ===
         prompt_y = 115
-        prompt_color = (100, 200, 100) if int(t * 2) % 2 == 0 else (150, 255, 150)
+        pulse_prompt = 0.65 + 0.35 * (1 if int(t * 2) % 2 == 0 else 0.75)
+        prompt_color = tuple(int(c * pulse_prompt) for c in mode_color)
         # Black outline
         for ox in [-1, 0, 1]:
             for oy in [-1, 0, 1]:
@@ -2013,7 +2018,8 @@ class ModeManager:
                 y_offset = -int(8 * (progress - 0.9)/0.1)
                 alpha = (1 - progress) / 0.1
             
-            color = tuple(int(c * alpha) for c in (255, 200, 0))
+            mode_color = self._get_mode_color(mode)
+            color = tuple(int(c * alpha) for c in mode_color)
             font = load_font("cyrillic")
             
             # Check width
