@@ -27,6 +27,7 @@ FILES=(
   "assets/images/2k17.png"
   "assets/images/2k17-black-label-reference.jpg"
   "assets/images/candy-shop.png"
+  "assets/idle/2k17/video/2k17-fans.mp4"
   "assets/idle/candy_shop"
   "assets/video_wall/flame-logo.png"
   "data/fortunes/vnvnc_fortunes.json"

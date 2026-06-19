@@ -11,6 +11,8 @@ When guests enter the 2K17 photobooth mode, the machine first shows a camera sel
 
 The selected camera preview is shown live on the 128x128 screen and crop-fills the square display. After the guest confirms, the normal countdown starts.
 
+The idle screen for this theme uses the 2K17 fan video at `assets/idle/2k17/video/2k17-fans.mp4`, processed to 128x128 for cheap Pi playback. The idle overlay shows `2K17` while real upload/session metadata still uses real current dates.
+
 Camera 1 follows the normal AI photobooth flow: capture, 2K17 themed generation, waiting screen, final image, QR, upload, bot event, and print.
 
 Camera 2 is configured as the low-risk path by default: it captures the HDMI feed and uploads/prints that image directly without AI. This avoids extra latency and avoids fighting the video-wall process for the capture card. AI for Camera 2 can be enabled later with `PHOTOBOOTH_HDMI_CAPTURE_AI_ENABLED=true`, but the safe event default is `false`.
@@ -127,6 +129,7 @@ Before opening to guests:
 - `src/artifact/modes/photobooth.py`
 - `src/artifact/modes/photobooth_themes.py`
 - `src/artifact/ai/caricature.py`
+- `src/artifact/animation/idle_scenes.py`
 - `src/artifact/utils/hdmi_capture.py`
 - `src/artifact/utils/camera_service.py`
 - `src/artifact/video_wall/renderer.py`
@@ -135,3 +138,4 @@ Before opening to guests:
 - `scripts/install-vnvnc-video-wall.sh`
 - `scripts/check-vnvnc-video-wall.sh`
 - `scripts/vnvnc-video-wall.service`
+- `assets/idle/2k17/video/2k17-fans.mp4`

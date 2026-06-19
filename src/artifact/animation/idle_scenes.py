@@ -409,8 +409,12 @@ class RotatingIdleAnimation:
             return "office_core"
         if theme_id == "summer-camp":
             return "summer_camp"
+        if theme_id == "2k17":
+            return "2k17"
         if requested_modes & slavic_keys:
             return "slavic"
+        if "2k17" in requested_modes:
+            return "2k17"
         return "cringe"
 
     def _sync_theme_text(self) -> None:
@@ -436,6 +440,8 @@ class RotatingIdleAnimation:
             self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "OFFICE"
         elif self.idle_variant == "summer_camp":
             self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "CAMP"
+        elif self.idle_variant == "2k17":
+            self.idle_event_date = "2K17"
         else:
             self.idle_event_date = self._theme.event_date.strip() or "03.04-05.04"
 
@@ -483,6 +489,10 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "SUMMER CAMP",
             }
+        if self.idle_variant == "2k17":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "2K17",
+            }
 
         return {
             IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
@@ -512,6 +522,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "office_core":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "summer_camp":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "2k17":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
 
         playlist = [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -617,10 +629,10 @@ class RotatingIdleAnimation:
         images = self.cringe_assets.get(scene, [])
         if not images:
             fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
-            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop"} else (
+            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17"} else (
                 (255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90)
             )
-            date_color = self._theme.theme_red if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop"} else (
+            date_color = self._theme.theme_red if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17"} else (
                 (220, 154, 96) if self.idle_variant == "slavic" else (255, 140, 180)
             )
             self._draw_centered_title(buffer, self.cringe_scene_titles.get(scene, fallback_title), 50, fallback_color)
@@ -673,7 +685,7 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: (255, 220, 150),
                 IdleScene.CRINGE_WHATSAPP: (255, 214, 126),
             }
-        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop"}:
+        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17"}:
             accent_map = {
                 IdleScene.CRINGE_HERO: self._theme.theme_chrome,
                 IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.theme_chrome,
@@ -955,6 +967,21 @@ class RotatingIdleAnimation:
                 logger.info(f"Loaded Summer Camp idle video: {video_path.name}")
             else:
                 logger.warning(f"Summer Camp idle video not found: {video_path}")
+            return
+        if self.idle_variant == "2k17":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "2k17"
+                / "video"
+                / "2k17-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded 2K17 idle video: {video_path.name}")
+            else:
+                logger.warning(f"2K17 idle video not found: {video_path}")
             return
         if self.idle_variant == "slavic":
             video_path = (
@@ -1306,6 +1333,24 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: "CAMP",
                 IdleScene.CRINGE_WHATSAPP: "VNVNC",
                 IdleScene.VNVNC_ENTRANCE: "SUMMER",
+                IdleScene.CAMERA_EFFECTS: "КАМЕРА",
+                IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
+                IdleScene.SAGA_LIVE: "САГА",
+                IdleScene.POSTER_SLIDESHOW: "АФИШИ",
+                IdleScene.DNA_HELIX: "ДНК",
+                IdleScene.SNOWFALL: "СНЕГ",
+                IdleScene.FIREPLACE: "КАМИН",
+                IdleScene.HYPERCUBE: "ГИПЕР",
+            }
+        elif self.idle_variant == "2k17":
+            names = {
+                IdleScene.CRINGE_HERO: "2K17",
+                IdleScene.CRINGE_CIRCLE_VIDEO: "2K17",
+                IdleScene.CRINGE_VENUE: "2K17",
+                IdleScene.CRINGE_BRAINROT: "2K17",
+                IdleScene.CRINGE_WEDDING: "2K17",
+                IdleScene.CRINGE_WHATSAPP: "VNVNC",
+                IdleScene.VNVNC_ENTRANCE: "2K17",
                 IdleScene.CAMERA_EFFECTS: "КАМЕРА",
                 IdleScene.DIVOOM_GALLERY: "ГАЛЕРЕЯ",
                 IdleScene.SAGA_LIVE: "САГА",
@@ -4711,7 +4756,7 @@ class RotatingIdleAnimation:
                 IdleScene.FIREPLACE: ["   УЮТНЫЙ   ", "   КАМИН    ", " НАЖМИ СТАРТ "],
                 IdleScene.HYPERCUBE: [" ГИПЕРКУБ   ", "    4D      ", " НАЖМИ СТАРТ "],
             }
-        elif self.idle_variant in {"circus_maximus", "candy_shop"}:
+        elif self.idle_variant in {"circus_maximus", "candy_shop", "2k17"}:
             return [
                 f" {self.idle_lcd_prefix} ".center(16)[:16],
                 self.idle_title.center(16)[:16],

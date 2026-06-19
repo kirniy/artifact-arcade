@@ -74,6 +74,7 @@ fi
 
 PYTHONPATH=src "${PYTHON_BIN}" -m py_compile \
     src/artifact/ai/caricature.py \
+    src/artifact/animation/idle_scenes.py \
     src/artifact/modes/photobooth.py \
     src/artifact/modes/photobooth_themes.py \
     src/artifact/utils/camera_service.py \
