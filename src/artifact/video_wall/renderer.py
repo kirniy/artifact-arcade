@@ -245,11 +245,15 @@ class VideoWallRenderer:
         self.config.output_height = height
 
         fb = pykms.DumbFramebuffer(card, width, height, pykms.PixelFormat.XRGB8888)
-        mode_result = crtc.set_mode(connector, fb, mode)
-        if mode_result < 0:
-            raise RuntimeError(
-                f"Failed to set DRM mode {width}x{height} on {self.config.drm_connector}: {mode_result}"
-            )
+        current_mode = crtc.mode
+        current_width = int(getattr(current_mode, "hdisplay", 0))
+        current_height = int(getattr(current_mode, "vdisplay", 0))
+        if (current_width, current_height) != (width, height):
+            mode_result = crtc.set_mode(connector, fb, mode)
+            if mode_result < 0:
+                raise RuntimeError(
+                    f"Failed to set DRM mode {width}x{height} on {self.config.drm_connector}: {mode_result}"
+                )
         self._kms_crtc = crtc
         self._kms_plane = crtc.primary_plane
         self._kms_fb = fb
