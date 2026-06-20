@@ -33,6 +33,14 @@ When the TV wall is on, it runs as a separate service:
 
 Photobooth Camera 2 should read the shared frame while the wall is active. This is the intended no-conflict path: one process owns the USB capture device, and the photobooth consumes a JPEG snapshot.
 
+On the current Pi/display stack, the main arcade screen and TV wall must not run as two independent DRM/KMS fullscreen owners. The working live setup is:
+
+- `artifact` owns the photobooth/NovaStar output through pygame/KMSDRM.
+- `vnvnc-video-wall` writes the TV wall through `/dev/fb0` with `VNVNC_VIDEO_WALL_OUTPUT=fbdev`.
+- The TV wall framebuffer is `1280x720`, so the service writes full `1280x720` frames even though capture input is `640x480`.
+
+Do not switch the TV wall service back to `pykms` for live operation unless the display architecture is redesigned. `pykms` can take DRM ownership away from the photobooth or make artifact fall back to the `offscreen` SDL driver.
+
 The video-wall service is intentionally not enabled or started by default. Install and test it manually only when the HDMI splitter/capture hardware is present.
 
 ## Hardware Wiring For TV Wall Night
@@ -100,6 +108,14 @@ Only after the capture card and spare HDMI output are confirmed, start the wall:
 sudo systemctl start vnvnc-video-wall
 journalctl -u vnvnc-video-wall -f
 ```
+
+The expected log line for the live setup is:
+
+```text
+Initialized fbdev output 1280x720 on /dev/fb0
+```
+
+If the log says `Initialized pykms output`, stop the wall and reinstall/update the service before opening to guests.
 
 Stop it with:
 

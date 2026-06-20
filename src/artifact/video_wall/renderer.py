@@ -379,7 +379,7 @@ class VideoWallRenderer:
             return frame
 
         h, w = frame.shape[:2]
-        logo_w = int(w * 0.58)
+        logo_w = int(w * 0.62)
         logo_h = int(logo_w * self._logo.height / max(1, self._logo.width))
         logo = self._logo.resize((logo_w, logo_h), Image.Resampling.LANCZOS)
         logo_arr = np.array(logo, dtype=np.uint8)
@@ -393,10 +393,10 @@ class VideoWallRenderer:
             waved_rgb[y] = np.roll(rgb[y], x_shift, axis=0)
             waved_alpha[y] = np.roll(alpha[y], x_shift, axis=0)
 
-        opacity = 0.20 + 0.04 * np.sin(now * 1.3)
+        opacity = 0.34 + 0.05 * np.sin(now * 1.3)
         overlay_alpha = (waved_alpha * opacity)[:, :, None]
         x0 = (w - logo_w) // 2
-        y0 = int(h * 0.48 - logo_h / 2)
+        y0 = int(h * 0.46 - logo_h / 2)
         region = frame[y0 : y0 + logo_h, x0 : x0 + logo_w].astype(np.float32)
         if region.shape[:2] != (logo_h, logo_w):
             return frame
@@ -415,11 +415,50 @@ class VideoWallRenderer:
             now = now.replace(year=self.config.display_year)
         time_text = now.strftime("%d.%m.%Y %H:%M:%S")
         h, w = frame.shape[:2]
-        cv2.rectangle(frame, (18, 16), (18 + 270, 54), (0, 0, 0), -1)
-        cv2.putText(frame, time_text, (30, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (255, 255, 255), 2)
 
-        cv2.circle(frame, (w - 94, 35), 9, (255, 22, 0), -1)
-        cv2.putText(frame, "REC", (w - 78, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.78, (255, 255, 255), 2)
+        scale = max(1.0, min(w / 640.0, h / 360.0))
+        pad = int(18 * scale)
+        line = int(44 * scale)
+        box_h = int(118 * scale)
+        box_w = int(430 * scale)
+        cv2.rectangle(frame, (pad, pad), (pad + box_w, pad + box_h), (0, 0, 0), -1)
+        cv2.putText(
+            frame,
+            "2K17",
+            (pad + int(16 * scale), pad + int(50 * scale)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.45 * scale,
+            (255, 255, 255),
+            max(2, int(3 * scale)),
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            frame,
+            time_text,
+            (pad + int(18 * scale), pad + line + int(52 * scale)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.66 * scale,
+            (255, 255, 255),
+            max(2, int(2 * scale)),
+            cv2.LINE_AA,
+        )
+
+        rec_w = int(170 * scale)
+        rec_h = int(58 * scale)
+        rec_x = w - rec_w - pad
+        rec_y = pad
+        cv2.rectangle(frame, (rec_x, rec_y), (rec_x + rec_w, rec_y + rec_h), (0, 0, 0), -1)
+        cv2.circle(frame, (rec_x + int(30 * scale), rec_y + rec_h // 2), int(11 * scale), (255, 22, 0), -1)
+        cv2.putText(
+            frame,
+            "REC",
+            (rec_x + int(54 * scale), rec_y + int(42 * scale)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.9 * scale,
+            (255, 255, 255),
+            max(2, int(2 * scale)),
+            cv2.LINE_AA,
+        )
         return frame
 
     def _publish_shared_frame(self, frame: np.ndarray, force: bool = False) -> None:
