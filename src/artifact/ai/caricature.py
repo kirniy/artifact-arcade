@@ -2614,7 +2614,7 @@ VISUAL DIRECTION:
 - Pure white #FFFFFF background only. No black background, no gray wall, no room, no floor line.
 - Pixelated 2D poster style inherited from Office Core and Summer Camp: crisp square pixels, sharp black outlines, chunky dithering, premium object-sheet layout.
 - Surround the people with 2017 street-style objects: fidget spinners, rosé bottle and plastic cups, iPhone 7, wired white EarPods/AirPods-style cables, cracked phone screen sticker shapes, skate stickers, disposable vape-like silhouettes, metal chain details, Vans-style checkerboard shoes, track pants stripes, oversized hoodie folds, flame skate-shirt graphics, yellow caution strap details.
-- Use the supplied black-label reference only for the "2K17" title treatment: flat black rectangular padding strip with bold white blocky pixel font, square corners, high contrast.
+- The only readable generated text is the official top "2K17" flame emblem/title.
 - Women's/femme styling cues may include chokers, fishnet tights, black skirts, flame shirts, heavy eyeliner, Vans, pink hair streaks, without covering faces or changing bodies.
 - Never add chokers, fishnet tights, skirts, eyeliner, or femme accessories to male-presenting guests unless those exact items are already visible in the source photo.
 - Men's styling cues may include Gosha Rubchinskiy-era streetwear, track pants, socks-and-sneakers styling, black puffers, chain belts, skate tees, off-white/yellow industrial strap accents.
@@ -2628,7 +2628,7 @@ TEXT AND BRANDING:
 - Leave the bottom 12-15% of the poster as clean pure white empty space for a system-rendered footer.
 - Do not write VNVNC.RU, weekday, time, venue, fake dates, or "МСК" anywhere. The app adds the real footer after generation.
 - If any year appears anywhere in the design, it must be 2017. Never show 2026.
-- No other readable words except the 2K17 title. No extra black-label words, no sticker slogans, no captions, no brand words, no fake UI text, no random letters.
+- No other readable words except the 2K17 title. Absolutely no Cyrillic/Russian text, no VIP/table/booking text, no extra black-label words, no sticker slogans, no captions, no brand words, no fake UI text, no random letters.
 
 OUTPUT:
 - one centered pure-white pixelated 2K17 street-style poster
@@ -2650,7 +2650,7 @@ STYLE:
 - People may be lightly pixel-rendered while remaining unmistakably the same real people.
 - 2K17 objects are the hero styling: fidget spinners, rosé, iPhone 7, wired white earbud cables, flame skate shirts, Vans/checkerboard shoe details, track pants stripes, puffer jacket folds, chain belts, yellow industrial strap accents, skate stickers, phone-camera flash sparkles.
 - Use chokers, fishnet pattern strips, black skirts, and heavy eyeliner only on femme-presenting guests, and never on male-presenting guests unless already present in the source photo.
-- The supplied black-label reference is the official typography style for this theme: solid black rectangular bars behind bold white blocky pixel letters, square corners, high contrast.
+- The only readable generated text is the official top "2K17" flame emblem/title.
 - Pure white negative space is mandatory. Use flame red, hot yellow, black, royal blue, acid lime, asphalt gray, and tiny rosé pink with tight control.
 - Make it cool and graphic, not clip art, not messy AI clutter, not a generic fashion ad.
 
@@ -2659,7 +2659,7 @@ BRANDING:
 - Leave the bottom 12-15% of the poster as clean pure white empty space for the system footer.
 - Do not write VNVNC.RU, weekday, time, venue, fake sticker slogans, fake dates, or "photobooth" wording. The app adds the real footer after generation.
 - If any year appears anywhere in the design, it must be 2017. Never show 2026.
-- No other readable text beyond the 2K17 title. No secondary labels, no sticker slogans, no captions, no random letters.
+- No other readable text beyond the 2K17 title. Absolutely no Cyrillic/Russian text, no VIP/table/booking text, no secondary labels, no sticker slogans, no captions, no random letters.
 
 OUTPUT:
 - pure white 2K17 pixel street poster, exact likeness, streetwear/camera-party props
@@ -2678,12 +2678,12 @@ Use a pure white #FFFFFF background with crisp pixelated 2D 2017 street-style ob
 fidget spinners, rosé bottle, iPhone 7, wired white earbud cables, Vans/checkerboard shoe details, flame skate-shirt graphics, track pants stripes, puffer jacket folds, chain belts, yellow industrial strap accents, and skate sticker shapes.
 Use chokers, fishnet pattern strips, black skirts, and heavy eyeliner only on femme-presenting guests; never add them to male-presenting guests unless already present in the source photo.
 Keep the composition clean, stylish, graphic, and mostly white. No office props, no sports camp props, no black void, and no 3D render.
-Use the supplied black-label reference only for the "2K17" title: black rectangular padding strip with bold white pixel lettering, square corners, no glow.
+The only readable generated text is the official top "2K17" flame emblem/title.
 
 Huge title exactly "2K17" using the supplied flame emblem reference as the actual top logo.
 Do not write VNVNC.RU, weekday, time, venue, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
 If any year appears anywhere in the design, it must be 2017. Never show 2026.
-No extra readable text beyond the 2K17 title. No secondary labels, no sticker slogans, no captions, no random letters.
+No extra readable text beyond the 2K17 title. Absolutely no Cyrillic/Russian text, no VIP/table/booking text, no secondary labels, no sticker slogans, no captions, no random letters.
 
 Square 1:1 pure-white pixel 2K17 street poster.
 """,
@@ -2695,12 +2695,12 @@ Pure white studio void. Premium pixelated 2D object-sheet style with flame red, 
 Surround the people with 2K17 street-party props: spinners, rosé, iPhone 7, wired white earbuds, flame shirts, Vans/checkerboard shoes, track pants, puffer jacket shapes, chain belts, industrial yellow strap details, skate stickers.
 Use chokers, fishnet fragments, black skirts, and heavy eyeliner only on femme-presenting guests; never add them to male-presenting guests unless already present in the source photo.
 The objects should be crisp, readable, and cool; no messy collage, no dark background, no photorealistic 3D props.
-Use the supplied black-label reference only for the "2K17" title: black rectangular padding strip with bold white pixel lettering, square corners, no glow.
+The only readable generated text is the official top "2K17" flame emblem/title.
 
 Huge title exactly "2K17", based directly on the supplied flame emblem reference rather than invented lettering.
 Do not write VNVNC.RU, weekday, time, venue, random words, fake dates, or "photobooth" wording. Leave clean white bottom space for the app's real footer.
 If any year appears anywhere in the design, it must be 2017. Never show 2026.
-No extra readable text beyond the 2K17 title. No secondary labels, no sticker slogans, no captions, no random letters.
+No extra readable text beyond the 2K17 title. Absolutely no Cyrillic/Russian text, no VIP/table/booking text, no secondary labels, no sticker slogans, no captions, no random letters.
 
 Square 1:1 white-background pixel street-style poster.
 """,
@@ -3881,9 +3881,9 @@ ADDITIONAL REFERENCE IMAGES:
 - Pure white studio background is mandatory; no black void, no gray wall, no dark club room
 - Crisp pixelated 2D 2017 street-object art is mandatory: fidget spinners, rosé, iPhone 7, wired white earbuds, Vans/checkerboard shoe details, track pants, puffer jackets, chains, yellow industrial strap accents, skate stickers
 - Chokers, fishnet patterns, black skirts, and heavy eyeliner are allowed only for femme-presenting guests; never add them to male-presenting guests unless already visible in the source photo
-- Typography treatment must use the supplied black-label reference only for the "2K17" title: solid black rectangular padding behind bold white blocky pixel letters, square corners, high contrast
+- The only readable generated text is the official top "2K17" flame emblem/title
 - Human identity stays exact; theme changes only the rendered art style, props, typography, and non-obscuring accessories
-- Keep the layout clean, mostly white, stylish, and premium; no messy collage and no readable text except the "2K17" title
+- Keep the layout clean, mostly white, stylish, and premium; no messy collage and no readable text except the "2K17" title; no Cyrillic/Russian words, no VIP/table/booking promo text
 - Use the supplied 2K17 flame emblem reference as the official top logo/title; match its flame lockup as closely as possible
 """
             elif is_summer_camp_style:

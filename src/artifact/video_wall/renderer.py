@@ -229,12 +229,22 @@ class VideoWallRenderer:
         if crtc is None:
             raise RuntimeError(f"DRM connector has no active CRTC: {self.config.drm_connector}")
 
-        width = int(getattr(crtc.mode, "hdisplay", self.config.output_width))
-        height = int(getattr(crtc.mode, "vdisplay", self.config.output_height))
+        mode = next(
+            (
+                m
+                for m in connector.get_modes()
+                if int(getattr(m, "hdisplay", 0)) == self.config.output_width
+                and int(getattr(m, "vdisplay", 0)) == self.config.output_height
+            ),
+            crtc.mode,
+        )
+        width = int(getattr(mode, "hdisplay", self.config.output_width))
+        height = int(getattr(mode, "vdisplay", self.config.output_height))
         self.config.output_width = width
         self.config.output_height = height
 
         fb = pykms.DumbFramebuffer(card, width, height, pykms.PixelFormat.XRGB8888)
+        crtc.set_mode(connector, fb, mode)
         self._kms_crtc = crtc
         self._kms_plane = crtc.primary_plane
         self._kms_fb = fb

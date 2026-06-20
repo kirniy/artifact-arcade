@@ -548,7 +548,7 @@ TWO_K17_THEME = PhotoboothTheme(
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="2k17",
-    reference_image_filenames=("2k17.png", "2k17-black-label-reference.jpg"),
+    reference_image_filenames=("2k17.png",),
 )
 
 
