@@ -97,6 +97,7 @@ class VideoWallRenderer:
         self._kms_fb = None
         self._kms_fb_view = None
         self._kms_stride = 0
+        self._pykms_frame_count = 0
         self._fbdev = None
         self._last_capture_open_attempt = 0.0
         self._logo = self._load_logo()
@@ -244,7 +245,11 @@ class VideoWallRenderer:
         self.config.output_height = height
 
         fb = pykms.DumbFramebuffer(card, width, height, pykms.PixelFormat.XRGB8888)
-        crtc.set_mode(connector, fb, mode)
+        mode_result = crtc.set_mode(connector, fb, mode)
+        if mode_result < 0:
+            raise RuntimeError(
+                f"Failed to set DRM mode {width}x{height} on {self.config.drm_connector}: {mode_result}"
+            )
         self._kms_crtc = crtc
         self._kms_plane = crtc.primary_plane
         self._kms_fb = fb
@@ -500,7 +505,7 @@ class VideoWallRenderer:
                 ].tobytes()
 
         self._kms_fb.flush()
-        self._kms_crtc.set_plane(
+        plane_result = self._kms_crtc.set_plane(
             self._kms_plane,
             self._kms_fb,
             0,
@@ -512,6 +517,13 @@ class VideoWallRenderer:
             float(w),
             float(h),
         )
+        if plane_result < 0:
+            raise RuntimeError(
+                f"Failed to set DRM plane {self._kms_plane.id} on {self.config.drm_connector}: {plane_result}"
+            )
+        if self._pykms_frame_count == 0:
+            logger.info("First pykms frame shown on %s at %sx%s", self.config.drm_connector, w, h)
+        self._pykms_frame_count += 1
 
     def _load_logo(self) -> Optional[Image.Image]:
         try:
