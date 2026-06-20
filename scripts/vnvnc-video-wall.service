@@ -1,7 +1,6 @@
 [Unit]
 Description=VNVNC CRT Video Wall
 After=network.target
-Before=artifact.service
 
 [Service]
 Type=simple
