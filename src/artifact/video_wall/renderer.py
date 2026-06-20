@@ -379,8 +379,15 @@ class VideoWallRenderer:
             return frame
 
         h, w = frame.shape[:2]
-        logo_w = int(w * 0.58)
-        logo_h = int(logo_w * self._logo.height / max(1, self._logo.width))
+        max_logo_w = int(w * 0.72)
+        max_logo_h = int(h * 0.78)
+        aspect = self._logo.width / max(1, self._logo.height)
+        if max_logo_w / max(0.01, aspect) <= max_logo_h:
+            logo_w = max_logo_w
+            logo_h = int(logo_w / max(0.01, aspect))
+        else:
+            logo_h = max_logo_h
+            logo_w = int(logo_h * aspect)
         logo = self._logo.resize((logo_w, logo_h), Image.Resampling.LANCZOS)
         logo_arr = np.array(logo, dtype=np.uint8)
         alpha = logo_arr[:, :, 3].astype(np.float32) / 255.0
@@ -393,10 +400,10 @@ class VideoWallRenderer:
             waved_rgb[y] = np.roll(rgb[y], x_shift, axis=0)
             waved_alpha[y] = np.roll(alpha[y], x_shift, axis=0)
 
-        opacity = 0.20 + 0.04 * np.sin(now * 1.3)
+        opacity = 0.52 + 0.08 * np.sin(now * 1.3)
         overlay_alpha = (waved_alpha * opacity)[:, :, None]
         x0 = (w - logo_w) // 2
-        y0 = int(h * 0.48 - logo_h / 2)
+        y0 = int(h * 0.50 - logo_h / 2)
         region = frame[y0 : y0 + logo_h, x0 : x0 + logo_w].astype(np.float32)
         if region.shape[:2] != (logo_h, logo_w):
             return frame

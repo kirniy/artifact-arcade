@@ -12,8 +12,10 @@ This approach works because kmsdrm needs a standard resolution, not 128x128.
 
 import logging
 import os
+import time
 import numpy as np
 from numpy.typing import NDArray
+from typing import Any
 
 from ..base import Display
 
@@ -37,6 +39,209 @@ def _get_pygame():
 # HDMI output resolution (standard resolution for T50 compatibility)
 HDMI_OUTPUT_WIDTH = 720
 HDMI_OUTPUT_HEIGHT = 480
+
+
+def _env_enabled(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _find_mode(connector: Any, width: int, height: int) -> Any:
+    for mode in connector.get_modes():
+        if int(getattr(mode, "hdisplay", 0)) == width and int(getattr(mode, "vdisplay", 0)) == height:
+            return mode
+    return connector.get_current_crtc().mode
+
+
+class _KMSOutput:
+    def __init__(self, card: Any, connector_name: str, width: int, height: int) -> None:
+        import pykms
+
+        connector = next((c for c in card.connectors if c.fullname == connector_name), None)
+        if connector is None:
+            raise RuntimeError(f"DRM connector not found: {connector_name}")
+        if not connector.connected():
+            raise RuntimeError(f"DRM connector is not connected: {connector_name}")
+
+        crtc = connector.get_current_crtc()
+        if crtc is None:
+            raise RuntimeError(f"DRM connector has no active CRTC: {connector_name}")
+
+        mode = _find_mode(connector, width, height)
+        self.width = int(getattr(mode, "hdisplay", width))
+        self.height = int(getattr(mode, "vdisplay", height))
+        self.connector_name = connector_name
+        self.crtc = crtc
+        self.plane = crtc.primary_plane
+        self.fb = pykms.DumbFramebuffer(card, self.width, self.height, pykms.PixelFormat.XRGB8888)
+        self.view = self.fb.map(0).cast("B")
+        self.stride = self.fb.stride(0)
+
+        current_mode = crtc.mode
+        current_width = int(getattr(current_mode, "hdisplay", 0))
+        current_height = int(getattr(current_mode, "vdisplay", 0))
+        if (current_width, current_height) != (self.width, self.height):
+            result = crtc.set_mode(connector, self.fb, mode)
+            if result < 0:
+                raise RuntimeError(f"Failed to set DRM mode {self.width}x{self.height} on {connector_name}: {result}")
+
+    def show_rgb(self, frame: NDArray[np.uint8]) -> None:
+        h, w = frame.shape[:2]
+        if (w, h) != (self.width, self.height):
+            raise ValueError(f"Frame size {w}x{h} does not match {self.connector_name} {self.width}x{self.height}")
+
+        xrgb = np.empty((h, w, 4), dtype=np.uint8)
+        xrgb[:, :, 0] = frame[:, :, 2]
+        xrgb[:, :, 1] = frame[:, :, 1]
+        xrgb[:, :, 2] = frame[:, :, 0]
+        xrgb[:, :, 3] = 0
+
+        row_bytes = w * 4
+        raw = xrgb.reshape(-1)
+        if self.stride == row_bytes:
+            self.view[: row_bytes * h] = raw.tobytes()
+        else:
+            for y in range(h):
+                dst_start = y * self.stride
+                src_start = y * row_bytes
+                self.view[dst_start : dst_start + row_bytes] = raw[src_start : src_start + row_bytes].tobytes()
+
+        self.fb.flush()
+        result = self.crtc.set_plane(self.plane, self.fb, 0, 0, w, h, 0, 0, float(w), float(h))
+        if result < 0:
+            raise RuntimeError(f"Failed to set DRM plane {self.plane.id} on {self.connector_name}: {result}")
+
+
+class HDMIDisplayKMSDual(Display):
+    """Single-process KMS backend for photobooth HDMI plus optional TV wall HDMI."""
+
+    def __init__(self, width: int = 128, height: int = 128, rotate_180: bool = True):
+        self._width = width
+        self._height = height
+        self._rotate_180 = rotate_180
+        self._buffer = np.zeros((height, width, 3), dtype=np.uint8)
+        self._initialized = False
+        self._card = None
+        self._main_output = None
+        self._wall_output = None
+        self._wall_renderer = None
+        self._wall_enabled = _env_enabled("VNVNC_INPROCESS_TV_WALL_ENABLED", True)
+        self._last_wall_update = 0.0
+        self._wall_frame: NDArray[np.uint8] | None = None
+        self._show_count = 0
+
+    @property
+    def width(self) -> int:
+        return self._width
+
+    @property
+    def height(self) -> int:
+        return self._height
+
+    def init(self) -> bool:
+        if self._initialized:
+            return True
+
+        try:
+            import pykms
+
+            card_path = os.environ.get("VNVNC_DUAL_KMS_DRM_CARD", "/dev/dri/card1")
+            self._card = pykms.Card(card_path)
+            self._main_output = _KMSOutput(
+                self._card,
+                os.environ.get("VNVNC_MAIN_DRM_CONNECTOR", "HDMI-A-1"),
+                HDMI_OUTPUT_WIDTH,
+                HDMI_OUTPUT_HEIGHT,
+            )
+            if self._wall_enabled:
+                self._wall_output = _KMSOutput(
+                    self._card,
+                    os.environ.get("VNVNC_VIDEO_WALL_DRM_CONNECTOR", "HDMI-A-2"),
+                    int(os.environ.get("VNVNC_VIDEO_WALL_OUTPUT_WIDTH", "1280")),
+                    int(os.environ.get("VNVNC_VIDEO_WALL_OUTPUT_HEIGHT", "720")),
+                )
+                from ...video_wall.renderer import VideoWallConfig, VideoWallRenderer
+
+                config = VideoWallConfig()
+                config.output_width = self._wall_output.width
+                config.output_height = self._wall_output.height
+                self._wall_renderer = VideoWallRenderer(config)
+                self._wall_renderer._open_capture(required=False)
+
+            self._initialized = True
+            logger.info(
+                "KMS dual HDMI initialized: main=%sx%s wall=%s",
+                self._main_output.width,
+                self._main_output.height,
+                f"{self._wall_output.width}x{self._wall_output.height}" if self._wall_output else "off",
+            )
+            return True
+        except Exception as e:
+            logger.error("Failed to initialize KMS dual HDMI display: %s", e)
+            return False
+
+    def set_pixel(self, x: int, y: int, r: int, g: int, b: int) -> None:
+        if 0 <= x < self._width and 0 <= y < self._height:
+            self._buffer[y, x] = [r, g, b]
+
+    def set_buffer(self, buffer: NDArray[np.uint8]) -> None:
+        if buffer.shape == self._buffer.shape:
+            np.copyto(self._buffer, buffer)
+        else:
+            h = min(buffer.shape[0], self._height)
+            w = min(buffer.shape[1], self._width)
+            self._buffer[:h, :w] = buffer[:h, :w]
+
+    def clear(self, r: int = 0, g: int = 0, b: int = 0) -> None:
+        self._buffer[:, :] = [r, g, b]
+
+    def show(self) -> None:
+        if not self._initialized or self._main_output is None:
+            return
+
+        main_frame = np.zeros((self._main_output.height, self._main_output.width, 3), dtype=np.uint8)
+        led = np.rot90(self._buffer, 2) if self._rotate_180 else self._buffer
+        main_frame[: self._height, : self._width] = led
+        self._main_output.show_rgb(main_frame)
+
+        if self._wall_output is not None and self._wall_renderer is not None:
+            self._show_wall_frame()
+
+        self._show_count += 1
+        if self._show_count % 60 == 0:
+            logger.info("KMS dual display frame %s", self._show_count)
+
+    def _show_wall_frame(self) -> None:
+        assert self._wall_output is not None
+        assert self._wall_renderer is not None
+
+        now = time.time()
+        interval = 1.0 / max(1, getattr(self._wall_renderer.config, "capture_fps", 25))
+        if self._wall_frame is None or now - self._last_wall_update >= interval:
+            raw = self._wall_renderer._next_source_frame()
+            if raw is None:
+                raw = self._wall_renderer._placeholder_frame(now)
+            self._wall_renderer._publish_shared_frame(raw)
+            self._wall_frame = self._wall_renderer._render_frame(raw, now)
+            self._wall_renderer._touch_heartbeat()
+            self._last_wall_update = now
+
+        self._wall_output.show_rgb(self._wall_frame)
+
+    def get_buffer(self) -> NDArray[np.uint8]:
+        return self._buffer.copy()
+
+    def cleanup(self) -> None:
+        if self._wall_renderer is not None:
+            self._wall_renderer._cleanup()
+            self._wall_renderer = None
+        self._main_output = None
+        self._wall_output = None
+        self._card = None
+        self._initialized = False
+        logger.info("KMS dual HDMI display cleaned up")
 
 
 class HDMIDisplay(Display):

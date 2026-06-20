@@ -1,6 +1,6 @@
 # 2026-06-18 2K17 Photobooth And Optional TV Wall Handoff
 
-This note captures the current 2K17 photobooth setup and the optional CRT/TV-wall mode. The TV wall is not part of the normal boot path: most nights it can stay off, and for specific events it can be installed, tested, and started separately.
+This note captures the current 2K17 photobooth setup and the optional CRT/TV-wall mode. The stable live setup is one process owning both HDMI outputs: `artifact` drives the photobooth screen on HDMI-A-1 and the TV wall on HDMI-A-2. Do not run a second fullscreen wall process during guest operation.
 
 ## User-Facing Behavior
 
@@ -23,25 +23,92 @@ Visible 2K17 artwork can show `2017` for the party concept. Upload filenames, S3
 
 When the TV wall is off, the photobooth still works normally. Camera 1 always works. Camera 2 only works if the USB HDMI capture card is connected and readable.
 
-When the TV wall is on, it runs as a separate service:
+When the TV wall is on, it runs inside `artifact` through `HDMIDisplayKMSDual`:
 
 - reads the USB HDMI capture card
 - writes a shared latest-frame JPEG under `data/video_wall/`
 - touches a heartbeat file so photobooth knows the wall owns the card
 - renders a VHS/CRT-style live image with the flame emblem, `REC`, Moscow time, and a visible `2017` date
-- can occasionally switch to the shared regular camera preview without opening the Pi camera directly
 
-Photobooth Camera 2 should read the shared frame while the wall is active. This is the intended no-conflict path: one process owns the USB capture device, and the photobooth consumes a JPEG snapshot.
+Photobooth Camera 2 should read the shared frame while the wall is active. This is the intended no-conflict path for the capture device: one process owns the USB capture device, and the photobooth consumes a JPEG snapshot.
 
-On the current Pi/display stack, the main arcade screen and TV wall must not run as two independent DRM/KMS fullscreen owners. The working live setup is:
+### 2026-06-21 Live Display Findings
 
-- `artifact` owns the photobooth/NovaStar output through pygame/KMSDRM.
-- `vnvnc-video-wall` writes the TV wall through `/dev/fb0` with `VNVNC_VIDEO_WALL_OUTPUT=fbdev`.
-- The TV wall framebuffer is `1280x720`, so the service writes full `1280x720` frames even though capture input is `640x480`.
+The current Pi/display stack cannot safely run the photobooth screen and the TV wall as two independent fullscreen DRM/KMS owners. The working architecture is:
 
-Do not switch the TV wall service back to `pykms` for live operation unless the display architecture is redesigned. `pykms` can take DRM ownership away from the photobooth or make artifact fall back to the `offscreen` SDL driver.
+- `artifact` is active.
+- `vnvnc-video-wall` is inactive and disabled.
+- `artifact.main` is the only process owning `/dev/dri/card1`.
+- `HDMI-A-1` is the NovaStar/photobooth screen.
+- `HDMI-A-2` is the TV-wall splitter output.
+- `VNVNC_INPROCESS_TV_WALL_ENABLED=true` enables the dual KMS backend.
+- `VNVNC_VIDEO_WALL_SWITCH_INTERVAL=0` keeps the wall on the HDMI capture card only; it does not switch to the photobooth camera.
+- `assets/idle/2k17/video/2k17-fans.mp4` is present and loaded for idle mode.
 
-The video-wall service is intentionally not enabled or started by default. Install and test it manually only when the HDMI splitter/capture hardware is present.
+Confirmed good live state on 2026-06-21 at 02:23 MSK:
+
+- Booth screen recovered and stayed normal after startup.
+- TVs showed the intended live wall feed.
+- HDMI-A-2 was changed to `640x480`, which is the remembered working CRT/VGA-style output mode for this splitter/converter chain.
+- User confirmed: "Ok all good."
+
+Verified live command state:
+
+```bash
+systemctl is-active artifact            # active
+systemctl is-active vnvnc-video-wall    # inactive
+sudo fuser -v /dev/dri/card1            # only python -m artifact.main
+kmsprint                                # HDMI-A-1 and HDMI-A-2 both connected
+```
+
+The 2026-06-21 confirmed-good init log is:
+
+```text
+Pygame initialized (driver: KMSDRM)
+Opened HDMI capture card /dev/video0 at 640x480@25 fourcc=MJPG
+KMS dual HDMI initialized: main=720x480 wall=640x480
+```
+
+After the CRTs looked too small/squished at `1280x720`, the confirmed live mode is `640x480` on HDMI-A-2. This is a normal 4:3 VGA mode advertised by the splitter/converter chain and makes the logo/time overlays larger on the TVs.
+
+Switch TV-wall resolution with:
+
+```bash
+cd /home/kirniy/modular-arcade
+./scripts/set-vnvnc-tv-wall-mode.sh 640x480 --restart
+```
+
+Revert immediately with:
+
+```bash
+cd /home/kirniy/modular-arcade
+./scripts/set-vnvnc-tv-wall-mode.sh 1280x720 --restart
+```
+
+The script only changes `.env`, disables the standalone wall service, and idle-gates the `artifact` restart. The key env values are:
+
+```text
+VNVNC_INPROCESS_TV_WALL_ENABLED=true
+VNVNC_VIDEO_WALL_OUTPUT_WIDTH=640
+VNVNC_VIDEO_WALL_OUTPUT_HEIGHT=480
+VNVNC_VIDEO_WALL_DRM_CONNECTOR=HDMI-A-2
+VNVNC_MAIN_DRM_CONNECTOR=HDMI-A-1
+VNVNC_VIDEO_WALL_SWITCH_INTERVAL=0
+VNVNC_VIDEO_WALL_PRIMARY_WINDOW=0
+VNVNC_VIDEO_WALL_DISPLAY_YEAR=2017
+```
+
+Do not leave both `artifact` and standalone `vnvnc-video-wall` running. If `vnvnc-video-wall` owns `/dev/dri/card1`, the photobooth app can start but its main screen can render offscreen or become corrupted. If `artifact` owns `/dev/dri/card1` first, standalone `vnvnc-video-wall` fails with `Failed to set DRM plane ... -13`.
+
+Rejected paths from live testing:
+
+- `VNVNC_VIDEO_WALL_OUTPUT=fbdev` writes `/dev/fb0` and can corrupt the photobooth main display.
+- `VNVNC_VIDEO_WALL_OUTPUT=pygame` can run and update `data/video_wall/heartbeat`, but on this Pi it does not drive the physical TV HDMI output.
+- Forcing `SDL_VIDEODRIVER=kmsdrm` in the wall service fails with `pygame.error: kmsdrm not available`.
+
+Headless previews from a dev Mac use synthetic placeholder frames because there is no USB capture card there. They verify overlay rendering only; they do not prove live camera video.
+
+The standalone video-wall service is intentionally not enabled or started by default. It is only an isolated diagnostic tool with `artifact` stopped.
 
 ## Hardware Wiring For TV Wall Night
 
@@ -87,43 +154,74 @@ The restart is idle-gated through `scripts/restart-artifact-if-idle.sh`. If gues
 
 `scripts/autopull.sh` also auto-activates the 2K17 env by default after pulling the new code, then tries the same idle-gated restart. Set `ARTIFACT_AUTO_ACTIVATE_2K17=0` if a future event should not auto-switch to this theme.
 
-## TV Wall Install And Test
+## TV Wall Mode And Test
 
-Install the service without starting it:
+Normal live mode is in-process:
+
+```bash
+cd /home/kirniy/modular-arcade
+./scripts/set-vnvnc-tv-wall-mode.sh 640x480 --restart
+```
+
+Use `1280x720` only if the TV chain clearly handles it better:
+
+```bash
+cd /home/kirniy/modular-arcade
+./scripts/set-vnvnc-tv-wall-mode.sh 1280x720 --restart
+```
+
+After a power cycle, run this if the TVs are wrong or show a stale boot/fallback frame:
+
+```bash
+cd /home/kirniy/modular-arcade
+./scripts/set-vnvnc-tv-wall-mode.sh 640x480 --restart
+./scripts/check-vnvnc-video-wall.sh
+```
+
+Run diagnostics without changing live output:
+
+```bash
+./scripts/check-vnvnc-video-wall.sh
+```
+
+Expected live checks:
+
+```text
+artifact active
+vnvnc-video-wall inactive
+KMS dual HDMI initialized: main=720x480 wall=640x480
+data/video_wall/heartbeat age under 2 seconds
+data/video_wall/hdmi_capture_latest.jpg changing
+```
+
+If the booth screen is ever wrong, return to photobooth-only safe mode:
+
+```bash
+sudo systemctl stop vnvnc-video-wall
+cd /home/kirniy/modular-arcade
+python3 - <<'PY'
+from pathlib import Path
+path = Path(".env")
+lines = path.read_text().splitlines()
+out = []
+for line in lines:
+    if line.startswith("VNVNC_INPROCESS_TV_WALL_ENABLED="):
+        out.append("VNVNC_INPROCESS_TV_WALL_ENABLED=false")
+    else:
+        out.append(line)
+path.write_text("\n".join(out).rstrip() + "\n")
+PY
+./scripts/restart-artifact-if-idle.sh
+```
+
+If the standalone diagnostic service must be installed, install it without enabling it:
 
 ```bash
 cd /home/kirniy/modular-arcade
 sudo ./scripts/install-vnvnc-video-wall.sh
 ```
 
-Run diagnostics:
-
-```bash
-./scripts/check-vnvnc-video-wall.sh
-```
-
-Only after the capture card and spare HDMI output are confirmed, start the wall:
-
-```bash
-sudo systemctl start vnvnc-video-wall
-journalctl -u vnvnc-video-wall -f
-```
-
-The expected log line for the live setup is:
-
-```text
-Initialized fbdev output 1280x720 on /dev/fb0
-```
-
-If the log says `Initialized pykms output`, stop the wall and reinstall/update the service before opening to guests.
-
-Stop it with:
-
-```bash
-sudo systemctl stop vnvnc-video-wall
-```
-
-Do not enable it permanently until the wall has been tested on the actual Pi/display stack. The main arcade service and the wall service both use display output, so the wall should be treated as an event-specific process.
+Do not enable it permanently.
 
 ## Verification Checklist
 
@@ -137,8 +235,9 @@ Before opening to guests:
 - Camera 2 can complete the raw no-AI capture path.
 - Uploads land in Selectel and gallery dates use real current dates.
 - Bot receives the result/source photo event.
-- If the wall is on, TVs show the VHS feed and `data/video_wall/heartbeat` updates.
-- If the wall is off, photobooth still works normally.
+- `vnvnc-video-wall` is inactive/disabled and `artifact` owns `/dev/dri/card1`.
+- If the wall is enabled, TVs show the VHS feed and `data/video_wall/heartbeat` updates.
+- If testing 640x480, artifact logs `KMS dual HDMI initialized: main=720x480 wall=640x480`.
 
 ## Key Files
 
@@ -153,5 +252,6 @@ Before opening to guests:
 - `scripts/restart-artifact-if-idle.sh`
 - `scripts/install-vnvnc-video-wall.sh`
 - `scripts/check-vnvnc-video-wall.sh`
+- `scripts/set-vnvnc-tv-wall-mode.sh`
 - `scripts/vnvnc-video-wall.service`
 - `assets/idle/2k17/video/2k17-fans.mp4`

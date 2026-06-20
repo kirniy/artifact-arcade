@@ -165,8 +165,13 @@ class HardwareRunner:
                     scale=4  # 512x512 output
                 )
             else:
-                from .display import HDMIDisplay
-                self._main_display = HDMIDisplay(
+                if os.getenv("VNVNC_INPROCESS_TV_WALL_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}:
+                    from .display import HDMIDisplayKMSDual
+                    display_cls = HDMIDisplayKMSDual
+                else:
+                    from .display import HDMIDisplay
+                    display_cls = HDMIDisplay
+                self._main_display = display_cls(
                     width=self.config.main_width,
                     height=self.config.main_height
                 )

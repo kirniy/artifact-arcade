@@ -24,6 +24,6 @@ cp "$SERVICE_SRC" "$SERVICE_DST"
 systemctl daemon-reload
 
 echo "Installed $SERVICE_DST"
-echo "Service is intentionally disabled. Test first, then start manually:"
-echo "  sudo systemctl start vnvnc-video-wall"
-echo "  journalctl -u vnvnc-video-wall -f"
+echo "Service is intentionally disabled. Normal TV-wall mode now runs inside artifact."
+echo "Use ./scripts/set-vnvnc-tv-wall-mode.sh 640x480 --restart for live operation."
+echo "Start this standalone service only as an isolated diagnostic with artifact stopped."
