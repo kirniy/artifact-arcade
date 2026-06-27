@@ -1550,7 +1550,10 @@ class PhotoboothMode(BaseMode):
         elif self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
             render_idle_style_ticker_text(buffer, str(self._state.countdown), (255, 255, 255), self._time_in_phase)
         elif self._state.is_generating:
-            render_idle_style_ticker_text(buffer, "НЕ УХОДИ", (255, 40, 40), self._time_in_phase)
+            if self._theme.ai_style_key == "alye_parusa":
+                render_idle_style_ticker_text(buffer, "ЖДИ", (255, 255, 255), self._time_in_phase)
+            else:
+                render_idle_style_ticker_text(buffer, "НЕ УХОДИ", (255, 40, 40), self._time_in_phase)
         elif self._state.show_result:
             if self._state.result_view == "qr":
                 render_idle_style_ticker_text(buffer, "QR", (255, 255, 255), self._time_in_phase)

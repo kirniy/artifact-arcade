@@ -4767,19 +4767,37 @@ class RotatingIdleAnimation:
                 self._render_ticker_static_winter(buffer, circus_texts[idx], circus_colors[idx], t)
             elif self.idle_variant == "alye_parusa":
                 alye_texts = [
-                    " АЛЫЕ ПАРУСА ",
-                    " ФОТОБУДКА ",
+                    "АЛЫЕ",
+                    "ПАРУСА",
                     " VNVNC.RU ",
-                    " НАЖМИ СТАРТ ",
+                    "ФОТО",
+                    "СТАРТ",
                 ]
                 alye_colors = [
                     (255, 255, 255),
                     (218, 34, 28),
                     (255, 255, 255),
+                    (255, 255, 255),
                     (218, 34, 28),
                 ]
-                idx = int((t // 3000) % len(alye_texts))
-                self._render_ticker_static_winter(buffer, alye_texts[idx], alye_colors[idx], t)
+                cycle_time = 3000
+                transition_time = 300
+                total_cycle = len(alye_texts) * cycle_time
+                cycle_ms = t % total_cycle
+                current_idx = int(cycle_ms // cycle_time)
+                next_idx = (current_idx + 1) % len(alye_texts)
+                time_in_cycle = cycle_ms % cycle_time
+
+                current_text = alye_texts[current_idx]
+                current_color = alye_colors[current_idx]
+                next_text = alye_texts[next_idx]
+                next_color = alye_colors[next_idx]
+
+                if time_in_cycle > (cycle_time - transition_time):
+                    progress = (time_in_cycle - (cycle_time - transition_time)) / transition_time
+                    self._render_ticker_flip(buffer, current_text, next_text, current_color, next_color, progress, t)
+                else:
+                    self._render_ticker_static_winter(buffer, current_text, current_color, t)
             elif self.idle_variant == "2k17":
                 two_k17_texts = [
                     " 2K17 ",
