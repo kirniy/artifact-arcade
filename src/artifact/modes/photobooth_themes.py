@@ -577,6 +577,30 @@ SUMMER_CAMP_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: АЛЫЕ ПАРУСА — clean flat Scarlet Sails 2D poster
+# =============================================================================
+ALYE_PARUSA_THEME = PhotoboothTheme(
+    id="alye-parusa",
+    event_name="Алые Паруса",
+    event_date="27.06-28.06",
+    logo_filename="alye-parusa.png",
+    theme_chrome=(255, 255, 255),
+    theme_red=(218, 34, 28),
+    theme_black=(0, 0, 0),
+    ticker_idle="АЛЫЕ ПАРУСА",
+    lcd_prefix="АЛЫЕ",
+    description="Алые Паруса",
+    menu_display_name="АЛЫЕ\nПАРУСА",
+    menu_description="АЛЫЕ ПАРУСА ФОТОБУДКА",
+    menu_color=(218, 34, 28),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="alye_parusa",
+    reference_image_filenames=("alye-parusa.png", "alye-parusa-style-reference.png"),
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -602,10 +626,11 @@ THEMES = {
     "office-core": OFFICE_CORE_THEME,
     "2k17": TWO_K17_THEME,
     "summer-camp": SUMMER_CAMP_THEME,
+    "alye-parusa": ALYE_PARUSA_THEME,
 }
 
 # Default theme
-DEFAULT_THEME = "2k17"
+DEFAULT_THEME = "alye-parusa"
 
 
 def get_current_theme() -> PhotoboothTheme:

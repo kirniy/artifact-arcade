@@ -80,6 +80,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_2K17_SQUARE = "photobooth_2k17_square"  # 1:1 square - pixelated 2K17 street-style mode
     PHOTOBOOTH_SUMMER_CAMP = "photobooth_summer_camp"  # 9:16 vertical - pixelated summer sports camp mode
     PHOTOBOOTH_SUMMER_CAMP_SQUARE = "photobooth_summer_camp_square"  # 1:1 square - pixelated summer sports camp mode
+    PHOTOBOOTH_ALYE_PARUSA = "photobooth_alye_parusa"  # 9:16 vertical - Алые Паруса flat 2D poster mode
+    PHOTOBOOTH_ALYE_PARUSA_SQUARE = "photobooth_alye_parusa_square"  # 1:1 square - Алые Паруса flat 2D poster mode
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -2707,6 +2709,120 @@ Square 1:1 white-background pixel street-style poster.
 ]
 
 
+# ALYE PARUSA VARIATIONS - clean flat 2D Scarlet Sails poster (9:16 vertical)
+ALYE_PARUSA_VARIATIONS = [
+    """АЛЫЕ ПАРУСА - CLEAN FLAT 2D POSTER (VERTICAL 9:16)
+
+Create ONE SINGLE CENTERED FULL-COLOR 9:16 poster. No grid. No strip. No separate frames.
+
+ABSOLUTE #1 PRIORITY - EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
+- Preserve the exact real faces and full people count from the source photo.
+- Keep hair, skin tone, expression, body proportions, pose, clothing silhouette, and visible clothing text/logos exactly.
+- Preserve ALL text on clothing letter-for-letter. Do not invent new clothing text.
+- People remain recognizable and human; do not replace them with sailors, fairy-tale characters, dolls, mannequins, or generic illustrated people.
+- Keep the real clothing intact. Apply the theme only to the surrounding graphic frame, ribbons, background shapes, and small decorative elements.
+
+VISUAL DIRECTION:
+- Use the supplied Алые Паруса emblem and the supplied 16:9 style reference as the design source.
+- Beautiful minimalist flat 2D illustration: black background, clean white shapes, scarlet red sails, thin black ink lines, simple white clouds, clean wave curves.
+- Add elegant scarlet-sail ship silhouettes, red-and-white ribbons, white cloud curls, thin nautical lines, subtle Neva wave shapes, and small sail icons around the guests.
+- The style must feel premium, calm, graphic, and clean, like a refined Russian Scarlet Sails poster.
+- Keep the original people mostly photographic/realistic with very light poster integration. Do not over-cartoon faces.
+- Palette: black, white, scarlet red, tiny muted blue-gray wave accents.
+- Avoid clutter. Leave clean negative space. No neon, no pixel art, no 3D render, no messy collage, no pirate imagery, no anchors everywhere, no cartoon sea monsters.
+
+TEXT AND BRANDING:
+- Use the supplied Алые Паруса emblem reference as the official top logo/title.
+- Top title must be exactly "Алые Паруса" in Russian, matching the supplied emblem's red/white serif-script look as closely as possible.
+- Footer must contain exactly: "VNVNC.RU" on the left, the real Moscow time from context on the right, and "Конюшенная 2В" below.
+- If context gives a Russian weekday label, use exactly that label once in the footer area. Do not show a numeric date unless context explicitly asks for it.
+- Do not write fake dates, "МСК", table booking text, promo slogans, captions, random words, or extra labels.
+- No other readable text except the top "Алые Паруса", "VNVNC.RU", the real time, the optional real weekday label, and "Конюшенная 2В".
+
+OUTPUT:
+- one clean vertical 9:16 Алые Паруса poster
+- exact likeness and clothing, minimalist flat 2D scarlet-sail frame, premium black/white/scarlet composition
+""",
+    """АЛЫЕ ПАРУСА - SCARLET SAILS EVENING CARD (VERTICAL 9:16)
+
+Single vertical 9:16 poster only. Preserve every person from the source photo.
+
+IDENTITY LOCK:
+- Exact faces, expressions, hair, skin tone, real body proportions, pose, and clothing.
+- Preserve clothing text/logos letter-for-letter.
+- No costume changes, no sailor costumes, no fantasy outfits, no replacing people with painted characters.
+- Keep visible clothing intact; add only light external theme accessories such as surrounding ribbons or background shapes.
+
+STYLE:
+- Premium flat 2D Scarlet Sails visual language from the references: black field, white clouds and typography, scarlet sails, simple wave lines, clean ink outline.
+- Place the guests inside a refined poster frame with a distant ship with scarlet sails, red-and-white ribbons, white cloud shapes, and curved Neva-wave marks.
+- Use minimal shapes and confident negative space. The design should be elegant and readable at a glance.
+- Do not make the guests heavily cartoonish; integrate them into the graphic world while keeping real likeness.
+
+BRANDING:
+- Recreate the supplied Russian emblem as the top title exactly "Алые Паруса".
+- Footer: "VNVNC.RU" left, real Moscow time from context right, "Конюшенная 2В" below, optional real Russian weekday label if context gives it.
+- No fake dates, no "МСК", no random Cyrillic, no VIP/table/booking reminders, no slogans, no extra words.
+
+OUTPUT:
+- black/white/scarlet flat 2D poster, exact people, clean ship/ribbon/cloud composition
+- vertical 9:16
+""",
+    """АЛЫЕ ПАРУСА - MINIMAL NAUTICAL POSTER (VERTICAL 9:16)
+
+Create a single premium 9:16 party photo poster.
+
+PEOPLE:
+- Preserve the exact likeness of all people in the input photo.
+- Keep real clothing, clothing silhouettes, visible logos, and clothing text exactly.
+- Do not change gender expression, age, hairstyle, face shape, or outfits.
+
+ART DIRECTION:
+- Minimal flat 2D Russian Scarlet Sails poster, matching the supplied reference frames.
+- Black background, white graphic clouds, scarlet sails, red ribbons, white ribbons, thin black linework, small muted blue-gray wave accents.
+- Add one elegant ship with scarlet sails and a few abstract sail/ribbon shapes behind or around the guests.
+- Keep faces and clothing clear; no decoration may cover faces, eyes, or readable clothing.
+- Clean, balanced, sparse composition. No loud carnival clutter, no pixelation, no 3D, no photorealistic ship pasted behind.
+
+TEXT:
+- Top logo/title exactly "Алые Паруса" using the supplied emblem reference.
+- Footer exactly includes VNVNC.RU, real Moscow time from context, optional real Russian weekday label from context, and "Конюшенная 2В".
+- Do not add any other text.
+
+OUTPUT:
+- elegant black/white/scarlet 2D Алые Паруса poster, vertical 9:16, exact likeness
+""",
+]
+
+
+ALYE_PARUSA_SQUARE_VARIATIONS = [
+    """АЛЫЕ ПАРУСА - CLEAN FLAT 2D POSTER (SQUARE 1:1)
+
+One square single-image composition only. No grid, no strip, no panels.
+Preserve exact real faces, full group, hair, skin tone, expression, body proportions, clothing silhouette, visible clothing logos, and clothing text exactly.
+
+Use the supplied Алые Паруса emblem and style reference: black background, white shapes, scarlet red sails, clean flat 2D illustration, thin ink lines, simple clouds, red-and-white ribbons, and small Neva wave curves.
+Keep people recognizable and mostly realistic; integrate them gently with graphic frame elements. Do not change clothing or add costumes.
+
+Top title exactly "Алые Паруса" based on the supplied emblem reference.
+Do not write fake dates, random text, booking text, slogans, or extra labels. Only the official title and small VNVNC.RU branding are allowed.
+
+Square 1:1 clean flat 2D Scarlet Sails poster.
+""",
+    """АЛЫЕ ПАРУСА - MINIMAL SCARLET SAILS CARD (SQUARE 1:1)
+
+One square full-color poster. Preserve exact likeness and every person from the input photo.
+Black/white/scarlet flat 2D nautical poster language: distant ship with scarlet sails, white clouds, red-and-white ribbons, thin wave lines, elegant negative space.
+Keep clothing intact and do not cover faces or visible clothing text.
+
+Use the supplied Russian emblem as the title exactly "Алые Паруса".
+No extra readable text except the title and VNVNC.RU.
+
+Square 1:1 premium Алые Паруса poster.
+""",
+]
+
+
 # SUMMER CAMP VARIATIONS - pure white pixelated elite sports camp poster (9:16 vertical)
 SUMMER_CAMP_VARIATIONS = [
     """SUMMER CAMP - PURE WHITE PIXEL SPORTS POSTER (VERTICAL 9:16)
@@ -3484,6 +3600,8 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_2K17_SQUARE: "TWO_K17_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP: "SUMMER_CAMP_VARIATION",
     CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE: "SUMMER_CAMP_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA: "ALYE_PARUSA_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE: "ALYE_PARUSA_SQUARE_VARIATION",
 
     # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
@@ -3601,6 +3719,8 @@ class CaricatureService:
                 "TWO_K17_SQUARE_VARIATION": TWO_K17_SQUARE_VARIATIONS,
                 "SUMMER_CAMP_VARIATION": SUMMER_CAMP_VARIATIONS,
                 "SUMMER_CAMP_SQUARE_VARIATION": SUMMER_CAMP_SQUARE_VARIATIONS,
+                "ALYE_PARUSA_VARIATION": ALYE_PARUSA_VARIATIONS,
+                "ALYE_PARUSA_SQUARE_VARIATION": ALYE_PARUSA_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,

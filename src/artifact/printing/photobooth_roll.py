@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -26,6 +27,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 LOGO_PATH = PROJECT_ROOT / "assets" / "logos" / "vnvnc-logo-classic-border-letters-black.png"
 LEGACY_LOGO_PATH = Path("/Users/kirniy/Desktop/Current logos/vnvnc-logo-classic-border-letters-black.svg")
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
+PHOTOBOOTH_PRINT_FORTUNES_ENV = "PHOTOBOOTH_PRINT_FORTUNES"
+
+
+def _print_fortunes_enabled() -> bool:
+    return os.environ.get(PHOTOBOOTH_PRINT_FORTUNES_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 @dataclass
@@ -55,7 +61,9 @@ class PhotoboothRollReceiptGenerator:
     def generate_receipt(self, mode_name: str, data: dict[str, Any]) -> PhotoboothRollReceipt:
         """Generate a receipt for a photobooth print job."""
         timestamp = self._parse_timestamp(data)
-        quote = str(data.get("fortune_quote") or pick_fortune_quote())
+        quote = ""
+        if _print_fortunes_enabled():
+            quote = str(data.get("fortune_quote") or pick_fortune_quote())
         image = self._coerce_photo(data)
         receipt_image = self.render_image(image, timestamp=timestamp, quote=quote)
         raw = self.image_to_escpos(receipt_image)
@@ -85,7 +93,7 @@ class PhotoboothRollReceiptGenerator:
 
         temp = Image.new("L", (self.paper_width_px, 10), 255)
         draw = ImageDraw.Draw(temp)
-        quote_lines = self._wrap_text(draw, quote, font_body, content_width)
+        quote_lines = self._wrap_text(draw, quote, font_body, content_width) if quote.strip() else []
         quote_height = len(quote_lines) * 27
 
         time_line = timestamp.astimezone(MOSCOW_TZ).strftime("%d.%m.%Y  %H:%M MSK")
@@ -98,7 +106,7 @@ class PhotoboothRollReceiptGenerator:
             + 10
             + 30
             + 12
-            + quote_height
+            + (quote_height + 12 if quote_lines else 0)
             + 22
         )
         canvas = Image.new("L", (self.paper_width_px, height), 255)
@@ -128,13 +136,14 @@ class PhotoboothRollReceiptGenerator:
         y += footer_icon_size + 12
 
         draw.rectangle((PRINT_MARGIN_PX, y, self.paper_width_px - PRINT_MARGIN_PX - 1, y + 1), fill=0)
-        y += 12
+        y += 12 if quote_lines else 8
 
         for line in quote_lines:
             self._draw_centered(draw, line, (PRINT_MARGIN_PX, y, self.paper_width_px - PRINT_MARGIN_PX, y + 25), font_body)
             y += 27
 
-        y += 8
+        if quote_lines:
+            y += 8
         draw.rectangle((PRINT_MARGIN_PX, y, self.paper_width_px - PRINT_MARGIN_PX - 1, y + 5), fill=0)
         y += 6
 

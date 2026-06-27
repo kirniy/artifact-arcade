@@ -409,6 +409,8 @@ class RotatingIdleAnimation:
             return "office_core"
         if theme_id == "summer-camp":
             return "summer_camp"
+        if theme_id == "alye-parusa":
+            return "alye_parusa"
         if theme_id == "2k17":
             return "2k17"
         if requested_modes & slavic_keys:
@@ -440,6 +442,8 @@ class RotatingIdleAnimation:
             self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "OFFICE"
         elif self.idle_variant == "summer_camp":
             self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "CAMP"
+        elif self.idle_variant == "alye_parusa":
+            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "АЛЫЕ"
         elif self.idle_variant == "2k17":
             self.idle_event_date = "2K17"
         else:
@@ -489,6 +493,10 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "SUMMER CAMP",
             }
+        if self.idle_variant == "alye_parusa":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "АЛЫЕ ПАРУСА",
+            }
         if self.idle_variant == "2k17":
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "2K17",
@@ -522,6 +530,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "office_core":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "summer_camp":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "alye_parusa":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "2k17":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -629,10 +639,10 @@ class RotatingIdleAnimation:
         images = self.cringe_assets.get(scene, [])
         if not images:
             fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
-            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17"} else (
+            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa"} else (
                 (255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90)
             )
-            date_color = self._theme.theme_red if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17"} else (
+            date_color = self._theme.theme_red if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa"} else (
                 (220, 154, 96) if self.idle_variant == "slavic" else (255, 140, 180)
             )
             self._draw_centered_title(buffer, self.cringe_scene_titles.get(scene, fallback_title), 50, fallback_color)
@@ -679,6 +689,9 @@ class RotatingIdleAnimation:
         if self.idle_variant == "2k17":
             self._draw_2k17_overlay(buffer, scene, t)
             return
+        if self.idle_variant == "alye_parusa":
+            self._draw_alye_parusa_overlay(buffer, scene, t)
+            return
 
         if self.idle_variant == "slavic":
             accent_map = {
@@ -689,7 +702,7 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: (255, 220, 150),
                 IdleScene.CRINGE_WHATSAPP: (255, 214, 126),
             }
-        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17"}:
+        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa"}:
             accent_map = {
                 IdleScene.CRINGE_HERO: self._theme.theme_chrome,
                 IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.theme_chrome,
@@ -779,6 +792,45 @@ class RotatingIdleAnimation:
             rad = math.radians(angle + t * 240)
             draw_line(buffer, cx, cy, int(cx + math.cos(rad) * 7), int(cy + math.sin(rad) * 7), purple)
         self._draw_starburst(buffer, 110, 96, orange)
+
+    def _draw_alye_parusa_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene, t: float) -> None:
+        """Алые Паруса idle overlay: quiet black/white/scarlet title frame."""
+        white = (255, 255, 255)
+        scarlet = (218, 34, 28)
+        dark_red = (120, 12, 14)
+
+        # Keep the fan video visible, with darker title/footer bands for readability.
+        buffer[0:18] = (buffer[0:18].astype(np.float32) * 0.42).astype(np.uint8)
+        buffer[104:128] = (buffer[104:128].astype(np.float32) * 0.34).astype(np.uint8)
+
+        pulse = 0.78 + 0.22 * math.sin(t * 2.1)
+        border = tuple(int(c * pulse) for c in scarlet)
+        buffer[0:2, :] = border
+        buffer[126:128, :] = border
+        buffer[:, 0:2] = border
+        buffer[:, 126:128] = border
+
+        wave_y = 96 + int(math.sin(t * 1.3) * 2)
+        for x in range(8, 120, 8):
+            y = wave_y + int(math.sin(t * 1.7 + x * 0.18) * 2)
+            draw_line(buffer, x, y, min(126, x + 5), y + 1, white)
+
+        ribbon_x = 16 + int(math.sin(t * 0.9) * 5)
+        draw_line(buffer, ribbon_x, 88, ribbon_x + 12, 82, scarlet)
+        draw_line(buffer, ribbon_x + 12, 82, ribbon_x + 24, 88, white)
+        draw_line(buffer, 104 - ribbon_x // 8, 20, 118 - ribbon_x // 8, 26, scarlet)
+
+        title = self.cringe_scene_titles.get(scene, "АЛЫЕ ПАРУСА")
+        self._draw_centered_title(buffer, title, 4, white)
+        draw_centered_text(buffer, self.idle_event_date[:12], 108, white, scale=1)
+        draw_centered_text(buffer, "VNVNC.RU", 118, scarlet if int(t * 2) % 2 else white, scale=1)
+
+        mast_x = 108
+        mast_y = 86
+        draw_line(buffer, mast_x, mast_y - 14, mast_x, mast_y + 8, white)
+        for i in range(12):
+            draw_line(buffer, mast_x + 1, mast_y - 12 + i, mast_x + 2 + i // 2, mast_y - 10 + i, scarlet)
+        draw_line(buffer, mast_x - 7, mast_y + 8, mast_x + 12, mast_y + 8, dark_red)
 
     def _draw_centered_title(
         self,
@@ -1006,6 +1058,21 @@ class RotatingIdleAnimation:
                 logger.info(f"Loaded Summer Camp idle video: {video_path.name}")
             else:
                 logger.warning(f"Summer Camp idle video not found: {video_path}")
+            return
+        if self.idle_variant == "alye_parusa":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "alye_parusa"
+                / "video"
+                / "alye-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded Alye Parusa idle video: {video_path.name}")
+            else:
+                logger.warning(f"Alye Parusa idle video not found: {video_path}")
             return
         if self.idle_variant == "2k17":
             video_path = (
@@ -4698,6 +4765,21 @@ class RotatingIdleAnimation:
                 ]
                 idx = int((t // 2600) % len(circus_texts))
                 self._render_ticker_static_winter(buffer, circus_texts[idx], circus_colors[idx], t)
+            elif self.idle_variant == "alye_parusa":
+                alye_texts = [
+                    " АЛЫЕ ПАРУСА ",
+                    " ФОТОБУДКА ",
+                    " VNVNC.RU ",
+                    " НАЖМИ СТАРТ ",
+                ]
+                alye_colors = [
+                    (255, 255, 255),
+                    (218, 34, 28),
+                    (255, 255, 255),
+                    (218, 34, 28),
+                ]
+                idx = int((t // 3000) % len(alye_texts))
+                self._render_ticker_static_winter(buffer, alye_texts[idx], alye_colors[idx], t)
             elif self.idle_variant == "2k17":
                 two_k17_texts = [
                     " 2K17 ",
@@ -4711,7 +4793,7 @@ class RotatingIdleAnimation:
                     (255, 76, 0),
                     (255, 255, 255),
                 ]
-                idx = int((t // 2200) % len(two_k17_texts))
+                idx = int((t // 3000) % len(two_k17_texts))
                 self._render_ticker_static_winter(buffer, two_k17_texts[idx], two_k17_colors[idx], t)
             else:
                 theme_texts = [
@@ -4810,7 +4892,7 @@ class RotatingIdleAnimation:
                 IdleScene.FIREPLACE: ["   УЮТНЫЙ   ", "   КАМИН    ", " НАЖМИ СТАРТ "],
                 IdleScene.HYPERCUBE: [" ГИПЕРКУБ   ", "    4D      ", " НАЖМИ СТАРТ "],
             }
-        elif self.idle_variant in {"circus_maximus", "candy_shop", "2k17"}:
+        elif self.idle_variant in {"circus_maximus", "candy_shop", "2k17", "alye_parusa"}:
             return [
                 f" {self.idle_lcd_prefix} ".center(16)[:16],
                 self.idle_title.center(16)[:16],

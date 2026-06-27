@@ -667,6 +667,11 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
             )
+        elif ai_style_key == "alye_parusa":
+            return (
+                CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
+            )
         elif ai_style_key == "brainrot":
             return (
                 CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
@@ -829,6 +834,7 @@ class PhotoboothMode(BaseMode):
                 "office_core",
                 "2k17",
                 "summer_camp",
+                "alye_parusa",
             }
             if ai_style_key in timestamp_theme_keys:
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
@@ -842,6 +848,7 @@ class PhotoboothMode(BaseMode):
                     "circus_maximus",
                     "candy_shop",
                     "street_heat",
+                    "alye_parusa",
                 }:
                     personality_context = (
                         f"REAL MOSCOW RUSSIAN WEEKDAY LABEL FOR THIS PHOTO: {footer_date_str}. "
