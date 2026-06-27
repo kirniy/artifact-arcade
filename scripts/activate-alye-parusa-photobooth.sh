@@ -78,6 +78,7 @@ mkdir -p "${PYCACHE_DIR}"
 PYTHONPATH=src PYTHONPYCACHEPREFIX="${PYCACHE_DIR}" "${PYTHON_BIN}" -m py_compile \
     src/artifact/ai/caricature.py \
     src/artifact/animation/idle_scenes.py \
+    src/artifact/modes/manager.py \
     src/artifact/modes/photobooth.py \
     src/artifact/modes/photobooth_themes.py \
     src/artifact/printing/photobooth_roll.py
