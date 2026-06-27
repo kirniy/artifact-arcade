@@ -1995,8 +1995,12 @@ class ModeManager:
         mode = self.get_selected_mode()
         if mode:
             # Clean "Word Cycle" ticker (RSVP style) - No horizontal scrolling
-            description = self._get_mode_description_text(mode)
-            words = description.split()
+            theme = _get_theme_for_mode_cls(mode.cls)
+            if theme is not None and theme.id == "alye-parusa":
+                words = ["АЛЫЕ", "ПАРУСА", "VNVNC.RU", "ФОТО", "СТАРТ"]
+            else:
+                description = self._get_mode_description_text(mode)
+                words = description.split()
             if not words:
                 words = [mode.display_name]
             
@@ -2018,7 +2022,7 @@ class ModeManager:
                 y_offset = -int(8 * (progress - 0.9)/0.1)
                 alpha = (1 - progress) / 0.1
             
-            mode_color = self._get_mode_color(mode)
+            mode_color = (255, 255, 255) if theme is not None and theme.id == "alye-parusa" else self._get_mode_color(mode)
             color = tuple(int(c * alpha) for c in mode_color)
             font = load_font("cyrillic")
             
