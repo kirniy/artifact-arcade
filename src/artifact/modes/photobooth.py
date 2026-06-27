@@ -1589,10 +1589,12 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("office_core", "office-core"),
         ("2k17", "2k17"),
         ("summer_camp", "summer-camp"),
+        ("alye-parusa", "alye-parusa"),
+        ("alye_parusa", "alye-parusa"),
     ]
 )
 
-DEFAULT_PHOTOBOOTH_MENU_MODES = ("2k17",)
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("alye-parusa",)
 
 
 def _get_theme_menu_display_name(theme: PhotoboothTheme) -> str:
