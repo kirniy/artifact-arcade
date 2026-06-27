@@ -272,11 +272,14 @@ class GeminiClient:
 
         import google.auth
         from google.auth.transport.requests import Request
+        import requests
 
         credentials, project = google.auth.default(
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
-        credentials.refresh(Request())
+        session = requests.Session()
+        session.trust_env = False
+        credentials.refresh(Request(session=session))
         token = credentials.token
         if not token:
             raise RuntimeError("Google ADC did not return an access token")
@@ -291,10 +294,7 @@ class GeminiClient:
     def _auth_headers(self, api_key: str) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if self.config.provider == "vertex":
-            if api_key:
-                headers["x-goog-api-key"] = api_key
-            else:
-                headers["Authorization"] = f"Bearer {self._get_vertex_access_token()}"
+            headers["Authorization"] = f"Bearer {self._get_vertex_access_token()}"
         else:
             headers["x-goog-api-key"] = api_key
         return headers
