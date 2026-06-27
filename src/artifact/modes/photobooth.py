@@ -848,7 +848,6 @@ class PhotoboothMode(BaseMode):
                     "circus_maximus",
                     "candy_shop",
                     "street_heat",
-                    "alye_parusa",
                 }:
                     personality_context = (
                         f"REAL MOSCOW RUSSIAN WEEKDAY LABEL FOR THIS PHOTO: {footer_date_str}. "
@@ -856,10 +855,10 @@ class PhotoboothMode(BaseMode):
                         f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
-                elif ai_style_key in {"office_core", "summer_camp", "2k17"}:
+                elif ai_style_key in {"office_core", "summer_camp", "2k17", "alye_parusa"}:
                     personality_context = (
                         "Do not render footer text inside the AI artwork. "
-                        "Leave the bottom 12-15% as clean pure white empty space; "
+                        "Leave the bottom 12-15% as clean empty space matching the theme background; "
                         "the app will stamp VNVNC.RU, the Russian weekday, Moscow time, and venue after generation."
                     )
                 else:
@@ -886,6 +885,9 @@ class PhotoboothMode(BaseMode):
                 elif ai_style_key in {"office_core", "summer_camp"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(label_bytes, footer_date_str, moscow_time)
+                elif ai_style_key == "alye_parusa":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_alye_parusa_footer(label_bytes, footer_date_str, moscow_time)
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
 
                 # Create center-cropped 1:1 version for LED display
@@ -983,6 +985,68 @@ class PhotoboothMode(BaseMode):
             return buf.getvalue()
         except Exception as e:
             logger.warning(f"Failed to stamp white-theme footer: {e}")
+            return image_bytes
+
+    def _stamp_alye_parusa_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
+        """Paint deterministic Алые Паруса footer text over the AI image."""
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            w, h = img.size
+            footer_h = max(int(h * 0.14), 160)
+            y0 = h - footer_h
+            draw = ImageDraw.Draw(img)
+
+            black = (0, 0, 0)
+            white = (255, 255, 255)
+            scarlet = tuple(self._theme.theme_red) if self._theme.theme_red else (218, 34, 28)
+
+            draw.rectangle((0, y0, w, h), fill=black)
+            border = max(3, w // 220)
+            draw.line((0, y0, w, y0), fill=scarlet, width=border)
+            draw.line((0, y0 + border + 4, w, y0 + border + 4), fill=white, width=max(1, border // 2))
+
+            def load_font(size: int):
+                font_candidates = (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Menlo.ttc",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                    "/Library/Fonts/Arial Unicode.ttf",
+                )
+                for font_path in font_candidates:
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.047)))
+            sub_font = load_font(max(22, int(w * 0.034)))
+
+            def text_width(font, text: str) -> int:
+                box = draw.textbbox((0, 0), text, font=font)
+                return box[2] - box[0]
+
+            margin_x = max(24, int(w * 0.055))
+            row1_y = y0 + max(22, int(footer_h * 0.19))
+            row2_y = y0 + max(82, int(footer_h * 0.59))
+
+            brand = "VNVNC.RU"
+            time_text = moscow_time
+            weekday = footer_date
+            venue = "КОНЮШЕННАЯ 2В"
+
+            draw.text((margin_x, row1_y), brand, font=main_font, fill=white)
+            draw.text((w - margin_x - text_width(main_font, time_text), row1_y), time_text, font=main_font, fill=scarlet)
+            draw.text((margin_x, row2_y), weekday, font=sub_font, fill=scarlet)
+            draw.text((w - margin_x - text_width(sub_font, venue), row2_y), venue, font=sub_font, fill=white)
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp Alye Parusa footer: {e}")
             return image_bytes
 
     def _stamp_2k17_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:

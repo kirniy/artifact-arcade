@@ -2721,6 +2721,7 @@ ABSOLUTE #1 PRIORITY - EXACT PEOPLE, EXACT FACES, EXACT CLOTHING:
 - Preserve ALL text on clothing letter-for-letter. Do not invent new clothing text.
 - People remain recognizable and human; do not replace them with sailors, fairy-tale characters, dolls, mannequins, or generic illustrated people.
 - Keep the real clothing intact. Apply the theme only to the surrounding graphic frame, ribbons, background shapes, and small decorative elements.
+- If the source photo contains no visible people, do not invent people. Preserve the empty scene and decorate the environment only.
 
 VISUAL DIRECTION:
 - Use the supplied Алые Паруса emblem and the supplied 16:9 style reference as the design source.
@@ -2734,10 +2735,9 @@ VISUAL DIRECTION:
 TEXT AND BRANDING:
 - Use the supplied Алые Паруса emblem reference as the official top logo/title.
 - Top title must be exactly "Алые Паруса" in Russian, matching the supplied emblem's red/white serif-script look as closely as possible.
-- Footer must contain exactly: "VNVNC.RU" on the left, the real Moscow time from context on the right, and "Конюшенная 2В" below.
-- If context gives a Russian weekday label, use exactly that label once in the footer area. Do not show a numeric date unless context explicitly asks for it.
+- Do not render footer text inside the AI artwork. Leave the bottom 13-15% as clean black/white/scarlet negative space; the app will stamp VNVNC.RU, the real Russian weekday, Moscow time, and venue after generation.
 - Do not write fake dates, "МСК", table booking text, promo slogans, captions, random words, or extra labels.
-- No other readable text except the top "Алые Паруса", "VNVNC.RU", the real time, the optional real weekday label, and "Конюшенная 2В".
+- No other readable text except the top "Алые Паруса".
 
 OUTPUT:
 - one clean vertical 9:16 Алые Паруса poster
@@ -2752,6 +2752,7 @@ IDENTITY LOCK:
 - Preserve clothing text/logos letter-for-letter.
 - No costume changes, no sailor costumes, no fantasy outfits, no replacing people with painted characters.
 - Keep visible clothing intact; add only light external theme accessories such as surrounding ribbons or background shapes.
+- If the source photo contains no visible people, do not invent people. Preserve the empty scene and decorate the environment only.
 
 STYLE:
 - Premium flat 2D Scarlet Sails visual language from the references: black field, white clouds and typography, scarlet sails, simple wave lines, clean ink outline.
@@ -2761,7 +2762,7 @@ STYLE:
 
 BRANDING:
 - Recreate the supplied Russian emblem as the top title exactly "Алые Паруса".
-- Footer: "VNVNC.RU" left, real Moscow time from context right, "Конюшенная 2В" below, optional real Russian weekday label if context gives it.
+- Do not render footer text inside the AI artwork. Leave the bottom 13-15% as clean black/white/scarlet negative space; the app will stamp VNVNC.RU, the real Russian weekday, Moscow time, and venue after generation.
 - No fake dates, no "МСК", no random Cyrillic, no VIP/table/booking reminders, no slogans, no extra words.
 
 OUTPUT:
@@ -2776,6 +2777,7 @@ PEOPLE:
 - Preserve the exact likeness of all people in the input photo.
 - Keep real clothing, clothing silhouettes, visible logos, and clothing text exactly.
 - Do not change gender expression, age, hairstyle, face shape, or outfits.
+- If the source photo contains no visible people, do not invent people. Preserve the empty scene and decorate the environment only.
 
 ART DIRECTION:
 - Minimal flat 2D Russian Scarlet Sails poster, matching the supplied reference frames.
@@ -3809,6 +3811,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_2K17_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
+                CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -3894,6 +3898,10 @@ ADDITIONAL REFERENCE IMAGES:
             is_summer_camp_style = style in (
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
+            )
+            is_alye_parusa_style = style in (
+                CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
+                CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
             )
 
             if is_brainrot_style:
@@ -4015,6 +4023,15 @@ ADDITIONAL REFERENCE IMAGES:
 - Keep the layout clean, mostly white, elite, and premium; no messy collage and no random extra text
 - Use the supplied SUMMER CAMP emblem reference as the official top logo/title; match its varsity sports lockup as closely as possible
 """
+            elif is_alye_parusa_style:
+                color_instruction = """- FULL COLOR — Scarlet Sails palette: true black, true white, scarlet red, and tiny muted blue-gray wave accents
+- Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
+- Premium flat 2D Russian Scarlet Sails poster language is mandatory: black field, white clouds, scarlet sails, red-and-white ribbons, thin ink wave lines
+- Human identity stays exact; theme changes only the graphic frame, background, ribbons, ships, and non-obscuring decorative elements
+- If no people are visible in the source photo, do not invent people; preserve the empty scene and add only Scarlet Sails graphic decoration
+- Leave the bottom 13-15% clean for the app's deterministic footer; do not write footer text, fake dates, booking/table text, or random extra words
+- Use the supplied Алые Паруса emblem reference as the official top logo/title; match its Russian lockup as closely as possible
+"""
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
@@ -4108,6 +4125,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_OFFICE_CORE,
                 CaricatureStyle.PHOTOBOOTH_2K17,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
+                CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -4141,6 +4159,8 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Pure white pixelated 2D 2K17 street-style poster, black padded 2K17 title typography with bold white pixel letters, chunky dithering, fidget spinners, rose wine, iPhone 7, wired earbuds, Vans, track pants, exact human likeness preserved, no extra readable text, no male chokers"
             elif is_summer_camp_style:
                 image_style = "Pure white pixelated 2D elite summer sports camp poster, crisp tennis-club icon style, chunky dithering, tennis balls, white rackets, lime yoga mat, basketball, soccer ball, whistle, palm leaves, exact human likeness preserved"
+            elif is_alye_parusa_style:
+                image_style = "Premium flat 2D Russian Scarlet Sails poster, black field, white clouds, scarlet sails, red-and-white ribbons, thin ink wave lines, elegant negative space, exact human likeness preserved, no footer text"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:
