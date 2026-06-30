@@ -630,7 +630,7 @@ THEMES = {
 }
 
 # Default theme
-DEFAULT_THEME = "alye-parusa"
+DEFAULT_THEME = "brainrot"
 
 
 def get_current_theme() -> PhotoboothTheme:

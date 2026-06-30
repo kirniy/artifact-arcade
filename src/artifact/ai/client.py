@@ -32,6 +32,9 @@ class GeminiModel(Enum):
     # Image generation - Nano Banana 2
     FLASH_IMAGE_31 = "gemini-3.1-flash-image-preview"
 
+    # Image generation - Nano Banana 2 Lite
+    FLASH_LITE_IMAGE_31 = "gemini-3.1-flash-lite-image"
+
     # Image generation - Nano Banana
     FLASH_IMAGE = "gemini-2.5-flash-image"
 
@@ -45,9 +48,10 @@ class GeminiModel(Enum):
 IMAGE_GENERATION_MODEL_ENV = "GEMINI_IMAGE_MODEL"
 IMAGE_GENERATION_PROVIDER_ENV = "ARTIFACT_IMAGE_PROVIDER"
 OPENROUTER_FALLBACK_ENV = "ARTIFACT_ENABLE_OPENROUTER_FALLBACK"
-DEFAULT_IMAGE_GENERATION_MODEL = GeminiModel.PRO_IMAGE.value
+DEFAULT_IMAGE_GENERATION_MODEL = GeminiModel.FLASH_LITE_IMAGE_31.value
 VALID_IMAGE_GENERATION_MODELS = {
     GeminiModel.FLASH_IMAGE_31.value,
+    GeminiModel.FLASH_LITE_IMAGE_31.value,
     GeminiModel.FLASH_IMAGE.value,
     GeminiModel.PRO_IMAGE.value,
 }

@@ -1597,7 +1597,7 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
     ]
 )
 
-DEFAULT_PHOTOBOOTH_MENU_MODES = ("alye-parusa",)
+DEFAULT_PHOTOBOOTH_MENU_MODES = ("brainrot", "wedding", "whatsapp")
 
 
 def _get_theme_menu_display_name(theme: PhotoboothTheme) -> str:

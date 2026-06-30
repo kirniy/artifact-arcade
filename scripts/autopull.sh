@@ -7,7 +7,7 @@ set -euo pipefail
 REPO_DIR="/home/kirniy/modular-arcade"
 LOG_FILE="/home/kirniy/modular-arcade/logs/autopull.log"
 PENDING_FILE="/home/kirniy/modular-arcade/.deploy/restart-pending"
-AUTO_ACTIVATE_2K17="${ARTIFACT_AUTO_ACTIVATE_2K17:-1}"
+AUTO_ACTIVATE_CRINGE_PARTY="${ARTIFACT_AUTO_ACTIVATE_CRINGE_PARTY:-1}"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"
@@ -17,26 +17,27 @@ log() {
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$PENDING_FILE")"
 cd "$REPO_DIR"
 
-env_has_2k17() {
+env_has_cringe_party() {
     [ -f "$REPO_DIR/.env" ] &&
-        grep -Eq '^PHOTOBOOTH_THEME=2k17$' "$REPO_DIR/.env" &&
-        grep -Eq '^PHOTOBOOTH_MENU_MODES=2k17$' "$REPO_DIR/.env"
+        grep -Eq '^PHOTOBOOTH_THEME=brainrot$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_MENU_MODES=brainrot,wedding,whatsapp$' "$REPO_DIR/.env" &&
+        grep -Eq '^GEMINI_IMAGE_MODEL=gemini-3\.1-flash-lite-image$' "$REPO_DIR/.env"
 }
 
-ensure_2k17_activation() {
-    if [ "$AUTO_ACTIVATE_2K17" != "1" ]; then
+ensure_cringe_party_activation() {
+    if [ "$AUTO_ACTIVATE_CRINGE_PARTY" != "1" ]; then
         return 1
     fi
-    if env_has_2k17; then
+    if env_has_cringe_party; then
         return 1
     fi
-    if [ ! -x "$REPO_DIR/scripts/activate-2k17-photobooth.sh" ]; then
-        log "2K17 activation script is not present yet."
+    if [ ! -x "$REPO_DIR/scripts/activate-cringe-party-photobooth.sh" ]; then
+        log "Cringe Party activation script is not present yet."
         return 1
     fi
 
-    log "Activating 2K17 photobooth env..."
-    ARTIFACT_REMOTE_DIR="$REPO_DIR" "$REPO_DIR/scripts/activate-2k17-photobooth.sh"
+    log "Activating Cringe Party photobooth env..."
+    ARTIFACT_REMOTE_DIR="$REPO_DIR" "$REPO_DIR/scripts/activate-cringe-party-photobooth.sh"
     return 0
 }
 
@@ -50,7 +51,7 @@ REMOTE=$(git rev-parse origin/main)
 if [ "$LOCAL" = "$REMOTE" ]; then
     log "Already up to date."
     activation_changed=0
-    if ensure_2k17_activation; then
+    if ensure_cringe_party_activation; then
         activation_changed=1
     fi
     if [ -f "$PENDING_FILE" ] || [ "$activation_changed" = "1" ]; then
@@ -65,7 +66,7 @@ fi
 log "Updates found, pulling..."
 git pull --ff-only origin main
 
-ensure_2k17_activation || true
+ensure_cringe_party_activation || true
 
 log "Trying idle-gated restart..."
 ARTIFACT_RESTART_PENDING_FILE="$PENDING_FILE" \
