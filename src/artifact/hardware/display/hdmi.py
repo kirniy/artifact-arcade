@@ -127,7 +127,7 @@ class HDMIDisplayKMSDual(Display):
         self._main_output = None
         self._wall_output = None
         self._wall_renderer = None
-        self._wall_enabled = _env_enabled("VNVNC_INPROCESS_TV_WALL_ENABLED", True)
+        self._wall_enabled = _env_enabled("VNVNC_INPROCESS_TV_WALL_ENABLED", False)
         self._last_wall_update = 0.0
         self._wall_frame: NDArray[np.uint8] | None = None
         self._show_count = 0
