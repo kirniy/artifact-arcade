@@ -424,30 +424,8 @@ class RotatingIdleAnimation:
         self.idle_title = self._theme.event_name.strip() or self._theme.ticker_idle.strip() or "VNVNC"
         self.idle_ticker_text = self._theme.ticker_idle.strip() or self.idle_title
         self.idle_lcd_prefix = self._theme.lcd_prefix.strip() or self.idle_ticker_text
-        if self.idle_variant == "slavic":
-            self.idle_event_date = self._theme.event_date.strip() or "18.04"
-        elif self.idle_variant == "candy_shop":
-            self.idle_event_date = self._theme.event_date.strip() or "22.05"
-        elif self.idle_variant == "vnvnc_bday":
-            self.idle_event_date = self._theme.event_date.strip() or "9 YEARS"
-        elif self.idle_variant == "circus_maximus":
-            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "CIRCUS"
-        elif self.idle_variant == "mtv_night":
-            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "MTV"
-        elif self.idle_variant == "shadow_kingdom":
-            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "SHADOW"
-        elif self.idle_variant == "street_heat":
-            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "HEAT"
-        elif self.idle_variant == "office_core":
-            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "OFFICE"
-        elif self.idle_variant == "summer_camp":
-            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "CAMP"
-        elif self.idle_variant == "alye_parusa":
-            self.idle_event_date = self._theme.event_date.strip() or self._theme.lcd_prefix.strip() or "АЛЫЕ"
-        elif self.idle_variant == "2k17":
-            self.idle_event_date = "2K17"
-        else:
-            self.idle_event_date = self._theme.event_date.strip() or "03.04-05.04"
+        # Idle screens must not show dates; real dates stay in generated photo/upload metadata.
+        self.idle_event_date = ""
 
     def _build_variant_scene_titles(self) -> Dict[IdleScene, str]:
         """Return per-scene labels for the active idle package."""
@@ -642,11 +620,8 @@ class RotatingIdleAnimation:
             fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa"} else (
                 (255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90)
             )
-            date_color = self._theme.theme_red if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa"} else (
-                (220, 154, 96) if self.idle_variant == "slavic" else (255, 140, 180)
-            )
             self._draw_centered_title(buffer, self.cringe_scene_titles.get(scene, fallback_title), 50, fallback_color)
-            draw_centered_text(buffer, self.idle_event_date, 68, date_color, scale=1)
+            draw_centered_text(buffer, "VNVNC.RU", 68, fallback_color, scale=1)
             return
 
         cycle_ms = 4600
@@ -754,9 +729,7 @@ class RotatingIdleAnimation:
         fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
         title = self.cringe_scene_titles.get(scene, fallback_title)
         self._draw_centered_title(buffer, title, 4, accent)
-        footer_date_color = (255, 232, 182) if self.idle_variant == "slavic" else (255, 240, 210)
-        draw_centered_text(buffer, self.idle_event_date, 108, footer_date_color, scale=1)
-        draw_centered_text(buffer, "VNVNC.RU", 116, accent, scale=1)
+        draw_centered_text(buffer, "VNVNC.RU", 112, accent, scale=1)
 
     def _draw_2k17_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene, t: float) -> None:
         """2K17 idle overlay: black label bars, white pixel type, flame-orange accents."""
@@ -822,8 +795,7 @@ class RotatingIdleAnimation:
 
         title = self.cringe_scene_titles.get(scene, "АЛЫЕ ПАРУСА")
         self._draw_centered_title(buffer, title, 4, white)
-        draw_centered_text(buffer, self.idle_event_date[:12], 108, white, scale=1)
-        draw_centered_text(buffer, "VNVNC.RU", 118, scarlet if int(t * 2) % 2 else white, scale=1)
+        draw_centered_text(buffer, "VNVNC.RU", 114, scarlet if int(t * 2) % 2 else white, scale=1)
 
         mast_x = 108
         mast_y = 86
@@ -4709,7 +4681,6 @@ class RotatingIdleAnimation:
             if self.idle_variant == "slavic":
                 slavic_texts = [
                     " SLAV CORE ",
-                    " 18.04 ",
                     " VNVNC.RU ",
                     " ДУША ",
                     " СКАЗКИ ",
@@ -4817,7 +4788,6 @@ class RotatingIdleAnimation:
                 theme_texts = [
                     self.idle_ticker_text,
                     self.idle_title,
-                    self.idle_event_date,
                     " VNVNC.RU ",
                     " НАЖМИ СТАРТ ",
                 ]
@@ -4826,13 +4796,11 @@ class RotatingIdleAnimation:
                 self._render_ticker_static_winter(buffer, theme_texts[idx], self._theme.theme_chrome, t)
             return
 
-        # Special case: POSTER_SLIDESHOW shows dates
+        # Special case: POSTER_SLIDESHOW gets a stable label, not dated poster metadata.
         if self.state.current_scene == IdleScene.POSTER_SLIDESHOW and self.poster_dates:
-            idx = self.poster_index % len(self.poster_dates)
-            date_text = self.poster_dates[idx] if self.poster_dates[idx] else "АФИШИ"
             color = (255, 200, 100)  # Gold/amber
             from artifact.graphics.text_utils import draw_centered_text
-            draw_centered_text(buffer, date_text, 0, color, scale=1)
+            draw_centered_text(buffer, "АФИШИ", 0, color, scale=1)
             return
 
         # Unified rotating texts for all idle modes (horizontal scroll for longer ones)
@@ -4840,7 +4808,6 @@ class RotatingIdleAnimation:
             "VNVNC",
             "VNVNC.RU",
             self.idle_ticker_text,  # Dynamic from theme: VENICE, BOILING, etc.
-            self._theme.event_date,   # Dynamic from theme: 06.02-07.02, 31.01, etc.
             "ФОТОБУДКА",
             "VNVNC <3",
         ]
@@ -4850,7 +4817,6 @@ class RotatingIdleAnimation:
             (192, 192, 192),   # Chrome
             (139, 0, 0),       # Deep red
             (255, 50, 50),     # Bright red
-            (255, 180, 0),     # Gold/orange
             (192, 192, 192),   # Chrome
             (255, 100, 100),   # Light red
         ]
@@ -4894,12 +4860,12 @@ class RotatingIdleAnimation:
 
         if self.idle_variant == "slavic":
             texts = {
-                IdleScene.CRINGE_HERO: [" SLAV CORE   ", "   18.04     ", " НАЖМИ СТАРТ "],
+                IdleScene.CRINGE_HERO: [" SLAV CORE   ", "  VNVNC.RU   ", " НАЖМИ СТАРТ "],
                 IdleScene.CRINGE_CIRCLE_VIDEO: [" SLAV CORE   ", "  VNVNC.RU   ", " НАЖМИ СТАРТ "],
                 IdleScene.CRINGE_VENUE: [" СЛАВ ДУША   ", "  VNVNC.RU   ", " НАЖМИ СТАРТ "],
                 IdleScene.CRINGE_BRAINROT: ["  СКАЗКИ     ", "  VNVNC.RU   ", " НАЖМИ СТАРТ "],
                 IdleScene.CRINGE_WEDDING: [" БАНЯ ШИК    ", "  VNVNC.RU   ", " НАЖМИ СТАРТ "],
-                IdleScene.CRINGE_WHATSAPP: ["   VNVNC     ", "   18.04     ", " НАЖМИ СТАРТ "],
+                IdleScene.CRINGE_WHATSAPP: ["   VNVNC     ", "  VNVNC.RU   ", " НАЖМИ СТАРТ "],
                 IdleScene.VNVNC_ENTRANCE: ["  ДОБРО       ", " ПОЖАЛОВАТЬ  ", " НАЖМИ СТАРТ "],
                 IdleScene.CAMERA_EFFECTS: ["МАГИЯ ЗЕРКАЛА", " КТО ТЫ?     ", " НАЖМИ СТАРТ "],
                 IdleScene.DIVOOM_GALLERY: ["   VNVNC    ", "  VNVNC.RU  ", " НАЖМИ СТАРТ "],
@@ -4918,7 +4884,7 @@ class RotatingIdleAnimation:
             ][idx].center(16)[:16]
         else:
             texts = {
-                IdleScene.CRINGE_HERO: [" КРИНЖ ПАТИ  ", " 03.04-05.04 ", " НАЖМИ СТАРТ "],
+                IdleScene.CRINGE_HERO: [" КРИНЖ ПАТИ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
                 IdleScene.CRINGE_CIRCLE_VIDEO: [" КРИНЖ ПАТИ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
                 IdleScene.CRINGE_VENUE: [" КРИНЖ ПАТИ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
                 IdleScene.CRINGE_BRAINROT: [" КРИНЖ ПАТИ  ", " VNVNC.RU    ", " НАЖМИ СТАРТ "],
