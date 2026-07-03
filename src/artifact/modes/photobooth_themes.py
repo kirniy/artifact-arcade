@@ -198,7 +198,7 @@ BIGCITYLIFE_THEME = PhotoboothTheme(
 BRAINROT_THEME = PhotoboothTheme(
     id="brainrot",
     event_name="КРИНЖ ПАТИ",
-    event_date="03.04-05.04",
+    event_date="",
     logo_filename="brainrot.png",
     theme_chrome=(255, 232, 72),    # Acid yellow headline glow
     theme_red=(255, 70, 166),       # Candy-magenta outer glow
@@ -209,6 +209,7 @@ BRAINROT_THEME = PhotoboothTheme(
     menu_display_name="BRAINROT",
     menu_description="КРИНЖ ПАТИ",
     menu_color=(255, 232, 72),
+    party_date_rollover_hour=12,
     ai_style_key="brainrot",
 )
 
@@ -219,7 +220,7 @@ BRAINROT_THEME = PhotoboothTheme(
 WEDDING_THEME = PhotoboothTheme(
     id="wedding",
     event_name="ФАВТФАА ПЭПЭ",
-    event_date="03.04-05.04",
+    event_date="",
     logo_filename="wedding.png",
     theme_chrome=(255, 214, 232),   # Pink wedding chrome
     theme_red=(219, 72, 140),       # Satin-magenta accent
@@ -230,6 +231,7 @@ WEDDING_THEME = PhotoboothTheme(
     menu_display_name="ЛЮБОВЬ\nИ ГОЛУБИ",
     menu_description="СЕЛЬСКАЯ СВАДЬБА",
     menu_color=(255, 214, 232),
+    party_date_rollover_hour=12,
     ai_style_key="wedding",
 )
 
@@ -240,7 +242,7 @@ WEDDING_THEME = PhotoboothTheme(
 WHATSAPP_THEME = PhotoboothTheme(
     id="whatsapp",
     event_name="ПЭПЭШНЕЙШЕ",
-    event_date="03.04-05.04",
+    event_date="",
     logo_filename="whatsapp.png",
     theme_chrome=(255, 218, 84),    # Gold postcard lettering
     theme_red=(255, 96, 152),       # Rose-pink sparkle accent
@@ -251,6 +253,7 @@ WHATSAPP_THEME = PhotoboothTheme(
     menu_display_name="WA\nОТКРЫТКИ",
     menu_description="ОТКРЫТКА В ЧАТ",
     menu_color=(80, 215, 120),
+    party_date_rollover_hour=12,
     ai_style_key="whatsapp",
 )
 

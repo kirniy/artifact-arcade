@@ -1052,6 +1052,17 @@ def upload_bytes_to_s3(
             else:
                 error = stderr or "Unknown error"
             logger.error(f"S3 upload failed: {error}")
+            if Path(pending.file_path).exists() and Path(pending.meta_path).exists():
+                url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
+                short_url = f"https://vnvnc.ru/p/{short_id}"
+                qr_image = generate_qr_image(short_url)
+                logger.warning(
+                    "Initial S3 upload failed for %s, but durable spool is queued; "
+                    "returning pre-generated URL while upload_spool_daemon retries: %s",
+                    s3_key,
+                    error,
+                )
+                return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
             return UploadResult(success=False, error=error)
 
     except subprocess.TimeoutExpired:

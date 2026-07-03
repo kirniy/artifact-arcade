@@ -863,9 +863,9 @@ class PhotoboothMode(BaseMode):
                     )
                 else:
                     personality_context = (
-                        f"Photo taken at {moscow_time} Moscow time. "
-                        f"Include exactly '{moscow_time}' in the handwritten caption "
-                        f"or footer area at the bottom of the image."
+                        f"Photo taken on {footer_date_str} at {moscow_time} Moscow time. "
+                        f"Use the club-night date exactly as '{footer_date_str}' and the time exactly as '{moscow_time}' "
+                        f"in the handwritten caption or footer area at the bottom of the image."
                     )
 
             # Generate only the label (9:16) image
