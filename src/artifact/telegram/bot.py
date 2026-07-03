@@ -317,7 +317,7 @@ class StatsReader:
         failed = [
             event
             for event in final_photos
-            if not event.get("success") and not self._is_retryable_upload_failure(event)
+            if not event.get("success") and not event.get("skipped") and not self._is_retryable_upload_failure(event)
         ]
         image_calls, text_calls = self._count_ai_logs(start, end)
         spent = image_calls * IMAGE_CALL_COST_USD + text_calls * TEXT_CALL_COST_USD
@@ -804,6 +804,11 @@ class ArcadeBot:
             try:
                 if event.get("success") and event.get("url"):
                     await self._send_photo_with_fallback(admin_id, event, caption)
+                elif event.get("skipped") and Path(str(event.get("source_photo_path") or "")).exists():
+                    source_data = await asyncio.to_thread(Path(str(event["source_photo_path"])).read_bytes)
+                    source_photo = io.BytesIO(source_data)
+                    source_photo.name = Path(str(event["source_photo_path"])).name
+                    await self.app.bot.send_photo(chat_id=admin_id, photo=source_photo, caption=caption)
                 else:
                     await self.app.bot.send_message(chat_id=admin_id, text=caption)
             except Exception as e:
@@ -888,6 +893,15 @@ class ArcadeBot:
 
     @staticmethod
     def _photo_caption(event: dict[str, Any]) -> str:
+        if event.get("skipped"):
+            return (
+                "Фото не опубликовано в галерею\n"
+                f"Время: {_format_dt(event.get('timestamp'))}\n"
+                f"Тема: {event.get('theme_name') or event.get('theme_id') or 'unknown'}\n"
+                f"Причина: {event.get('error') or 'нет видимого лица в исходном кадре'}\n"
+                f"Размер результата: {event.get('result_bytes', 0)} байт\n"
+                f"Размер исходника: {event.get('source_photo_bytes', 0)} байт"
+            )
         if event.get("success"):
             return (
                 "Новое фото готово\n"

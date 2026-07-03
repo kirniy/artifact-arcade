@@ -129,6 +129,7 @@ class PhotoboothState:
     waiting_finish_from_seconds: int = 0
     awaiting_camera_selection: bool = False
     selected_camera_id: str = "primary"
+    source_has_visible_face: Optional[bool] = None
 
 
 class PhotoboothMode(BaseMode):
@@ -1140,6 +1141,26 @@ class PhotoboothMode(BaseMode):
             logger.warning("No image bytes available for upload")
             return
 
+        if self._should_skip_public_gallery_upload():
+            source_photo_path = self._persist_bot_source_photo("faceless")
+            logger.warning("Skipping public photobooth gallery upload: no visible guest face in source photo")
+            append_bot_event(
+                "photobooth_photo",
+                {
+                    "mode": self.name,
+                    "theme_id": getattr(self._theme, "id", ""),
+                    "theme_name": getattr(self._theme, "event_name", ""),
+                    "camera_id": self._state.selected_camera_id,
+                    "result_bytes": len(self._state.ai_label_bytes or self._state.ai_display_bytes or b""),
+                    "source_photo_bytes": len(self._state.photo_bytes or b""),
+                    "source_photo_path": source_photo_path,
+                    "success": False,
+                    "skipped": True,
+                    "error": "No visible guest face in source photo; public gallery upload skipped",
+                },
+            )
+            return
+
         logger.info("Uploading photo booth image...")
         self._state.is_uploading = True
 
@@ -1259,6 +1280,57 @@ class PhotoboothMode(BaseMode):
         except Exception as e:
             logger.warning("Failed to persist source photo for Telegram bot: %s", e)
             return None
+
+    def _should_skip_public_gallery_upload(self) -> bool:
+        """Conservatively keep obvious empty-booth captures out of the public gallery."""
+        if os.getenv("PHOTOBOOTH_SKIP_FACELESS_GALLERY", "true").lower() in {"0", "false", "no", "off"}:
+            return False
+        if self._state.selected_camera_id != "primary":
+            return False
+        if self._state.source_has_visible_face is None:
+            self._state.source_has_visible_face = self._source_photo_has_visible_face()
+        return self._state.source_has_visible_face is False
+
+    def _source_photo_has_visible_face(self) -> bool:
+        """Return False only when OpenCV confidently sees no guest face."""
+        if not self._state.photo_bytes:
+            return True
+        try:
+            import cv2
+
+            image = PILImage.open(io.BytesIO(self._state.photo_bytes)).convert("RGB")
+            frame = np.array(image)
+            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            gray = cv2.equalizeHist(gray)
+
+            cascade_dir = Path(cv2.data.haarcascades)
+            classifiers = [
+                cascade_dir / "haarcascade_frontalface_default.xml",
+                cascade_dir / "haarcascade_profileface.xml",
+            ]
+            min_side = max(36, min(gray.shape[:2]) // 10)
+            for classifier_path in classifiers:
+                if not classifier_path.exists():
+                    continue
+                detector = cv2.CascadeClassifier(str(classifier_path))
+                if detector.empty():
+                    continue
+                faces = detector.detectMultiScale(
+                    gray,
+                    scaleFactor=1.08,
+                    minNeighbors=4,
+                    minSize=(min_side, min_side),
+                    flags=cv2.CASCADE_SCALE_IMAGE,
+                )
+                if len(faces) > 0:
+                    logger.info("Photobooth source face check passed with %d face(s)", len(faces))
+                    return True
+
+            logger.warning("Photobooth source face check found no visible faces")
+            return False
+        except Exception as e:
+            logger.warning("Photobooth source face check unavailable; allowing gallery upload: %s", e)
+            return True
 
     def _start_printing_now(self) -> None:
         """Start printing immediately when result screen appears.

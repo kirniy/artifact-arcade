@@ -1301,7 +1301,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1320,7 +1320,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1339,7 +1339,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1358,7 +1358,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1377,7 +1377,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1396,7 +1396,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1415,7 +1415,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1434,7 +1434,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1453,7 +1453,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1472,7 +1472,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1491,7 +1491,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1510,7 +1510,7 @@ Composition: keep all real people together in one centered composition; add only
 Text and branding:
 - The ONLY huge decorative title is "КРИНЖ ПАТИ"
 - Use the emblem reference image to keep the exact party title correct
-- Keep the required footer text: "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В"
+- Keep the required footer text: "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В"
 - No character names, no English meme words, no floating sticker text, no "WordArt" text, no extra typography
 
 Preserve exact human likeness, hairstyle, skin tone, and expression. The face stays recognizably human; only the body, costume, silhouette, props, and environment become brainrot.
@@ -1537,7 +1537,7 @@ Use the emblem reference image to keep the exact party title correct.
 Visual style: full-bleed cursed semi-realistic 3D brainrot poster, glossy materials, bad Photoshop cutout energy, repost JPEG grime, ugly glow, width-squeezed WordArt, fake glitter, arrows, stars, bad PNG stickers.
 
 Required footer/event text somewhere in the image:
-"КРИНЖ ПАТИ", "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+"КРИНЖ ПАТИ", "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
 No character names, no English meme words, no floating sticker text, no "WordArt" text, and no other text.
 
 Square 1:1, single-image poster, not a photobooth grid.
@@ -1576,7 +1576,7 @@ TEXT AND BRANDING:
 - Required exact text:
   * "КРИНЖ ПАТИ"
   * "VNVNC.RU"
-  * "03.04-05.04"
+  * exact date from personality_context
   * exact time from personality_context
   * "КОНЮШЕННАЯ 2В"
 - No other text
@@ -1606,7 +1606,7 @@ If the image contains two or more men and no women, portray them as fun wedding 
 For male-only groups: use toasting, drinking vodka or champagne, banquet-photo energy, and no romantic embrace or groom-and-groom pairing.
 
 Required text somewhere in the design:
-"КРИНЖ ПАТИ", "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+"КРИНЖ ПАТИ", "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
 No other text. Use the emblem reference image to keep the title exact.
 
 Square 1:1 single-image composition, with meme doodles around the border.
@@ -1642,7 +1642,7 @@ TEXT AND BRANDING:
 - Required exact text:
   * "КРИНЖ ПАТИ"
   * "VNVNC.RU"
-  * "03.04-05.04"
+  * exact date from personality_context
   * exact time from personality_context
   * "КОНЮШЕННАЯ 2В"
 - No other text
@@ -1668,7 +1668,7 @@ glow effects, flowers, blessing-card sentimentality, meme doodles, and overdecor
 The portrait/group must stay front-and-center and recognizable while the border/background becomes tacky postcard chaos.
 
 Required text somewhere in the image:
-"КРИНЖ ПАТИ", "VNVNC.RU", "03.04-05.04", exact time from personality_context, "КОНЮШЕННАЯ 2В".
+"КРИНЖ ПАТИ", "VNVNC.RU", exact date from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
 No other text. Use the emblem reference image to keep the title exact.
 
 Square 1:1 single-image postcard.
@@ -4085,6 +4085,7 @@ CRITICAL REQUIREMENTS:
 - Do not beautify, age, de-age, slim, widen, gender-swap, ethnicity-shift, change hair, change skin tone, change expression, change outfit identity, or cover/replace faces.
 - If the reference photo contains multiple people, preserve the exact people count and keep every visible person in the final image with equal importance.
 - Never crop a group photo down to one hero, never merge two people into one, and never replace a person with a prop or logo.
+- If the reference photo contains no visible people, do not invent people, bodies, faces, crowds, silhouettes, mannequins, or characters. Preserve the empty scene and apply only the requested theme graphics/environment.
 {color_instruction}
 - TEXT LANGUAGE RULES (CRITICAL!!!):
   * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C

@@ -965,6 +965,14 @@ def generate_qr_image(url: str, size: int = 60) -> Optional[np.ndarray]:
         return None
 
 
+def _queued_upload_result(s3_key: str, short_id: str) -> UploadResult:
+    """Return the already reserved public URL while the durable spool drains."""
+    url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
+    short_url = f"https://vnvnc.ru/p/{short_id}"
+    qr_image = generate_qr_image(short_url)
+    return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
+
+
 def upload_bytes_to_s3(
     data: bytes,
     prefix: str,
@@ -1052,23 +1060,27 @@ def upload_bytes_to_s3(
             else:
                 error = stderr or "Unknown error"
             logger.error(f"S3 upload failed: {error}")
-            if Path(pending.file_path).exists() and Path(pending.meta_path).exists():
-                url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
-                short_url = f"https://vnvnc.ru/p/{short_id}"
-                qr_image = generate_qr_image(short_url)
+            if pre_info is not None or (Path(pending.file_path).exists() and Path(pending.meta_path).exists()):
                 logger.warning(
-                    "Initial S3 upload failed for %s, but durable spool is queued; "
-                    "returning pre-generated URL while upload_spool_daemon retries: %s",
+                    "Initial S3 upload failed for %s, but durable spool owns this upload; "
+                    "returning reserved URL while upload_spool_daemon retries: %s",
                     s3_key,
                     error,
                 )
-                return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
+                return _queued_upload_result(s3_key, short_id)
             return UploadResult(success=False, error=error)
 
     except subprocess.TimeoutExpired:
         logger.error("Upload timed out after %s seconds after %s attempts - check network connection", S3_MAIN_UPLOAD_TIMEOUT, S3_UPLOAD_RETRIES)
         return UploadResult(success=False, error="Upload timeout - check network")
     except FileNotFoundError:
+        if "s3_key" in locals() and "short_id" in locals() and pre_info is not None:
+            logger.warning(
+                "Initial S3 upload helper could not access the pending file for %s; "
+                "returning reserved URL because the durable spool will retry",
+                s3_key,
+            )
+            return _queued_upload_result(s3_key, short_id)
         error = "AWS CLI not found. Run: sudo apt install awscli"
         logger.error(error)
         return UploadResult(success=False, error=error)
