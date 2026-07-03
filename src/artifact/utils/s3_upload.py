@@ -1228,10 +1228,11 @@ class AsyncUploader:
 
         def _upload():
             result = upload_bytes_to_s3(data, prefix, extension, content_type, pre_info=pre_info, metadata=metadata)
-            try:
-                retry_pending_uploads(prefix=prefix, limit=10)
-            except Exception as e:
-                logger.warning(f"Pending upload retry pass failed: {e}")
+            if prefix != "photobooth":
+                try:
+                    retry_pending_uploads(prefix=prefix, limit=10)
+                except Exception as e:
+                    logger.warning(f"Pending upload retry pass failed: {e}")
             self._result = result
             if self._callback:
                 try:
