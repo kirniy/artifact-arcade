@@ -335,7 +335,7 @@ class StatsReader:
 
     @staticmethod
     def _photo_key(event: dict[str, Any]) -> str:
-        for field in ("filename", "short_id"):
+        for field in ("short_id", "filename"):
             value = event.get(field)
             if value:
                 return str(value)
@@ -403,6 +403,35 @@ class ArcadeBot:
 
     def _save_state(self) -> None:
         self.state_path.write_text(json.dumps(self._state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    @staticmethod
+    def _existing_file_path(value: Any) -> Optional[Path]:
+        if not value:
+            return None
+        try:
+            path = Path(str(value))
+            return path if path.is_file() else None
+        except OSError:
+            return None
+
+    @staticmethod
+    def _event_photo_key(event: dict[str, Any]) -> str:
+        return StatsReader._photo_key(event)
+
+    def _sent_photo_keys(self) -> list[str]:
+        keys = self._state.setdefault("sent_photo_keys", [])
+        if not isinstance(keys, list):
+            keys = []
+            self._state["sent_photo_keys"] = keys
+        return [str(key) for key in keys if key]
+
+    def _mark_photo_sent(self, key: str) -> None:
+        keys = self._sent_photo_keys()
+        if key in keys:
+            keys.remove(key)
+        keys.append(key)
+        self._state["sent_photo_keys"] = keys[-500:]
+        self._save_state()
 
     def is_admin(self, user_id: int) -> bool:
         return user_id in ADMIN_IDS
@@ -798,31 +827,40 @@ class ArcadeBot:
         if self._is_retryable_upload_failure(event):
             logger.info("Skipping retryable upload failure event %s", event.get("id"))
             return True
+        photo_key = self._event_photo_key(event)
+        if event.get("success") and photo_key in self._sent_photo_keys():
+            logger.info("Skipping duplicate photo event %s for %s", event.get("id"), photo_key)
+            return True
         caption = self._photo_caption(event)
         delivered = True
         for admin_id in ADMIN_IDS:
             try:
                 if event.get("success") and event.get("url"):
                     await self._send_photo_with_fallback(admin_id, event, caption)
-                elif event.get("skipped") and Path(str(event.get("source_photo_path") or "")).exists():
-                    source_data = await asyncio.to_thread(Path(str(event["source_photo_path"])).read_bytes)
+                elif event.get("skipped") and (source_path := self._existing_file_path(event.get("source_photo_path"))):
+                    source_data = await asyncio.to_thread(source_path.read_bytes)
                     source_photo = io.BytesIO(source_data)
-                    source_photo.name = Path(str(event["source_photo_path"])).name
+                    source_photo.name = source_path.name
                     await self.app.bot.send_photo(chat_id=admin_id, photo=source_photo, caption=caption)
                 else:
                     await self.app.bot.send_message(chat_id=admin_id, text=caption)
             except Exception as e:
                 delivered = False
                 logger.warning("Failed to send event %s to %s: %s", event.get("id"), admin_id, e)
+        if delivered and event.get("success"):
+            self._mark_photo_sent(photo_key)
         return delivered
 
     async def _send_photo_with_fallback(self, admin_id: int, event: dict[str, Any], caption: str) -> None:
-        url = str(event["url"])
-        source_photo_path = Path(str(event.get("source_photo_path") or ""))
-        if source_photo_path.exists():
+        source_photo_path = self._existing_file_path(event.get("source_photo_path"))
+        if source_photo_path:
             await self._send_result_and_source_photo(admin_id, event, caption, source_photo_path)
             return
 
+        await self._send_result_photo_only(admin_id, event, caption)
+
+    async def _send_result_photo_only(self, admin_id: int, event: dict[str, Any], caption: str) -> None:
+        url = str(event["url"])
         try:
             await self.app.bot.send_photo(chat_id=admin_id, photo=url, caption=caption)
             return
@@ -866,11 +904,7 @@ class ArcadeBot:
         except Exception as e:
             logger.warning("Telegram media group upload failed; sending result only: %s", e)
 
-        await self._send_photo_with_fallback(
-            admin_id,
-            {key: value for key, value in event.items() if key != "source_photo_path"},
-            caption,
-        )
+        await self._send_result_photo_only(admin_id, event, caption)
 
     @staticmethod
     def _download_photo_bytes(url: str) -> bytes:
