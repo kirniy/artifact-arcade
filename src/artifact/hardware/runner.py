@@ -538,9 +538,12 @@ class HardwareRunner:
         try:
             # Ensure data directory exists
             STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            app_state = getattr(self.state_machine.state, "name", "UNKNOWN").lower()
+            mode = "idle" if app_state == "idle" else (self._current_mode or app_state)
 
             status = {
-                "mode": self._current_mode,
+                "mode": mode,
+                "state": app_state,
                 "scene": self._current_scene,
                 "volume": self._audio_engine.get_volume() if self._audio_engine else 1.0,
                 "muted": self._audio_engine.is_muted() if self._audio_engine else False,
