@@ -22,12 +22,12 @@
 **Solutions**:
 1. Determine whether flicker happens only in a photobooth state such as photo-ready. Check that all states use `render_idle_style_ticker_text()` once on a black-cleared buffer.
 2. If short static `QR` is crystal clear, do not change the driver, GPIO, mapping, or wiring. The failure is in a different renderer.
-3. Remove long scrolling copy, vertical slide/fade transitions, flips, and bright red animation from the failing theme. Render short static words through `render_idle_style_ticker_text()` on black.
+3. Remove scrolling copy, vertical slide/fade transitions, flips, and post-render ticker particles. Render short static words through `render_idle_style_ticker_text()` on black using the theme accent color. Timed alternation must use hard cuts between complete frames.
 4. Run `PYTHONPATH=src python -m pytest -q tests/test_photobooth_ticker_states.py tests/test_ws2812b_mapping.py`.
 5. Verify audio is disabled: `dtparam=audio=off` in `/boot/config.txt`.
 6. Check the shared ground connection and power supply only if static QR also fails.
 
-The July 11, 2026 Summer Camp failure affected animated/long ticker states while `QR` remained crystal clear. Driver timing experiments did not solve it and were reverted. Summer Camp now uses only short static white labels: `SUMMER`, `CAMP`, `ЖДИ`, `ГОТОВО`, `QR`, `СТАРТ`, and countdown digits.
+The July 11, 2026 Summer Camp failure affected animated ticker states while `QR` remained crystal clear. Driver timing experiments did not solve it and were reverted. All photobooth themes now use compact static labels in `theme_chrome`; processing hard-cuts between `ЖДИ` and `НЕ УХОДИ`. Cross-display ticker particles are disabled globally.
 
 ### LCD Shows Garbage
 

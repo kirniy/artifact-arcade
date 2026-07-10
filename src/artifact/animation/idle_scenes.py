@@ -4677,6 +4677,15 @@ class RotatingIdleAnimation:
         clear(buffer)
         t = self.state.time  # Use global time for consistent animation
 
+        # The main screen carries idle animation; keep the physical ticker stable.
+        self._render_ticker_static_winter(
+            buffer,
+            self.idle_ticker_text,
+            self._theme.theme_chrome,
+            t,
+        )
+        return
+
         if self.state.current_scene in self.cringe_scene_titles:
             if self.idle_variant == "slavic":
                 slavic_texts = [

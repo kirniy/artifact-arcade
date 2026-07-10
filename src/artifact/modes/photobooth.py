@@ -1616,22 +1616,17 @@ class PhotoboothMode(BaseMode):
         """Return ticker copy and color for the current user journey state."""
         if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
             text = "СЗАДИ" if self._state.selected_camera_id == "hdmi" else "СПЕРЕДИ"
-            return text, (255, 255, 255)
+            return text, self.THEME_CHROME
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            return str(self._state.countdown), (255, 255, 255)
+            return str(self._state.countdown), self.THEME_CHROME
         if self._state.is_generating:
-            if self._theme.ai_style_key == "alye_parusa":
-                return "ЖДИ", (255, 255, 255)
-            if self._theme.ai_style_key == "summer_camp":
-                return "ЖДИ", (255, 255, 255)
-            return "НЕ УХОДИ", (255, 40, 40)
+            text = "ЖДИ" if int(self._time_in_phase // 3000) % 2 == 0 else "НЕ УХОДИ"
+            return text, self.THEME_CHROME
         if self._state.show_result:
             if self._state.result_view == "qr":
-                return "QR", (255, 255, 255)
-            if self._theme.ai_style_key == "summer_camp":
-                return "ГОТОВО", (255, 255, 255)
-            return "ГОТОВО", (255, 255, 255)
-        return self._theme.ticker_idle, (255, 255, 255)
+                return "QR", self.THEME_CHROME
+            return "ФОТО", self.THEME_CHROME
+        return self._theme.ticker_idle, self.THEME_CHROME
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render every photobooth state through the idle ticker renderer."""

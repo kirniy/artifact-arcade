@@ -1500,8 +1500,7 @@ class ModeManager:
         elif self._state in (ManagerState.RESULT, ManagerState.PRINTING):
             self._render_result_ticker(buffer)
 
-        # Apply cross-display effects overlay
-        self._display_coordinator.render_ticker_overlay(buffer)
+        # Keep top-ticker text readable; cross-display particles remain on the main screen.
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
@@ -2001,19 +2000,16 @@ class ModeManager:
         if mode:
             # Clean "Word Cycle" ticker (RSVP style) - No horizontal scrolling
             theme = _get_theme_for_mode_cls(mode.cls)
-            if theme is not None and theme.id == "summer-camp":
+            if theme is not None:
                 render_idle_style_ticker_text(
                     buffer,
-                    "SUMMER",
-                    (255, 255, 255),
+                    theme.ticker_idle,
+                    theme.theme_chrome,
                     self._time_in_state,
                 )
                 return
-            if theme is not None and theme.id == "alye-parusa":
-                words = ["АЛЫЕ", "ПАРУСА", "VNVNC.RU", "ФОТО", "СТАРТ"]
-            else:
-                description = self._get_mode_description_text(mode)
-                words = description.split()
+            description = self._get_mode_description_text(mode)
+            words = description.split()
             if not words:
                 words = [mode.display_name]
             
