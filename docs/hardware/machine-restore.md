@@ -3,18 +3,39 @@
 This document describes the current known-good restore state for the full machine, not just the NovaStar sender.
 
 Last verified:
-- March 28, 2026
+- July 11, 2026
 
 ## What "Working" Means
 
 - Main screen:
   Pi `pygame` / `KMSDRM` output at `720x480` over HDMI to the NovaStar T50, cropped to the top-left `128x128`, then forwarded to the DH418 and panels.
 - Ticker:
-  WS2812B ticker mapping restored to the December 31, 2025 baseline and covered by regression tests.
+  WS2812B mapping uses the December 31, 2025 baseline, explicit physical GRB order, and brightness `32`. This eliminated the red noise onsite on July 11, 2026.
 - Photobooth:
   Camera capture works, AI generation works, Selectel S3 upload works.
 - Current event mode:
-  `PHOTOBOOTH_THEME=boilingroom`
+  `PHOTOBOOTH_THEME=summer-camp`, `PHOTOBOOTH_MENU_MODES=summer_camp`
+
+## Ticker Production Baseline
+
+- `HardwareConfig.ws2812b_brightness=32`
+- `PixelStrip(..., strip_type=WS2811_STRIP_GRB)`
+- photobooth theme labels measure at most 48 pixels
+- idle and selector labels are static in each theme's ticker color
+- processing hard-cuts between `ЖДИ` and `НЕ УХОДИ`
+- completed-photo state hard-cuts between `ФОТО` and `НА ЧЕКЕ`
+- ticker cross-display particles are disabled
+- the main-screen processing countdown and bottom progress bar remain animated
+
+These rules apply to every registered photobooth theme. Summer Camp additionally uses `ticker_color=(0,255,48)` while keeping its original main-screen palette.
+
+Validate with:
+
+```bash
+PYTHONPATH=src python -m pytest -q \
+  tests/test_photobooth_ticker_states.py \
+  tests/test_ws2812b_mapping.py
+```
 
 ## Tracked Recovery Assets
 
