@@ -2,10 +2,47 @@ import numpy as np
 
 from artifact.graphics.fonts.pixel_font import draw_text_bitmap, get_ticker_font
 from artifact.hardware.display.ws2812b import WS2812BDisplay
+import artifact.hardware.display.ws2812b as ws2812b_module
+
+
+class _FakePixelStrip:
+    def __init__(self, *args, **kwargs) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
+    def begin(self) -> None:
+        pass
+
+    def setPixelColor(self, index: int, color: int) -> None:
+        pass
+
+    def show(self) -> None:
+        pass
+
+
+class _FakeWS281x:
+    WS2811_STRIP_RGB = 0x100800
+
+    def __init__(self) -> None:
+        self.created = None
+
+    def PixelStrip(self, *args, **kwargs):
+        self.created = _FakePixelStrip(*args, **kwargs)
+        return self.created
 
 
 def build_display() -> WS2812BDisplay:
     return WS2812BDisplay(width=48, height=8)
+
+
+def test_driver_explicitly_configures_rgb_strip_order(monkeypatch) -> None:
+    fake = _FakeWS281x()
+    monkeypatch.setattr(ws2812b_module, "_get_rpi_ws281x", lambda: fake)
+
+    display = build_display()
+
+    assert display.init()
+    assert fake.created.kwargs["strip_type"] == fake.WS2811_STRIP_RGB
 
 
 def test_mapping_is_complete_and_unique() -> None:

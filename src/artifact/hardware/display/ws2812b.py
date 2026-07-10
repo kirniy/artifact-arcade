@@ -118,7 +118,8 @@ class WS2812BDisplay(Display):
                 self.LED_DMA,
                 self.LED_INVERT,
                 self._brightness,
-                self.LED_CHANNEL
+                self.LED_CHANNEL,
+                strip_type=rpi_ws281x.WS2811_STRIP_RGB,
             )
 
             # Initialize the strip
