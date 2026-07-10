@@ -70,4 +70,5 @@ ARTIFACT_MARK_RESTART_PENDING=1 ./scripts/restart-artifact-if-idle.sh
 ## Relevant Commits
 
 - `39b5e34` unifies all photobooth ticker states behind one renderer.
-- `15d992e` introduced change-driven WS2812 output; the follow-up bounded-refresh commit supersedes its permanent static hold after physical validation.
+- `15d992e` introduced change-driven WS2812 output.
+- `8215a85` supersedes the permanent static hold with a 15 FPS cap and 250 ms recovery refresh after physical validation.
