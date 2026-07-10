@@ -1612,27 +1612,28 @@ class PhotoboothMode(BaseMode):
 
             # Hint stays on ticker/LCD for full-screen QR
 
-    def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
-        """Render ticker display."""
-        fill(buffer, (0, 0, 0))
-
+    def _get_ticker_presentation(self) -> tuple[str, tuple[int, int, int]]:
+        """Return ticker copy and color for the current user journey state."""
         if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
-            ticker_text = "СЗАДИ" if self._state.selected_camera_id == "hdmi" else "СПЕРЕДИ"
-            render_idle_style_ticker_text(buffer, ticker_text, (255, 255, 255), self._time_in_phase)
-        elif self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            render_idle_style_ticker_text(buffer, str(self._state.countdown), (255, 255, 255), self._time_in_phase)
-        elif self._state.is_generating:
+            text = "СЗАДИ" if self._state.selected_camera_id == "hdmi" else "СПЕРЕДИ"
+            return text, (255, 255, 255)
+        if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
+            return str(self._state.countdown), (255, 255, 255)
+        if self._state.is_generating:
             if self._theme.ai_style_key == "alye_parusa":
-                render_idle_style_ticker_text(buffer, "ЖДИ", (255, 255, 255), self._time_in_phase)
-            else:
-                render_idle_style_ticker_text(buffer, "НЕ УХОДИ", (255, 40, 40), self._time_in_phase)
-        elif self._state.show_result:
+                return "ЖДИ", (255, 255, 255)
+            return "НЕ УХОДИ", (255, 40, 40)
+        if self._state.show_result:
             if self._state.result_view == "qr":
-                render_idle_style_ticker_text(buffer, "QR", (255, 255, 255), self._time_in_phase)
-            else:
-                render_idle_style_ticker_text(buffer, "ГОТОВО", (255, 255, 255), self._time_in_phase)
-        else:
-            render_idle_style_ticker_text(buffer, self._theme.ticker_idle, (255, 255, 255), self._time_in_phase)
+                return "QR", (255, 255, 255)
+            return "ГОТОВО", (255, 255, 255)
+        return self._theme.ticker_idle, (255, 255, 255)
+
+    def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
+        """Render every photobooth state through the idle ticker renderer."""
+        fill(buffer, (0, 0, 0))
+        text, color = self._get_ticker_presentation()
+        render_idle_style_ticker_text(buffer, text, color, self._time_in_phase)
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
