@@ -4,6 +4,21 @@ from artifact.graphics.fonts.pixel_font import draw_text_bitmap, get_ticker_font
 from artifact.hardware.display.ws2812b import WS2812BDisplay
 
 
+class _FakeStrip:
+    def __init__(self) -> None:
+        self.frames = 0
+        self.pixels = {}
+
+    def setPixelColor(self, index: int, color: int) -> None:
+        self.pixels[index] = color
+
+    def show(self) -> None:
+        self.frames += 1
+
+    def setBrightness(self, brightness: int) -> None:
+        pass
+
+
 def build_display() -> WS2812BDisplay:
     return WS2812BDisplay(width=48, height=8)
 
@@ -72,3 +87,36 @@ def test_boiling_text_snapshot_matches_december_baseline() -> None:
         271, 256, 255, 239, 224, 223, 208, 207, 191, 176, 175, 160, 159, 143,
         111, 80, 79, 64,
     ]
+
+
+def test_static_frame_is_transmitted_only_once() -> None:
+    display = build_display()
+    display._strip = _FakeStrip()
+    display._initialized = True
+    display._dirty = False
+
+    frame = np.zeros((8, 48, 3), dtype=np.uint8)
+    frame[2, 3] = (255, 255, 255)
+    display.set_buffer(frame)
+    display.show()
+    display.set_buffer(frame.copy())
+    display.show()
+
+    assert display._strip.frames == 1
+
+
+def test_changed_frame_is_transmitted_again() -> None:
+    display = build_display()
+    display._strip = _FakeStrip()
+    display._initialized = True
+    display._dirty = False
+
+    first = np.zeros((8, 48, 3), dtype=np.uint8)
+    second = first.copy()
+    second[0, 0] = (255, 0, 0)
+    display.set_buffer(first)
+    display.show()
+    display.set_buffer(second)
+    display.show()
+
+    assert display._strip.frames == 1

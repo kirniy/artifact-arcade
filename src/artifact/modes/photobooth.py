@@ -1626,7 +1626,7 @@ class PhotoboothMode(BaseMode):
         if self._state.show_result:
             if self._state.result_view == "qr":
                 return "QR", (255, 255, 255)
-            return "READY", (255, 255, 255)
+            return "ГОТОВО", (255, 255, 255)
         return self._theme.ticker_idle, (255, 255, 255)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
