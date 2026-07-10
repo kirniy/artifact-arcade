@@ -38,7 +38,7 @@ def test_ticker_copy_covers_complete_summer_camp_journey() -> None:
     mode._state.is_generating = False
     mode._state.show_result = True
     mode._state.result_view = "photo"
-    assert mode._get_ticker_presentation() == ("ГОТОВО", (255, 255, 255))
+    assert mode._get_ticker_presentation() == ("READY", (255, 255, 255))
     mode._state.result_view = "qr"
     assert mode._get_ticker_presentation() == ("QR", (255, 255, 255))
 
@@ -62,4 +62,4 @@ def test_render_ticker_uses_single_idle_renderer_on_black(monkeypatch) -> None:
     assert len(calls) == 1
     cleared_buffer, text, color, time_ms = calls[0]
     assert not cleared_buffer.any()
-    assert (text, color, time_ms) == ("ГОТОВО", (255, 255, 255), 1234.0)
+    assert (text, color, time_ms) == ("READY", (255, 255, 255), 1234.0)
