@@ -20,10 +20,14 @@
 **Symptom**: LEDs flicker or show wrong colors
 
 **Solutions**:
-1. Verify audio is disabled: `dtparam=audio=off` in `/boot/config.txt`
-2. Check ground connection shared with Pi
-3. Use level shifter if needed (3.3V → 5V)
-4. Check power supply capacity (0.06A per LED at full white)
+1. Determine whether flicker happens only in a photobooth state such as photo-ready. Check that all states use `render_idle_style_ticker_text()` once on a black-cleared buffer.
+2. Confirm `WS2812BDisplay` retains bounded refresh: changed frames are capped at 15 FPS and static frames are refreshed every 250 ms for latch recovery.
+3. Run `PYTHONPATH=src python -m pytest -q tests/test_photobooth_ticker_states.py tests/test_ws2812b_mapping.py`.
+4. Verify audio is disabled: `dtparam=audio=off` in `/boot/config.txt`.
+5. Check the shared ground connection and use a 3.3V to 5V level shifter if required.
+6. Check power supply capacity (0.06A per LED at full white).
+
+The July 11, 2026 production failure appeared as red garbage during photo-ready and later as fully latched red scanlines after another state change. The software frame was correct. Unconditional 60 FPS output was excessive, but holding a static frame forever allowed one corrupted transfer to persist. The production strategy therefore combines a 15 FPS cap with a 250 ms static recovery refresh.
 
 ### LCD Shows Garbage
 

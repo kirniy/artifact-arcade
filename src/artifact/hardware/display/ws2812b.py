@@ -15,6 +15,7 @@ fight over the PWM audio path.
 """
 
 import logging
+import time
 import numpy as np
 from numpy.typing import NDArray
 
@@ -69,6 +70,8 @@ class WS2812BDisplay(Display):
     LED_DMA = 10          # DMA channel
     LED_INVERT = False    # Don't invert signal
     LED_CHANNEL = 0       # PWM channel
+    MIN_SHOW_INTERVAL = 1.0 / 15.0
+    STATIC_REFRESH_INTERVAL = 0.25
 
     def __init__(
         self,
@@ -86,6 +89,7 @@ class WS2812BDisplay(Display):
         self._strip = None
         self._initialized = False
         self._dirty = True
+        self._last_show_monotonic = 0.0
 
     @property
     def width(self) -> int:
@@ -131,6 +135,7 @@ class WS2812BDisplay(Display):
                     self._strip.setPixelColor(i, 0)
                 self._strip.show()
                 self._dirty = False
+                self._last_show_monotonic = time.monotonic()
             except Exception as clear_err:
                 logger.warning(f"WS2812B clear failed (hardware not connected?): {clear_err}")
                 # Hardware likely not connected - return False
@@ -235,7 +240,15 @@ class WS2812BDisplay(Display):
 
     def show(self) -> None:
         """Update physical LEDs with buffer contents."""
-        if not self._initialized or self._strip is None or not self._dirty:
+        if not self._initialized or self._strip is None:
+            return
+
+        now = time.monotonic()
+        elapsed = now - self._last_show_monotonic
+        if self._dirty:
+            if elapsed < self.MIN_SHOW_INTERVAL:
+                return
+        elif elapsed < self.STATIC_REFRESH_INTERVAL:
             return
 
         try:
@@ -250,6 +263,7 @@ class WS2812BDisplay(Display):
             # Update physical LEDs
             self._strip.show()
             self._dirty = False
+            self._last_show_monotonic = now
         except Exception as e:
             # Hardware might not be connected - disable further attempts
             logger.warning(f"WS2812B show() failed (hardware not connected?): {e}")

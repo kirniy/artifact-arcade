@@ -89,7 +89,9 @@ def test_boiling_text_snapshot_matches_december_baseline() -> None:
     ]
 
 
-def test_static_frame_is_transmitted_only_once() -> None:
+def test_static_frame_is_not_retransmitted_before_recovery_interval(monkeypatch) -> None:
+    clock = [10.0]
+    monkeypatch.setattr("artifact.hardware.display.ws2812b.time.monotonic", lambda: clock[0])
     display = build_display()
     display._strip = _FakeStrip()
     display._initialized = True
@@ -105,7 +107,9 @@ def test_static_frame_is_transmitted_only_once() -> None:
     assert display._strip.frames == 1
 
 
-def test_changed_frame_is_transmitted_again() -> None:
+def test_changed_frame_is_rate_limited(monkeypatch) -> None:
+    clock = [10.0]
+    monkeypatch.setattr("artifact.hardware.display.ws2812b.time.monotonic", lambda: clock[0])
     display = build_display()
     display._strip = _FakeStrip()
     display._initialized = True
@@ -119,4 +123,21 @@ def test_changed_frame_is_transmitted_again() -> None:
     display.set_buffer(second)
     display.show()
 
+    assert display._strip.frames == 1
+
+
+def test_static_frame_is_periodically_refreshed_for_latch_recovery(monkeypatch) -> None:
+    clock = [10.0]
+    monkeypatch.setattr("artifact.hardware.display.ws2812b.time.monotonic", lambda: clock[0])
+    display = build_display()
+    display._strip = _FakeStrip()
+    display._initialized = True
+    display._dirty = False
+    display._last_show_monotonic = clock[0]
+
+    display.show()
+    assert display._strip.frames == 0
+
+    clock[0] += display.STATIC_REFRESH_INTERVAL
+    display.show()
     assert display._strip.frames == 1
