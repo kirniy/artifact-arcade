@@ -46,7 +46,7 @@ class WS2812BDisplay(Display):
     Hardware configuration:
     - GPIO Pin: 21 (PCM_DOUT, avoids the PWM audio path on GPIO 18)
     - LED Count: 384 (48 columns x 8 rows)
-    - LED Type: WS2812B (GRB color order)
+    - LED Type: WS2812B (GRB physical color order)
     - Brightness: Configurable (default 50%)
 
     The LEDs are arranged in a serpentine pattern:
@@ -119,7 +119,7 @@ class WS2812BDisplay(Display):
                 self.LED_INVERT,
                 self._brightness,
                 self.LED_CHANNEL,
-                strip_type=rpi_ws281x.WS2811_STRIP_RGB,
+                strip_type=rpi_ws281x.WS2811_STRIP_GRB,
             )
 
             # Initialize the strip
@@ -198,8 +198,7 @@ class WS2812BDisplay(Display):
         return matrix_offset + local_col * 8 + pixel_in_col
 
     def _rgb_to_color(self, r: int, g: int, b: int) -> int:
-        """Convert RGB to 24-bit color value (RGB order for this strip)."""
-        # This strip uses RGB order (not GRB like standard WS2812B)
+        """Pack logical RGB; PixelStrip applies the physical GRB channel order."""
         # Cast to int to avoid numpy type issues with C extension
         return (int(r) << 16) | (int(g) << 8) | int(b)
 

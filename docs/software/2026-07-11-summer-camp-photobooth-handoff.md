@@ -35,7 +35,7 @@ All photobooth states call `render_idle_style_ticker_text()` through one path af
 
 Summer Camp uses short static ticker words in its lime `theme_chrome` color with no scrolling, fade, vertical slide, flip, or post-render particle overlay. Processing alternates with hard cuts between complete static words. `QR` was physically stable while animated paths failed, proving that the transport and mapping were healthy. This rule now applies to every photobooth theme.
 
-The physical strip is RGB, while `rpi_ws281x.PixelStrip` defaults to GRB. The driver must pass `strip_type=WS2811_STRIP_RGB` explicitly. White QR output cannot reveal this mismatch because all three channels are equal.
+Direct physical calibration showed green for logical `R`, red for logical `G`, and blue for logical `B`. The strip is therefore GRB. The driver must pass `strip_type=WS2811_STRIP_GRB` explicitly. White QR output cannot reveal this red/green swap because all three channels are equal.
 
 Regression tests:
 

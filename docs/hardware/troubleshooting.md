@@ -23,7 +23,7 @@
 1. Determine whether flicker happens only in a photobooth state such as photo-ready. Check that all states use `render_idle_style_ticker_text()` once on a black-cleared buffer.
 2. If short static `QR` is crystal clear, do not change the driver, GPIO, mapping, or wiring. The failure is in a different renderer.
 3. Remove scrolling copy, vertical slide/fade transitions, flips, and post-render ticker particles. Render short static words through `render_idle_style_ticker_text()` on black using the theme accent color. Timed alternation must use hard cuts between complete frames.
-4. If white remains clean but colored text shows red dots, verify `PixelStrip(..., strip_type=WS2811_STRIP_RGB)`. The library default is GRB and white masks the mismatch.
+4. If white remains clean but colored text is wrong, run static `R`, `G`, `B` labels. On July 11 the cabinet showed green `R`, red `G`, and blue `B`, proving physical GRB order. Keep `PixelStrip(..., strip_type=WS2811_STRIP_GRB)` explicit; white masks a red/green swap.
 5. Run `PYTHONPATH=src python -m pytest -q tests/test_photobooth_ticker_states.py tests/test_ws2812b_mapping.py`.
 6. Verify audio is disabled: `dtparam=audio=off` in `/boot/config.txt`.
 7. Check the shared ground connection and power supply only if static QR also fails.
