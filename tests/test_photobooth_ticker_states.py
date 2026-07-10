@@ -47,7 +47,10 @@ def test_ticker_copy_covers_complete_summer_camp_journey() -> None:
     mode._state.is_generating = False
     mode._state.show_result = True
     mode._state.result_view = "photo"
+    mode._time_in_phase = 1234.0
     assert mode._get_ticker_presentation() == ("ФОТО", SUMMER_ACCENT)
+    mode._time_in_phase = 4234.0
+    assert mode._get_ticker_presentation() == ("НА ЧЕКЕ", SUMMER_ACCENT)
     mode._state.result_view = "qr"
     assert mode._get_ticker_presentation() == ("QR", SUMMER_ACCENT)
 
@@ -77,7 +80,7 @@ def test_render_ticker_uses_single_idle_renderer_on_black(monkeypatch) -> None:
 def test_summer_camp_ticker_words_are_static_theme_color_on_black() -> None:
     import numpy as np
 
-    for text in ("SUMMER", "CAMP", "VNVNC", "СТАРТ", "ЖДИ", "ФОТО", "QR"):
+    for text in ("SUMMER", "CAMP", "VNVNC", "СТАРТ", "ЖДИ", "ФОТО", "НА ЧЕКЕ", "QR"):
         first = np.zeros((8, 48, 3), dtype=np.uint8)
         later = np.zeros_like(first)
         render_idle_style_ticker_text(first, text, SUMMER_ACCENT, 0.0)

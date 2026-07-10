@@ -1625,7 +1625,8 @@ class PhotoboothMode(BaseMode):
         if self._state.show_result:
             if self._state.result_view == "qr":
                 return "QR", self.THEME_CHROME
-            return "ФОТО", self.THEME_CHROME
+            text = "ФОТО" if int(self._time_in_phase // 3000) % 2 == 0 else "НА ЧЕКЕ"
+            return text, self.THEME_CHROME
         return self._theme.ticker_idle, self.THEME_CHROME
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:

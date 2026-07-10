@@ -30,7 +30,7 @@ All photobooth states call `render_idle_style_ticker_text()` through one path af
 - camera selector: `СПЕРЕДИ` / `СЗАДИ`
 - countdown: current digit
 - processing: hard-cut cycle `ЖДИ` / `НЕ УХОДИ`
-- completed photo: `ФОТО` on the ticker; `ГОТОВО!` remains on the LCD
+- completed photo: hard-cut cycle `ФОТО` / `НА ЧЕКЕ`; `ГОТОВО!` remains on the LCD
 - QR view: `QR`
 
 Summer Camp uses short static ticker words in its lime `theme_chrome` color with no scrolling, fade, vertical slide, flip, or post-render particle overlay. Processing alternates with hard cuts between complete static words. `QR` was physically stable while animated paths failed, proving that the transport and mapping were healthy. This rule now applies to every photobooth theme.
