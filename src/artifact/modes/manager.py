@@ -1987,7 +1987,12 @@ class ModeManager:
     def _render_mode_select_ticker(self, buffer) -> None:
         """Render ticker during mode select with smooth scrolling description."""
         from artifact.graphics.primitives import clear
-        from artifact.graphics.text_utils import render_ticker_animated, TickerEffect, draw_centered_ticker
+        from artifact.graphics.text_utils import (
+            TickerEffect,
+            draw_centered_ticker,
+            render_idle_style_ticker_text,
+            render_ticker_animated,
+        )
         from artifact.graphics.fonts import load_font, draw_text_bitmap
 
         clear(buffer)
@@ -1996,6 +2001,14 @@ class ModeManager:
         if mode:
             # Clean "Word Cycle" ticker (RSVP style) - No horizontal scrolling
             theme = _get_theme_for_mode_cls(mode.cls)
+            if theme is not None and theme.id == "summer-camp":
+                render_idle_style_ticker_text(
+                    buffer,
+                    "SUMMER",
+                    (255, 255, 255),
+                    self._time_in_state,
+                )
+                return
             if theme is not None and theme.id == "alye-parusa":
                 words = ["АЛЫЕ", "ПАРУСА", "VNVNC.RU", "ФОТО", "СТАРТ"]
             else:

@@ -29,11 +29,11 @@ All photobooth states call `render_idle_style_ticker_text()` through one path af
 - idle: `SUMMER`
 - camera selector: `СПЕРЕДИ` / `СЗАДИ`
 - countdown: current digit
-- processing: `НЕ УХОДИ`
+- processing: `ЖДИ`
 - completed photo: `ГОТОВО`
 - QR view: `QR`
 
-The physical WS2812 driver uses bounded recovery refresh. Changed animation frames are capped at 15 FPS; unchanged frames are resent every 250 ms so a corrupted physical latch cannot remain indefinitely. Do not restore unconditional 60 FPS transmission and do not change this to a permanent write-once hold.
+Summer Camp deliberately uses short static white ticker words with no scrolling, fade, vertical slide, flip, or red processing text. `QR` was physically stable while animated paths failed, proving that the transport and mapping were healthy. Do not add theme-specific ticker animation without checking every journey state on the real 48x8 matrix.
 
 Regression tests:
 
@@ -70,5 +70,4 @@ ARTIFACT_MARK_RESTART_PENDING=1 ./scripts/restart-artifact-if-idle.sh
 ## Relevant Commits
 
 - `39b5e34` unifies all photobooth ticker states behind one renderer.
-- `15d992e` introduced change-driven WS2812 output.
-- `8215a85` supersedes the permanent static hold with a 15 FPS cap and 250 ms recovery refresh after physical validation.
+- `15d992e` and `8215a85` were timing experiments; the final short-static-renderer fix reverts their driver scheduling changes.

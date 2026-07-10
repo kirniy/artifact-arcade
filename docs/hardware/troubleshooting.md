@@ -21,13 +21,13 @@
 
 **Solutions**:
 1. Determine whether flicker happens only in a photobooth state such as photo-ready. Check that all states use `render_idle_style_ticker_text()` once on a black-cleared buffer.
-2. Confirm `WS2812BDisplay` retains bounded refresh: changed frames are capped at 15 FPS and static frames are refreshed every 250 ms for latch recovery.
-3. Run `PYTHONPATH=src python -m pytest -q tests/test_photobooth_ticker_states.py tests/test_ws2812b_mapping.py`.
-4. Verify audio is disabled: `dtparam=audio=off` in `/boot/config.txt`.
-5. Check the shared ground connection and use a 3.3V to 5V level shifter if required.
-6. Check power supply capacity (0.06A per LED at full white).
+2. If short static `QR` is crystal clear, do not change the driver, GPIO, mapping, or wiring. The failure is in a different renderer.
+3. Remove long scrolling copy, vertical slide/fade transitions, flips, and bright red animation from the failing theme. Render short static words through `render_idle_style_ticker_text()` on black.
+4. Run `PYTHONPATH=src python -m pytest -q tests/test_photobooth_ticker_states.py tests/test_ws2812b_mapping.py`.
+5. Verify audio is disabled: `dtparam=audio=off` in `/boot/config.txt`.
+6. Check the shared ground connection and power supply only if static QR also fails.
 
-The July 11, 2026 production failure appeared as red garbage during photo-ready and later as fully latched red scanlines after another state change. The software frame was correct. Unconditional 60 FPS output was excessive, but holding a static frame forever allowed one corrupted transfer to persist. The production strategy therefore combines a 15 FPS cap with a 250 ms static recovery refresh.
+The July 11, 2026 Summer Camp failure affected animated/long ticker states while `QR` remained crystal clear. Driver timing experiments did not solve it and were reverted. Summer Camp now uses only short static white labels: `SUMMER`, `CAMP`, `ЖДИ`, `ГОТОВО`, `QR`, `СТАРТ`, and countdown digits.
 
 ### LCD Shows Garbage
 

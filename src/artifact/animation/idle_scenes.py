@@ -4769,6 +4769,15 @@ class RotatingIdleAnimation:
                     self._render_ticker_flip(buffer, current_text, next_text, current_color, next_color, progress, t)
                 else:
                     self._render_ticker_static_winter(buffer, current_text, current_color, t)
+            elif self.idle_variant == "summer_camp":
+                summer_texts = ["SUMMER", "CAMP", "VNVNC", "СТАРТ"]
+                idx = int((t // 3000) % len(summer_texts))
+                self._render_ticker_static_winter(
+                    buffer,
+                    summer_texts[idx],
+                    (255, 255, 255),
+                    t,
+                )
             elif self.idle_variant == "2k17":
                 two_k17_texts = [
                     " 2K17 ",

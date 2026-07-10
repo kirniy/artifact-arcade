@@ -1622,10 +1622,14 @@ class PhotoboothMode(BaseMode):
         if self._state.is_generating:
             if self._theme.ai_style_key == "alye_parusa":
                 return "ЖДИ", (255, 255, 255)
+            if self._theme.ai_style_key == "summer_camp":
+                return "ЖДИ", (255, 255, 255)
             return "НЕ УХОДИ", (255, 40, 40)
         if self._state.show_result:
             if self._state.result_view == "qr":
                 return "QR", (255, 255, 255)
+            if self._theme.ai_style_key == "summer_camp":
+                return "ГОТОВО", (255, 255, 255)
             return "ГОТОВО", (255, 255, 255)
         return self._theme.ticker_idle, (255, 255, 255)
 

@@ -15,7 +15,6 @@ fight over the PWM audio path.
 """
 
 import logging
-import time
 import numpy as np
 from numpy.typing import NDArray
 
@@ -70,8 +69,6 @@ class WS2812BDisplay(Display):
     LED_DMA = 10          # DMA channel
     LED_INVERT = False    # Don't invert signal
     LED_CHANNEL = 0       # PWM channel
-    MIN_SHOW_INTERVAL = 1.0 / 15.0
-    STATIC_REFRESH_INTERVAL = 0.25
 
     def __init__(
         self,
@@ -88,8 +85,6 @@ class WS2812BDisplay(Display):
         self._buffer = np.zeros((height, width, 3), dtype=np.uint8)
         self._strip = None
         self._initialized = False
-        self._dirty = True
-        self._last_show_monotonic = 0.0
 
     @property
     def width(self) -> int:
@@ -134,8 +129,6 @@ class WS2812BDisplay(Display):
                 for i in range(self._led_count):
                     self._strip.setPixelColor(i, 0)
                 self._strip.show()
-                self._dirty = False
-                self._last_show_monotonic = time.monotonic()
             except Exception as clear_err:
                 logger.warning(f"WS2812B clear failed (hardware not connected?): {clear_err}")
                 # Hardware likely not connected - return False
@@ -212,43 +205,24 @@ class WS2812BDisplay(Display):
     def set_pixel(self, x: int, y: int, r: int, g: int, b: int) -> None:
         """Set a single pixel color."""
         if 0 <= x < self._width and 0 <= y < self._height:
-            pixel = np.array([r, g, b], dtype=np.uint8)
-            if not np.array_equal(self._buffer[y, x], pixel):
-                self._buffer[y, x] = pixel
-                self._dirty = True
+            self._buffer[y, x] = [r, g, b]
 
     def set_buffer(self, buffer: NDArray[np.uint8]) -> None:
         """Set entire display buffer."""
         if buffer.shape == self._buffer.shape:
-            if not np.array_equal(self._buffer, buffer):
-                np.copyto(self._buffer, buffer)
-                self._dirty = True
+            np.copyto(self._buffer, buffer)
         else:
             h = min(buffer.shape[0], self._height)
             w = min(buffer.shape[1], self._width)
-            source = buffer[:h, :w]
-            if not np.array_equal(self._buffer[:h, :w], source):
-                self._buffer[:h, :w] = source
-                self._dirty = True
+            self._buffer[:h, :w] = buffer[:h, :w]
 
     def clear(self, r: int = 0, g: int = 0, b: int = 0) -> None:
         """Clear display to specified color."""
-        color = np.array([r, g, b], dtype=np.uint8)
-        if not np.all(self._buffer == color):
-            self._buffer[:, :] = color
-            self._dirty = True
+        self._buffer[:, :] = [r, g, b]
 
     def show(self) -> None:
         """Update physical LEDs with buffer contents."""
         if not self._initialized or self._strip is None:
-            return
-
-        now = time.monotonic()
-        elapsed = now - self._last_show_monotonic
-        if self._dirty:
-            if elapsed < self.MIN_SHOW_INTERVAL:
-                return
-        elif elapsed < self.STATIC_REFRESH_INTERVAL:
             return
 
         try:
@@ -262,8 +236,6 @@ class WS2812BDisplay(Display):
 
             # Update physical LEDs
             self._strip.show()
-            self._dirty = False
-            self._last_show_monotonic = now
         except Exception as e:
             # Hardware might not be connected - disable further attempts
             logger.warning(f"WS2812B show() failed (hardware not connected?): {e}")
@@ -284,7 +256,6 @@ class WS2812BDisplay(Display):
         self._brightness = max(0, min(255, brightness))
         if self._strip:
             self._strip.setBrightness(self._brightness)
-            self._dirty = True
 
     def cleanup(self) -> None:
         """Clean up and turn off all LEDs."""
