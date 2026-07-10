@@ -3,6 +3,7 @@ import numpy as np
 from artifact.graphics.fonts.pixel_font import draw_text_bitmap, get_ticker_font
 from artifact.hardware.display.ws2812b import WS2812BDisplay
 import artifact.hardware.display.ws2812b as ws2812b_module
+from artifact.hardware.runner import HardwareConfig
 
 
 class _FakePixelStrip:
@@ -34,6 +35,10 @@ class _FakeWS281x:
 
 def build_display() -> WS2812BDisplay:
     return WS2812BDisplay(width=48, height=8)
+
+
+def test_hardware_runner_uses_physically_verified_ticker_brightness() -> None:
+    assert HardwareConfig().ws2812b_brightness == 64
 
 
 def test_driver_explicitly_configures_grb_strip_order(monkeypatch) -> None:
