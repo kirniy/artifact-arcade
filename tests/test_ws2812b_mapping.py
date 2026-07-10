@@ -38,7 +38,7 @@ def build_display() -> WS2812BDisplay:
 
 
 def test_hardware_runner_uses_physically_verified_ticker_brightness() -> None:
-    assert HardwareConfig().ws2812b_brightness == 64
+    assert HardwareConfig().ws2812b_brightness == 32
 
 
 def test_driver_explicitly_configures_grb_strip_order(monkeypatch) -> None:

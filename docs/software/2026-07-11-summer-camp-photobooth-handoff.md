@@ -37,7 +37,7 @@ Summer Camp uses short static ticker words in its lime `theme_chrome` color with
 
 Direct physical calibration showed green for logical `R`, red for logical `G`, and blue for logical `B`. The strip is therefore GRB. The driver must pass `strip_type=WS2811_STRIP_GRB` explicitly. White QR output cannot reveal this red/green swap because all three channels are equal.
 
-The controlled diagnostic was clean at brightness `64`; production had been configured at `128`. Longer labels illuminate substantially more pixels than `QR` and became noisy at the higher setting. The production baseline is `HardwareConfig.ws2812b_brightness=64`.
+The old production brightness `128` produced heavy red noise. Reducing it to `64` helped but occasional moving red dots remained during full labels. The production baseline is therefore `HardwareConfig.ws2812b_brightness=32`. Summer Camp's ticker accent is `(0,255,48)`, with no red component, while other display styling remains unchanged.
 
 Regression tests:
 

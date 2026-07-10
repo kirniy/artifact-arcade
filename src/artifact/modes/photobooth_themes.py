@@ -63,6 +63,7 @@ class PhotoboothTheme:
     menu_display_name: Optional[str] = None  # Optional selector label override
     menu_description: Optional[str] = None  # Optional selector ticker description
     menu_color: Optional[Tuple[int, int, int]] = None  # Optional selector accent color
+    ticker_color: Optional[Tuple[int, int, int]] = None  # Physical 48x8 ticker override
     menu_variants: Tuple[PhotoboothMenuVariant, ...] = ()
 
 
@@ -572,6 +573,7 @@ SUMMER_CAMP_THEME = PhotoboothTheme(
     menu_display_name="SUMMER\nCAMP",
     menu_description="PIXEL SPORTS POSTER",
     menu_color=(198, 236, 56),
+    ticker_color=(0, 255, 48),
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="summer_camp",

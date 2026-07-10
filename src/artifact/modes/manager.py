@@ -2004,7 +2004,7 @@ class ModeManager:
                 render_idle_style_ticker_text(
                     buffer,
                     theme.ticker_idle,
-                    theme.theme_chrome,
+                    theme.ticker_color or theme.theme_chrome,
                     self._time_in_state,
                 )
                 return

@@ -66,7 +66,7 @@ class HardwareConfig:
 
     # GPIO settings
     ws2812b_gpio: int = 21  # Not 18 to avoid audio conflict
-    ws2812b_brightness: int = 64
+    ws2812b_brightness: int = 32
 
     # Arcade button GPIO pins (directly wired, active LOW with pull-up)
     # Buttons connect GPIO to GND when pressed

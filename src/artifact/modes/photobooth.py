@@ -213,6 +213,7 @@ class PhotoboothMode(BaseMode):
         # Theme-derived properties
         self.description = self._theme.description
         self.THEME_CHROME = self._theme.theme_chrome
+        self.TICKER_COLOR = self._theme.ticker_color or self._theme.theme_chrome
         self.THEME_RED = self._theme.theme_red
         self.THEME_BLACK = self._theme.theme_black
 
@@ -1616,18 +1617,18 @@ class PhotoboothMode(BaseMode):
         """Return ticker copy and color for the current user journey state."""
         if self.phase == ModePhase.ACTIVE and self._state.awaiting_camera_selection:
             text = "СЗАДИ" if self._state.selected_camera_id == "hdmi" else "СПЕРЕДИ"
-            return text, self.THEME_CHROME
+            return text, self.TICKER_COLOR
         if self.phase == ModePhase.PROCESSING and self._state.countdown > 0:
-            return str(self._state.countdown), self.THEME_CHROME
+            return str(self._state.countdown), self.TICKER_COLOR
         if self._state.is_generating:
             text = "ЖДИ" if int(self._time_in_phase // 3000) % 2 == 0 else "НЕ УХОДИ"
-            return text, self.THEME_CHROME
+            return text, self.TICKER_COLOR
         if self._state.show_result:
             if self._state.result_view == "qr":
-                return "QR", self.THEME_CHROME
+                return "QR", self.TICKER_COLOR
             text = "ФОТО" if int(self._time_in_phase // 3000) % 2 == 0 else "НА ЧЕКЕ"
-            return text, self.THEME_CHROME
-        return self._theme.ticker_idle, self.THEME_CHROME
+            return text, self.TICKER_COLOR
+        return self._theme.ticker_idle, self.TICKER_COLOR
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render every photobooth state through the idle ticker renderer."""

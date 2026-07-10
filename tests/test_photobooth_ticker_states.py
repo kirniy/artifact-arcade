@@ -11,7 +11,7 @@ from artifact.modes.photobooth import PhotoboothMode, PhotoboothState
 from artifact.modes.photobooth_themes import THEMES
 
 
-SUMMER_ACCENT = (198, 236, 56)
+SUMMER_ACCENT = (0, 255, 48)
 
 
 def _mode(*, phase: ModePhase = ModePhase.ACTIVE, style: str = "summer_camp") -> PhotoboothMode:
@@ -19,7 +19,7 @@ def _mode(*, phase: ModePhase = ModePhase.ACTIVE, style: str = "summer_camp") ->
     mode.phase = phase
     mode._state = PhotoboothState()
     mode._theme = SimpleNamespace(ai_style_key=style, ticker_idle="SUMMER")
-    mode.THEME_CHROME = SUMMER_ACCENT
+    mode.TICKER_COLOR = SUMMER_ACCENT
     mode._time_in_phase = 1234.0
     return mode
 
@@ -122,8 +122,9 @@ def test_every_theme_idle_label_fits_and_is_static() -> None:
 
         first = np.zeros((8, 48, 3), dtype=np.uint8)
         later = np.zeros_like(first)
-        render_idle_style_ticker_text(first, theme.ticker_idle, theme.theme_chrome, 0.0)
-        render_idle_style_ticker_text(later, theme.ticker_idle, theme.theme_chrome, 1900.0)
+        color = theme.ticker_color or theme.theme_chrome
+        render_idle_style_ticker_text(first, theme.ticker_idle, color, 0.0)
+        render_idle_style_ticker_text(later, theme.ticker_idle, color, 1900.0)
 
         assert first.any(), theme.id
         assert np.array_equal(first, later), theme.id

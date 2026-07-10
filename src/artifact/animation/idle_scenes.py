@@ -4681,7 +4681,7 @@ class RotatingIdleAnimation:
         self._render_ticker_static_winter(
             buffer,
             self.idle_ticker_text,
-            self._theme.theme_chrome,
+            self._theme.ticker_color or self._theme.theme_chrome,
             t,
         )
         return

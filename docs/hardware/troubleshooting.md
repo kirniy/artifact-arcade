@@ -24,7 +24,7 @@
 2. If short static `QR` is crystal clear, do not change the driver, GPIO, mapping, or wiring. The failure is in a different renderer.
 3. Remove scrolling copy, vertical slide/fade transitions, flips, and post-render ticker particles. Render short static words through `render_idle_style_ticker_text()` on black using the theme accent color. Timed alternation must use hard cuts between complete frames.
 4. If white remains clean but colored text is wrong, run static `R`, `G`, `B` labels. On July 11 the cabinet showed green `R`, red `G`, and blue `B`, proving physical GRB order. Keep `PixelStrip(..., strip_type=WS2811_STRIP_GRB)` explicit; white masks a red/green swap.
-5. Match diagnostic and production brightness. The clean direct sequence used `64`, while the noisy application used `128`. Keep `HardwareConfig.ws2812b_brightness=64`; test with a full `SUMMER` label, not only two-letter `QR`.
+5. Match diagnostic and production brightness. Red noise improved at `64` versus the old `128` but did not disappear during full labels, so production uses `32`. Test with full `SUMMER`, not only two-letter `QR`. For lime themes, avoid a high red component; Summer Camp uses `(0,255,48)`.
 6. Run `PYTHONPATH=src python -m pytest -q tests/test_photobooth_ticker_states.py tests/test_ws2812b_mapping.py`.
 7. Verify audio is disabled: `dtparam=audio=off` in `/boot/config.txt`.
 8. Check the shared ground connection and power supply only if the brightness-64 full-width diagnostic also fails.
