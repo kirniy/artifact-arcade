@@ -1293,7 +1293,7 @@ class PhotoboothMode(BaseMode):
         return self._state.source_has_visible_face is False
 
     def _source_photo_has_visible_face(self) -> bool:
-        """Return False only when OpenCV confidently sees no guest face."""
+        """Return False only when all conservative face checks miss."""
         if not self._state.photo_bytes:
             return True
         try:
@@ -1302,31 +1302,72 @@ class PhotoboothMode(BaseMode):
             image = PILImage.open(io.BytesIO(self._state.photo_bytes)).convert("RGB")
             frame = np.array(image)
             gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            gray = cv2.equalizeHist(gray)
-
             cascade_dir = Path(cv2.data.haarcascades)
-            classifiers = [
-                cascade_dir / "haarcascade_frontalface_default.xml",
-                cascade_dir / "haarcascade_profileface.xml",
+            strict_min_side = max(36, min(gray.shape[:2]) // 10)
+            fallback_min_side = max(24, min(gray.shape[:2]) // 20)
+            detection_passes = [
+                (
+                    "strict frontal",
+                    cascade_dir / "haarcascade_frontalface_default.xml",
+                    cv2.equalizeHist(gray),
+                    strict_min_side,
+                    4,
+                ),
+                (
+                    "raw frontal",
+                    cascade_dir / "haarcascade_frontalface_default.xml",
+                    gray,
+                    fallback_min_side,
+                    3,
+                ),
+                (
+                    "alternate frontal",
+                    cascade_dir / "haarcascade_frontalface_alt2.xml",
+                    gray,
+                    fallback_min_side,
+                    3,
+                ),
+                (
+                    "left profile",
+                    cascade_dir / "haarcascade_profileface.xml",
+                    gray,
+                    fallback_min_side,
+                    3,
+                ),
+                (
+                    "right profile",
+                    cascade_dir / "haarcascade_profileface.xml",
+                    cv2.flip(gray, 1),
+                    fallback_min_side,
+                    3,
+                ),
             ]
-            min_side = max(36, min(gray.shape[:2]) // 10)
-            for classifier_path in classifiers:
+            loaded_detector = False
+            for pass_name, classifier_path, pass_image, min_side, min_neighbors in detection_passes:
                 if not classifier_path.exists():
                     continue
                 detector = cv2.CascadeClassifier(str(classifier_path))
                 if detector.empty():
                     continue
+                loaded_detector = True
                 faces = detector.detectMultiScale(
-                    gray,
+                    pass_image,
                     scaleFactor=1.08,
-                    minNeighbors=4,
+                    minNeighbors=min_neighbors,
                     minSize=(min_side, min_side),
                     flags=cv2.CASCADE_SCALE_IMAGE,
                 )
                 if len(faces) > 0:
-                    logger.info("Photobooth source face check passed with %d face(s)", len(faces))
+                    logger.info(
+                        "Photobooth source face check passed (%s) with %d face(s)",
+                        pass_name,
+                        len(faces),
+                    )
                     return True
 
+            if not loaded_detector:
+                logger.warning("Photobooth source face detectors unavailable; allowing gallery upload")
+                return True
             logger.warning("Photobooth source face check found no visible faces")
             return False
         except Exception as e:
