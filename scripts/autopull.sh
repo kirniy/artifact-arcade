@@ -21,6 +21,7 @@ env_has_cringe_party() {
     [ -f "$REPO_DIR/.env" ] &&
         grep -Eq '^PHOTOBOOTH_THEME=brainrot$' "$REPO_DIR/.env" &&
         grep -Eq '^PHOTOBOOTH_MENU_MODES=brainrot,wedding,whatsapp$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_AI_ENABLED=false$' "$REPO_DIR/.env" &&
         grep -Eq '^GEMINI_IMAGE_MODEL=gemini-3\.1-flash-lite-image$' "$REPO_DIR/.env"
 }
 

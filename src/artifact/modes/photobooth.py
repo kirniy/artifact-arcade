@@ -76,6 +76,16 @@ RUSSIAN_WEEKDAYS = (
 )
 
 
+def photobooth_ai_enabled() -> bool:
+    """Return whether photobooth sessions may call an AI image provider."""
+    return os.getenv("PHOTOBOOTH_AI_ENABLED", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
 def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = None) -> tuple[str, str]:
     """Return the footer date/time strings for a theme in Moscow time."""
     if now is None:
@@ -209,6 +219,9 @@ class PhotoboothMode(BaseMode):
         self._camera2_ai_enabled = os.getenv(
             "PHOTOBOOTH_HDMI_CAPTURE_AI_ENABLED", "false"
         ).lower() in {"1", "true", "yes", "on"}
+        self._ai_enabled = photobooth_ai_enabled()
+        if not self._ai_enabled:
+            logger.warning("Photobooth AI is disabled; all cameras will capture, upload, and print raw photos")
 
         # Theme-derived properties
         self.description = self._theme.description
@@ -501,8 +514,13 @@ class PhotoboothMode(BaseMode):
             self._state.photo_bytes = jpeg_bytes
             self._state.photo_frame = self._decode_photo_frame(jpeg_bytes)
 
+            if not self._ai_enabled:
+                logger.info("Photobooth raw mode active; skipping AI and using captured photo directly")
+                self._finish_raw_capture_result()
+                return
+
             if self._state.selected_camera_id == "hdmi" and not self._camera2_ai_enabled:
-                logger.info("HDMI capture selected; skipping AI generation and uploading raw frame")
+                logger.info("HDMI capture selected; skipping AI generation and using raw frame")
                 self._finish_raw_capture_result()
                 return
 
@@ -540,7 +558,7 @@ class PhotoboothMode(BaseMode):
         return camera_service.capture_jpeg(quality=quality)
 
     def _finish_raw_capture_result(self) -> None:
-        """Finish a no-AI HDMI capture-card photobooth session."""
+        """Finish a no-AI photobooth session for any selected camera."""
         self._state.ai_display_bytes = self._state.photo_bytes
         self._state.ai_display_frame = self._state.photo_frame
         self._state.ai_label_bytes = None
@@ -1182,12 +1200,12 @@ class PhotoboothMode(BaseMode):
         )
 
     def _upload_raw_capture_async(self) -> None:
-        """Upload the unprocessed HDMI capture-card photo for gallery sharing."""
+        """Upload the unprocessed camera photo for gallery sharing."""
         if not self._state.photo_bytes:
-            logger.warning("No raw HDMI capture bytes available for upload")
+            logger.warning("No raw capture bytes available for upload")
             return
 
-        logger.info("Uploading raw HDMI capture photo...")
+        logger.info("Uploading raw photobooth capture...")
         self._state.is_uploading = True
 
         pre_info = pre_generate_upload_info("photobooth", "jpg")
