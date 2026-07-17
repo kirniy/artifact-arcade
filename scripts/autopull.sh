@@ -8,6 +8,10 @@ REPO_DIR="/home/kirniy/modular-arcade"
 LOG_FILE="/home/kirniy/modular-arcade/logs/autopull.log"
 PENDING_FILE="/home/kirniy/modular-arcade/.deploy/restart-pending"
 AUTO_ACTIVATE_JARA="${ARTIFACT_AUTO_ACTIVATE_JARA:-1}"
+RECOVERY_TUNNEL_ENABLED="${ARTIFACT_RECOVERY_TUNNEL_ENABLED:-1}"
+RECOVERY_TUNNEL_HOST="${ARTIFACT_RECOVERY_TUNNEL_HOST:-root@82.38.148.239}"
+RECOVERY_TUNNEL_PORT="${ARTIFACT_RECOVERY_TUNNEL_PORT:-22091}"
+RECOVERY_TUNNEL_KEY="${ARTIFACT_RECOVERY_TUNNEL_KEY:-/home/kirniy/.ssh/frankfurt2_macmini}"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"
@@ -16,6 +20,34 @@ log() {
 
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$PENDING_FILE")"
 cd "$REPO_DIR"
+
+ensure_recovery_tunnel() {
+    if [ "$RECOVERY_TUNNEL_ENABLED" != "1" ] || [ ! -f "$RECOVERY_TUNNEL_KEY" ]; then
+        return 0
+    fi
+
+    tunnel_spec="127.0.0.1:${RECOVERY_TUNNEL_PORT}:127.0.0.1:22"
+    if pgrep -u "$(id -u)" -f -- "$tunnel_spec" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "Opening localhost-only recovery SSH tunnel on Frankfurt2 port ${RECOVERY_TUNNEL_PORT}..."
+    ssh \
+        -i "$RECOVERY_TUNNEL_KEY" \
+        -o BatchMode=yes \
+        -o IdentitiesOnly=yes \
+        -o StrictHostKeyChecking=accept-new \
+        -o ExitOnForwardFailure=yes \
+        -o ServerAliveInterval=30 \
+        -o ServerAliveCountMax=3 \
+        -fNT \
+        -R "$tunnel_spec" \
+        "$RECOVERY_TUNNEL_HOST" || log "Recovery SSH tunnel could not be opened yet."
+}
+
+# Tailscale is not the only route into a powered-on booth. Keep a loopback-only
+# reverse SSH forward on Frankfurt2 so operators can repair overlay networking.
+ensure_recovery_tunnel
 
 env_has_jara() {
     [ -f "$REPO_DIR/.env" ] &&
