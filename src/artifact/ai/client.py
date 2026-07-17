@@ -298,7 +298,13 @@ class GeminiClient:
     def _auth_headers(self, api_key: str) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if self.config.provider == "vertex":
-            headers["Authorization"] = f"Bearer {self._get_vertex_access_token()}"
+            # Vertex authorization keys are service-account-bound API keys.
+            # Prefer the configured key so the appliance does not depend on a
+            # long-lived local gcloud login; retain ADC as a keyless fallback.
+            if api_key:
+                headers["x-goog-api-key"] = api_key
+            else:
+                headers["Authorization"] = f"Bearer {self._get_vertex_access_token()}"
         else:
             headers["x-goog-api-key"] = api_key
         return headers

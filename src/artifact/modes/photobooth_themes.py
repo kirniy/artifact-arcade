@@ -606,6 +606,34 @@ ALYE_PARUSA_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: ЖАРА — tropical foam-and-pool party in polished flat 2D
+# =============================================================================
+JARA_THEME = PhotoboothTheme(
+    id="jara",
+    event_name="ЖАРА",
+    event_date="17.07",
+    logo_filename="jara.png",
+    theme_chrome=(255, 54, 35),
+    theme_red=(255, 86, 160),
+    theme_black=(0, 166, 235),
+    ticker_idle="ЖАРА",
+    lcd_prefix="ЖАРА",
+    description="ПЕННАЯ ВЕЧЕРИНКА",
+    menu_display_name="ЖАРА",
+    menu_description="ПЕННАЯ ВЕЧЕРИНКА",
+    menu_color=(255, 54, 35),
+    ticker_color=(0, 220, 255),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="jara",
+    reference_image_filenames=(
+        "jara.png",
+        "jara-style-reference.png",
+    ),
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -632,6 +660,7 @@ THEMES = {
     "2k17": TWO_K17_THEME,
     "summer-camp": SUMMER_CAMP_THEME,
     "alye-parusa": ALYE_PARUSA_THEME,
+    "jara": JARA_THEME,
 }
 
 # Default theme

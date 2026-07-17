@@ -82,6 +82,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_SUMMER_CAMP_SQUARE = "photobooth_summer_camp_square"  # 1:1 square - pixelated summer sports camp mode
     PHOTOBOOTH_ALYE_PARUSA = "photobooth_alye_parusa"  # 9:16 vertical - Алые Паруса flat 2D poster mode
     PHOTOBOOTH_ALYE_PARUSA_SQUARE = "photobooth_alye_parusa_square"  # 1:1 square - Алые Паруса flat 2D poster mode
+    PHOTOBOOTH_JARA = "photobooth_jara"  # 9:16 vertical - ЖАРА 2D foam pool-party mode
+    PHOTOBOOTH_JARA_SQUARE = "photobooth_jara_square"  # 1:1 square - ЖАРА 2D foam pool-party mode
     Y2K = "y2k"                # 2000s era character portrait
     BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
 
@@ -3349,6 +3351,82 @@ Include "VNVNC BAD SANTA 2026" in festive-ironic style.
 Thick black lines, sketch comedy aesthetic. Square aspect ratio.""",
 ]
 
+JARA_VARIATIONS = [
+    """ЖАРА — PREMIUM 2D FOAM POOL PARTY POSTER (VERTICAL 9:16)
+
+Create one single centered full-color 9:16 poster. No grid, no photo strip, no separate frames.
+
+IDENTITY IS THE ABSOLUTE PRIORITY:
+- The first input is the real booth photo and the only source of people.
+- Include every visible person exactly once. Preserve exact face structure, eyes, nose, mouth, hair, skin tone, age, body proportions, expression, pose, and recognizable outfit.
+- Preserve visible clothing colors, silhouettes, accessories, logos, and lettering. Do not replace guests with generic models.
+- Render the same real people as sophisticated hand-drawn 2D editorial characters: clean confident outlines, controlled cel shading, subtle texture, expressive but anatomically accurate faces.
+- Do not beautify into a different person. Do not make faces photorealistic cutouts, 3D, plastic, anime, Pixar-like, or childish.
+
+BRAND LAYOUT:
+- The app composites the official ЖАРА emblem after generation. Do not draw, imitate, spell, split, or invent the title yourself.
+- Reserve the top 22-25% as beautiful open sky with no letters, signs, labels, or objects that would clash with the official emblem overlay.
+
+SCENE AND COMPOSITION:
+- Put the illustrated guests waist-up or three-quarter length in the center as the unmistakable heroes.
+- Build an extravagant already-in-progress pool-party world around them: a real pool edge, enormous sculptural white foam banks behind and around the group, clouds of iridescent bubbles, tropical palms framing the upper corners, stylish striped beach chairs, bright pool towels, a pink flamingo float, translucent swim rings, a beach ball, a chic cooler, sunglasses, fruit drinks, and playful summer props.
+- The devices producing the effects are strictly off-camera. Do not draw a foam cannon, bubble machine, nozzle, hose, sprayer, gun, launcher, or industrial equipment anywhere.
+- Create a beautiful dimensional summer sky behind the palms: a rich turquoise-at-horizon to deep cobalt overhead gradient, soft luminous cumulus clouds, warm golden sunlight around cloud rims, subtle sun rays, a few delicate high wisps, and atmospheric depth. It must feel like a spectacular real sky interpreted in polished 2D, never a flat cyan fill.
+- Lots of foam is essential, but it must frame bodies and overlap only lower clothing edges. Never cover eyes, faces, hairlines, hands, or identity-defining details.
+- Rich turquoise/cobalt summer sky, clean white foam, tropical green, hot pink, pool blue, warm sunlight, tiny citrus-yellow highlights, and the official vivid red ЖАРА emblem.
+- Premium nightclub campaign art: stylish, sexy, energetic, polished, spacious, and graphic. Not a children's pool illustration.
+
+TEXT:
+- Generate no readable text at all. Do not render ЖАРА; the app adds the exact official emblem afterward.
+- No VNVNC.RU, date, weekday, time, address, slogans, booking text, random letters, signs, or fake logos inside the artwork.
+- Leave the bottom 14% as clean cyan negative space with a little edge foam; the app adds a deterministic footer.
+
+OUTPUT: exact recognizable guests in refined flat 2D, huge stylish foam party, pool, palms, floaties, beach chairs and bubbles, vertical 9:16.""",
+    """ЖАРА — 2D TROPICAL FOAM WAVE POSTER (VERTICAL 9:16)
+
+Single vertical poster, no panels. Preserve all real guests from the source photo with exact facial likeness, count, pose, hairstyle, clothing identity, accessories, and body proportions.
+
+Draw the people in premium contemporary 2D campaign illustration: decisive ink contours, smooth flat color, restrained cel shadows, small hand-painted highlights, realistic human anatomy and individually recognizable faces. Keep them stylish adults. No photorealism, 3D render, vinyl doll, anime, caricature distortion, or generic faces.
+
+The app adds the exact official ЖАРА emblem afterward. Do not draw any title, letters, signs, labels, or logos. Reserve the top 22-25% as beautiful open sky for the emblem overlay. Use this tropical scene language: palms, pool shimmer, iridescent bubbles, gigantic soft white foam, pink flamingo, striped beach ball, translucent swim rings, striped beach chairs, towels, sunglasses, a chic cooler, and colorful summer drinks.
+
+The sky must be a hero element: layered turquoise-to-cobalt gradient, soft sunlit cumulus clouds with warm gold rim light, subtle rays and high wisps, strong atmospheric depth behind the palms. No plain solid-blue or flat cyan background.
+
+Stage huge rolling banks and sculptural clouds of foam behind and around the guests, plus hundreds of bubbles across the upper background. Create layers of foam in foreground and midground for spectacular depth while keeping every face and important garment detail unobstructed. The group should look as if they genuinely belong together at the party. All effect-production equipment is off-camera: no cannon, machine, nozzle, hose, sprayer, gun, launcher, or industrial device may appear.
+
+Keep the composition clean and fashion-forward despite the abundance of foam. Allow a few droplets and bubbles to cross clothing, never faces. Leave the bottom 14% mostly cyan for the app footer.
+
+No readable text at all, including no generated ЖАРА title. The app adds the official logo and footer. Vertical 9:16.""",
+    """ЖАРА — FLAT 2D POOLSIDE HERO PORTRAIT (VERTICAL 9:16)
+
+One high-end illustrated event poster. Exact identity lock on every person in the real input photo: same people, faces, expressions, hair, skin tones, pose, proportions, outfit silhouette and visible details. Never create additional people and never omit anyone.
+
+Transform the full scene into elegant 2D pool-party key art with crisp lines, saturated flat shapes, subtle screen-print grain, selective cel shading, and beautiful editorial facial drawing that retains unmistakable likeness. Adults should remain natural and cool, never toy-like or childish.
+
+Reserve the top 22-25% as gorgeous open sky for the app's official ЖАРА emblem overlay. Do not draw any title or letters. Surround the central group with blue pool water, lush palm leaves, hundreds of varied iridescent bubbles, rolling banks of fresh white foam, a pink flamingo float, translucent swim rings, a beach ball, striped beach chairs, towels, sunglasses, a chic cooler, and restrained summer drink/fruit accents.
+
+Behind everything, paint an exceptional tropical summer sky with a deep cobalt zenith, luminous turquoise horizon, soft dimensional cumulus clouds, golden sunlit edges, faint rays and airy high wisps. The sky must feel expansive and cinematic, not like a flat color card.
+
+The scene shows only the party and its effects. Keep all foam/bubble production equipment off-camera: no cannon, machine, nozzle, hose, sprayer, gun, launcher, or industrial equipment.
+
+Foam should feel spectacular and abundant but remain an environmental frame; all faces, hair, hands, and identifying clothing must remain readable. Bright daylight-meets-club polish, electric cyan/azure, tropical green, pure white, hot pink and official red.
+
+No readable text at all. The app adds the exact official emblem and footer. Leave a clean cyan footer zone at the bottom. Vertical 9:16.""",
+]
+
+JARA_SQUARE_VARIATIONS = [
+    """ЖАРА — PREMIUM 2D FOAM POOL PARTY POSTER (SQUARE 1:1)
+
+Create one square hero composition, no grid and no panels. Preserve the exact likeness, full person count, expressions, hair, skin tones, proportions, poses, clothing, accessories and visible garment details from the real source photo.
+
+Render the same people as polished flat 2D editorial characters with confident outlines, clean cel shading and subtle print texture. Faces must remain instantly recognizable and anatomically natural. No 3D, photoreal cutout, plastic doll, anime, childish cartoon, generic model or caricature distortion.
+
+The app adds the exact official ЖАРА emblem afterward. Do not draw any title, letters, labels, signs, or logos. Reserve clean sky at the top for the overlay. Use this tropical pool-party art direction: palms, pool shimmer, huge white foam clouds, iridescent bubbles, pink flamingo, swim rings, beach ball, striped beach chairs, towels, sunglasses, coolers, and playful summer props. Use a rich turquoise-to-cobalt illustrated sky, soft sunlit cumulus clouds, warm gold rim light, subtle rays and high wisps.
+
+Place the guests centrally and frame them with spectacular layered foam and bubbles without covering any face, hairline, hands, or identity detail. All production equipment is off-camera: no foam cannon, bubble machine, nozzle, hose, sprayer, gun, launcher, or industrial device. Keep the result fashion-forward, adult, clean and energetic. Generate no readable text; the app adds the emblem. Square 1:1.""",
+]
+
+
 STYLE_PROMPTS = {
     # =========================================================================
     # GUESS MODE - "Кто Я?" - Detective investigation board (uses GUESS_VARIATIONS)
@@ -3604,6 +3682,8 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE: "SUMMER_CAMP_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA: "ALYE_PARUSA_VARIATION",
     CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE: "ALYE_PARUSA_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_JARA: "JARA_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_JARA_SQUARE: "JARA_SQUARE_VARIATION",
 
     # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
@@ -3723,6 +3803,8 @@ class CaricatureService:
                 "SUMMER_CAMP_SQUARE_VARIATION": SUMMER_CAMP_SQUARE_VARIATIONS,
                 "ALYE_PARUSA_VARIATION": ALYE_PARUSA_VARIATIONS,
                 "ALYE_PARUSA_SQUARE_VARIATION": ALYE_PARUSA_SQUARE_VARIATIONS,
+                "JARA_VARIATION": JARA_VARIATIONS,
+                "JARA_SQUARE_VARIATION": JARA_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -3813,6 +3895,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_JARA,
+                CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -3902,6 +3986,10 @@ ADDITIONAL REFERENCE IMAGES:
             is_alye_parusa_style = style in (
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
+            )
+            is_jara_style = style in (
+                CaricatureStyle.PHOTOBOOTH_JARA,
+                CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
             )
 
             if is_brainrot_style:
@@ -4032,6 +4120,19 @@ ADDITIONAL REFERENCE IMAGES:
 - Leave the bottom 13-15% clean for the app's deterministic footer; do not write footer text, fake dates, booking/table text, or random extra words
 - Use the supplied Алые Паруса emblem reference as the official top logo/title; match its Russian lockup as closely as possible
 """
+            elif is_jara_style:
+                color_instruction = """- FULL COLOR — layered turquoise-to-deep-cobalt sky, pure white foam, tropical palm green, hot pink, pool blue, warm golden sunlight, and tiny citrus yellow
+- Strictly one centered hero composition; no grid, strip, panels, or repeated people
+- Premium flat 2D editorial character illustration is mandatory: crisp outlines, controlled cel shading, subtle print texture, natural adult anatomy
+- Exact identity is mandatory: preserve every real face, person count, expression, hair, pose, proportions, outfit silhouette, and visible clothing details
+- Never use photoreal cutout people, 3D rendering, plastic dolls, anime, Pixar-like faces, childish cartoons, or generic fashion models
+- Include abundant stylish foam, a visible pool, palms, clouds of bubbles, flamingo and translucent floaties, beach balls, striped beach chairs, towels, sunglasses, coolers, and chic summer props
+- Keep all effect-production equipment off-camera: absolutely no foam cannon, bubble machine, nozzle, hose, sprayer, gun, launcher, or industrial device
+- The sky is a major designed element: dimensional sunlit cumulus clouds, warm golden rim light, subtle rays, airy high wisps, and atmospheric depth; never use a flat cyan or solid-blue fill
+- Foam and bubbles frame the guests but never cover faces, hairlines, hands, or identity-defining clothing
+- Reserve the top 22-25% as beautiful clear sky for the app's exact official emblem overlay; do not render ЖАРА or any other readable text, logo, sign, or label
+- Leave the bottom 14% clean cyan for the deterministic app footer; do not generate footer text, dates, address, slogans, random letters, or extra logos
+"""
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
@@ -4127,6 +4228,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_2K17,
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
+                CaricatureStyle.PHOTOBOOTH_JARA,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -4162,6 +4264,8 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Pure white pixelated 2D elite summer sports camp poster, crisp tennis-club icon style, chunky dithering, tennis balls, white rackets, lime yoga mat, basketball, soccer ball, whistle, palm leaves, exact human likeness preserved"
             elif is_alye_parusa_style:
                 image_style = "Premium flat 2D Russian Scarlet Sails poster, black field, white clouds, scarlet sails, red-and-white ribbons, thin ink wave lines, elegant negative space, exact human likeness preserved, no footer text"
+            elif is_jara_style:
+                image_style = "Premium flat 2D tropical foam-pool-party campaign poster, crisp editorial character drawing, controlled cel shading, cinematic turquoise-to-cobalt sky with luminous sunlit cumulus clouds and golden atmospheric depth, bright pool, huge clean white foam, palms, iridescent bubbles, hot-pink and translucent floaties, striped beach chairs, towels, chic cooler and summer props, exact human likeness and group count preserved, clean top sky reserved for deterministic logo overlay, no generated text, no visible foam or bubble equipment"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

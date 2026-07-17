@@ -692,6 +692,11 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
             )
+        elif ai_style_key == "jara":
+            return (
+                CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_JARA,
+            )
         elif ai_style_key == "brainrot":
             return (
                 CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
@@ -855,6 +860,7 @@ class PhotoboothMode(BaseMode):
                 "2k17",
                 "summer_camp",
                 "alye_parusa",
+                "jara",
             }
             if ai_style_key in timestamp_theme_keys:
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
@@ -875,7 +881,7 @@ class PhotoboothMode(BaseMode):
                         f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
-                elif ai_style_key in {"office_core", "summer_camp", "2k17", "alye_parusa"}:
+                elif ai_style_key in {"office_core", "summer_camp", "2k17", "alye_parusa", "jara"}:
                     personality_context = (
                         "Do not render footer text inside the AI artwork. "
                         "Leave the bottom 12-15% as clean empty space matching the theme background; "
@@ -893,7 +899,11 @@ class PhotoboothMode(BaseMode):
                 reference_photo=self._state.photo_bytes,
                 style=label_style,  # 9:16 vertical
                 personality_context=personality_context,
-                extra_reference_images=self._theme_reference_images or None,
+                # ЖАРА uses a deterministic transparent logo overlay; omitting
+                # references prevents the model from misspelling/splitting it.
+                extra_reference_images=(
+                    None if ai_style_key == "jara" else self._theme_reference_images or None
+                ),
                 prompt_variation_index=self.prompt_variation_index,
             )
 
@@ -908,6 +918,10 @@ class PhotoboothMode(BaseMode):
                 elif ai_style_key == "alye_parusa":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_alye_parusa_footer(label_bytes, footer_date_str, moscow_time)
+                elif ai_style_key == "jara":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_jara_logo(label_bytes)
+                    label_bytes = self._stamp_jara_footer(label_bytes, footer_date_str, moscow_time)
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
 
                 # Create center-cropped 1:1 version for LED display
@@ -1067,6 +1081,95 @@ class PhotoboothMode(BaseMode):
             return buf.getvalue()
         except Exception as e:
             logger.warning(f"Failed to stamp Alye Parusa footer: {e}")
+            return image_bytes
+
+    def _stamp_jara_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
+        """Paint a deterministic ЖАРА footer without asking the image model to typeset it."""
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            w, h = img.size
+            footer_h = max(int(h * 0.14), 160)
+            y0 = h - footer_h
+            draw = ImageDraw.Draw(img)
+
+            cyan = (0, 174, 239)
+            white = (255, 255, 255)
+            red = tuple(self._theme.theme_chrome) if self._theme.theme_chrome else (255, 54, 35)
+            pink = tuple(self._theme.theme_red) if self._theme.theme_red else (255, 86, 160)
+
+            draw.rectangle((0, y0, w, h), fill=cyan)
+            border = max(4, w // 180)
+            draw.line((0, y0, w, y0), fill=white, width=border)
+            draw.line((0, y0 + border + 3, w, y0 + border + 3), fill=pink, width=max(2, border // 2))
+
+            def load_font(size: int):
+                font_candidates = (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                    "/Library/Fonts/Arial Unicode.ttf",
+                )
+                for font_path in font_candidates:
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.047)))
+            sub_font = load_font(max(22, int(w * 0.034)))
+
+            def text_width(font, text: str) -> int:
+                box = draw.textbbox((0, 0), text, font=font)
+                return box[2] - box[0]
+
+            margin_x = max(24, int(w * 0.055))
+            row1_y = y0 + max(22, int(footer_h * 0.19))
+            row2_y = y0 + max(82, int(footer_h * 0.59))
+            venue = "КОНЮШЕННАЯ 2В"
+
+            draw.text((margin_x, row1_y), "VNVNC.RU", font=main_font, fill=white)
+            draw.text((w - margin_x - text_width(main_font, moscow_time), row1_y), moscow_time, font=main_font, fill=red)
+            draw.text((margin_x, row2_y), footer_date, font=sub_font, fill=white)
+            draw.text((w - margin_x - text_width(sub_font, venue), row2_y), venue, font=sub_font, fill=white)
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp Jara footer: {e}")
+            return image_bytes
+
+    def _stamp_jara_logo(self, image_bytes: bytes) -> bytes:
+        """Composite the exact supplied ЖАРА emblem over the reserved sky."""
+        try:
+            from pathlib import Path
+            from PIL import Image, ImageFilter
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            logo_path = Path(__file__).resolve().parents[3] / "assets" / "images" / "jara-logo-transparent.png"
+            logo = Image.open(logo_path).convert("RGBA")
+            alpha_bbox = logo.getchannel("A").getbbox()
+            if alpha_bbox:
+                logo = logo.crop(alpha_bbox)
+
+            target_w = max(220, int(img.width * 0.62))
+            target_h = max(1, int(logo.height * target_w / logo.width))
+            logo = logo.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            x = (img.width - target_w) // 2
+            y = max(24, int(img.height * 0.035))
+
+            shadow_alpha = logo.getchannel("A").filter(ImageFilter.GaussianBlur(max(4, img.width // 120)))
+            shadow = Image.new("RGBA", logo.size, (0, 50, 85, 0))
+            shadow.putalpha(shadow_alpha.point(lambda value: int(value * 0.42)))
+            img.alpha_composite(shadow, (x, y + max(4, img.height // 350)))
+            img.alpha_composite(logo, (x, y))
+
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp Jara logo: {e}")
             return image_bytes
 
     def _stamp_2k17_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
@@ -1727,6 +1830,7 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("summer_camp", "summer-camp"),
         ("alye-parusa", "alye-parusa"),
         ("alye_parusa", "alye-parusa"),
+        ("jara", "jara"),
     ]
 )
 
