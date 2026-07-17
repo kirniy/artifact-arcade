@@ -1221,13 +1221,48 @@ class PhotoboothMode(BaseMode):
             return image_bytes
 
     def _stamp_jara_logo(self, image_bytes: bytes) -> bytes:
-        """Composite the exact supplied ЖАРА emblem over the reserved sky."""
+        """Composite the deterministic supplied masthead and exact ЖАРА emblem."""
         try:
             from pathlib import Path
-            from PIL import Image, ImageFilter
+            from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
             img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
-            logo_path = Path(__file__).resolve().parents[3] / "assets" / "images" / "jara-logo-transparent.png"
+            asset_dir = Path(__file__).resolve().parents[3] / "assets" / "images"
+
+            # Gemini occasionally puts malformed letters, a white rectangle, or
+            # bland empty cyan behind the reserved logo. Replace that model-
+            # controlled zone with the top of the user's supplied tropical art.
+            # Posterizing it keeps the masthead compatible with the 2D portrait,
+            # while a feathered lower edge preserves the generated scene below.
+            masthead_path = asset_dir / "jara-style-reference.png"
+            if masthead_path.exists():
+                w, h = img.size
+                masthead_end = max(1, int(h * 0.30))
+                solid_end = max(1, int(h * 0.25))
+                reference = Image.open(masthead_path).convert("RGB")
+                reference = reference.crop(
+                    (0, 0, reference.width, max(1, int(reference.height * 0.26)))
+                )
+                masthead = ImageOps.fit(
+                    reference,
+                    (w, masthead_end),
+                    method=Image.Resampling.LANCZOS,
+                    centering=(0.5, 0.5),
+                )
+                masthead = ImageOps.posterize(masthead, 5).filter(ImageFilter.SMOOTH).convert("RGBA")
+
+                layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                layer.paste(masthead, (0, 0))
+                mask = Image.new("L", img.size, 0)
+                mask_draw = ImageDraw.Draw(mask)
+                mask_draw.rectangle((0, 0, w, solid_end), fill=255)
+                feather_h = max(1, masthead_end - solid_end)
+                for row in range(solid_end, masthead_end):
+                    alpha = int(255 * (masthead_end - row) / feather_h)
+                    mask_draw.line((0, row, w, row), fill=alpha)
+                img = Image.composite(layer, img, mask)
+
+            logo_path = asset_dir / "jara-logo-transparent.png"
             logo = Image.open(logo_path).convert("RGBA")
             alpha_bbox = logo.getchannel("A").getbbox()
             if alpha_bbox:

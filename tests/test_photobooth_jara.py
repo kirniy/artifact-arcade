@@ -104,10 +104,33 @@ def test_jara_vertical_generation_uses_identity_prompt_and_9_16(monkeypatch) -> 
     assert "inter-eye distance" in call["prompt"].lower()
     assert "do not homogenize" in call["prompt"].lower()
     assert "no giant cumulus" in call["prompt"].lower()
+    assert "mid-century riviera screenprint" in call["prompt"].lower()
+    assert "no uninterrupted plain-sky region" in call["prompt"].lower()
+    assert "23-27% of canvas height" in call["prompt"].lower()
+    assert "12-16% of canvas height" in call["prompt"].lower()
+    assert "camera motion blur" in call["prompt"].lower()
+    assert "never copy a peace sign" in call["prompt"].lower()
+    assert "hundreds of small overlapping translucent bubble cells" in call["prompt"].lower()
+    assert "not a children's-book illustration" in call["prompt"].lower()
+    assert "broad blue negative space" not in call["prompt"].lower()
     assert "full bleed" in call["prompt"].lower()
     assert "no empty cyan" in call["prompt"].lower()
     assert "do not render жара" in call["prompt"].lower()
     assert "High-fidelity 2D rotoscope" in call["style"]
+
+
+def test_jara_logo_uses_deterministic_tropical_masthead() -> None:
+    source = Image.new("RGB", (768, 1376), (255, 0, 255))
+    buf = io.BytesIO()
+    source.save(buf, format="PNG")
+
+    mode = PhotoboothMode.__new__(PhotoboothMode)
+    result = Image.open(io.BytesIO(mode._stamp_jara_logo(buf.getvalue()))).convert("RGB")
+
+    # The generated top/logo zone is replaced by supplied artwork, while the
+    # portrait/body region below the feather remains untouched.
+    assert result.getpixel((20, 20)) != (255, 0, 255)
+    assert result.getpixel((result.width // 2, int(result.height * 0.35))) == (255, 0, 255)
 
 
 def test_jara_footer_is_a_floating_card_not_a_full_width_bar() -> None:
