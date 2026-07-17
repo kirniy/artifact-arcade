@@ -1,7 +1,10 @@
 import asyncio
 import base64
+import io
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -65,14 +68,41 @@ def test_jara_vertical_generation_uses_identity_prompt_and_9_16(monkeypatch) -> 
 
     call = fake_client.calls[0]
     assert call["aspect_ratio"] == "9:16"
-    assert "IDENTITY IS THE ABSOLUTE PRIORITY" in call["prompt"]
+    assert "NON-NEGOTIABLE IDENTITY LOCK" in call["prompt"]
     assert "striped beach chairs" in call["prompt"].lower()
     assert "do not draw a foam cannon" in call["prompt"].lower()
     assert "nozzle" in call["prompt"].lower()
-    assert "deep cobalt" in call["prompt"].lower()
-    assert "never a flat cyan fill" in call["prompt"].lower()
+    assert "inter-eye distance" in call["prompt"].lower()
+    assert "do not homogenize" in call["prompt"].lower()
+    assert "no giant cumulus" in call["prompt"].lower()
+    assert "full bleed" in call["prompt"].lower()
+    assert "no empty cyan" in call["prompt"].lower()
     assert "do not render жара" in call["prompt"].lower()
-    assert "flat 2D" in call["style"]
+    assert "High-fidelity 2D rotoscope" in call["style"]
+
+
+def test_jara_footer_is_a_floating_card_not_a_full_width_bar() -> None:
+    source = Image.new("RGB", (768, 1365), (12, 130, 210))
+    for y in range(source.height):
+        source.putpixel((0, y), (12, y % 255, 210))
+        source.putpixel((source.width - 1, y), (12, y % 255, 210))
+    buf = io.BytesIO()
+    source.save(buf, format="PNG")
+
+    mode = PhotoboothMode.__new__(PhotoboothMode)
+    mode._theme = THEMES["jara"]
+    result = Image.open(
+        io.BytesIO(mode._stamp_jara_footer(buf.getvalue(), "ПЯТНИЦА", "19:43"))
+    ).convert("RGB")
+
+    assert result.size == source.size
+    assert result.getpixel((0, result.height - 1)) == source.getpixel((0, source.height - 1))
+    assert result.getpixel((result.width - 1, result.height - 1)) == source.getpixel(
+        (source.width - 1, source.height - 1)
+    )
+    assert result.getpixel((result.width // 2, result.height - 90)) != source.getpixel(
+        (source.width // 2, source.height - 90)
+    )
 
 
 def test_vertex_authorization_key_is_used_without_adc() -> None:

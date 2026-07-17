@@ -882,11 +882,19 @@ class PhotoboothMode(BaseMode):
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
                 elif ai_style_key in {"office_core", "summer_camp", "2k17", "alye_parusa", "jara"}:
-                    personality_context = (
-                        "Do not render footer text inside the AI artwork. "
-                        "Leave the bottom 12-15% as clean empty space matching the theme background; "
-                        "the app will stamp VNVNC.RU, the Russian weekday, Moscow time, and venue after generation."
-                    )
+                    if ai_style_key == "jara":
+                        personality_context = (
+                            "Do not render footer text inside the AI artwork. Continue the illustrated pool, "
+                            "foam, water, and props full bleed to the bottom edge with no empty cyan band or "
+                            "blank footer rectangle. Keep faces out of the lowest 13%; the app overlays one "
+                            "compact floating information card there."
+                        )
+                    else:
+                        personality_context = (
+                            "Do not render footer text inside the AI artwork. "
+                            "Leave the bottom 12-15% as clean empty space matching the theme background; "
+                            "the app will stamp VNVNC.RU, the Russian weekday, Moscow time, and venue after generation."
+                        )
                 else:
                     personality_context = (
                         f"Photo taken on {footer_date_str} at {moscow_time} Moscow time. "
@@ -1084,25 +1092,70 @@ class PhotoboothMode(BaseMode):
             return image_bytes
 
     def _stamp_jara_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
-        """Paint a deterministic ЖАРА footer without asking the image model to typeset it."""
+        """Overlay one compact pool-pass info card on the full-bleed artwork."""
         try:
-            from PIL import Image, ImageDraw, ImageFont
+            from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
             w, h = img.size
-            footer_h = max(int(h * 0.14), 160)
-            y0 = h - footer_h
+            margin_x = max(22, int(w * 0.035))
+            margin_bottom = max(22, int(h * 0.022))
+            card_h = max(132, int(h * 0.108))
+            x0, x1 = margin_x, w - margin_x
+            y0, y1 = h - margin_bottom - card_h, h - margin_bottom
+            radius = max(20, int(card_h * 0.18))
+
+            # A soft floating shadow keeps the card legible without creating a
+            # second full-width bar or erasing the generated pool scene.
+            shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            shadow_draw = ImageDraw.Draw(shadow)
+            shadow_offset = max(7, int(h * 0.006))
+            shadow_draw.rounded_rectangle(
+                (x0, y0 + shadow_offset, x1, y1 + shadow_offset),
+                radius=radius,
+                fill=(0, 48, 92, 105),
+            )
+            shadow = shadow.filter(ImageFilter.GaussianBlur(max(8, int(w * 0.014))))
+            img = Image.alpha_composite(img, shadow)
+
+            # Frost the actual artwork under the card, then tint it pearl-aqua.
+            card_mask = Image.new("L", img.size, 0)
+            ImageDraw.Draw(card_mask).rounded_rectangle(
+                (x0, y0, x1, y1), radius=radius, fill=255
+            )
+            frosted = img.filter(ImageFilter.GaussianBlur(max(5, int(w * 0.009))))
+            img = Image.composite(frosted, img, card_mask)
+            panel = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            panel_draw = ImageDraw.Draw(panel)
+            panel_draw.rounded_rectangle(
+                (x0, y0, x1, y1),
+                radius=radius,
+                fill=(238, 253, 255, 232),
+                outline=(255, 255, 255, 245),
+                width=max(2, w // 300),
+            )
+            img = Image.alpha_composite(img, panel)
             draw = ImageDraw.Draw(img)
 
-            cyan = (0, 174, 239)
-            white = (255, 255, 255)
+            ink = (4, 61, 91, 255)
+            muted = (20, 111, 139, 255)
+            white = (255, 255, 255, 255)
             red = tuple(self._theme.theme_chrome) if self._theme.theme_chrome else (255, 54, 35)
             pink = tuple(self._theme.theme_red) if self._theme.theme_red else (255, 86, 160)
 
-            draw.rectangle((0, y0, w, h), fill=cyan)
-            border = max(4, w // 180)
-            draw.line((0, y0, w, y0), fill=white, width=border)
-            draw.line((0, y0 + border + 3, w, y0 + border + 3), fill=pink, width=max(2, border // 2))
+            # A slim hot-to-pink accent reads as event branding, not a divider.
+            accent_y = y0 + max(6, int(card_h * 0.055))
+            accent_x0 = x0 + radius
+            accent_x1 = x1 - radius
+            accent_w = max(1, accent_x1 - accent_x0)
+            accent_thickness = max(4, int(card_h * 0.035))
+            for offset in range(accent_w):
+                mix = offset / max(1, accent_w - 1)
+                color = tuple(int(red[i] * (1.0 - mix) + pink[i] * mix) for i in range(3)) + (255,)
+                draw.line(
+                    (accent_x0 + offset, accent_y, accent_x0 + offset, accent_y + accent_thickness),
+                    fill=color,
+                )
 
             def load_font(size: int):
                 font_candidates = (
@@ -1116,25 +1169,52 @@ class PhotoboothMode(BaseMode):
                         return ImageFont.truetype(font_path, size)
                 return ImageFont.load_default()
 
-            main_font = load_font(max(28, int(w * 0.047)))
-            sub_font = load_font(max(22, int(w * 0.034)))
+            main_font = load_font(max(28, int(w * 0.044)))
+            time_font = load_font(max(27, int(w * 0.041)))
+            sub_font = load_font(max(19, int(w * 0.028)))
 
             def text_width(font, text: str) -> int:
                 box = draw.textbbox((0, 0), text, font=font)
                 return box[2] - box[0]
 
-            margin_x = max(24, int(w * 0.055))
-            row1_y = y0 + max(22, int(footer_h * 0.19))
-            row2_y = y0 + max(82, int(footer_h * 0.59))
+            pad_x = max(22, int(w * 0.038))
+            row1_y = y0 + max(23, int(card_h * 0.19))
+            row2_y = y0 + max(82, int(card_h * 0.64))
             venue = "КОНЮШЕННАЯ 2В"
 
-            draw.text((margin_x, row1_y), "VNVNC.RU", font=main_font, fill=white)
-            draw.text((w - margin_x - text_width(main_font, moscow_time), row1_y), moscow_time, font=main_font, fill=red)
-            draw.text((margin_x, row2_y), footer_date, font=sub_font, fill=white)
-            draw.text((w - margin_x - text_width(sub_font, venue), row2_y), venue, font=sub_font, fill=white)
+            draw.text((x0 + pad_x, row1_y), "VNVNC.RU", font=main_font, fill=ink)
+
+            time_box = draw.textbbox((0, 0), moscow_time, font=time_font)
+            time_w = time_box[2] - time_box[0]
+            time_h = time_box[3] - time_box[1]
+            pill_pad_x = max(17, int(w * 0.023))
+            pill_pad_y = max(8, int(card_h * 0.075))
+            pill_w = time_w + pill_pad_x * 2
+            pill_h = time_h + pill_pad_y * 2
+            pill_x = x1 - pad_x - pill_w
+            pill_y = row1_y - max(4, int(card_h * 0.025))
+            draw.rounded_rectangle(
+                (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h),
+                radius=pill_h // 2,
+                fill=red + (255,),
+            )
+            draw.text(
+                (pill_x + pill_pad_x - time_box[0], pill_y + pill_pad_y - time_box[1]),
+                moscow_time,
+                font=time_font,
+                fill=white,
+            )
+
+            draw.text((x0 + pad_x, row2_y), footer_date.upper(), font=sub_font, fill=muted)
+            draw.text(
+                (x1 - pad_x - text_width(sub_font, venue), row2_y),
+                venue,
+                font=sub_font,
+                fill=muted,
+            )
 
             buf = io.BytesIO()
-            img.save(buf, format="PNG")
+            img.convert("RGB").save(buf, format="PNG")
             return buf.getvalue()
         except Exception as e:
             logger.warning(f"Failed to stamp Jara footer: {e}")

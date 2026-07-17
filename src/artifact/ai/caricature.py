@@ -3352,66 +3352,40 @@ Thick black lines, sketch comedy aesthetic. Square aspect ratio.""",
 ]
 
 JARA_VARIATIONS = [
-    """ЖАРА — PREMIUM 2D FOAM POOL PARTY POSTER (VERTICAL 9:16)
+    """ЖАРА — IDENTITY-LOCKED 2D POOL PARTY POSTER (VERTICAL 9:16)
 
 Create one single centered full-color 9:16 poster. No grid, no photo strip, no separate frames.
 
-IDENTITY IS THE ABSOLUTE PRIORITY:
-- The first input is the real booth photo and the only source of people.
-- Include every visible person exactly once. Preserve exact face structure, eyes, nose, mouth, hair, skin tone, age, body proportions, expression, pose, and recognizable outfit.
-- Preserve visible clothing colors, silhouettes, accessories, logos, and lettering. Do not replace guests with generic models.
-- Render the same real people as sophisticated hand-drawn 2D editorial characters: clean confident outlines, controlled cel shading, subtle texture, expressive but anatomically accurate faces.
-- Do not beautify into a different person. Do not make faces photorealistic cutouts, 3D, plastic, anime, Pixar-like, or childish.
+NON-NEGOTIABLE IDENTITY LOCK — SPEND THE MOST DETAIL ON THE FACES:
+- Input image 1 is the real booth photo and the ONLY source of people. Count the people before drawing; include every person exactly once and add nobody.
+- Use the source photo as a fixed underdrawing. Rotoscope the existing people in place: keep their original left/center/right order, relative coordinates, scale, head angles, arm gestures, overlaps, and camera perspective. Replace the environment behind them; do not re-stage the group as newly invented pool-party models.
+- This is an identity-preserving redraw, not a character redesign. Each guest must be recognizable immediately without seeing the source beside it.
+- For EACH face separately, preserve the measured facial geometry: head silhouette, forehead height, hairline, inter-eye distance, eye shape and tilt, eyebrow thickness and arc, nose bridge/length/tip/nostril width, cheek volume, lip contour and width, jaw angle, chin shape, ears, skin tone, age cues, and any facial hair.
+- Preserve the exact camera angle, gaze, expression, pose, height relationships, body proportions, hairstyle, hair texture/color, and distinctive asymmetries.
+- Trace hair from the source instead of inventing a fashionable substitute: curls remain curls, straight hair remains straight, the exact fringe/hairline remains, and hair volume and parting do not change.
+- Preserve outfit identity exactly: garment type, silhouette, color, neckline, sleeves, accessories, and visible prints/logos/lettering. Do not invent pool clothing or sunglasses on a face.
+- Do not homogenize the group into one house style: each person must retain their own different eyes, nose, jaw, hair and expression. No generic handsome models, beauty filter, face averaging, face swapping, de-aging, plastic skin, or caricature exaggeration.
+- Render them as refined hand-drawn 2D editorial portraits with precise facial linework, restrained cel shading and subtle print grain. Faces are anatomically accurate; the illustration treatment must not weaken likeness.
 
 BRAND LAYOUT:
 - The app composites the official ЖАРА emblem after generation. Do not draw, imitate, spell, split, or invent the title yourself.
-- Reserve the top 22-25% as beautiful open sky with no letters, signs, labels, or objects that would clash with the official emblem overlay.
+- Keep the top 20-22% clear enough for the emblem: sky may continue behind it, but no faces, palms, props, letters or signs may collide with the logo.
 
 SCENE AND COMPOSITION:
-- Put the illustrated guests waist-up or three-quarter length in the center as the unmistakable heroes.
+- Put the illustrated guests waist-up in the center as the unmistakable heroes. Their heads and faces must be large, sharp and evenly important; background decoration is subordinate to likeness.
 - Build an extravagant already-in-progress pool-party world around them: a real pool edge, enormous sculptural white foam banks behind and around the group, clouds of iridescent bubbles, tropical palms framing the upper corners, stylish striped beach chairs, bright pool towels, a pink flamingo float, translucent swim rings, a beach ball, a chic cooler, sunglasses, fruit drinks, and playful summer props.
 - The devices producing the effects are strictly off-camera. Do not draw a foam cannon, bubble machine, nozzle, hose, sprayer, gun, launcher, or industrial equipment anywhere.
-- Create a beautiful dimensional summer sky behind the palms: a rich turquoise-at-horizon to deep cobalt overhead gradient, soft luminous cumulus clouds, warm golden sunlight around cloud rims, subtle sun rays, a few delicate high wisps, and atmospheric depth. It must feel like a spectacular real sky interpreted in polished 2D, never a flat cyan fill.
+- SKY ART DIRECTION — CLEAN DESIGN, NOT AI FANTASY: use a sophisticated modern resort-poster sky, deep saturated ultramarine overhead grading cleanly into clear azure near the horizon, with very subtle paper grain, one restrained sun glow, and at most two small simple flat white cloud ribbons far away. Keep broad calm blue negative space. No giant cumulus piles, no glowing cloud mountains, no gold-edged fantasy clouds, no god rays, no turquoise fog, no cotton-candy dreamscape, no magical concept-art atmosphere, and no generic AI sky spectacle.
 - Lots of foam is essential, but it must frame bodies and overlap only lower clothing edges. Never cover eyes, faces, hairlines, hands, or identity-defining details.
-- Rich turquoise/cobalt summer sky, clean white foam, tropical green, hot pink, pool blue, warm sunlight, tiny citrus-yellow highlights, and the official vivid red ЖАРА emblem.
+- Rich ultramarine/azure sky, clean white foam, tropical green, hot pink, pool blue, crisp neutral daylight, tiny citrus-yellow highlights, and the official vivid red ЖАРА emblem.
 - Premium nightclub campaign art: stylish, sexy, energetic, polished, spacious, and graphic. Not a children's pool illustration.
 
 TEXT:
 - Generate no readable text at all. Do not render ЖАРА; the app adds the exact official emblem afterward.
 - No VNVNC.RU, date, weekday, time, address, slogans, booking text, random letters, signs, or fake logos inside the artwork.
-- Leave the bottom 14% as clean cyan negative space with a little edge foam; the app adds a deterministic footer.
+- Continue the pool, foam and props all the way to the bottom edge: full bleed, no empty cyan footer band, no blank rectangle, no reserved negative-space bar. Keep the lowest 13% free of faces because the app overlays a compact floating information card there.
 
-OUTPUT: exact recognizable guests in refined flat 2D, huge stylish foam party, pool, palms, floaties, beach chairs and bubbles, vertical 9:16.""",
-    """ЖАРА — 2D TROPICAL FOAM WAVE POSTER (VERTICAL 9:16)
-
-Single vertical poster, no panels. Preserve all real guests from the source photo with exact facial likeness, count, pose, hairstyle, clothing identity, accessories, and body proportions.
-
-Draw the people in premium contemporary 2D campaign illustration: decisive ink contours, smooth flat color, restrained cel shadows, small hand-painted highlights, realistic human anatomy and individually recognizable faces. Keep them stylish adults. No photorealism, 3D render, vinyl doll, anime, caricature distortion, or generic faces.
-
-The app adds the exact official ЖАРА emblem afterward. Do not draw any title, letters, signs, labels, or logos. Reserve the top 22-25% as beautiful open sky for the emblem overlay. Use this tropical scene language: palms, pool shimmer, iridescent bubbles, gigantic soft white foam, pink flamingo, striped beach ball, translucent swim rings, striped beach chairs, towels, sunglasses, a chic cooler, and colorful summer drinks.
-
-The sky must be a hero element: layered turquoise-to-cobalt gradient, soft sunlit cumulus clouds with warm gold rim light, subtle rays and high wisps, strong atmospheric depth behind the palms. No plain solid-blue or flat cyan background.
-
-Stage huge rolling banks and sculptural clouds of foam behind and around the guests, plus hundreds of bubbles across the upper background. Create layers of foam in foreground and midground for spectacular depth while keeping every face and important garment detail unobstructed. The group should look as if they genuinely belong together at the party. All effect-production equipment is off-camera: no cannon, machine, nozzle, hose, sprayer, gun, launcher, or industrial device may appear.
-
-Keep the composition clean and fashion-forward despite the abundance of foam. Allow a few droplets and bubbles to cross clothing, never faces. Leave the bottom 14% mostly cyan for the app footer.
-
-No readable text at all, including no generated ЖАРА title. The app adds the official logo and footer. Vertical 9:16.""",
-    """ЖАРА — FLAT 2D POOLSIDE HERO PORTRAIT (VERTICAL 9:16)
-
-One high-end illustrated event poster. Exact identity lock on every person in the real input photo: same people, faces, expressions, hair, skin tones, pose, proportions, outfit silhouette and visible details. Never create additional people and never omit anyone.
-
-Transform the full scene into elegant 2D pool-party key art with crisp lines, saturated flat shapes, subtle screen-print grain, selective cel shading, and beautiful editorial facial drawing that retains unmistakable likeness. Adults should remain natural and cool, never toy-like or childish.
-
-Reserve the top 22-25% as gorgeous open sky for the app's official ЖАРА emblem overlay. Do not draw any title or letters. Surround the central group with blue pool water, lush palm leaves, hundreds of varied iridescent bubbles, rolling banks of fresh white foam, a pink flamingo float, translucent swim rings, a beach ball, striped beach chairs, towels, sunglasses, a chic cooler, and restrained summer drink/fruit accents.
-
-Behind everything, paint an exceptional tropical summer sky with a deep cobalt zenith, luminous turquoise horizon, soft dimensional cumulus clouds, golden sunlit edges, faint rays and airy high wisps. The sky must feel expansive and cinematic, not like a flat color card.
-
-The scene shows only the party and its effects. Keep all foam/bubble production equipment off-camera: no cannon, machine, nozzle, hose, sprayer, gun, launcher, or industrial equipment.
-
-Foam should feel spectacular and abundant but remain an environmental frame; all faces, hair, hands, and identifying clothing must remain readable. Bright daylight-meets-club polish, electric cyan/azure, tropical green, pure white, hot pink and official red.
-
-No readable text at all. The app adds the exact official emblem and footer. Leave a clean cyan footer zone at the bottom. Vertical 9:16.""",
+OUTPUT: exact recognizable guests in refined flat 2D, a clean designer-made blue sky, huge stylish foam party, pool, palms, floaties, beach chairs and bubbles, full-bleed vertical 9:16.""",
 ]
 
 JARA_SQUARE_VARIATIONS = [
@@ -4121,17 +4095,18 @@ ADDITIONAL REFERENCE IMAGES:
 - Use the supplied Алые Паруса emblem reference as the official top logo/title; match its Russian lockup as closely as possible
 """
             elif is_jara_style:
-                color_instruction = """- FULL COLOR — layered turquoise-to-deep-cobalt sky, pure white foam, tropical palm green, hot pink, pool blue, warm golden sunlight, and tiny citrus yellow
+                color_instruction = """- FULL COLOR — clean ultramarine-to-azure resort-poster sky, pure white foam, tropical palm green, hot pink, pool blue, neutral daylight, and tiny citrus yellow
 - Strictly one centered hero composition; no grid, strip, panels, or repeated people
 - Premium flat 2D editorial character illustration is mandatory: crisp outlines, controlled cel shading, subtle print texture, natural adult anatomy
-- Exact identity is mandatory: preserve every real face, person count, expression, hair, pose, proportions, outfit silhouette, and visible clothing details
+- Exact identity outranks every theme element: preserve the individual facial geometry of every guest, exact person count, expression, hair, pose, proportions, outfit silhouette, and visible clothing details
+- Spend maximum detail on large unobstructed faces; never average or homogenize different faces into a generic illustrated face style
 - Never use photoreal cutout people, 3D rendering, plastic dolls, anime, Pixar-like faces, childish cartoons, or generic fashion models
 - Include abundant stylish foam, a visible pool, palms, clouds of bubbles, flamingo and translucent floaties, beach balls, striped beach chairs, towels, sunglasses, coolers, and chic summer props
 - Keep all effect-production equipment off-camera: absolutely no foam cannon, bubble machine, nozzle, hose, sprayer, gun, launcher, or industrial device
-- The sky is a major designed element: dimensional sunlit cumulus clouds, warm golden rim light, subtle rays, airy high wisps, and atmospheric depth; never use a flat cyan or solid-blue fill
+- The sky is clean modern graphic design: broad ultramarine/azure negative space, subtle paper grain, restrained sun glow, at most two small flat distant cloud ribbons; no giant cumulus, golden fantasy edges, god rays, glowing fog, cotton-candy clouds, or generic AI concept-art sky
 - Foam and bubbles frame the guests but never cover faces, hairlines, hands, or identity-defining clothing
-- Reserve the top 22-25% as beautiful clear sky for the app's exact official emblem overlay; do not render ЖАРА or any other readable text, logo, sign, or label
-- Leave the bottom 14% clean cyan for the deterministic app footer; do not generate footer text, dates, address, slogans, random letters, or extra logos
+- Keep the top 20-22% clear for the app's exact official emblem overlay; do not render ЖАРА or any other readable text, logo, sign, or label
+- Artwork continues full bleed to the bottom with pool, foam and props; never create an empty cyan band or reserved blank footer rectangle. Keep faces out of only the lowest 13%, where the app overlays a floating information card
 """
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
@@ -4177,7 +4152,15 @@ ADDITIONAL REFERENCE IMAGES:
 - NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic"""
 
-            prompt = f"""Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo.
+            task_opening = (
+                "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
+                "perform an identity-preserving 2D rotoscope/background replacement; do not synthesize or "
+                "re-stage new versions of them."
+                if is_jara_style
+                else "Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo."
+            )
+
+            prompt = f"""{task_opening}
 
 CRITICAL REQUIREMENTS:
 - IDENTITY LOCK: preserve THE EXACT REAL PERSON OR REAL GROUP IN THE PHOTO. The output must look like the same people, not prettier substitutes, generic models, characters, or lookalikes.
@@ -4265,7 +4248,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
             elif is_alye_parusa_style:
                 image_style = "Premium flat 2D Russian Scarlet Sails poster, black field, white clouds, scarlet sails, red-and-white ribbons, thin ink wave lines, elegant negative space, exact human likeness preserved, no footer text"
             elif is_jara_style:
-                image_style = "Premium flat 2D tropical foam-pool-party campaign poster, crisp editorial character drawing, controlled cel shading, cinematic turquoise-to-cobalt sky with luminous sunlit cumulus clouds and golden atmospheric depth, bright pool, huge clean white foam, palms, iridescent bubbles, hot-pink and translucent floaties, striped beach chairs, towels, chic cooler and summer props, exact human likeness and group count preserved, clean top sky reserved for deterministic logo overlay, no generated text, no visible foam or bubble equipment"
+                image_style = "High-fidelity 2D rotoscope of the attached real people in their original positions and poses, source-photo facial geometry and exact hair traced rather than redesigned, restrained editorial linework and flat color, modern tropical pool-party campaign, clean ultramarine-to-azure resort-poster sky with broad blue negative space and minimal flat distant clouds, bright pool, huge clean white foam, palms, iridescent bubbles, hot-pink and translucent floaties, striped beach chairs, towels, chic cooler and summer props, full-bleed artwork, exact human likeness and group count preserved, no generated text, no visible foam or bubble equipment, no fantasy cloud spectacle"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

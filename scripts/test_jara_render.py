@@ -52,7 +52,8 @@ async def main() -> int:
             reference_photo=jpeg_bytes(photo),
             style=CaricatureStyle.PHOTOBOOTH_JARA,
             personality_context=(
-                "Do not render footer text. Leave the bottom 14% clean cyan for the app footer."
+                "Do not render footer text. Continue the pool, foam, water, and props full bleed "
+                "to the bottom edge; keep faces out of the lowest 13% for the floating info card."
             ),
             extra_reference_images=None,
             prompt_variation_index=args.variation_start + index - 1,
