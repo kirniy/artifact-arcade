@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from artifact.ai.caricature import CaricatureService, CaricatureStyle
 from artifact.ai.client import GeminiClient, GeminiConfig
+from artifact.animation.idle_scenes import IdleScene, RotatingIdleAnimation
 from artifact.modes.photobooth import PhotoboothMode, get_configured_photobooth_modes
 from artifact.modes.photobooth_themes import THEMES
 
@@ -37,6 +38,34 @@ def test_jara_theme_is_registered_with_all_brand_references() -> None:
         "jara.png",
         "jara-style-reference.png",
     )
+    assert theme.theme_chrome == (255, 54, 35)
+    assert theme.theme_red == (255, 86, 160)
+    assert theme.theme_black == (4, 38, 82)
+    assert theme.ticker_color == (0, 220, 255)
+
+
+def test_jara_idle_uses_supplied_theme_video(monkeypatch) -> None:
+    monkeypatch.setenv("PHOTOBOOTH_THEME", "jara")
+    manager = RotatingIdleAnimation.__new__(RotatingIdleAnimation)
+    manager._theme = THEMES["jara"]
+
+    assert manager._detect_idle_variant() == "jara"
+
+    manager.idle_variant = "jara"
+    manager.idle_title = "ЖАРА"
+    manager.idle_lcd_prefix = "ЖАРА"
+    manager.state = type("State", (), {"current_scene": IdleScene.CRINGE_CIRCLE_VIDEO, "scene_time": 0})()
+    assert manager._build_idle_scene_playlist() == [IdleScene.CRINGE_CIRCLE_VIDEO]
+    assert manager._build_variant_scene_titles()[IdleScene.CRINGE_CIRCLE_VIDEO] == "ЖАРА"
+    assert manager.get_scene_name() == "ЖАРА"
+    assert "ЖАРА" in manager.get_lcd_text()
+
+    manager._cv2_available = True
+    manager.cringe_circle_video_path = None
+    manager._load_cringe_circle_video()
+    assert manager.cringe_circle_video_path is not None
+    assert manager.cringe_circle_video_path.name == "jara-fans.mp4"
+    assert manager.cringe_circle_video_path.exists()
 
 
 def test_jara_menu_mode_and_style_mapping(monkeypatch) -> None:

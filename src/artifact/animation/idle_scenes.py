@@ -413,6 +413,8 @@ class RotatingIdleAnimation:
             return "alye_parusa"
         if theme_id == "2k17":
             return "2k17"
+        if theme_id == "jara":
+            return "jara"
         if requested_modes & slavic_keys:
             return "slavic"
         if "2k17" in requested_modes:
@@ -479,6 +481,10 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "2K17",
             }
+        if self.idle_variant == "jara":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
+            }
 
         return {
             IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
@@ -512,6 +518,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "alye_parusa":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "2k17":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "jara":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
 
         playlist = [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -617,7 +625,7 @@ class RotatingIdleAnimation:
         images = self.cringe_assets.get(scene, [])
         if not images:
             fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
-            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa"} else (
+            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa", "jara"} else (
                 (255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90)
             )
             self._draw_centered_title(buffer, self.cringe_scene_titles.get(scene, fallback_title), 50, fallback_color)
@@ -677,7 +685,7 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: (255, 220, 150),
                 IdleScene.CRINGE_WHATSAPP: (255, 214, 126),
             }
-        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa"}:
+        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa", "jara"}:
             accent_map = {
                 IdleScene.CRINGE_HERO: self._theme.theme_chrome,
                 IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.theme_chrome,
@@ -1061,6 +1069,21 @@ class RotatingIdleAnimation:
             else:
                 logger.warning(f"2K17 idle video not found: {video_path}")
             return
+        if self.idle_variant == "jara":
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "jara"
+                / "video"
+                / "jara-fans.mp4"
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded ЖАРА idle video: {video_path.name}")
+            else:
+                logger.warning(f"ЖАРА idle video not found: {video_path}")
+            return
         if self.idle_variant == "slavic":
             video_path = (
                 Path(__file__).parent.parent.parent.parent
@@ -1437,6 +1460,10 @@ class RotatingIdleAnimation:
                 IdleScene.SNOWFALL: "СНЕГ",
                 IdleScene.FIREPLACE: "КАМИН",
                 IdleScene.HYPERCUBE: "ГИПЕР",
+            }
+        elif self.idle_variant == "jara":
+            names = {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
         else:
             names = {
@@ -4894,7 +4921,7 @@ class RotatingIdleAnimation:
                 IdleScene.FIREPLACE: ["   УЮТНЫЙ   ", "   КАМИН    ", " НАЖМИ СТАРТ "],
                 IdleScene.HYPERCUBE: [" ГИПЕРКУБ   ", "    4D      ", " НАЖМИ СТАРТ "],
             }
-        elif self.idle_variant in {"circus_maximus", "candy_shop", "2k17", "alye_parusa"}:
+        elif self.idle_variant in {"circus_maximus", "candy_shop", "2k17", "alye_parusa", "jara"}:
             return [
                 f" {self.idle_lcd_prefix} ".center(16)[:16],
                 self.idle_title.center(16)[:16],

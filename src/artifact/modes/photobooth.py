@@ -1690,12 +1690,11 @@ class PhotoboothMode(BaseMode):
 
     def _render_countdown(self, buffer: NDArray[np.uint8]) -> None:
         """Render countdown number with theme colors."""
-        # Keep camera at 100% visibility - just add subtle tint to edges
-        # Add thin vignette border for branding without obscuring camera
-        buffer[:4, :, 0] = np.minimum(buffer[:4, :, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
-        buffer[-4:, :, 0] = np.minimum(buffer[-4:, :, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
-        buffer[:, :4, 0] = np.minimum(buffer[:, :4, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
-        buffer[:, -4:, 0] = np.minimum(buffer[:, -4:, 0].astype(np.uint16) + 60, 255).astype(np.uint8)
+        # Keep the live preview visible while tinting all four frame edges with
+        # the active theme instead of the old hard-coded red channel.
+        frame_tint = np.asarray(self.THEME_CHROME, dtype=np.uint16) // 3
+        for edge in (buffer[:4, :, :], buffer[-4:, :, :], buffer[:, :4, :], buffer[:, -4:, :]):
+            edge[:] = np.minimum(edge.astype(np.uint16) + frame_tint, 255).astype(np.uint8)
 
         # Big countdown number in chrome with black outline for visibility
         num_str = str(self._state.countdown)
@@ -1786,8 +1785,11 @@ class PhotoboothMode(BaseMode):
                 pass
 
         # Semi-transparent overlay for text
-        buffer[-24:, :, :] = (buffer[-24:, :, :].astype(np.float32) * 0.4).astype(np.uint8)
-        buffer[-24:, :, 0] = np.minimum(buffer[-24:, :, 0].astype(np.uint16) + 40, 255).astype(np.uint8)
+        ready_band = buffer[-24:, :, :]
+        ready_band[:] = (ready_band.astype(np.float32) * 0.35).astype(np.uint8)
+        ready_tint = np.asarray(self.THEME_BLACK, dtype=np.uint16) // 2
+        ready_band[:] = np.minimum(ready_band.astype(np.uint16) + ready_tint, 255).astype(np.uint8)
+        draw_rect(buffer, 0, 126, 128, 2, self.THEME_CHROME)
 
         # Instruction text
         draw_centered_text(buffer, "ЖМИ", 115, self.THEME_CHROME, scale=1)
@@ -1806,8 +1808,11 @@ class PhotoboothMode(BaseMode):
                 draw_centered_text(buffer, "ФОТО", 55, self.THEME_CHROME, scale=1)
 
             # Download hint overlay at bottom
-            buffer[-28:, :, :] = (buffer[-28:, :, :].astype(np.float32) * 0.3).astype(np.uint8)
-            buffer[-28:, :, 0] = np.minimum(buffer[-28:, :, 0].astype(np.uint16) + 30, 255).astype(np.uint8)
+            result_band = buffer[-28:, :, :]
+            result_band[:] = (result_band.astype(np.float32) * 0.3).astype(np.uint8)
+            result_tint = np.asarray(self.THEME_BLACK, dtype=np.uint16) // 2
+            result_band[:] = np.minimum(result_band.astype(np.uint16) + result_tint, 255).astype(np.uint8)
+            draw_rect(buffer, 0, 100, 128, 2, self.THEME_CHROME)
 
             # Animated diagonal arrow pointing down-right (↘)
             arrow_color = self.THEME_CHROME
