@@ -638,22 +638,23 @@ JARA_THEME = PhotoboothTheme(
 # =============================================================================
 WORLD_CUP_FINAL_THEME = PhotoboothTheme(
     id="world-cup-final",
-    event_name="WORLD CUP 2026",
+    event_name="ЧЕМПИОНАТ МИРА 2026",
     event_date="19.07",
     logo_filename="world-cup-final-emblem.png",
     theme_chrome=(117, 200, 245),  # Argentina sky blue; frame and primary UI
     theme_red=(229, 41, 47),  # Spain red; selection and score accents
     theme_black=(7, 21, 47),  # Midnight stadium navy
-    ticker_idle="FINAL",
-    lcd_prefix="FINAL",
-    description="SPAIN × ARGENTINA",
-    menu_display_name="WORLD CUP\nFINAL",
-    menu_description="SPAIN × ARGENTINA",
+    ticker_idle="ФИНАЛ",
+    lcd_prefix="ФИНАЛ",
+    description="ИСПАНИЯ × АРГЕНТИНА",
+    menu_display_name="ЧЕМПИОНАТ\nМИРА",
+    menu_description="ИСПАНИЯ × АРГЕНТИНА",
     menu_color=(244, 197, 66),  # Broadcast gold
     ticker_color=(244, 197, 66),
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="world_cup_final",
+    reference_image_filenames=("world-cup-final-emblem.png",),
 )
 
 

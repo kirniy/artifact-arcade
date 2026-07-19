@@ -3405,7 +3405,7 @@ Place the guests centrally and frame them with spectacular layered foam and bubb
 
 
 WORLD_CUP_FINAL_VARIATIONS = [
-    """WORLD FINAL 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (VERTICAL 9:16)
+    """ЧЕМПИОНАТ МИРА 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (VERTICAL 9:16)
 
 Create one single centered full-color 9:16 poster. No grid, photo strip, panels, repeated people, or alternate poses.
 
@@ -3427,23 +3427,25 @@ NON-NEGOTIABLE IDENTITY LOCK — FACES ARE THE MAIN SUBJECT:
 - The stadium must look deliberately illustrated, not AI fantasy: strong architectural perspective, simple repeated seat rhythms, crisp floodlight geometry, flat ink gradients, controlled halftone shadows, and believable green pitch bands. No melted architecture, random flags, fake signs, smoky voids, generic neon cyberpunk, giant impossible trophy, or empty bland sky.
 - Keep all props and confetti behind or below faces. Nothing may cover eyes, hairlines, hands, clothing text, or identity details. Do not put the guests in team uniforms and do not turn them into professional footballers.
 
-DETERMINISTIC BRANDING ZONES:
-- The app composites the original final emblem and exact match typography afterward. Generate no readable text, numbers, scoreboard, logo, flag writing, jersey lettering, signs, sponsor marks, or fake badges.
-- Keep only the central top 19-21% free of faces for a compact floating broadcast crest. Continue stadium lights, crowd rhythm, flags and confetti around that footprint so the top never becomes a dead blank slab.
+MODEL-RENDERED RUSSIAN BRANDING:
+- Input image 2 is the supplied original event emblem. Reproduce its football-and-cup design faithfully and integrate it yourself into one compact, polished illustrated broadcast lockup at the top. It must feel native to the poster, not pasted on, and there must be no empty placeholder bar.
+- Render exactly these two readable Russian lines, verbatim: "ЧЕМПИОНАТ МИРА 2026" and "ИСПАНИЯ × АРГЕНТИНА". Use bold geometric Cyrillic display lettering with clean spacing. The year 2026 is required. Do not translate either line into English.
+- Do not render any other words, letters, score, date, time, address, flag writing, jersey lettering, sponsor marks, official FIFA/federation logos, fake badges, or random pseudo-text.
+- Keep faces below the compact central top 19-21% branding lockup. Continue stadium lights, crowd rhythm, team-color fields and confetti around it so the top never becomes a dead blank slab.
 - Continue the pitch, crowd, confetti and illustrated props full bleed to the bottom. No empty footer band, no solid blank rectangle, and no second information bar. Keep faces out of the lowest 13% because the app overlays one compact floating score-card footer there.
 
-OUTPUT: the exact recognizable real guests, large resolved faces, premium flat 2D sports illustration, dramatic Spain-versus-Argentina final energy, intentional stadium architecture, no generated text, and no AI-slop background. Vertical 9:16.""",
+OUTPUT: the exact recognizable real guests, large resolved faces, premium flat 2D sports illustration, dramatic Spain-versus-Argentina final energy, intentional stadium architecture, the supplied emblem integrated by the model, exactly the two required Russian lines, and no AI-slop background. Vertical 9:16.""",
 ]
 
 
 WORLD_CUP_FINAL_SQUARE_VARIATIONS = [
-    """WORLD FINAL 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (SQUARE 1:1)
+    """ЧЕМПИОНАТ МИРА 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (SQUARE 1:1)
 
 Create one square hero image, no grid, panels, repeated people, or alternate poses. Use the real photo as a fixed underdrawing and preserve the exact person count, identities, facial geometry, expressions, hair, skin tones, poses, gestures, clothing silhouettes, visible garment details, camera angle, spacing and overlaps. Every guest must remain immediately recognizable; no beautifying, generic faces, football-player makeover, team jerseys, invented gestures, 3D, anime, or plastic-doll styling.
 
 Render refined flat 2D editorial sports art with precise facial linework, natural anatomy, restrained cel shading, screenprint grain and slight print misregistration. Frame the large central guests with a deliberate night-final stadium: geometric floodlights, curved grandstand tiers, controlled halftone crowd, crisp green pitch bands, paper-cut confetti, ribbon streamers, one football low in the scene, Argentina sky-blue/white color fields and Spain red/gold color fields. Props stay behind or below people and never obscure faces, hairlines, hands or clothing text. No official FIFA, federation, sponsor or kit-brand marks.
 
-The app adds the exact original emblem and match typography. Generate no readable text, numbers, scoreboards, logos, labels, signs or badges. Reserve only a compact central top branding footprint while continuing stadium architecture and confetti around it—no dead blank sky. Keep the result adult, energetic, fashion-forward, geometrically designed and unmistakably 2D, not generic AI fantasy. Square 1:1.""",
+Input image 2 is the original event emblem. Faithfully redraw and integrate it yourself into a compact illustrated top broadcast lockup. Render exactly "ЧЕМПИОНАТ МИРА 2026" and "ИСПАНИЯ × АРГЕНТИНА" in bold, clean Cyrillic; 2026 is required. Do not add English translations, scores, dates, times, addresses, sponsors, official FIFA/federation logos, extra labels, fake badges, or pseudo-text. Continue stadium architecture and confetti around the lockup—no empty placeholder and no dead blank sky. Keep the result adult, energetic, fashion-forward, geometrically designed and unmistakably 2D, not generic AI fantasy. Square 1:1.""",
 ]
 
 
@@ -4123,8 +4125,10 @@ ADDITIONAL REFERENCE IMAGES:
 - Exact identity outranks every sports element: preserve every guest's separate facial geometry, real person count, expression, hairline, hairstyle, pose, body proportions, spacing, clothing silhouette and visible garment details
 - Treat the real photo as a fixed underdrawing. Do not re-stage guests as footballers, change clothes into team kits, add scarves or face paint, invent raised arms, average faces, beautify anyone, or cover identity details
 - Use a deliberately designed final-night stadium with geometric floodlights, curved grandstand tiers, controlled halftone crowd rhythms, believable pitch bands, paper-cut confetti, ribbons, one football low in the scene, and balanced Argentina/Spain color fields
-- No official FIFA, federation, sponsor, kit-brand or tournament marks; no generated text, numbers, scoreboard, signs, badges or fake logos
-- Keep only the central top 19-21% free of faces for the app's exact emblem and match-title overlay, but continue stadium architecture and confetti around it so there is no dead blank sky
+- Input image 2 is the original event emblem. Faithfully redraw its football-and-cup design and integrate it yourself into the top broadcast lockup
+- Render exactly "ЧЕМПИОНАТ МИРА 2026" and "ИСПАНИЯ × АРГЕНТИНА" in clean bold Cyrillic. Do not translate them into English and do not add any other text
+- No official FIFA, federation, sponsor, kit-brand or tournament marks; no scoreboards, dates, times, addresses, extra signs, badges, fake logos or pseudo-text
+- Keep faces below the model-rendered central top 19-21% emblem and match-title lockup, but continue stadium architecture and confetti around it so there is no dead blank sky or empty placeholder bar
 - Continue the illustrated stadium and pitch full bleed to the bottom with no blank footer band or second information bar; keep faces out of only the lowest 13% for one compact floating footer card
 - Never use photoreal cutouts, 3D, plastic dolls, anime, childish cartoon faces, melted stadium architecture, random flags, generic neon cyberpunk, smoky voids, or AI-fantasy spectacle
 """
@@ -4180,6 +4184,20 @@ ADDITIONAL REFERENCE IMAGES:
                 else "Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo."
             )
 
+            if is_world_cup_final_style:
+                text_language_rules = """- TEXT LANGUAGE RULES (CRITICAL):
+  * Render exactly "ЧЕМПИОНАТ МИРА 2026" in Russian Cyrillic; the year 2026 is mandatory for this theme
+  * Render exactly "ИСПАНИЯ × АРГЕНТИНА" in Russian Cyrillic
+  * Do not translate these lines into English and do not add any other readable text, score, date, time, address, sponsor, or pseudo-text
+  * The supplied original event emblem must be redrawn and integrated by the model, never left as an empty placeholder"""
+            else:
+                text_language_rules = """- TEXT LANGUAGE RULES (CRITICAL!!!):
+  * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C
+  * NEVER translate or transliterate VNVNC to Russian (НЕ писать ВНВНЦ или что-то подобное!)
+  * All OTHER text (labels, annotations, decorations) must be in RUSSIAN, ALL CAPS
+  * NEVER add any year (2024, 2025, 2026, etc.) - just "VNVNC" alone if adding branding
+  * Example: "VNVNC" is correct, "ВНВНЦ" or "VNVNC 2026" is WRONG!"""
+
             prompt = f"""{task_opening}
 
 CRITICAL REQUIREMENTS:
@@ -4191,12 +4209,7 @@ CRITICAL REQUIREMENTS:
 - Never crop a group photo down to one hero, never merge two people into one, and never replace a person with a prop or logo.
 - If the reference photo contains no visible people, do not invent people, bodies, faces, crowds, silhouettes, mannequins, or characters. Preserve the empty scene and apply only the requested theme graphics/environment.
 {color_instruction}
-- TEXT LANGUAGE RULES (CRITICAL!!!):
-  * The brand name "VNVNC" must ALWAYS stay in ENGLISH letters: V-N-V-N-C
-  * NEVER translate or transliterate VNVNC to Russian (НЕ писать ВНВНЦ или что-то подобное!)
-  * All OTHER text (labels, annotations, decorations) must be in RUSSIAN, ALL CAPS
-  * NEVER add any year (2024, 2025, 2026, etc.) - just "VNVNC" alone if adding branding
-  * Example: "VNVNC" is correct, "ВНВНЦ" or "VNVNC 2026" is WRONG!
+{text_language_rules}
 {personality_hint}
 {reference_asset_hint}
 {style_prompt}
@@ -4271,7 +4284,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
             elif is_jara_style:
                 image_style = "High-fidelity 2D rotoscope of the attached real people in their original positions and poses, large resolved source-photo faces and exact hair traced rather than redesigned, clean stable anatomy even where the source has motion blur, confident hand-inked editorial contours, restrained four-to-six-color screenprint shading and subtle print misregistration, adult modern tropical pool-party campaign, deliberately designed mid-century Riviera sky with cobalt-to-azure ink bands, flat citrus sun disk, long cirrus ribbons, halftone rays and no dead blue gap, bright pool, wet lacy micro-bubble foam rather than cloud shapes, palms, iridescent bubbles, hot-pink and translucent floaties, striped beach chairs, towels, chic cooler and summer props, full-bleed artwork, exact human likeness and group count preserved, no generated text, no visible foam or bubble equipment, no generic AI cartoon scenery"
             elif is_world_cup_final_style:
-                image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses and clothes, large individually resolved faces and exact hair traced rather than redesigned, natural adult anatomy, crisp editorial ink contours, restrained cel shading, premium sports screenprint texture, deliberate Spain versus Argentina final-night stadium architecture, geometric floodlights, halftone crowd, pitch bands, paper-cut confetti and ribbon energy, balanced sky-blue-white and red-gold team color fields, full-bleed artwork, exact human likeness and group count preserved, no generated text, no official marks, no 3D and no generic AI fantasy background"
+                image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses and clothes, large individually resolved faces and exact hair traced rather than redesigned, natural adult anatomy, crisp editorial ink contours, restrained cel shading, premium sports screenprint texture, deliberate Spain versus Argentina final-night stadium architecture, geometric floodlights, halftone crowd, pitch bands, paper-cut confetti and ribbon energy, balanced sky-blue-white and red-gold team color fields, full-bleed artwork, exact human likeness and group count preserved, supplied original football-and-cup emblem faithfully redrawn and integrated by the model, exact Russian title ЧЕМПИОНАТ МИРА 2026 and exact Russian match line ИСПАНИЯ × АРГЕНТИНА, no extra text, no official marks, no 3D and no generic AI fantasy background"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

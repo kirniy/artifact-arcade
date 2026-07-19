@@ -530,7 +530,7 @@ class RotatingIdleAnimation:
             }
         if self.idle_variant == "world_cup_final":
             return {
-                IdleScene.CRINGE_HERO: "WORLD CUP 2026",
+                IdleScene.CRINGE_HERO: "ЧЕМПИОНАТ МИРА 2026",
             }
 
         return {
@@ -648,8 +648,8 @@ class RotatingIdleAnimation:
                 draw = ImageDraw.Draw(frame)
                 font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
                 try:
-                    title_font = ImageFont.truetype(font_path, 17)
-                    teams_font = ImageFont.truetype(font_path, 10)
+                    title_font = ImageFont.truetype(font_path, 11)
+                    teams_font = ImageFont.truetype(font_path, 8)
                 except OSError:
                     title_font = ImageFont.load_default()
                     teams_font = ImageFont.load_default()
@@ -658,8 +658,8 @@ class RotatingIdleAnimation:
                     box = draw.textbbox((0, 0), text, font=font)
                     draw.text(((160 - (box[2] - box[0])) // 2, y), text, font=font, fill=fill_color)
 
-                centered("WORLD CUP 2026", 114, title_font, (255, 255, 255, 255))
-                centered("SPAIN  ×  ARGENTINA", 137, teams_font, (244, 197, 66, 255))
+                centered("ЧЕМПИОНАТ МИРА 2026", 114, title_font, (255, 255, 255, 255))
+                centered("ИСПАНИЯ  ×  АРГЕНТИНА", 137, teams_font, (244, 197, 66, 255))
                 draw.rectangle((5, 5, 8, 155), fill=(117, 200, 245, 255))
                 draw.rectangle((151, 5, 154, 155), fill=(229, 41, 47, 255))
                 frames.append(np.array(frame.convert("RGB"), dtype=np.uint8))
@@ -1615,7 +1615,7 @@ class RotatingIdleAnimation:
             }
         elif self.idle_variant == "world_cup_final":
             names = {
-                IdleScene.CRINGE_HERO: "WORLD CUP 2026",
+                IdleScene.CRINGE_HERO: "ЧЕМПИОНАТ МИРА 2026",
             }
         else:
             names = {
@@ -5115,7 +5115,7 @@ class RotatingIdleAnimation:
                     buffer, two_k17_texts[idx], two_k17_colors[idx], t
                 )
             elif self.idle_variant == "world_cup_final":
-                final_texts = ["FINAL", "SPAIN", "ARG", "VNVNC"]
+                final_texts = ["ФИНАЛ", "ИСП", "АРГ", "VNVNC"]
                 final_colors = [
                     (244, 197, 66),
                     (229, 41, 47),

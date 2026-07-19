@@ -963,11 +963,13 @@ class PhotoboothMode(BaseMode):
                         )
                     elif ai_style_key == "world_cup_final":
                         personality_context = (
-                            "Do not render any title, teams, scores, date, time, address, logo, or footer text "
-                            "inside the AI artwork. Continue the illustrated stadium, crowd, pitch, confetti, "
-                            "and ribbons full bleed with no empty band or blank rectangle. Keep faces out of "
-                            "the compact central top branding footprint and the lowest 13%; the app overlays "
-                            "the exact final crest, match names, and one floating information card."
+                            "Image 2 is the official original event emblem. Integrate that emblem into the "
+                            "illustrated top broadcast lockup yourself; do not leave a blank placeholder. Render "
+                            "the exact Russian title 'ЧЕМПИОНАТ МИРА 2026' and the exact match line "
+                            "'ИСПАНИЯ × АРГЕНТИНА'. Do not add any other title, score, date, time, address, "
+                            "sponsor, badge, or fake logo. Continue the illustrated stadium, crowd, pitch, "
+                            "confetti, and ribbons full bleed with no empty band or blank rectangle. Keep faces "
+                            "out of the lowest 13%; the app overlays only one compact information card there."
                         )
                     else:
                         personality_context = (
@@ -987,12 +989,10 @@ class PhotoboothMode(BaseMode):
                 reference_photo=self._state.photo_bytes,
                 style=label_style,  # 9:16 vertical
                 personality_context=personality_context,
-                # Deterministic-brand themes omit reference images so the model
-                # cannot misspell or invent the event lockup.
+                # ЖАРА remains deterministic; the World Cup theme deliberately
+                # gives the original emblem to the model for an integrated lockup.
                 extra_reference_images=(
-                    None
-                    if ai_style_key in {"jara", "world_cup_final"}
-                    else self._theme_reference_images or None
+                    None if ai_style_key == "jara" else self._theme_reference_images or None
                 ),
                 prompt_variation_index=self.prompt_variation_index,
             )
@@ -1018,7 +1018,6 @@ class PhotoboothMode(BaseMode):
                     label_bytes = self._stamp_jara_footer(label_bytes, footer_date_str, moscow_time)
                 elif ai_style_key == "world_cup_final":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-                    label_bytes = self._stamp_world_cup_final_logo(label_bytes)
                     label_bytes = self._stamp_world_cup_final_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
@@ -1037,16 +1036,21 @@ class PhotoboothMode(BaseMode):
             return None
 
     def _crop_to_square(self, image_bytes: bytes) -> bytes:
-        """Center-crop a 9:16 image to 1:1 square for LED display."""
+        """Crop a 9:16 image to 1:1 square for the LED display."""
         try:
             from PIL import Image
 
             img = Image.open(io.BytesIO(image_bytes))
             w, h = img.size
 
-            # Center-crop to square
+            # Most themes read best as a center crop. The football poster has
+            # a model-rendered emblem/title above the faces, so bias its crop
+            # upward enough to keep both branding and guests on the main screen.
             if w < h:
-                offset = (h - w) // 2
+                if getattr(self._theme, "ai_style_key", None) == "world_cup_final":
+                    offset = int((h - w) * 0.06)
+                else:
+                    offset = (h - w) // 2
                 img = img.crop((0, offset, w, offset + w))
             elif h < w:
                 offset = (w - h) // 2
@@ -1404,7 +1408,13 @@ class PhotoboothMode(BaseMode):
             return image_bytes
 
     def _stamp_world_cup_final_logo(self, image_bytes: bytes) -> bytes:
-        """Overlay the original final crest and exact match copy as one scorebug."""
+        """Compatibility no-op: World Cup branding belongs to the image model."""
+        # Kept temporarily for callers from older deployments. It must never
+        # composite an emblem or title over newly generated artwork.
+        return image_bytes
+
+        # Legacy implementation is intentionally unreachable until it can be
+        # removed after every deployed machine has updated.
         try:
             from PIL import Image, ImageDraw, ImageFilter, ImageFont
 

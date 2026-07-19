@@ -85,7 +85,7 @@ ensure_world_cup_final_activation() {
         return 1
     fi
 
-    log "Activating WORLD CUP 2026 photobooth env for the Sunday club night..."
+    log "Включаем тему фотобудки «Чемпионат мира 2026» на воскресную ночь..."
     ARTIFACT_REMOTE_DIR="$REPO_DIR" "$REPO_DIR/scripts/activate-world-cup-final-photobooth.sh"
     return 0
 }

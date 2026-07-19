@@ -1,5 +1,5 @@
 #!/bin/bash
-# Activate the Sunday WORLD CUP 2026 Spain vs Argentina photobooth configuration.
+# Включить воскресную тему «Чемпионат мира 2026: Испания × Аргентина».
 
 set -euo pipefail
 
@@ -14,7 +14,7 @@ for arg in "$@"; do
             ;;
         -h|--help)
             echo "Usage: $0 [--restart]"
-            echo "Sets .env to the WORLD CUP 2026 Spain vs Argentina AI photobooth theme."
+            echo "Включает в .env тему фотобудки «Чемпионат мира 2026: Испания × Аргентина»."
             exit 0
             ;;
         *)
@@ -92,7 +92,7 @@ PYTHONPATH=src PYTHONPYCACHEPREFIX="${PYCACHE_DIR}" "${PYTHON_BIN}" -m py_compil
 
 rm -rf "${PYCACHE_DIR}"
 
-echo "WORLD CUP 2026 photobooth env is active in ${ENV_FILE}"
+echo "Тема фотобудки «Чемпионат мира 2026» включена в ${ENV_FILE}"
 
 if [ "${RESTART}" = "1" ]; then
     ARTIFACT_MARK_RESTART_PENDING=1 "${REPO_DIR}/scripts/restart-artifact-if-idle.sh" || true
