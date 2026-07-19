@@ -23,69 +23,125 @@ logger = logging.getLogger(__name__)
 class CaricatureStyle(Enum):
     """Available caricature styles."""
 
-    MYSTICAL = "mystical"      # Crystal ball, stars, mystical elements
-    FORTUNE = "fortune"        # Classic fortune teller style
-    SKETCH = "sketch"          # Simple black and white sketch
-    CARTOON = "cartoon"        # Exaggerated cartoon style
-    VINTAGE = "vintage"        # Old-timey carnival style
-    GUESS = "guess"            # Illustration with text annotations
-    MEDICAL = "medical"        # X-ray/Dissection style
-    ROAST = "roast"            # Mean doodle with arrows/labels
-    PROPHET = "prophet"        # Mystical portrait (NOT caricature, no exaggeration)
-    TAROT = "tarot"            # Tarot card style portrait
+    MYSTICAL = "mystical"  # Crystal ball, stars, mystical elements
+    FORTUNE = "fortune"  # Classic fortune teller style
+    SKETCH = "sketch"  # Simple black and white sketch
+    CARTOON = "cartoon"  # Exaggerated cartoon style
+    VINTAGE = "vintage"  # Old-timey carnival style
+    GUESS = "guess"  # Illustration with text annotations
+    MEDICAL = "medical"  # X-ray/Dissection style
+    ROAST = "roast"  # Mean doodle with arrows/labels
+    PROPHET = "prophet"  # Mystical portrait (NOT caricature, no exaggeration)
+    TAROT = "tarot"  # Tarot card style portrait
     QUIZ_WINNER = "quiz_winner"  # Victory celebration doodle for quiz winners
-    ZODIAC = "zodiac"          # Constellation/zodiac sign portrait
-    ROULETTE = "roulette"      # Casino/wheel winner style
+    ZODIAC = "zodiac"  # Constellation/zodiac sign portrait
+    ROULETTE = "roulette"  # Casino/wheel winner style
     PHOTOBOOTH = "photobooth"  # 9:16 vertical photo booth strip for label
     PHOTOBOOTH_SQUARE = "photobooth_square"  # 1:1 square photo booth for LED display
     PHOTOBOOTH_VENICE = "photobooth_venice"  # 9:16 vertical - TRIP:VENICE carnival theme
     PHOTOBOOTH_VENICE_SQUARE = "photobooth_venice_square"  # 1:1 square - TRIP:VENICE theme
     PHOTOBOOTH_LOVEINTHEAIR = "photobooth_loveintheair"  # 9:16 vertical - Valentine's theme
-    PHOTOBOOTH_LOVEINTHEAIR_SQUARE = "photobooth_loveintheair_square"  # 1:1 square - Valentine's theme
-    PHOTOBOOTH_MALCHISHNIK = "photobooth_malchishnik"  # 9:16 vertical - Hangover bachelor party theme
-    PHOTOBOOTH_MALCHISHNIK_SQUARE = "photobooth_malchishnik_square"  # 1:1 square - Hangover bachelor party theme
+    PHOTOBOOTH_LOVEINTHEAIR_SQUARE = (
+        "photobooth_loveintheair_square"  # 1:1 square - Valentine's theme
+    )
+    PHOTOBOOTH_MALCHISHNIK = (
+        "photobooth_malchishnik"  # 9:16 vertical - Hangover bachelor party theme
+    )
+    PHOTOBOOTH_MALCHISHNIK_SQUARE = (
+        "photobooth_malchishnik_square"  # 1:1 square - Hangover bachelor party theme
+    )
     PHOTOBOOTH_FEYPHORIA = "photobooth_feyphoria"  # 9:16 vertical - Enchanted fairy forest theme
-    PHOTOBOOTH_FEYPHORIA_SQUARE = "photobooth_feyphoria_square"  # 1:1 square - Enchanted fairy forest theme
+    PHOTOBOOTH_FEYPHORIA_SQUARE = (
+        "photobooth_feyphoria_square"  # 1:1 square - Enchanted fairy forest theme
+    )
     PHOTOBOOTH_FIESTA = "photobooth_fiesta"  # 9:16 vertical - Realistic Spanish party theme
-    PHOTOBOOTH_FIESTA_SQUARE = "photobooth_fiesta_square"  # 1:1 square - Realistic Spanish party theme
+    PHOTOBOOTH_FIESTA_SQUARE = (
+        "photobooth_fiesta_square"  # 1:1 square - Realistic Spanish party theme
+    )
     PHOTOBOOTH_BIGCITYLIFE = "photobooth_bigcitylife"  # 9:16 vertical - 90s NYC graffiti theme
-    PHOTOBOOTH_BIGCITYLIFE_SQUARE = "photobooth_bigcitylife_square"  # 1:1 square - 90s NYC graffiti theme
+    PHOTOBOOTH_BIGCITYLIFE_SQUARE = (
+        "photobooth_bigcitylife_square"  # 1:1 square - 90s NYC graffiti theme
+    )
     PHOTOBOOTH_BRAINROT = "photobooth_brainrot"  # 9:16 vertical - cringe-party brainrot mode
-    PHOTOBOOTH_BRAINROT_SQUARE = "photobooth_brainrot_square"  # 1:1 square - cringe-party brainrot mode
+    PHOTOBOOTH_BRAINROT_SQUARE = (
+        "photobooth_brainrot_square"  # 1:1 square - cringe-party brainrot mode
+    )
     PHOTOBOOTH_WEDDING = "photobooth_wedding"  # 9:16 vertical - Russian wedding postcard mode
-    PHOTOBOOTH_WEDDING_SQUARE = "photobooth_wedding_square"  # 1:1 square - Russian wedding postcard mode
+    PHOTOBOOTH_WEDDING_SQUARE = (
+        "photobooth_wedding_square"  # 1:1 square - Russian wedding postcard mode
+    )
     PHOTOBOOTH_WHATSAPP = "photobooth_whatsapp"  # 9:16 vertical - grandma WhatsApp postcard mode
-    PHOTOBOOTH_WHATSAPP_SQUARE = "photobooth_whatsapp_square"  # 1:1 square - grandma WhatsApp postcard mode
+    PHOTOBOOTH_WHATSAPP_SQUARE = (
+        "photobooth_whatsapp_square"  # 1:1 square - grandma WhatsApp postcard mode
+    )
     PHOTOBOOTH_SLAVIC_SOUL = "photobooth_slavic_soul"  # 9:16 vertical - slavic soul luxury mode
     PHOTOBOOTH_SLAVIC_SOUL_SQUARE = "photobooth_slavic_soul_square"  # 1:1 square - slavic soul mode
     PHOTOBOOTH_SLAVIC_TALES = "photobooth_slavic_tales"  # 9:16 vertical - slavic fairy-tale mode
-    PHOTOBOOTH_SLAVIC_TALES_SQUARE = "photobooth_slavic_tales_square"  # 1:1 square - slavic fairy-tale mode
+    PHOTOBOOTH_SLAVIC_TALES_SQUARE = (
+        "photobooth_slavic_tales_square"  # 1:1 square - slavic fairy-tale mode
+    )
     PHOTOBOOTH_BANYA_CHIC = "photobooth_banya_chic"  # 9:16 vertical - decadent bathhouse mode
-    PHOTOBOOTH_BANYA_CHIC_SQUARE = "photobooth_banya_chic_square"  # 1:1 square - decadent bathhouse mode
-    PHOTOBOOTH_VNVNC_BDAY = "photobooth_vnvnc_bday"  # 9:16 vertical - VNVNC birthday premium poster mode
-    PHOTOBOOTH_VNVNC_BDAY_SQUARE = "photobooth_vnvnc_bday_square"  # 1:1 square - VNVNC birthday premium poster mode
+    PHOTOBOOTH_BANYA_CHIC_SQUARE = (
+        "photobooth_banya_chic_square"  # 1:1 square - decadent bathhouse mode
+    )
+    PHOTOBOOTH_VNVNC_BDAY = (
+        "photobooth_vnvnc_bday"  # 9:16 vertical - VNVNC birthday premium poster mode
+    )
+    PHOTOBOOTH_VNVNC_BDAY_SQUARE = (
+        "photobooth_vnvnc_bday_square"  # 1:1 square - VNVNC birthday premium poster mode
+    )
     PHOTOBOOTH_CIRCUS_MAXIMUS = "photobooth_circus_maximus"  # 9:16 vertical - creepy circus mode
-    PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE = "photobooth_circus_maximus_square"  # 1:1 square - creepy circus mode
+    PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE = (
+        "photobooth_circus_maximus_square"  # 1:1 square - creepy circus mode
+    )
     PHOTOBOOTH_MTV_NIGHT = "photobooth_mtv_night"  # 9:16 vertical - glossy MTV night poster mode
-    PHOTOBOOTH_MTV_NIGHT_SQUARE = "photobooth_mtv_night_square"  # 1:1 square - glossy MTV night poster mode
-    PHOTOBOOTH_SHADOW_KINGDOM = "photobooth_shadow_kingdom"  # 9:16 vertical - gothic shadow kingdom mode
-    PHOTOBOOTH_SHADOW_KINGDOM_SQUARE = "photobooth_shadow_kingdom_square"  # 1:1 square - gothic shadow kingdom mode
+    PHOTOBOOTH_MTV_NIGHT_SQUARE = (
+        "photobooth_mtv_night_square"  # 1:1 square - glossy MTV night poster mode
+    )
+    PHOTOBOOTH_SHADOW_KINGDOM = (
+        "photobooth_shadow_kingdom"  # 9:16 vertical - gothic shadow kingdom mode
+    )
+    PHOTOBOOTH_SHADOW_KINGDOM_SQUARE = (
+        "photobooth_shadow_kingdom_square"  # 1:1 square - gothic shadow kingdom mode
+    )
     PHOTOBOOTH_CANDY_SHOP = "photobooth_candy_shop"  # 9:16 vertical - white candy shop luxury mode
-    PHOTOBOOTH_CANDY_SHOP_SQUARE = "photobooth_candy_shop_square"  # 1:1 square - white candy shop luxury mode
+    PHOTOBOOTH_CANDY_SHOP_SQUARE = (
+        "photobooth_candy_shop_square"  # 1:1 square - white candy shop luxury mode
+    )
     PHOTOBOOTH_STREET_HEAT = "photobooth_street_heat"  # 9:16 vertical - west coast polaroid mode
-    PHOTOBOOTH_STREET_HEAT_SQUARE = "photobooth_street_heat_square"  # 1:1 square - west coast polaroid mode
+    PHOTOBOOTH_STREET_HEAT_SQUARE = (
+        "photobooth_street_heat_square"  # 1:1 square - west coast polaroid mode
+    )
     PHOTOBOOTH_OFFICE_CORE = "photobooth_office_core"  # 9:16 vertical - pixelated office-core mode
-    PHOTOBOOTH_OFFICE_CORE_SQUARE = "photobooth_office_core_square"  # 1:1 square - pixelated office-core mode
+    PHOTOBOOTH_OFFICE_CORE_SQUARE = (
+        "photobooth_office_core_square"  # 1:1 square - pixelated office-core mode
+    )
     PHOTOBOOTH_2K17 = "photobooth_2k17"  # 9:16 vertical - pixelated 2K17 street-style mode
-    PHOTOBOOTH_2K17_SQUARE = "photobooth_2k17_square"  # 1:1 square - pixelated 2K17 street-style mode
-    PHOTOBOOTH_SUMMER_CAMP = "photobooth_summer_camp"  # 9:16 vertical - pixelated summer sports camp mode
-    PHOTOBOOTH_SUMMER_CAMP_SQUARE = "photobooth_summer_camp_square"  # 1:1 square - pixelated summer sports camp mode
-    PHOTOBOOTH_ALYE_PARUSA = "photobooth_alye_parusa"  # 9:16 vertical - Алые Паруса flat 2D poster mode
-    PHOTOBOOTH_ALYE_PARUSA_SQUARE = "photobooth_alye_parusa_square"  # 1:1 square - Алые Паруса flat 2D poster mode
+    PHOTOBOOTH_2K17_SQUARE = (
+        "photobooth_2k17_square"  # 1:1 square - pixelated 2K17 street-style mode
+    )
+    PHOTOBOOTH_SUMMER_CAMP = (
+        "photobooth_summer_camp"  # 9:16 vertical - pixelated summer sports camp mode
+    )
+    PHOTOBOOTH_SUMMER_CAMP_SQUARE = (
+        "photobooth_summer_camp_square"  # 1:1 square - pixelated summer sports camp mode
+    )
+    PHOTOBOOTH_ALYE_PARUSA = (
+        "photobooth_alye_parusa"  # 9:16 vertical - Алые Паруса flat 2D poster mode
+    )
+    PHOTOBOOTH_ALYE_PARUSA_SQUARE = (
+        "photobooth_alye_parusa_square"  # 1:1 square - Алые Паруса flat 2D poster mode
+    )
     PHOTOBOOTH_JARA = "photobooth_jara"  # 9:16 vertical - ЖАРА 2D foam pool-party mode
     PHOTOBOOTH_JARA_SQUARE = "photobooth_jara_square"  # 1:1 square - ЖАРА 2D foam pool-party mode
-    Y2K = "y2k"                # 2000s era character portrait
-    BAD_SANTA = "bad_santa"    # Naughty/nice Santa verdict
+    PHOTOBOOTH_WORLD_CUP_FINAL = (
+        "photobooth_world_cup_final"  # 9:16 vertical - Spain vs Argentina 2D football final
+    )
+    PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE = (
+        "photobooth_world_cup_final_square"  # 1:1 square - Spain vs Argentina 2D football final
+    )
+    Y2K = "y2k"  # 2000s era character portrait
+    BAD_SANTA = "bad_santa"  # Naughty/nice Santa verdict
 
 
 @dataclass
@@ -122,7 +178,6 @@ The roast must be SPECIFIC to THIS PERSON's actual appearance!
 Look at their face, hair, expression, vibe - and roast THAT.
 BRANDING: Just "VNVNC" somewhere small - NO YEAR, never add 2024/2025/2026!
 Black ink on white. Square. The kind of roast that makes you say "damn" and laugh.""",
-
     """STUNNING MINIMAL B&W PORTRAIT. Isolate this person, draw them PERFECTLY.
 BRUTAL HONEST ROAST like r/RoastMe - find what's ACTUALLY roastable about THIS SPECIFIC PERSON.
 SPEECH BUBBLES with YOUR OWN savage labels in RUSSIAN - be ORIGINAL, don't copy anything.
@@ -133,7 +188,6 @@ You are a comedy WRITER. Don't copy - CREATE. Look at this person and
 find what's ACTUALLY funny about them. Original observations only.
 BRANDING: Just "VNVNC" small somewhere - NEVER add any year!
 Clean portrait, chaotic doodles. Square. Make it hurt (in a funny way).""",
-
     """ISOLATED PORTRAIT - perfect B&W, super minimal. ROAST BATTLE energy.
 What would a standup comedian IMMEDIATELY notice about THIS person? Draw that.
 HANDWRITTEN SPEECH BUBBLES in RUSSIAN with standup-worthy burns.
@@ -144,7 +198,6 @@ Create roasts that are SPECIFIC to this face. No templates, no copying.
 Like a mean caricature artist at a carnival who tells the TRUTH.
 BRANDING: "VNVNC" only - NO YEAR (never 2024, 2025, 2026, etc)!
 Stunning drawing meets savage comedy. Square.""",
-
     """PERFECT BLACK AND WHITE SKETCH. Isolate this person BEAUTIFULLY.
 INTERNET ROAST DOODLE energy - what would Reddit say about THIS SPECIFIC face?
 SPEECH BUBBLES with YOUR ORIGINAL savage humor in RUSSIAN - internet troll energy.
@@ -165,35 +218,30 @@ Big decorative "VNVNC" logo prominently displayed in ornate mystical lettering.
 Stars, moons, cosmic swirls, crystal ball elements as decoration.
 Sticker die-cut style with white border.
 Fortune teller carnival energy, mystical arcade vibes. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait STICKER with magical vibes!
 Slight caricature - capture their enigmatic spirit.
 Ornate mystical-style "VNVNC" as the main text element.
 Tarot card aesthetic, all-seeing eye, celestial motifs around the portrait.
 Bold sticker outline, vintage carnival hand-lettered text.
 Mysterious fortune teller mood. Square aspect ratio.""",
-
     """BLACK AND WHITE mystical STICKER portrait!
 Slight caricature - bring out their mysterious features.
 Decorative vintage carnival lettering showing "VNVNC" prominently.
 Crystal balls, playing cards, stars, cosmic rays.
 Classic sticker format with clean die-cut edge.
 Arcade fortune machine aesthetic. Square aspect ratio.""",
-
     """BLACK AND WHITE MYSTIC STICKER of this person!
 Slight caricature - emphasize what makes them intriguing.
 Big bold "VNVNC" in fancy vintage carnival font style.
 Sparkles, stars, mystical symbols, fortune-telling elements.
 Sticker aesthetic with thick outline border.
 Sideshow attraction vibes, mysterious oracle energy. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait STICKER - Fortune Teller Style!
 Slight caricature - capture their mystical personality.
 Ornamental "VNVNC" text in decorative vintage calligraphy.
 Crystal ball, tarot cards, cosmic decorations.
 Die-cut sticker style, bold graphic look.
 Carnival mystic, arcade fortune machine vibes. Square aspect ratio.""",
-
     """BLACK AND WHITE mystical celebration STICKER!
 Slight caricature - play up their mysterious expression.
 Retro sideshow poster style "VNVNC" lettering.
@@ -209,25 +257,21 @@ Slight caricature - emphasize their distinctive facial features.
 Steve Jobs keynote energy, confident genius, changing the world attitude.
 Clean graphic style, bold lines, Silicon Valley prophet vibes.
 Think Apple ad meets comic book hero. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait of this person as a PUNK ORACLE.
 Slight caricature - bring out what makes them unique.
 Mohawk optional, safety pins and attitude. Knows the future, doesn't care.
 DIY zine aesthetic, photocopied rebellion, underground wisdom.
 Bold scratchy lines, raw energy. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait of this person as a JAZZ SAGE.
 Slight caricature - capture their distinctive vibe.
 Blue Note album cover energy, cool and knowing, improvised prophecy.
 Smoky club atmosphere, sophisticated swagger, beatnik philosopher.
 Ink wash style, moody shadows. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait of this person as a COMIC BOOK ORACLE.
 Slight caricature - play up what makes their face interesting.
 Superhero origin story energy, dramatic panels, destiny awaits.
 Bold comic book style, dynamic poses, dramatic lighting.
 Thick inks, halftone dots, pow energy. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait of this person as a RETRO FUTURIST.
 Slight caricature - emphasize their unique characteristics.
 1960s space age optimism, ray guns and rocket ships, atomic age prophet.
@@ -411,7 +455,6 @@ TOP: "TRIP:VENICE" bold text, "06.02-07.02" below
 BOTTOM: "VNVNC" white condensed letters in gold border
 
 9:16 VERTICAL. Stylish, Pinterest-worthy, flat vector art!""",
-
     """TRIP:VENICE — STYLISH VECTOR BOOTH (VERTICAL 9:16)
 
 VERTICAL (9:16) photo booth strip — 4 flat vector illustrations in 2×2 grid.
@@ -453,7 +496,6 @@ Header: "TRIP:VENICE" + "06.02-07.02"
 Footer: "VNVNC" in gold-bordered white text
 
 9:16 VERTICAL. Stylish flat vector on dark textured paper!""",
-
     """TRIP:VENICE — VECTOR ART BOOTH (VERTICAL 9:16)
 
 VERTICAL (9:16) photo booth — 4 flat vector frames in 2×2 layout.
@@ -671,7 +713,6 @@ MARKER DOODLES ON WHITE STRIP:
 - Make it look like friends decorated it with markers!
 
 VERTICAL 9:16 format.""",
-
     """МАЛЬЧИШНИК — CANDID PARTY SNAPSHOT (VERTICAL 9:16)
 
 LIKENESS FIRST:
@@ -696,7 +737,6 @@ MARKER DOODLES ON WHITE STRIP (handwritten messy style):
 - Make it look decorated by drunk friends with sharpies!
 
 VERTICAL 9:16 format.""",
-
     """МАЛЬЧИШНИК — LEGENDARY NIGHT POLAROID (VERTICAL 9:16)
 
 CRITICAL LIKENESS:
@@ -748,7 +788,6 @@ MARKER DOODLES ON WHITE STRIP:
 - Make it look decorated by friends!
 
 SQUARE 1:1 format.""",
-
     """МАЛЬЧИШНИК — EPIC NIGHT SQUARE (1:1)
 
 CRITICAL LIKENESS:
@@ -830,7 +869,6 @@ TEXT:
 - BOTTOM on border: "VNVNC.RU" on the left in marker handwriting, time from personality context on the right, "Конюшенная 2В" below with flower doodles around it
 
 9:16 VERTICAL. Vinyl doll 3D rendering on doodled aged Polaroid card.""",
-
     """ФЕЙФОРИЯ — FAIRY FIGURINE PHOTO BOOTH (VERTICAL 9:16)
 
 Create a VERTICAL 9:16 photo booth strip — 4 portraits in a 2×2 grid on a grungy vintage card.
@@ -879,7 +917,6 @@ TEXT:
 - BOTTOM: "VNVNC.RU" left in marker, time from context on right, "Конюшенная 2В" scribbled below + flower doodles
 
 9:16 VERTICAL. Premium vinyl figurine portraits on doodled vintage Polaroid!""",
-
     """ФЕЙФОРИЯ — COLLECTIBLE DOLL PHOTO BOOTH (VERTICAL 9:16)
 
 VERTICAL 9:16 photo booth strip. 4 portraits, 2×2 grid, aged grungy card.
@@ -970,7 +1007,6 @@ Frame 4: Mysterious angle, sparkles
 BRANDING: "VNVNC" tall condensed white letters in thin rose-gold rectangular border.
 
 SQUARE 1:1. Vinyl doll 3D portraits on doodled grungy card!""",
-
     """ФЕЙФОРИЯ — FIGURINE SQUARE BOOTH (1:1)
 
 LIKENESS IS TOP PRIORITY — person must be EXACTLY recognizable from reference photo.
@@ -1164,7 +1200,6 @@ TEXT (exactly these, no other text):
 PALETTE: NYC cab yellow, graffiti red, concrete grey, night black, neon orange spray — all flat 2D fills
 
 9:16 VERTICAL. Pure 2D graffiti character art photobooth strip. Raw, gritty, NYC street energy.""",
-
     """BIG CITY LIFE — 90s NYC ГРАФФИТИ ФОТОБУДКА (VERTICAL 9:16)
 
 Создай ВЕРТИКАЛЬНУЮ фотополосу 9:16 с 4 портретами в стиле 2D граффити-арт.
@@ -1204,7 +1239,6 @@ PALETTE: NYC cab yellow, graffiti red, concrete grey, night black, neon orange s
 ПАЛИТРА: Жёлтый (NYC cab), граффити-красный, бетонный серый, ночной чёрный, оранжевый неон
 
 9:16 ВЕРТИКАЛЬНАЯ. Чистый 2D граффити-арт. Сырая уличная энергия Нью-Йорка.""",
-
     """BIG CITY LIFE — NYC STREET ART BOOTH (VERTICAL 9:16)
 
 Create a VERTICAL 9:16 photo booth strip with 4 portraits as authentic 2D graffiti mural art.
@@ -1267,7 +1301,6 @@ BRANDING: "VNVNC.RU" in graffiti bubble letters at bottom — English only, neve
 4 FRAMES: Same person, different expressions and angles. 2D graffiti art throughout.
 
 1:1 SQUARE. Raw NYC street art energy.""",
-
     """NYC GRAFFITI SQUARE — BIG CITY LIFE (1:1)
 
 SQUARE 1:1 photo booth. 4 graffiti character portraits, 2x2 grid.
@@ -2050,8 +2083,6 @@ Square 1:1 hyper-luxury hip-hop birthday poster.
 ]
 
 
-
-
 MTV_NIGHT_VARIATIONS = [
     """MTV NIGHT — GLOSSY 90S CLUB POSTER (VERTICAL 9:16)
 
@@ -2166,7 +2197,6 @@ Square 1:1 MTV logo-fever poster.
 ]
 
 
-
 # SHADOW KINGDOM VARIATIONS - Gothic chrome castle poster (9:16 vertical)
 SHADOW_KINGDOM_VARIATIONS = [
     """КОРОЛЕВСТВО ТЕНЕЙ — EMBLEM-LED GOTHIC CASTLE POSTER (VERTICAL 9:16)
@@ -2215,7 +2245,6 @@ QUALITY / NEGATIVES:
 - No cartoon, no anime, no cheap game UI, no collage, no sticker clutter.
 
 OUTPUT: vertical 9:16 single premium gothic castle poster, exact likeness, official attached emblem branding, mandatory event footer.""",
-
     """КОРОЛЕВСТВО ТЕНЕЙ — ROYAL BLACK STEEL HERO POSTER (VERTICAL 9:16)
 
 Create ONE single full-color 9:16 poster. Not a grid, not a photobooth strip, not a collage, not black-and-white.
@@ -2271,7 +2300,6 @@ Use the attached КОРОЛЕВСТВО ТЕНЕЙ emblem as the actual branding
 Include mandatory event text: "VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, and "КОНЮШЕННАЯ 2В".
 
 Full-color premium gothic castle poster: black steel, chrome bevels, moonlit castle, red banners, fire braziers, blue jewels, ruby accents.""",
-
     """КОРОЛЕВСТВО ТЕНЕЙ — ROYAL BLACK STEEL PORTRAIT (SQUARE 1:1)
 
 This square prompt is retained only as a fallback; the live photobooth should not call it for paid generation.
@@ -2948,7 +2976,6 @@ BOTTOM: "VNVNC.RU" left, time right, "Конюшенная 2В" below
 NO per-frame timestamps. Date appears once only. No МСК suffix.
 Strictly single-image composition — no grid, no strip, no four-frame layout.
 BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.""",
-
     """CIRCUS MAXIMUS — DARK CARNIVAL PORTRAIT (VERTICAL 9:16)
 
 Octane 3D render. Premium dark-toy style — glossy vinyl skin, enlarged glassy eyes, unnervingly perfect.
@@ -2971,7 +2998,6 @@ BOTTOM: "VNVNC.RU" left, time right, "Конюшенная 2В" below
 
 NO per-frame timestamps. Single image. No grid.
 BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.""",
-
     """CIRCUS MAXIMUS — FUNHOUSE MIRROR POSTER (VERTICAL 9:16)
 
 Octane 3D render. Photorealistic funhouse mirror aesthetic.
@@ -3012,7 +3038,6 @@ Vintage circus poster border with red stripes and gold trim. Weathered paper tex
 
 BRANDING: "VNVNC" tall condensed white letters in thin red rectangular border.
 Single image — no grid, no strip, no collage.""",
-
     """CIRCUS MAXIMUS — DARK TOY CIRCUS (SQUARE 1:1)
 
 Octane 3D render. Dark vinyl collectible doll style.
@@ -3036,14 +3061,12 @@ True crime documentary aesthetic, case file photo energy.
 Polaroid snapshot with evidence markers, question marks, magnifying glass.
 Film noir shadows, detective board conspiracy vibes.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). High contrast black ink. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a DETECTIVE BOARD PHOTO.
 Slight caricature - play up what makes them suspicious.
 Newspaper clipping aesthetic, red string connections (in B&W).
 Pushpins, sticky notes, question marks around the portrait.
 Hard-boiled detective vibes, midnight investigation.
 ALL TEXT AND LABELS IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as an FBI WANTED POSTER.
 Slight caricature - emphasize memorable features.
 Vintage typewriter text, official stamp marks, file number.
@@ -3060,14 +3083,12 @@ Vintage anatomy illustration style, diagnostic overlay.
 Their brain: gears? chaos? coffee? Their heart: fire? ice? butterflies?
 Arrow labels pointing to funny observations.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Medical textbook woodcut style. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a PERSONALITY X-RAY.
 Slight caricature - what's inside this person?
 Transparent view showing their inner mechanisms.
 Thought bubbles, dream clouds, fear zones, hope organs.
 Anatomical diagram meets psychology chart.
 ALL LABELS IN RUSSIAN, ALL CAPS (except VNVNC). High contrast. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a DIAGNOSTIC CHART.
 Slight caricature - clinical observation aesthetic.
 Hospital record vibe with vital signs and readings.
@@ -3084,14 +3105,12 @@ Triumphant pose, championship energy, they just won it all!
 Confetti and trophy vibes, spotlight moment, victory celebration.
 Bold comic book style, action lines, champion's glow.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). High contrast ink drawing. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a QUIZ MASTER.
 Slight caricature - capture their victorious expression.
 Gold medal energy, podium champion, brain power visualized.
 Lightning bolts of knowledge, stars of success.
 Retro game show aesthetic, 80s TV vibes.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold lines. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a TRIVIA GENIUS.
 Slight caricature - play up their smart features.
 Graduation cap optional, encyclopedia knowledge radiating.
@@ -3108,14 +3127,12 @@ Old school stage magic vibes, top hat and cape energy.
 Houdini-era showmanship, dramatic theatrical flair.
 Vintage playbill illustration style, bold lines.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Fun entertainer energy. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a VAUDEVILLE STAR.
 Slight caricature - emphasize their showman qualities.
 Classic illusionist aesthetic, cards and rabbits optional.
 Dramatic lighting, stage curtain frame, applause energy.
 1920s magic poster style, art deco flourishes.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a CIRCUS MENTALIST.
 Slight caricature - capture their mysterious charm.
 Mind-reading performer vibes, hypnotic spiral background optional.
@@ -3132,14 +3149,12 @@ Vintage carnival poster aesthetic, ringmaster energy.
 Step right up! See the amazing! Barnum and Bailey vibes.
 Art deco circus poster style, bold graphic lines.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Fun theatrical energy. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a CIRCUS ANNOUNCER.
 Slight caricature - play up their charismatic features.
 Big top energy, striped tent frame, spotlight beams.
 Megaphone optional, crowd excitement, showtime vibes.
 Vintage broadside poster style.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a FORTUNE BOOTH KEEPER.
 Slight caricature - capture their knowing expression.
 Arcade fortune machine aesthetic, coin slot decorations.
@@ -3156,14 +3171,12 @@ Fashion illustration meets editorial portrait.
 Bold confident ink strokes, high contrast.
 Vogue-worthy composition, effortless cool.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Clean lines, artistic minimalism. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait in EDITORIAL ILLUSTRATION style.
 Slight caricature - emphasize their striking features.
 Magazine cover energy, sophisticated lines.
 Brush pen strokes, dynamic composition.
 High fashion meets fine art portraiture.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait in QUICK SKETCH style.
 Slight caricature - capture their essence in bold strokes.
 Artist's notebook aesthetic, spontaneous energy.
@@ -3180,14 +3193,12 @@ Pixar meets manga character design, friendly exaggeration.
 Capture their personality in bigger-than-life form.
 Joyful, friendly, inviting. Not mean, just playful.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold ink lines, dynamic pose. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait in ANIMATED CHARACTER style.
 Moderate caricature - bring out their animated personality.
 Disney energy meets anime expressiveness.
 Big eyes optional, exaggerated expressions welcome.
 Lovable character design, instant likability.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait in COMIC STRIP style.
 Moderate caricature - make them a comic character.
 Sunday funnies aesthetic, expressive simplicity.
@@ -3204,14 +3215,12 @@ P.T. Barnum era showmanship meets Art Nouveau elegance.
 They are the main attraction, the star of the show!
 Victorian theatrical drama with decorative flourishes.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Woodcut poster style. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a SILENT FILM STAR.
 Slight caricature - capture their dramatic expression.
 1920s Hollywood glamour, title card aesthetic.
 Dramatic lighting, theatrical pose, silver screen energy.
 Art deco frame, vintage film grain texture.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a VAUDEVILLE PERFORMER.
 Slight caricature - play up their entertainer qualities.
 Stage lights, curtain frame, applause energy.
@@ -3228,14 +3237,12 @@ Retro sci-fi pulp magazine cover energy, astronaut helmet optional.
 Star maps and constellations as decorative background.
 1950s space age optimism, rocket ship vibes.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold ink illustration. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a COSMIC NAVIGATOR.
 Slight caricature - emphasize their visionary gaze.
 Starship captain energy, control panel background.
 Galaxy swirls, planet rings, cosmic dust.
 Golden age sci-fi aesthetic, pulp adventure vibes.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as an ASTRAL VOYAGER.
 Slight caricature - capture their otherworldly charm.
 Constellation map overlay, celestial coordinates.
@@ -3252,14 +3259,12 @@ Casino royale winner moment, James Bond swagger.
 Poker chips flying, dice tumbling, jackpot energy.
 Retro Las Vegas lounge style, suave and sophisticated.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Bold ink drawing, dramatic spotlight. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a CASINO CHAMPION.
 Slight caricature - emphasize their winning expression.
 Slot machine jackpot energy, coins showering down.
 Neon sign aesthetic (in B&W), victory celebration.
 Vegas golden era, rat pack vibes.
 ALL TEXT IN RUSSIAN, ALL CAPS (except VNVNC). Square aspect ratio.""",
-
     """BLACK AND WHITE portrait as a POKER MASTER.
 Slight caricature - capture their poker face (or lack thereof).
 Card shark energy, royal flush background.
@@ -3284,7 +3289,6 @@ Pick what fits THIS person's vibe. Draw them in that style.
 Background elements: Nokia 3310, ICQ flower, Windows XP hills, CD-ROM, flip phone.
 Text: their archetype in RUSSIAN (all lowercase or ALL CAPS - your choice) + "VNVNC 2000s"
 Bold ink illustration style, nostalgic millennium energy. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait transforming this person into a Y2K ICON.
 You decide what 2000s character they become based on their appearance and energy:
 Could be a nu-metal fan, a pop punk kid, a hip-hop head, a techno raver,
@@ -3294,7 +3298,6 @@ butterfly clips, chain wallets, oversized hoodies, or whatever matches the arche
 Add 2000s props: MP3 player, flip phone, MSN messenger, early internet vibes.
 Text: character type in RUSSIAN + "VNVNC 2000s" banner.
 Thick black ink lines, white background, nostalgic early internet aesthetic. Square aspect ratio.""",
-
     """BLACK AND WHITE 2000s TRANSFORMATION portrait!
 Look at this person and decide what millennium character they'd be:
 - The answers to their quiz suggest their personality
@@ -3306,7 +3309,6 @@ cargo pants, platform sneakers, studded belts, wallet chains...
 Background: early 2000s tech (CRT monitor, dial-up, ICQ, MSN, Winamp)
 Include "VNVNC 2000s" text in decorative early-internet style.
 High contrast ink drawing, millennium nostalgia. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait - НУЛЕВЫЕ (Y2K) CHARACTER REVEAL!
 This person answered questions about 2000s culture. Based on their answers:
 Transform them into their 2000s alter ego.
@@ -3329,7 +3331,6 @@ Adult humor OK - this is R-rated Bad Santa movie vibes, not mall Santa.
 Russian text verdict in BOLD (could be praise or roast depending on result).
 Add "VNVNC BAD SANTA 2026" branding.
 Sketch comedy energy, thick ink lines, white background. Square aspect ratio.""",
-
     """BLACK AND WHITE BAD SANTA JUDGMENT portrait!
 Based on their quiz answers, render the verdict:
 NICE LIST: Gift-receiving pose, skeptical Santa in background muttering curses,
@@ -3339,7 +3340,6 @@ NAUGHTY LIST: Coal pile, crossed-out gifts, Santa's middle finger salute,
 Billy Bob Thornton Bad Santa energy - drunk, rude, but funny.
 Russian verdict text + "VNVNC BAD SANTA 2026" banner.
 Bold comic style, adult humor, high contrast ink. Square aspect ratio.""",
-
     """BLACK AND WHITE portrait - ПЛОХОЙ САНТА ПРИГОВОР!
 Comedic Santa verdict scene based on their naughty/nice score:
 FOR WINNERS (nice): Begrudging gift, sarcastic compliment in Russian,
@@ -3404,247 +3404,242 @@ Place the guests centrally and frame them with spectacular layered foam and bubb
 ]
 
 
+WORLD_CUP_FINAL_VARIATIONS = [
+    """WORLD FINAL 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (VERTICAL 9:16)
+
+Create one single centered full-color 9:16 poster. No grid, photo strip, panels, repeated people, or alternate poses.
+
+NON-NEGOTIABLE IDENTITY LOCK — FACES ARE THE MAIN SUBJECT:
+- Input image 1 is the real booth photo and the only source of people. Count everyone first; include each real person exactly once and add nobody.
+- Treat the source photo as a fixed underdrawing. Rotoscope the existing guests in place: preserve their exact left/center/right order, relative coordinates, scale, overlaps, head angles, gaze, expressions, arm gestures, hands, camera perspective, and body proportions. Never re-stage them as invented football fans or players.
+- For every face separately preserve head silhouette, forehead height, hairline, inter-eye distance, eye shape and tilt, eyebrows, nose bridge/length/tip/nostril width, cheeks, lips, jaw angle, chin, ears, skin tone, age cues, facial hair, asymmetries, and expression.
+- Trace each hairstyle from the source. Preserve exact curl pattern, fringe, part, volume, texture and color. Do not give guests fashionable substitute hair.
+- Preserve every outfit's garment type, silhouette, color, neckline, sleeves, accessories, and visible prints or lettering. Do not replace their clothes with football kits, national-team jerseys, scarves, face paint, hats, or sunglasses.
+- If a source face is motion-blurred, reconstruct a clean stable 2D face only from its visible geometry; do not preserve smearing and do not invent a different identity.
+- Draw only gestures and fingers actually visible in the source. Never move a gesture from one guest to another or invent raised arms.
+- Keep each guest individually recognizable without the reference beside it. No generic handsome models, beauty filter, face averaging, face swapping, de-aging, caricature exaggeration, anime, plastic skin, 3D heads, or homogenized house-style faces.
+
+2D ART DIRECTION:
+- Refined hand-drawn editorial sports-poster illustration: precise ink contours, natural adult anatomy, restrained cel shading, screenprint grain, slightly imperfect color registration, and a limited broadcast palette.
+- Argentina sky blue and white occupy one side; Spain red and warm gold occupy the other; deep midnight stadium navy anchors the composition. Use both teams evenly and respectfully. No official FIFA, federation, sponsor, kit-brand, or tournament marks.
+- Make the guests large and waist-up in the central 50% of the poster. Start head tops just below the branding zone around 23-27% of canvas height; every head should be approximately 12-16% of canvas height. Never shrink faces to make room for scenery.
+- Replace only the environment with a spectacular designed night-final stadium: curved floodlight banks, geometric grandstand tiers, dense crowd rendered as deliberate halftone shapes, paper-cut confetti, long ribbon streamers, a clean center-circle arc, one classic football near the lower foreground, and waving Argentina/Spain color fields at the far sides.
+- The stadium must look deliberately illustrated, not AI fantasy: strong architectural perspective, simple repeated seat rhythms, crisp floodlight geometry, flat ink gradients, controlled halftone shadows, and believable green pitch bands. No melted architecture, random flags, fake signs, smoky voids, generic neon cyberpunk, giant impossible trophy, or empty bland sky.
+- Keep all props and confetti behind or below faces. Nothing may cover eyes, hairlines, hands, clothing text, or identity details. Do not put the guests in team uniforms and do not turn them into professional footballers.
+
+DETERMINISTIC BRANDING ZONES:
+- The app composites the original final emblem and exact match typography afterward. Generate no readable text, numbers, scoreboard, logo, flag writing, jersey lettering, signs, sponsor marks, or fake badges.
+- Keep only the central top 19-21% free of faces for a compact floating broadcast crest. Continue stadium lights, crowd rhythm, flags and confetti around that footprint so the top never becomes a dead blank slab.
+- Continue the pitch, crowd, confetti and illustrated props full bleed to the bottom. No empty footer band, no solid blank rectangle, and no second information bar. Keep faces out of the lowest 13% because the app overlays one compact floating score-card footer there.
+
+OUTPUT: the exact recognizable real guests, large resolved faces, premium flat 2D sports illustration, dramatic Spain-versus-Argentina final energy, intentional stadium architecture, no generated text, and no AI-slop background. Vertical 9:16.""",
+]
+
+
+WORLD_CUP_FINAL_SQUARE_VARIATIONS = [
+    """WORLD FINAL 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (SQUARE 1:1)
+
+Create one square hero image, no grid, panels, repeated people, or alternate poses. Use the real photo as a fixed underdrawing and preserve the exact person count, identities, facial geometry, expressions, hair, skin tones, poses, gestures, clothing silhouettes, visible garment details, camera angle, spacing and overlaps. Every guest must remain immediately recognizable; no beautifying, generic faces, football-player makeover, team jerseys, invented gestures, 3D, anime, or plastic-doll styling.
+
+Render refined flat 2D editorial sports art with precise facial linework, natural anatomy, restrained cel shading, screenprint grain and slight print misregistration. Frame the large central guests with a deliberate night-final stadium: geometric floodlights, curved grandstand tiers, controlled halftone crowd, crisp green pitch bands, paper-cut confetti, ribbon streamers, one football low in the scene, Argentina sky-blue/white color fields and Spain red/gold color fields. Props stay behind or below people and never obscure faces, hairlines, hands or clothing text. No official FIFA, federation, sponsor or kit-brand marks.
+
+The app adds the exact original emblem and match typography. Generate no readable text, numbers, scoreboards, logos, labels, signs or badges. Reserve only a compact central top branding footprint while continuing stadium architecture and confetti around it—no dead blank sky. Keep the result adult, energetic, fashion-forward, geometrically designed and unmistakably 2D, not generic AI fantasy. Square 1:1.""",
+]
+
+
 STYLE_PROMPTS = {
     # =========================================================================
     # GUESS MODE - "Кто Я?" - Detective investigation board (uses GUESS_VARIATIONS)
     # =========================================================================
     CaricatureStyle.GUESS: "GUESS_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # MEDICAL MODE - "Диагноз" - X-ray scan diagnostic (uses MEDICAL_VARIATIONS)
     # =========================================================================
     CaricatureStyle.MEDICAL: "MEDICAL_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # ROAST MODE - "Прожарка" - Adult roast doodle (uses ROAST_VARIATIONS)
     # =========================================================================
     CaricatureStyle.ROAST: "ROAST_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # PROPHET MODE - "ИИ Пророк" - Fun AI prophet (uses PROPHET_VARIATIONS)
     # =========================================================================
     CaricatureStyle.PROPHET: "PROPHET_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # TAROT MODE - "Гадалка" - New Year 2026 sticker (uses TAROT_VARIATIONS)
     # =========================================================================
     CaricatureStyle.TAROT: "TAROT_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # QUIZ WINNER - "Викторина" - Game show champion (uses QUIZ_WINNER_VARIATIONS)
     # =========================================================================
     CaricatureStyle.QUIZ_WINNER: "QUIZ_WINNER_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # MYSTICAL - Now fun/stylish, not esoteric (uses MYSTICAL_VARIATIONS)
     # =========================================================================
     CaricatureStyle.MYSTICAL: "MYSTICAL_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # FORTUNE - Now fun/stylish carnival, not mystical (uses FORTUNE_VARIATIONS)
     # =========================================================================
     CaricatureStyle.FORTUNE: "FORTUNE_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # SKETCH - Fashion sketch style (uses SKETCH_VARIATIONS)
     # =========================================================================
     CaricatureStyle.SKETCH: "SKETCH_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # CARTOON - Playful cartoon style (uses CARTOON_VARIATIONS)
     # =========================================================================
     CaricatureStyle.CARTOON: "CARTOON_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # VINTAGE - Circus poster star (uses VINTAGE_VARIATIONS)
     # =========================================================================
     CaricatureStyle.VINTAGE: "VINTAGE_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # ZODIAC MODE - Space explorer style (uses ZODIAC_VARIATIONS)
     # =========================================================================
     CaricatureStyle.ZODIAC: "ZODIAC_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # ROULETTE MODE - Casino winner style (uses ROULETTE_VARIATIONS)
     # =========================================================================
     CaricatureStyle.ROULETTE: "ROULETTE_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # PHOTOBOOTH MODE - 9:16 vertical photo booth for label printing
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH: "PHOTOBOOTH_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # PHOTOBOOTH SQUARE MODE - 1:1 square photo booth for LED display
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_SQUARE: "PHOTOBOOTH_SQUARE_VARIATION",  # 1:1 for display
-
     # =========================================================================
     # PHOTOBOOTH VENICE MODE - 9:16 vertical TRIP:VENICE carnival theme
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_VENICE: "TRIPVENICE_VARIATION",  # 9:16 for label
-
     # =========================================================================
     # PHOTOBOOTH VENICE SQUARE MODE - 1:1 square TRIP:VENICE for LED display
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_VENICE_SQUARE: "TRIPVENICE_SQUARE_VARIATION",  # 1:1 for display
-
     # =========================================================================
     # PHOTOBOOTH LOVE IN THE AIR MODE - 9:16 vertical Valentine's theme
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR: "LOVEINTHEAIR_VARIATION",  # 9:16 for label
-
     # =========================================================================
     # PHOTOBOOTH LOVE IN THE AIR SQUARE MODE - 1:1 square Valentine's for LED
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_LOVEINTHEAIR_SQUARE: "LOVEINTHEAIR_SQUARE_VARIATION",  # 1:1 for display
-
     # =========================================================================
     # PHOTOBOOTH МАЛЬЧИШНИК MODE - 9:16 vertical Hangover bachelor party theme
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_MALCHISHNIK: "MALCHISHNIK_VARIATION",  # 9:16 for label
-
     # =========================================================================
     # PHOTOBOOTH МАЛЬЧИШНИК SQUARE MODE - 1:1 square bachelor party for LED
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_MALCHISHNIK_SQUARE: "MALCHISHNIK_SQUARE_VARIATION",  # 1:1 for display
-
     # =========================================================================
     # PHOTOBOOTH ФЕЙФОРИЯ MODE - 9:16 vertical enchanted fairy forest theme
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_FEYPHORIA: "FEYPHORIA_VARIATION",  # 9:16 for label
-
     # =========================================================================
     # PHOTOBOOTH ФЕЙФОРИЯ SQUARE MODE - 1:1 square fairy forest for LED
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_FEYPHORIA_SQUARE: "FEYPHORIA_SQUARE_VARIATION",  # 1:1 for display
-
     # =========================================================================
     # PHOTOBOOTH FIESTA MODE - 9:16 vertical Spanish realism party style
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_FIESTA: "FIESTA_VARIATION",  # 9:16 for label
-
     # =========================================================================
     # PHOTOBOOTH FIESTA SQUARE MODE - 1:1 square Spanish realism for LED
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE: "FIESTA_SQUARE_VARIATION",  # 1:1 for display
-
     # =========================================================================
     # PHOTOBOOTH BIG CITY LIFE MODE - 9:16 vertical 90s NYC graffiti theme
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE: "BIGCITYLIFE_VARIATION",  # 9:16 for label
-
     # =========================================================================
     # PHOTOBOOTH BIG CITY LIFE SQUARE MODE - 1:1 square NYC graffiti for LED
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_BIGCITYLIFE_SQUARE: "BIGCITYLIFE_SQUARE_VARIATION",  # 1:1 for display
-
     # =========================================================================
     # PHOTOBOOTH BRAINROT MODE - 9:16 vertical single-image brainrot poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_BRAINROT: "BRAINROT_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH BRAINROT SQUARE MODE - 1:1 square single-image brainrot poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE: "BRAINROT_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH WEDDING MODE - 9:16 vertical single-image wedding postcard
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_WEDDING: "WEDDING_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH WEDDING SQUARE MODE - 1:1 square single-image wedding postcard
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_WEDDING_SQUARE: "WEDDING_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH WHATSAPP MODE - 9:16 vertical single-image WhatsApp postcard
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_WHATSAPP: "WHATSAPP_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH WHATSAPP SQUARE MODE - 1:1 square single-image WhatsApp postcard
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_WHATSAPP_SQUARE: "WHATSAPP_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH SLAVIC SOUL MODE - 9:16 vertical slavic-core luxury poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL: "SLAVIC_SOUL_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH SLAVIC SOUL SQUARE MODE - 1:1 square slavic-core luxury poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_SLAVIC_SOUL_SQUARE: "SLAVIC_SOUL_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH SLAVIC TALES MODE - 9:16 vertical slavic fairy-tale poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES: "SLAVIC_TALES_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH SLAVIC TALES SQUARE MODE - 1:1 square slavic fairy-tale poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_SLAVIC_TALES_SQUARE: "SLAVIC_TALES_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH BANYA CHIC MODE - 9:16 vertical decadent bathhouse poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_BANYA_CHIC: "BANYA_CHIC_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH BANYA CHIC SQUARE MODE - 1:1 square decadent bathhouse poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_BANYA_CHIC_SQUARE: "BANYA_CHIC_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH VNVNC B'DAY MODE - 9:16 vertical luxury birthday poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY: "VNVNC_BDAY_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH VNVNC B'DAY SQUARE MODE - 1:1 square luxury birthday poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_VNVNC_BDAY_SQUARE: "VNVNC_BDAY_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH CIRCUS MAXIMUS MODE - 9:16 vertical creepy circus poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS: "CIRCUS_MAXIMUS_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH CIRCUS MAXIMUS SQUARE MODE - 1:1 square creepy circus poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_CIRCUS_MAXIMUS_SQUARE: "CIRCUS_MAXIMUS_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH MTV NIGHT MODE - 9:16 vertical glossy MTV poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_MTV_NIGHT: "MTV_NIGHT_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH MTV NIGHT SQUARE MODE - 1:1 square glossy MTV poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_MTV_NIGHT_SQUARE: "MTV_NIGHT_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH SHADOW KINGDOM MODE - 9:16 vertical gothic chrome castle poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM: "SHADOW_KINGDOM_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH SHADOW KINGDOM SQUARE MODE - 1:1 square gothic chrome castle poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_SHADOW_KINGDOM_SQUARE: "SHADOW_KINGDOM_SQUARE_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH CANDY SHOP MODE - 9:16 vertical white candy luxury poster
     # =========================================================================
     CaricatureStyle.PHOTOBOOTH_CANDY_SHOP: "CANDY_SHOP_VARIATION",
-
     # =========================================================================
     # PHOTOBOOTH CANDY SHOP SQUARE MODE - 1:1 square white candy luxury poster
     # =========================================================================
@@ -3661,12 +3656,12 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE: "ALYE_PARUSA_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_JARA: "JARA_VARIATION",
     CaricatureStyle.PHOTOBOOTH_JARA_SQUARE: "JARA_SQUARE_VARIATION",
-
+    CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL: "WORLD_CUP_FINAL_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE: "WORLD_CUP_FINAL_SQUARE_VARIATION",
     # =========================================================================
     # Y2K MODE - 2000s era character portrait (uses Y2K_VARIATIONS)
     # =========================================================================
     CaricatureStyle.Y2K: "Y2K_VARIATION",  # Will be replaced with random variation
-
     # =========================================================================
     # BAD SANTA MODE - Naughty/nice verdict (uses BAD_SANTA_VARIATIONS)
     # =========================================================================
@@ -3782,6 +3777,8 @@ class CaricatureService:
                 "ALYE_PARUSA_SQUARE_VARIATION": ALYE_PARUSA_SQUARE_VARIATIONS,
                 "JARA_VARIATION": JARA_VARIATIONS,
                 "JARA_SQUARE_VARIATION": JARA_SQUARE_VARIATIONS,
+                "WORLD_CUP_FINAL_VARIATION": WORLD_CUP_FINAL_VARIATIONS,
+                "WORLD_CUP_FINAL_SQUARE_VARIATION": WORLD_CUP_FINAL_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
                 "MEDICAL_VARIATION": MEDICAL_VARIATIONS,
                 "QUIZ_WINNER_VARIATION": QUIZ_WINNER_VARIATIONS,
@@ -3874,6 +3871,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
+                CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -3967,6 +3966,10 @@ ADDITIONAL REFERENCE IMAGES:
             is_jara_style = style in (
                 CaricatureStyle.PHOTOBOOTH_JARA,
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
+            )
+            is_world_cup_final_style = style in (
+                CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
+                CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
             )
 
             if is_brainrot_style:
@@ -4113,6 +4116,18 @@ ADDITIONAL REFERENCE IMAGES:
 - Keep the top 20-22% clear for the app's exact official emblem overlay; do not render ЖАРА or any other readable text, logo, sign, or label
 - Artwork continues full bleed to the bottom with pool, foam and props; never create an empty cyan band or reserved blank footer rectangle. Keep faces out of only the lowest 13%, where the app overlays a floating information card
 """
+            elif is_world_cup_final_style:
+                color_instruction = """- FULL COLOR — Argentina sky blue and white, Spain red and warm gold, deep midnight stadium navy, pitch green, clean neutral skin tones
+- Strictly one centered hero composition; no grid, strip, panels, repeated guests, alternate poses, or invented people
+- Premium hand-drawn flat 2D editorial sports illustration is mandatory: precise facial ink contours, natural adult anatomy, restrained cel shading, screenprint grain and slight ink misregistration
+- Exact identity outranks every sports element: preserve every guest's separate facial geometry, real person count, expression, hairline, hairstyle, pose, body proportions, spacing, clothing silhouette and visible garment details
+- Treat the real photo as a fixed underdrawing. Do not re-stage guests as footballers, change clothes into team kits, add scarves or face paint, invent raised arms, average faces, beautify anyone, or cover identity details
+- Use a deliberately designed final-night stadium with geometric floodlights, curved grandstand tiers, controlled halftone crowd rhythms, believable pitch bands, paper-cut confetti, ribbons, one football low in the scene, and balanced Argentina/Spain color fields
+- No official FIFA, federation, sponsor, kit-brand or tournament marks; no generated text, numbers, scoreboard, signs, badges or fake logos
+- Keep only the central top 19-21% free of faces for the app's exact emblem and match-title overlay, but continue stadium architecture and confetti around it so there is no dead blank sky
+- Continue the illustrated stadium and pitch full bleed to the bottom with no blank footer band or second information bar; keep faces out of only the lowest 13% for one compact floating footer card
+- Never use photoreal cutouts, 3D, plastic dolls, anime, childish cartoon faces, melted stadium architecture, random flags, generic neon cyberpunk, smoky voids, or AI-fantasy spectacle
+"""
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
@@ -4161,7 +4176,7 @@ ADDITIONAL REFERENCE IMAGES:
                 "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
                 "perform an identity-preserving 2D rotoscope/background replacement; do not synthesize or "
                 "re-stage new versions of them."
-                if is_jara_style
+                if is_jara_style or is_world_cup_final_style
                 else "Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo."
             )
 
@@ -4217,6 +4232,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
                 CaricatureStyle.PHOTOBOOTH_JARA,
+                CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -4254,13 +4270,18 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Premium flat 2D Russian Scarlet Sails poster, black field, white clouds, scarlet sails, red-and-white ribbons, thin ink wave lines, elegant negative space, exact human likeness preserved, no footer text"
             elif is_jara_style:
                 image_style = "High-fidelity 2D rotoscope of the attached real people in their original positions and poses, large resolved source-photo faces and exact hair traced rather than redesigned, clean stable anatomy even where the source has motion blur, confident hand-inked editorial contours, restrained four-to-six-color screenprint shading and subtle print misregistration, adult modern tropical pool-party campaign, deliberately designed mid-century Riviera sky with cobalt-to-azure ink bands, flat citrus sun disk, long cirrus ribbons, halftone rays and no dead blue gap, bright pool, wet lacy micro-bubble foam rather than cloud shapes, palms, iridescent bubbles, hot-pink and translucent floaties, striped beach chairs, towels, chic cooler and summer props, full-bleed artwork, exact human likeness and group count preserved, no generated text, no visible foam or bubble equipment, no generic AI cartoon scenery"
+            elif is_world_cup_final_style:
+                image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses and clothes, large individually resolved faces and exact hair traced rather than redesigned, natural adult anatomy, crisp editorial ink contours, restrained cel shading, premium sports screenprint texture, deliberate Spain versus Argentina final-night stadium architecture, geometric floodlights, halftone crowd, pitch bands, paper-cut confetti and ribbon energy, balanced sky-blue-white and red-gold team color fields, full-bleed artwork, exact human likeness and group count preserved, no generated text, no official marks, no 3D and no generic AI fantasy background"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:
                 image_style = "Premium 2D underground club poster illustration, drawn graphic art, chromatic aberration, super wide angle, film grain, analog textures, visible venue background, metallic chrome headline, exact likeness and exact clothing from reference photo"
             elif is_malchishnik_style:
                 image_style = "Analog disposable camera photography, Polaroid film photo, heavy film grain, blown flash, warm pushed colors, party chaos, Hangover movie aesthetic"
-            elif style == CaricatureStyle.PHOTOBOOTH_FIESTA or style == CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE:
+            elif (
+                style == CaricatureStyle.PHOTOBOOTH_FIESTA
+                or style == CaricatureStyle.PHOTOBOOTH_FIESTA_SQUARE
+            ):
                 image_style = "Cinematic editorial photorealistic portrait photography, natural skin tones, premium nightlife club lighting, subtle filmic grain"
             elif is_loveintheair_style:
                 image_style = "Warm illustrated Valentine's card portrait, clean bold outlines, flat warm colors, cream and blush pink, hearts and roses, modern greeting card style"
@@ -4269,7 +4290,9 @@ UNIQUENESS TOKEN: {uniqueness_token}
             elif is_color_style:
                 image_style = "Raw analog concert photography, red and black only, chromatic aberration, film grain, wide angle distortion"
             else:
-                image_style = "Black and white illustration, high contrast ink drawing, thermal printer style"
+                image_style = (
+                    "Black and white illustration, high contrast ink drawing, thermal printer style"
+                )
 
             image_data = await self._client.generate_image(
                 prompt=prompt,
@@ -4287,6 +4310,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 if is_color_style:
                     # Keep original resolution, just ensure PNG format
                     from PIL import Image
+
                     img = Image.open(BytesIO(image_data))
                     img = img.convert("RGB")
                     output = BytesIO()
@@ -4545,9 +4569,14 @@ Style requirements:
             logger.warning("AI not available for Squid sketch")
             return None
 
-        mood = "determined survivor energy, mid-run pose" if not eliminated else "eliminated, dramatic ink X across the portrait"
+        mood = (
+            "determined survivor energy, mid-run pose"
+            if not eliminated
+            else "eliminated, dramatic ink X across the portrait"
+        )
 
         import hashlib, random
+
         uniqueness_token = hashlib.md5(str(random.random()).encode()).hexdigest()[:8].upper()
 
         prompt = f"""Create a black-and-white hand-drawn sketch of THIS PERSON from the photo.

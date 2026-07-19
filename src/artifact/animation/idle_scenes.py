@@ -36,8 +36,13 @@ from artifact.graphics.primitives import clear, draw_circle, draw_rect, fill, dr
 logger = logging.getLogger(__name__)
 from artifact.graphics.fonts import load_font, draw_text_bitmap
 from artifact.graphics.text_utils import (
-    draw_animated_text, draw_centered_text, TextEffect,
-    render_ticker_animated, render_ticker_static, TickerEffect, hsv_to_rgb
+    draw_animated_text,
+    draw_centered_text,
+    TextEffect,
+    render_ticker_animated,
+    render_ticker_static,
+    TickerEffect,
+    hsv_to_rgb,
 )
 from artifact.utils.camera_service import camera_service
 from artifact.utils.audio_utils import extract_audio_from_video
@@ -51,20 +56,20 @@ CAMERA_EFFECT_DURATION = 8000  # 8 seconds per camera effect before auto-cycling
 # Scene-specific duration overrides (ms)
 SCENE_DURATIONS = {
     # DIVOOM_GALLERY - pixel art GIF gallery (currently disabled)
-    'DIVOOM_GALLERY': 180000,  # 3 minutes - cycles through ~15 GIFs
+    "DIVOOM_GALLERY": 180000,  # 3 minutes - cycles through ~15 GIFs
     # VNVNC entrance gets more time - it's the signature scene
-    'VNVNC_ENTRANCE': 25000,  # 25 seconds
+    "VNVNC_ENTRANCE": 25000,  # 25 seconds
     # SAGA_LIVE video plays once with audio
-    'SAGA_LIVE': 45000,       # 45 seconds - video duration
+    "SAGA_LIVE": 45000,  # 45 seconds - video duration
     # POSTER_SLIDESHOW cycles quickly through event posters
-    'POSTER_SLIDESHOW': 60000,  # 60 seconds to show many posters
+    "POSTER_SLIDESHOW": 60000,  # 60 seconds to show many posters
     # Cringe Party idle scenes
-    'CRINGE_HERO': 16000,
-    'CRINGE_CIRCLE_VIDEO': 15000,
-    'CRINGE_VENUE': 14000,
-    'CRINGE_BRAINROT': 14000,
-    'CRINGE_WEDDING': 14000,
-    'CRINGE_WHATSAPP': 14000,
+    "CRINGE_HERO": 16000,
+    "CRINGE_CIRCLE_VIDEO": 15000,
+    "CRINGE_VENUE": 14000,
+    "CRINGE_BRAINROT": 14000,
+    "CRINGE_WEDDING": 14000,
+    "CRINGE_WHATSAPP": 14000,
 }
 
 
@@ -76,37 +81,42 @@ def _get_current_theme():
 
 class IdleScene(Enum):
     """Available idle scenes - curated set of 9 effects."""
-    VNVNC_ENTRANCE = auto()   # Grand entrance with neon sign - ALWAYS FIRST
-    CAMERA_EFFECTS = auto()   # Camera with cycling effects (mirror, neon, glitch, fire, matrix, starfield)
-    DIVOOM_GALLERY = auto()   # Cycling Divoom pixel art GIFs
-    SAGA_LIVE = auto()        # SAGA live video with audio
-    POSTER_SLIDESHOW = auto() # Fast slideshow of event posters
-    DNA_HELIX = auto()        # DNA double helix animation
-    SNOWFALL = auto()         # Winter snowfall
-    FIREPLACE = auto()        # Cozy fireplace
-    HYPERCUBE = auto()        # 4D hypercube rotation
-    CRINGE_HERO = auto()      # Cringe Party emblem / hero artwork
+
+    VNVNC_ENTRANCE = auto()  # Grand entrance with neon sign - ALWAYS FIRST
+    CAMERA_EFFECTS = (
+        auto()
+    )  # Camera with cycling effects (mirror, neon, glitch, fire, matrix, starfield)
+    DIVOOM_GALLERY = auto()  # Cycling Divoom pixel art GIFs
+    SAGA_LIVE = auto()  # SAGA live video with audio
+    POSTER_SLIDESHOW = auto()  # Fast slideshow of event posters
+    DNA_HELIX = auto()  # DNA double helix animation
+    SNOWFALL = auto()  # Winter snowfall
+    FIREPLACE = auto()  # Cozy fireplace
+    HYPERCUBE = auto()  # 4D hypercube rotation
+    CRINGE_HERO = auto()  # Cringe Party emblem / hero artwork
     CRINGE_CIRCLE_VIDEO = auto()  # Cringe Party circle emblem video
-    CRINGE_VENUE = auto()     # Venue / signage slideshow
+    CRINGE_VENUE = auto()  # Venue / signage slideshow
     CRINGE_BRAINROT = auto()  # Italian brainrot references
-    CRINGE_WEDDING = auto()   # Wedding postcard references
+    CRINGE_WEDDING = auto()  # Wedding postcard references
     CRINGE_WHATSAPP = auto()  # Grandma WhatsApp postcard references
 
 
 # Camera effect sub-modes (cycled within CAMERA_EFFECTS scene)
 class CameraEffect(Enum):
     """Sub-effects for CAMERA_EFFECTS scene."""
-    MIRROR = auto()           # Basic silhouette mirror
-    NEON_TUNNEL = auto()      # Neon ring tunnel overlay
-    GLITCH_GRID = auto()      # Glitch scanlines
+
+    MIRROR = auto()  # Basic silhouette mirror
+    NEON_TUNNEL = auto()  # Neon ring tunnel overlay
+    GLITCH_GRID = auto()  # Glitch scanlines
     FIRE_SILHOUETTE = auto()  # Fire/heat effect
-    MATRIX_RAIN = auto()      # Matrix code rain
-    STARFIELD_3D = auto()     # 3D starfield overlay
+    MATRIX_RAIN = auto()  # Matrix code rain
+    STARFIELD_3D = auto()  # 3D starfield overlay
 
 
 @dataclass
 class SceneState:
     """Shared state for scene animations."""
+
     time: float = 0.0
     scene_time: float = 0.0
     frame: int = 0
@@ -146,8 +156,12 @@ class RotatingIdleAnimation:
 
         # Pre-generate stars for cosmic portal (30 stars, not 100)
         self.stars = [
-            (random.randint(0, 127), random.randint(0, 127),
-             random.uniform(0.3, 1.0), random.uniform(0, 6.28))
+            (
+                random.randint(0, 127),
+                random.randint(0, 127),
+                random.uniform(0.3, 1.0),
+                random.uniform(0, 6.28),
+            )
             for _ in range(30)
         ]
 
@@ -173,8 +187,7 @@ class RotatingIdleAnimation:
 
         # Quantum field particles (for QUANTUM_FIELD scene)
         self.quantum_particles = [
-            {'x': random.random(), 'y': random.random(), 'vx': 0, 'vy': 0}
-            for _ in range(60)
+            {"x": random.random(), "y": random.random(), "vx": 0, "vy": 0} for _ in range(60)
         ]
 
         # Electric storm lightning state
@@ -183,8 +196,12 @@ class RotatingIdleAnimation:
 
         # Snowfall state
         self.snowflakes = [
-            {'x': random.randint(0, 127), 'y': random.randint(-128, 0),
-             'speed': random.uniform(0.5, 2), 'size': random.randint(1, 3)}
+            {
+                "x": random.randint(0, 127),
+                "y": random.randint(-128, 0),
+                "speed": random.uniform(0.5, 2),
+                "size": random.randint(1, 3),
+            }
             for _ in range(150)
         ]
 
@@ -193,21 +210,23 @@ class RotatingIdleAnimation:
 
         # Matrix rain state
         self.matrix_columns = [
-            {'y': random.randint(-128, 0), 'speed': random.uniform(0.5, 2),
-             'length': random.randint(5, 15)}
+            {
+                "y": random.randint(-128, 0),
+                "speed": random.uniform(0.5, 2),
+                "length": random.randint(5, 15),
+            }
             for _ in range(128)
         ]
 
         # Starfield 3D state
         self.stars_3d = [
-            {'x': random.uniform(-1, 1), 'y': random.uniform(-1, 1), 'z': random.uniform(0.1, 1)}
+            {"x": random.uniform(-1, 1), "y": random.uniform(-1, 1), "z": random.uniform(0.1, 1)}
             for _ in range(100)
         ]
 
         # Aurora state
         self.aurora_curtains = [
-            {'x': random.randint(0, 127), 'phase': random.uniform(0, 6.28)}
-            for _ in range(8)
+            {"x": random.randint(0, 127), "phase": random.uniform(0, 6.28)} for _ in range(8)
         ]
 
         # Fireworks state
@@ -216,14 +235,21 @@ class RotatingIdleAnimation:
 
         # Lava lamp blobs
         self.lava_blobs = [
-            {'x': random.uniform(0.2, 0.8), 'y': random.uniform(0.2, 0.8),
-             'r': random.uniform(0.08, 0.15), 'vx': 0, 'vy': 0,
-             'hue': random.randint(0, 60)}
+            {
+                "x": random.uniform(0.2, 0.8),
+                "y": random.uniform(0.2, 0.8),
+                "r": random.uniform(0.08, 0.15),
+                "vx": 0,
+                "vy": 0,
+                "hue": random.randint(0, 60),
+            }
             for _ in range(6)
         ]
 
         # Game of Life state
-        self.gol_grid = [[1 if random.random() < 0.3 else 0 for _ in range(128)] for _ in range(128)]
+        self.gol_grid = [
+            [1 if random.random() < 0.3 else 0 for _ in range(128)] for _ in range(128)
+        ]
         self.gol_colors = [[random.randint(0, 360) for _ in range(128)] for _ in range(128)]
         self.gol_generation = 0
 
@@ -237,10 +263,15 @@ class RotatingIdleAnimation:
             dist = random.uniform(5, 60)
             spread = random.uniform(-0.3, 0.3)
             base_angle = arm * 2 * math.pi / 3
-            self.galaxy_stars.append({
-                'dist': dist, 'arm_offset': base_angle, 'spread': spread,
-                'brightness': random.uniform(0.3, 1.0), 'hue': random.randint(180, 280)
-            })
+            self.galaxy_stars.append(
+                {
+                    "dist": dist,
+                    "arm_offset": base_angle,
+                    "spread": spread,
+                    "brightness": random.uniform(0.3, 1.0),
+                    "hue": random.randint(180, 280),
+                }
+            )
 
         # Hypercube vertices (4D tesseract)
         self.hypercube_vertices = []
@@ -252,7 +283,10 @@ class RotatingIdleAnimation:
         self.hypercube_edges = []
         for i in range(16):
             for j in range(i + 1, 16):
-                diff = sum(abs(self.hypercube_vertices[i][k] - self.hypercube_vertices[j][k]) for k in range(4))
+                diff = sum(
+                    abs(self.hypercube_vertices[i][k] - self.hypercube_vertices[j][k])
+                    for k in range(4)
+                )
                 if diff == 2:
                     self.hypercube_edges.append((i, j))
 
@@ -265,6 +299,7 @@ class RotatingIdleAnimation:
         self._pil_available = False
         try:
             from PIL import Image
+
             self._pil_available = True
         except ImportError:
             logger.warning("PIL not available for poster slideshow")
@@ -338,15 +373,19 @@ class RotatingIdleAnimation:
         # VNVNC Entrance state
         self.entrance_confetti: List[dict] = []
         self.entrance_diamonds: List[dict] = [
-            {'x': 20, 'y': 25, 'phase': 0, 'scale': 0.8},
-            {'x': 108, 'y': 25, 'phase': 1.5, 'scale': 0.8},
+            {"x": 20, "y": 25, "phase": 0, "scale": 0.8},
+            {"x": 108, "y": 25, "phase": 1.5, "scale": 0.8},
         ]
         self.entrance_snow: List[dict] = []
         for _ in range(50):
-            self.entrance_snow.append({
-                'x': random.randint(0, 127), 'y': random.randint(100, 127),
-                'speed': random.uniform(0.1, 0.3), 'size': 1
-            })
+            self.entrance_snow.append(
+                {
+                    "x": random.randint(0, 127),
+                    "y": random.randint(100, 127),
+                    "speed": random.uniform(0.1, 0.3),
+                    "size": 1,
+                }
+            )
 
         # Bar Cocktails state
         self.bar_glasses: List[dict] = []
@@ -415,6 +454,8 @@ class RotatingIdleAnimation:
             return "2k17"
         if theme_id == "jara":
             return "jara"
+        if theme_id == "world-cup-final":
+            return "world_cup_final"
         if requested_modes & slavic_keys:
             return "slavic"
         if "2k17" in requested_modes:
@@ -423,7 +464,9 @@ class RotatingIdleAnimation:
 
     def _sync_theme_text(self) -> None:
         """Refresh text derived from the active photobooth theme."""
-        self.idle_title = self._theme.event_name.strip() or self._theme.ticker_idle.strip() or "VNVNC"
+        self.idle_title = (
+            self._theme.event_name.strip() or self._theme.ticker_idle.strip() or "VNVNC"
+        )
         self.idle_ticker_text = self._theme.ticker_idle.strip() or self.idle_title
         self.idle_lcd_prefix = self._theme.lcd_prefix.strip() or self.idle_ticker_text
         # Idle screens must not show dates; real dates stay in generated photo/upload metadata.
@@ -485,6 +528,10 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
+        if self.idle_variant == "world_cup_final":
+            return {
+                IdleScene.CRINGE_HERO: "WORLD CUP 2026",
+            }
 
         return {
             IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
@@ -521,6 +568,8 @@ class RotatingIdleAnimation:
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "jara":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "world_cup_final":
+            return [IdleScene.CRINGE_HERO]
 
         playlist = [IdleScene.CRINGE_CIRCLE_VIDEO]
         other_scenes = [
@@ -560,7 +609,9 @@ class RotatingIdleAnimation:
         from PIL import Image, ImageOps
 
         if self.idle_variant == "candy_shop":
-            logo_path = Path(__file__).parent.parent.parent.parent / "assets" / "images" / "candy-shop.png"
+            logo_path = (
+                Path(__file__).parent.parent.parent.parent / "assets" / "images" / "candy-shop.png"
+            )
             frames: List[NDArray[np.uint8]] = []
             if logo_path.exists():
                 image = Image.open(logo_path).convert("RGB")
@@ -576,8 +627,55 @@ class RotatingIdleAnimation:
             self.cringe_assets = {IdleScene.CRINGE_HERO: frames}
             return
 
+        if self.idle_variant == "world_cup_final":
+            logo_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "images"
+                / "world-cup-final-emblem.png"
+            )
+            frames: List[NDArray[np.uint8]] = []
+            if logo_path.exists():
+                from PIL import ImageDraw, ImageFont
+
+                emblem = Image.open(logo_path).convert("RGBA")
+                bbox = emblem.getchannel("A").getbbox()
+                if bbox:
+                    emblem = emblem.crop(bbox)
+                emblem.thumbnail((106, 106), Image.Resampling.LANCZOS)
+                frame = Image.new("RGBA", (160, 160), (7, 21, 47, 255))
+                frame.alpha_composite(emblem, ((160 - emblem.width) // 2, 8))
+                draw = ImageDraw.Draw(frame)
+                font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
+                try:
+                    title_font = ImageFont.truetype(font_path, 17)
+                    teams_font = ImageFont.truetype(font_path, 10)
+                except OSError:
+                    title_font = ImageFont.load_default()
+                    teams_font = ImageFont.load_default()
+
+                def centered(text: str, y: int, font, fill_color) -> None:
+                    box = draw.textbbox((0, 0), text, font=font)
+                    draw.text(((160 - (box[2] - box[0])) // 2, y), text, font=font, fill=fill_color)
+
+                centered("WORLD CUP 2026", 114, title_font, (255, 255, 255, 255))
+                centered("SPAIN  ×  ARGENTINA", 137, teams_font, (244, 197, 66, 255))
+                draw.rectangle((5, 5, 8, 155), fill=(117, 200, 245, 255))
+                draw.rectangle((151, 5, 154, 155), fill=(229, 41, 47, 255))
+                frames.append(np.array(frame.convert("RGB"), dtype=np.uint8))
+            else:
+                logger.warning("World Cup final idle emblem not found: %s", logo_path)
+            self.cringe_assets = {IdleScene.CRINGE_HERO: frames}
+            return
+
         if self.idle_variant == "slavic":
-            root = Path(__file__).parent.parent.parent.parent / "assets" / "idle" / "slavic_core" / "hero"
+            root = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "slavic_core"
+                / "hero"
+            )
             scene_dirs = {
                 IdleScene.CRINGE_HERO: root,
                 IdleScene.CRINGE_VENUE: root,
@@ -625,10 +723,23 @@ class RotatingIdleAnimation:
         images = self.cringe_assets.get(scene, [])
         if not images:
             fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
-            fallback_color = self._theme.theme_chrome if self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa", "jara"} else (
-                (255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90)
+            fallback_color = (
+                self._theme.theme_chrome
+                if self.idle_variant
+                in {
+                    "circus_maximus",
+                    "shadow_kingdom",
+                    "candy_shop",
+                    "2k17",
+                    "alye_parusa",
+                    "jara",
+                    "world_cup_final",
+                }
+                else ((255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90))
             )
-            self._draw_centered_title(buffer, self.cringe_scene_titles.get(scene, fallback_title), 50, fallback_color)
+            self._draw_centered_title(
+                buffer, self.cringe_scene_titles.get(scene, fallback_title), 50, fallback_color
+            )
             draw_centered_text(buffer, "VNVNC.RU", 68, fallback_color, scale=1)
             return
 
@@ -643,7 +754,9 @@ class RotatingIdleAnimation:
         self._blit_cringe_image(buffer, images[index], self.state.scene_time / 1000.0, phase=index)
         if time_in_cycle >= cycle_ms - transition_ms and len(images) > 1:
             temp = np.zeros_like(buffer)
-            self._blit_cringe_image(temp, images[next_index], self.state.scene_time / 1000.0, phase=next_index + 7)
+            self._blit_cringe_image(
+                temp, images[next_index], self.state.scene_time / 1000.0, phase=next_index + 7
+            )
             alpha = (time_in_cycle - (cycle_ms - transition_ms)) / transition_ms
             buffer[:] = (
                 buffer.astype(np.float32) * (1.0 - alpha) + temp.astype(np.float32) * alpha
@@ -664,7 +777,7 @@ class RotatingIdleAnimation:
         max_y = max(0, h - 128)
         ox = int((0.5 + 0.5 * math.sin(t * 0.45 + phase * 0.9)) * max_x)
         oy = int((0.5 + 0.5 * math.cos(t * 0.38 + phase * 0.7)) * max_y)
-        np.copyto(buffer, image[oy:oy + 128, ox:ox + 128])
+        np.copyto(buffer, image[oy : oy + 128, ox : ox + 128])
 
     def _draw_cringe_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene) -> None:
         """Add lightweight scene tint, border, doodles, and event footer."""
@@ -685,7 +798,15 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WEDDING: (255, 220, 150),
                 IdleScene.CRINGE_WHATSAPP: (255, 214, 126),
             }
-        elif self.idle_variant in {"circus_maximus", "shadow_kingdom", "candy_shop", "2k17", "alye_parusa", "jara"}:
+        elif self.idle_variant in {
+            "circus_maximus",
+            "shadow_kingdom",
+            "candy_shop",
+            "2k17",
+            "alye_parusa",
+            "jara",
+            "world_cup_final",
+        }:
             accent_map = {
                 IdleScene.CRINGE_HERO: self._theme.theme_chrome,
                 IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.theme_chrome,
@@ -732,7 +853,7 @@ class RotatingIdleAnimation:
 
         # Tiny scanlines for low-rent postcard screen feel.
         for y in range(0, 128, 4):
-            buffer[y:y + 1] = (buffer[y:y + 1].astype(np.float32) * 0.92).astype(np.uint8)
+            buffer[y : y + 1] = (buffer[y : y + 1].astype(np.float32) * 0.92).astype(np.uint8)
 
         fallback_title = "SLAVIC CORE" if self.idle_variant == "slavic" else self.idle_title
         title = self.cringe_scene_titles.get(scene, fallback_title)
@@ -771,10 +892,14 @@ class RotatingIdleAnimation:
         cy = 96
         for angle in (0, 120, 240):
             rad = math.radians(angle + t * 240)
-            draw_line(buffer, cx, cy, int(cx + math.cos(rad) * 7), int(cy + math.sin(rad) * 7), purple)
+            draw_line(
+                buffer, cx, cy, int(cx + math.cos(rad) * 7), int(cy + math.sin(rad) * 7), purple
+            )
         self._draw_starburst(buffer, 110, 96, orange)
 
-    def _draw_alye_parusa_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene, t: float) -> None:
+    def _draw_alye_parusa_overlay(
+        self, buffer: NDArray[np.uint8], scene: IdleScene, t: float
+    ) -> None:
         """Алые Паруса idle overlay: quiet black/white/scarlet title frame."""
         white = (255, 255, 255)
         scarlet = (218, 34, 28)
@@ -809,7 +934,9 @@ class RotatingIdleAnimation:
         mast_y = 86
         draw_line(buffer, mast_x, mast_y - 14, mast_x, mast_y + 8, white)
         for i in range(12):
-            draw_line(buffer, mast_x + 1, mast_y - 12 + i, mast_x + 2 + i // 2, mast_y - 10 + i, scarlet)
+            draw_line(
+                buffer, mast_x + 1, mast_y - 12 + i, mast_x + 2 + i // 2, mast_y - 10 + i, scarlet
+            )
         draw_line(buffer, mast_x - 7, mast_y + 8, mast_x + 12, mast_y + 8, dark_red)
 
     def _draw_centered_title(
@@ -835,11 +962,15 @@ class RotatingIdleAnimation:
 
         draw_centered_text(buffer, title[:12], y, color, scale=1)
 
-    def _draw_corner_cross(self, buffer: NDArray[np.uint8], x: int, y: int, color: Tuple[int, int, int]) -> None:
+    def _draw_corner_cross(
+        self, buffer: NDArray[np.uint8], x: int, y: int, color: Tuple[int, int, int]
+    ) -> None:
         draw_line(buffer, x - 4, y, x + 4, y, color)
         draw_line(buffer, x, y - 4, x, y + 4, color)
 
-    def _draw_starburst(self, buffer: NDArray[np.uint8], x: int, y: int, color: Tuple[int, int, int]) -> None:
+    def _draw_starburst(
+        self, buffer: NDArray[np.uint8], x: int, y: int, color: Tuple[int, int, int]
+    ) -> None:
         draw_line(buffer, x - 5, y, x + 5, y, color)
         draw_line(buffer, x, y - 5, x, y + 5, color)
         draw_line(buffer, x - 4, y - 4, x + 4, y + 4, color)
@@ -874,7 +1005,7 @@ class RotatingIdleAnimation:
                 for frame_num in range(img.n_frames):
                     img.seek(frame_num)
                     # Convert to RGB and resize to 128x128 if needed
-                    frame = img.convert('RGB')
+                    frame = img.convert("RGB")
                     if frame.size != (128, 128):
                         frame = frame.resize((128, 128), Image.Resampling.NEAREST)
                     # Convert to numpy array
@@ -902,6 +1033,7 @@ class RotatingIdleAnimation:
         # Check for opencv
         try:
             import cv2
+
             self._cv2_available = True
         except ImportError:
             logger.warning("OpenCV not available, SAGA_LIVE disabled")
@@ -910,12 +1042,18 @@ class RotatingIdleAnimation:
         # Check for pygame.mixer
         try:
             import pygame.mixer
+
             self._pygame_mixer_available = True
         except ImportError:
             logger.warning("pygame.mixer not available for SAGA_LIVE audio")
 
         # Find the video file
-        video_path = Path(__file__).parent.parent.parent.parent / "assets" / "videos" / "sagalive_crop_center.mp4"
+        video_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "assets"
+            / "videos"
+            / "sagalive_crop_center.mp4"
+        )
         if video_path.exists():
             self.saga_video_path = video_path
             logger.info(f"Loaded SAGA LIVE video: {video_path.name}")
@@ -927,6 +1065,7 @@ class RotatingIdleAnimation:
         if not self._cv2_available:
             try:
                 import cv2  # noqa: F401
+
                 self._cv2_available = True
             except ImportError:
                 logger.warning("OpenCV not available, CRINGE_CIRCLE_VIDEO disabled")
@@ -1155,6 +1294,7 @@ class RotatingIdleAnimation:
         if self.saga_audio_playing and self._pygame_mixer_available:
             try:
                 import pygame.mixer
+
                 pygame.mixer.music.stop()
             except Exception:
                 pass
@@ -1179,6 +1319,7 @@ class RotatingIdleAnimation:
 
         # Resume idle music
         from artifact.audio.engine import get_audio_engine
+
         audio = get_audio_engine()
         audio.start_idle_music()
 
@@ -1186,11 +1327,11 @@ class RotatingIdleAnimation:
         """Initialize bar scene with glasses and shots."""
         # Cocktail glasses on bar counter
         self.bar_glasses = [
-            {'x': 20, 'type': 'martini', 'color': (255, 100, 150), 'phase': 0},
-            {'x': 45, 'type': 'highball', 'color': (100, 200, 255), 'phase': 1.2},
-            {'x': 70, 'type': 'wine', 'color': (180, 50, 80), 'phase': 2.4},
-            {'x': 95, 'type': 'shot', 'color': (255, 180, 50), 'phase': 3.6},
-            {'x': 110, 'type': 'martini', 'color': (150, 255, 100), 'phase': 4.8},
+            {"x": 20, "type": "martini", "color": (255, 100, 150), "phase": 0},
+            {"x": 45, "type": "highball", "color": (100, 200, 255), "phase": 1.2},
+            {"x": 70, "type": "wine", "color": (180, 50, 80), "phase": 2.4},
+            {"x": 95, "type": "shot", "color": (255, 180, 50), "phase": 3.6},
+            {"x": 110, "type": "martini", "color": (150, 255, 100), "phase": 4.8},
         ]
         # Falling shots
         self.bar_shots = []
@@ -1224,7 +1365,12 @@ class RotatingIdleAnimation:
 
         # Auto scene transition - use scene-specific duration if defined
         # Skip if locked (numpad 0 toggles lock)
-        if len(self.scenes) > 1 and not self.manual_mode and not self.transitioning and not self.locked:
+        if (
+            len(self.scenes) > 1
+            and not self.manual_mode
+            and not self.transitioning
+            and not self.locked
+        ):
             scene_name = self.state.current_scene.name
             duration = SCENE_DURATIONS.get(scene_name, SCENE_DURATION)
             if self.state.scene_time >= duration:
@@ -1319,17 +1465,19 @@ class RotatingIdleAnimation:
             True if input was handled, False otherwise
         """
         # Numpad 0 toggles lock on current scene
-        if key == '0':
+        if key == "0":
             self.locked = not self.locked
-            logger.info(f"Idle scene {'LOCKED' if self.locked else 'UNLOCKED'}: {self.state.current_scene.name}")
+            logger.info(
+                f"Idle scene {'LOCKED' if self.locked else 'UNLOCKED'}: {self.state.current_scene.name}"
+            )
             return True
 
         # During DIVOOM_GALLERY, allow GIF navigation with 2 (prev) and 8 (next)
         if self.state.current_scene == IdleScene.DIVOOM_GALLERY:
-            if key == '2':
+            if key == "2":
                 self.prev_gif()
                 return True
-            elif key == '8':
+            elif key == "8":
                 self.next_gif()
                 return True
 
@@ -1337,13 +1485,13 @@ class RotatingIdleAnimation:
         if self.state.current_scene == IdleScene.CAMERA_EFFECTS:
             effects = list(CameraEffect)
             current_idx = effects.index(self.state.camera_effect)
-            if key == '2':
+            if key == "2":
                 new_idx = (current_idx - 1) % len(effects)
                 self.state.camera_effect = effects[new_idx]
                 self.state.camera_effect_time = 0.0
                 logger.info(f"Camera effect: {self.state.camera_effect.name}")
                 return True
-            elif key == '8':
+            elif key == "8":
                 new_idx = (current_idx + 1) % len(effects)
                 self.state.camera_effect = effects[new_idx]
                 self.state.camera_effect_time = 0.0
@@ -1464,6 +1612,10 @@ class RotatingIdleAnimation:
         elif self.idle_variant == "jara":
             names = {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
+            }
+        elif self.idle_variant == "world_cup_final":
+            names = {
+                IdleScene.CRINGE_HERO: "WORLD CUP 2026",
             }
         else:
             names = {
@@ -1598,18 +1750,12 @@ class RotatingIdleAnimation:
             if t < 0.5 and self.prev_scene_buffer is not None:
                 # Fade out old scene
                 alpha = 1.0 - (eased * 2.0)  # 1.0 -> 0.0
-                buffer[:] = np.clip(
-                    buffer.astype(np.float32) * alpha,
-                    0, 255
-                ).astype(np.uint8)
+                buffer[:] = np.clip(buffer.astype(np.float32) * alpha, 0, 255).astype(np.uint8)
             # During second half: fade in new scene (already rendered)
             elif t >= 0.5:
                 # Fade in new scene
                 alpha = (eased - 0.5) * 2.0  # 0.0 -> 1.0
-                buffer[:] = np.clip(
-                    buffer.astype(np.float32) * alpha,
-                    0, 255
-                ).astype(np.uint8)
+                buffer[:] = np.clip(buffer.astype(np.float32) * alpha, 0, 255).astype(np.uint8)
 
     def _render_vnvnc_entrance(self, buffer: NDArray[np.uint8]) -> None:
         """Render grand VNVNC entrance - neon sign, red carpet, golden doorway."""
@@ -1724,7 +1870,7 @@ class RotatingIdleAnimation:
                     buffer[y, x] = (
                         min(255, int(existing[0]) + r),
                         min(255, int(existing[1]) + g),
-                        min(255, int(existing[2]) + b)
+                        min(255, int(existing[2]) + b),
                     )
 
         # === WROUGHT IRON GATE (open) ===
@@ -1772,31 +1918,25 @@ class RotatingIdleAnimation:
 
         # === SNOW on ground ===
         for snow in self.entrance_snow:
-            snow['x'] += math.sin(t + snow['y'] * 0.1) * 0.1
-            snow['y'] += snow['speed']
-            if snow['y'] > 127:
-                snow['y'] = 100
-                snow['x'] = random.randint(0, 127)
-            px, py = int(snow['x']) % 128, int(snow['y'])
+            snow["x"] += math.sin(t + snow["y"] * 0.1) * 0.1
+            snow["y"] += snow["speed"]
+            if snow["y"] > 127:
+                snow["y"] = 100
+                snow["x"] = random.randint(0, 127)
+            px, py = int(snow["x"]) % 128, int(snow["y"])
             if 0 <= px < 128 and 0 <= py < 128:
                 buffer[py, px] = (240, 240, 250)
 
         # === DIAMONDS floating ===
         for diamond in self.entrance_diamonds:
-            dx = diamond['x']
-            dy = int(diamond['y'] + 5 * math.sin(t * 2 + diamond['phase']))
-            scale = diamond['scale']
-            sparkle = 0.7 + 0.3 * math.sin(t * 6 + diamond['phase'])
+            dx = diamond["x"]
+            dy = int(diamond["y"] + 5 * math.sin(t * 2 + diamond["phase"]))
+            scale = diamond["scale"]
+            sparkle = 0.7 + 0.3 * math.sin(t * 6 + diamond["phase"])
 
             # Diamond shape (simple)
-            points = [
-                (0, -6), (-4, 0), (0, 4), (4, 0)  # Top, left, bottom, right
-            ]
-            color = (
-                int(150 * sparkle + 100),
-                int(200 * sparkle + 50),
-                int(255 * sparkle)
-            )
+            points = [(0, -6), (-4, 0), (0, 4), (4, 0)]  # Top, left, bottom, right
+            color = (int(150 * sparkle + 100), int(200 * sparkle + 50), int(255 * sparkle))
             # Fill diamond
             for py in range(-6, 5):
                 width = 4 - abs(py) if py < 0 else 4 - py
@@ -1822,7 +1962,7 @@ class RotatingIdleAnimation:
                     glow_color = (
                         int(100 * neon_pulse * flicker),
                         int(40 * neon_pulse * flicker),
-                        int(120 * neon_pulse * flicker)
+                        int(120 * neon_pulse * flicker),
                     )
                     draw_centered_text(buffer, "VNVNC", sign_y + oy, glow_color, scale=2)
 
@@ -1830,36 +1970,40 @@ class RotatingIdleAnimation:
         neon_color = (
             int(255 * neon_pulse * flicker),
             int(100 * neon_pulse * flicker),
-            int(220 * neon_pulse * flicker)
+            int(220 * neon_pulse * flicker),
         )
         draw_centered_text(buffer, "VNVNC", sign_y, neon_color, scale=2)
 
         # === CONFETTI particles ===
         # Spawn new confetti
         if random.random() < 0.15:
-            self.entrance_confetti.append({
-                'x': random.randint(0, 127),
-                'y': random.randint(-10, 0),
-                'vx': random.uniform(-0.5, 0.5),
-                'vy': random.uniform(0.5, 1.5),
-                'color': random.choice([
-                    (255, 215, 0),    # Gold
-                    (255, 100, 150),  # Pink
-                    (100, 200, 255),  # Light blue
-                    (255, 255, 255),  # White
-                    (200, 100, 255),  # Purple
-                ])
-            })
+            self.entrance_confetti.append(
+                {
+                    "x": random.randint(0, 127),
+                    "y": random.randint(-10, 0),
+                    "vx": random.uniform(-0.5, 0.5),
+                    "vy": random.uniform(0.5, 1.5),
+                    "color": random.choice(
+                        [
+                            (255, 215, 0),  # Gold
+                            (255, 100, 150),  # Pink
+                            (100, 200, 255),  # Light blue
+                            (255, 255, 255),  # White
+                            (200, 100, 255),  # Purple
+                        ]
+                    ),
+                }
+            )
 
         # Update and draw confetti
         new_confetti = []
         for c in self.entrance_confetti:
-            c['x'] += c['vx'] + math.sin(t * 3 + c['y'] * 0.1) * 0.3
-            c['y'] += c['vy']
-            if c['y'] < 120:
-                px, py = int(c['x']), int(c['y'])
+            c["x"] += c["vx"] + math.sin(t * 3 + c["y"] * 0.1) * 0.3
+            c["y"] += c["vy"]
+            if c["y"] < 120:
+                px, py = int(c["x"]), int(c["y"])
                 if 0 <= px < 128 and 0 <= py < 128:
-                    buffer[py, px] = c['color']
+                    buffer[py, px] = c["color"]
                 new_confetti.append(c)
         self.entrance_confetti = new_confetti[-100:]  # Limit particles
 
@@ -1889,12 +2033,12 @@ class RotatingIdleAnimation:
 
         # Bottles on shelf (silhouettes with colored liquid)
         bottles = [
-            (20, (100, 200, 100), 15),   # Green (absinthe)
-            (35, (200, 150, 50), 12),    # Amber (whiskey)
-            (50, (255, 100, 100), 14),   # Red (campari)
-            (65, (150, 200, 255), 13),   # Blue (curaçao)
-            (80, (255, 200, 150), 11),   # Orange (aperol)
-            (95, (200, 100, 200), 14),   # Purple (violet)
+            (20, (100, 200, 100), 15),  # Green (absinthe)
+            (35, (200, 150, 50), 12),  # Amber (whiskey)
+            (50, (255, 100, 100), 14),  # Red (campari)
+            (65, (150, 200, 255), 13),  # Blue (curaçao)
+            (80, (255, 200, 150), 11),  # Orange (aperol)
+            (95, (200, 100, 200), 14),  # Purple (violet)
             (110, (255, 255, 200), 12),  # Pale (vodka)
         ]
 
@@ -1932,18 +2076,18 @@ class RotatingIdleAnimation:
 
         # === COCKTAIL GLASSES on counter ===
         for glass in self.bar_glasses:
-            gx = glass['x']
+            gx = glass["x"]
             gy = counter_y - 2
-            color = glass['color']
-            gtype = glass['type']
-            phase = glass['phase']
+            color = glass["color"]
+            gtype = glass["type"]
+            phase = glass["phase"]
 
             # Glass shimmer
             shimmer = 0.7 + 0.3 * math.sin(t * 3 + phase)
             r, g, b = color
             c = (int(r * shimmer), int(g * shimmer), int(b * shimmer))
 
-            if gtype == 'martini':
+            if gtype == "martini":
                 # Martini glass shape (V)
                 for dy in range(-15, 0):
                     width = (-dy) // 2
@@ -1961,7 +2105,7 @@ class RotatingIdleAnimation:
                 # Olive
                 buffer[gy - 8, gx] = (80, 120, 50)
 
-            elif gtype == 'highball':
+            elif gtype == "highball":
                 # Tall glass
                 for dy in range(-20, 0):
                     for dx in range(-4, 5):
@@ -1977,7 +2121,7 @@ class RotatingIdleAnimation:
                         if 0 <= gy + dy < 128:
                             buffer[gy + dy, gx + 2] = (255, 50, 50)
 
-            elif gtype == 'wine':
+            elif gtype == "wine":
                 # Wine glass (rounded bowl)
                 for dy in range(-12, 0):
                     width = int(5 * math.sin((dy + 12) / 12 * math.pi * 0.8))
@@ -1993,7 +2137,7 @@ class RotatingIdleAnimation:
                     if 0 <= gy + dy < 128:
                         buffer[gy + dy, gx] = (200, 200, 220)
 
-            elif gtype == 'shot':
+            elif gtype == "shot":
                 # Shot glass (small)
                 for dy in range(-8, 0):
                     width = 2 + dy // 4
@@ -2004,56 +2148,62 @@ class RotatingIdleAnimation:
 
         # === FALLING SHOTS animation ===
         if random.random() < 0.03:
-            self.bar_shots.append({
-                'x': random.randint(20, 108),
-                'y': 0,
-                'vy': 0,
-                'color': random.choice([
-                    (255, 180, 50),   # Whiskey
-                    (200, 255, 200),  # Absinthe
-                    (255, 100, 100),  # Grenadine
-                    (100, 200, 255),  # Blue shot
-                ])
-            })
+            self.bar_shots.append(
+                {
+                    "x": random.randint(20, 108),
+                    "y": 0,
+                    "vy": 0,
+                    "color": random.choice(
+                        [
+                            (255, 180, 50),  # Whiskey
+                            (200, 255, 200),  # Absinthe
+                            (255, 100, 100),  # Grenadine
+                            (100, 200, 255),  # Blue shot
+                        ]
+                    ),
+                }
+            )
 
         new_shots = []
         for shot in self.bar_shots:
-            shot['vy'] += 0.2  # Gravity
-            shot['y'] += shot['vy']
+            shot["vy"] += 0.2  # Gravity
+            shot["y"] += shot["vy"]
 
-            if shot['y'] < counter_y - 8:
+            if shot["y"] < counter_y - 8:
                 # Draw falling shot
-                gx, gy = int(shot['x']), int(shot['y'])
+                gx, gy = int(shot["x"]), int(shot["y"])
                 for dy in range(-6, 0):
                     for dx in range(-2, 3):
                         px, py = gx + dx, gy + dy
                         if 0 <= px < 128 and 0 <= py < 128:
-                            buffer[py, px] = shot['color']
+                            buffer[py, px] = shot["color"]
                 new_shots.append(shot)
             else:
                 # Splash effect - create bubbles
                 for _ in range(8):
-                    self.bar_bubbles.append({
-                        'x': shot['x'] + random.randint(-5, 5),
-                        'y': counter_y - 10,
-                        'vy': random.uniform(-2, -0.5),
-                        'life': random.randint(20, 40),
-                        'color': shot['color']
-                    })
+                    self.bar_bubbles.append(
+                        {
+                            "x": shot["x"] + random.randint(-5, 5),
+                            "y": counter_y - 10,
+                            "vy": random.uniform(-2, -0.5),
+                            "life": random.randint(20, 40),
+                            "color": shot["color"],
+                        }
+                    )
         self.bar_shots = new_shots
 
         # === BUBBLES ===
         new_bubbles = []
         for bubble in self.bar_bubbles:
-            bubble['y'] += bubble['vy']
-            bubble['vy'] += 0.05  # Slow down
-            bubble['life'] -= 1
+            bubble["y"] += bubble["vy"]
+            bubble["vy"] += 0.05  # Slow down
+            bubble["life"] -= 1
 
-            if bubble['life'] > 0 and bubble['y'] > 0:
-                px, py = int(bubble['x']), int(bubble['y'])
+            if bubble["life"] > 0 and bubble["y"] > 0:
+                px, py = int(bubble["x"]), int(bubble["y"])
                 if 0 <= px < 128 and 0 <= py < 128:
-                    alpha = bubble['life'] / 40
-                    c = bubble['color']
+                    alpha = bubble["life"] / 40
+                    c = bubble["color"]
                     buffer[py, px] = (int(c[0] * alpha), int(c[1] * alpha), int(c[2] * alpha))
                 new_bubbles.append(bubble)
         self.bar_bubbles = new_bubbles[-50:]
@@ -2073,7 +2223,7 @@ class RotatingIdleAnimation:
         neon_color = (
             int(255 * neon_pulse * self.bar_neon_flicker),
             int(100 * neon_pulse * self.bar_neon_flicker),
-            int(200 * neon_pulse * self.bar_neon_flicker)
+            int(200 * neon_pulse * self.bar_neon_flicker),
         )
         draw_centered_text(buffer, "VNVNC ARCADE", 55, neon_color, scale=1)
 
@@ -2107,7 +2257,7 @@ class RotatingIdleAnimation:
         for y in range(128):
             for x in range(128):
                 dx, dy = x - cx, y - cy
-                dist = math.sqrt(dx*dx + dy*dy)
+                dist = math.sqrt(dx * dx + dy * dy)
                 dist_norm = min(1.0, dist / 90)  # Normalize to 0-1
 
                 # Dark purple void at edges, warmer at center
@@ -2193,7 +2343,7 @@ class RotatingIdleAnimation:
 
         for y in range(-iris_r - 3, iris_r + 4):
             for x in range(-iris_r - 3, iris_r + 4):
-                dist_sq = x*x + y*y
+                dist_sq = x * x + y * y
                 dist = math.sqrt(dist_sq)
 
                 if dist <= iris_r + 3:
@@ -2214,7 +2364,11 @@ class RotatingIdleAnimation:
                             r = int((255 * center_mix + 50 * (1 - center_mix)) * pattern)
                             g = int((200 * center_mix + 150 * (1 - center_mix) * 0.5) * pattern)
                             b = int((50 * center_mix + 200 * (1 - center_mix)) * pattern)
-                            buffer[py, px] = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+                            buffer[py, px] = (
+                                max(0, min(255, r)),
+                                max(0, min(255, g)),
+                                max(0, min(255, b)),
+                            )
                         else:
                             # Iris edge glow
                             glow = max(0, 1 - (dist - iris_r) / 3)
@@ -2227,7 +2381,7 @@ class RotatingIdleAnimation:
 
         for y in range(-pupil_r - 4, pupil_r + 5):
             for x in range(-pupil_r - 4, pupil_r + 5):
-                dist_sq = x*x + y*y
+                dist_sq = x * x + y * y
                 dist = math.sqrt(dist_sq)
                 if dist <= pupil_r + 4:
                     px, py = pupil_cx + x, pupil_cy + y
@@ -2235,7 +2389,11 @@ class RotatingIdleAnimation:
                         if dist <= pupil_r:
                             # Void black with subtle color
                             void_pulse = 0.05 + 0.03 * math.sin(t * 6)
-                            buffer[py, px] = (int(5 * void_pulse), int(3 * void_pulse), int(15 * void_pulse))
+                            buffer[py, px] = (
+                                int(5 * void_pulse),
+                                int(3 * void_pulse),
+                                int(15 * void_pulse),
+                            )
                         else:
                             # Gradient edge
                             edge = max(0, 1 - (dist - pupil_r) / 4)
@@ -2243,9 +2401,9 @@ class RotatingIdleAnimation:
 
         # === GLINTING HIGHLIGHTS - Makes it look wet/alive ===
         highlights = [
-            (-8, -8, 5, 1.0),   # Main highlight
+            (-8, -8, 5, 1.0),  # Main highlight
             (-4, -12, 3, 0.8),  # Secondary
-            (6, -6, 2, 0.5),    # Small accent
+            (6, -6, 2, 0.5),  # Small accent
             (-10, -5, 2, 0.4),  # Tiny
         ]
         for dx, dy, size, intensity in highlights:
@@ -2255,11 +2413,15 @@ class RotatingIdleAnimation:
             shimmer = 0.8 + 0.2 * math.sin(t * 10 + dx)
             for sy in range(-size, size + 1):
                 for sx in range(-size, size + 1):
-                    if sx*sx + sy*sy <= size*size:
+                    if sx * sx + sy * sy <= size * size:
                         hpx, hpy = hx + sx, hy + sy
                         if 0 <= hpx < 128 and 0 <= hpy < 128:
                             val = int(255 * intensity * shimmer)
-                            buffer[hpy, hpx] = (min(255, val), min(255, val), min(255, int(val * 0.9)))
+                            buffer[hpy, hpx] = (
+                                min(255, val),
+                                min(255, val),
+                                min(255, int(val * 0.9)),
+                            )
 
         # === FULL SCREEN BLINK - Eyelids close from top and bottom ===
         if self.blink > 0:
@@ -2372,7 +2534,11 @@ class RotatingIdleAnimation:
             pulse = int(20 + 5 * math.sin(t * 3))
             for r in range(pulse, 10, -3):
                 alpha = max(0.0, (pulse - r) / max(1, pulse))  # Prevent division by zero
-                color = (max(0, min(255, int(20 * alpha))), max(0, min(255, int(180 * alpha))), max(0, min(255, int(160 * alpha))))
+                color = (
+                    max(0, min(255, int(20 * alpha))),
+                    max(0, min(255, int(180 * alpha))),
+                    max(0, min(255, int(160 * alpha))),
+                )
                 for angle in range(0, 360, 15):
                     rad = math.radians(angle)
                     px = int(64 + r * math.cos(rad))
@@ -2424,9 +2590,9 @@ class RotatingIdleAnimation:
             for y in range(0, 128, 2):
                 for x in range(0, 128, 2):
                     if gray[y, x] > threshold:
-                        frame[y:y+2, x:x+2] = [self.teal[0], self.teal[1], self.teal[2]]
+                        frame[y : y + 2, x : x + 2] = [self.teal[0], self.teal[1], self.teal[2]]
                     else:
-                        frame[y:y+2, x:x+2] = [20, 15, 40]
+                        frame[y : y + 2, x : x + 2] = [20, 15, 40]
 
         # Copy to buffer - FULL SCREEN, no black bars!
         np.copyto(buffer, frame)
@@ -2437,7 +2603,9 @@ class RotatingIdleAnimation:
         for ox in [-1, 0, 1]:
             for oy in [-1, 0, 1]:
                 if ox != 0 or oy != 0:
-                    draw_centered_text(buffer, effect_names.get(effect, "ЭФФЕКТ"), 116 + oy, (0, 0, 0), scale=1)
+                    draw_centered_text(
+                        buffer, effect_names.get(effect, "ЭФФЕКТ"), 116 + oy, (0, 0, 0), scale=1
+                    )
         draw_centered_text(buffer, effect_names.get(effect, "ЭФФЕКТ"), 116, self.teal, scale=1)
 
         # Top text with outline
@@ -2486,12 +2654,24 @@ class RotatingIdleAnimation:
         mask4 = (h >= 4) & (h < 5)
         mask5 = (h >= 5) & (h < 6)
 
-        r[mask0] = 255; g[mask0] = x[mask0].astype(np.uint8); b[mask0] = 55
-        r[mask1] = x[mask1].astype(np.uint8); g[mask1] = 255; b[mask1] = 55
-        r[mask2] = 55; g[mask2] = 255; b[mask2] = x[mask2].astype(np.uint8)
-        r[mask3] = 55; g[mask3] = x[mask3].astype(np.uint8); b[mask3] = 255
-        r[mask4] = x[mask4].astype(np.uint8); g[mask4] = 55; b[mask4] = 255
-        r[mask5] = 255; g[mask5] = 55; b[mask5] = x[mask5].astype(np.uint8)
+        r[mask0] = 255
+        g[mask0] = x[mask0].astype(np.uint8)
+        b[mask0] = 55
+        r[mask1] = x[mask1].astype(np.uint8)
+        g[mask1] = 255
+        b[mask1] = 55
+        r[mask2] = 55
+        g[mask2] = 255
+        b[mask2] = x[mask2].astype(np.uint8)
+        r[mask3] = 55
+        g[mask3] = x[mask3].astype(np.uint8)
+        b[mask3] = 255
+        r[mask4] = x[mask4].astype(np.uint8)
+        g[mask4] = 55
+        b[mask4] = 255
+        r[mask5] = 255
+        g[mask5] = 55
+        b[mask5] = x[mask5].astype(np.uint8)
 
         buffer[:, :, 0] = r
         buffer[:, :, 1] = g
@@ -2585,9 +2765,9 @@ class RotatingIdleAnimation:
                 # Horizontal shift
                 shift = random.randint(-10, 10)
                 if shift > 0:
-                    buffer[y:y+2, shift:] = buffer[y:y+2, :-shift]
+                    buffer[y : y + 2, shift:] = buffer[y : y + 2, :-shift]
                 elif shift < 0:
-                    buffer[y:y+2, :shift] = buffer[y:y+2, -shift:]
+                    buffer[y : y + 2, :shift] = buffer[y : y + 2, -shift:]
 
         # RGB split effect
         split = int(2 + 2 * math.sin(t * 5))
@@ -2604,7 +2784,7 @@ class RotatingIdleAnimation:
             gw = random.randint(10, 30)
             gh = random.randint(5, 15)
             # Invert block
-            buffer[gy:gy+gh, gx:gx+gw] = 255 - buffer[gy:gy+gh, gx:gx+gw]
+            buffer[gy : gy + gh, gx : gx + gw] = 255 - buffer[gy : gy + gh, gx : gx + gw]
 
         # Scanline overlay
         for y in range(0, 128, 2):
@@ -2638,7 +2818,11 @@ class RotatingIdleAnimation:
             py = int(127 - (t * 50 + random.random() * 100) % 128)
             if 0 <= py < 128:
                 brightness = random.uniform(0.5, 1.0)
-                buffer[py, px] = (255, max(0, min(255, int(200 * brightness))), max(0, min(255, int(50 * brightness))))
+                buffer[py, px] = (
+                    255,
+                    max(0, min(255, int(200 * brightness))),
+                    max(0, min(255, int(50 * brightness))),
+                )
 
         # Camera silhouette overlay
         if self._camera_frame is not None:
@@ -2778,8 +2962,8 @@ class RotatingIdleAnimation:
 
             if 0 <= sx < 128 and 0 <= sy < 128:
                 color = (brightness, brightness, min(255, max(0, brightness + 50)))
-                for dy in range(-size//2, size//2 + 1):
-                    for dx in range(-size//2, size//2 + 1):
+                for dy in range(-size // 2, size // 2 + 1):
+                    for dx in range(-size // 2, size // 2 + 1):
                         px, py = sx + dx, sy + dy
                         if 0 <= px < 128 and 0 <= py < 128:
                             buffer[py, px] = color
@@ -2809,7 +2993,7 @@ class RotatingIdleAnimation:
         for y in range(128):
             for x in range(128):
                 dx, dy = x - cx, y - cy
-                dist = math.sqrt(dx*dx + dy*dy)
+                dist = math.sqrt(dx * dx + dy * dy)
                 angle = math.atan2(dy, dx)
 
                 # Vortex twist - spiraling inward
@@ -2958,7 +3142,7 @@ class RotatingIdleAnimation:
                                         buffer[gpy, gpx] = (
                                             min(255, int(existing[0]) + glow),
                                             min(255, int(existing[1]) + glow),
-                                            min(255, int(existing[2]) + glow)
+                                            min(255, int(existing[2]) + glow),
                                         )
 
             # Branches
@@ -2999,33 +3183,37 @@ class RotatingIdleAnimation:
         # Update particles with wave function behavior
         for p in self.quantum_particles:
             # Quantum tunneling / wave behavior
-            p['vx'] += (random.random() - 0.5) * 0.02 + math.sin(t + p['y'] * 10) * 0.01
-            p['vy'] += (random.random() - 0.5) * 0.02 + math.cos(t + p['x'] * 10) * 0.01
-            p['x'] += p['vx']
-            p['y'] += p['vy']
+            p["vx"] += (random.random() - 0.5) * 0.02 + math.sin(t + p["y"] * 10) * 0.01
+            p["vy"] += (random.random() - 0.5) * 0.02 + math.cos(t + p["x"] * 10) * 0.01
+            p["x"] += p["vx"]
+            p["y"] += p["vy"]
 
             # Wrap around
-            if p['x'] < 0: p['x'] = 1
-            if p['x'] > 1: p['x'] = 0
-            if p['y'] < 0: p['y'] = 1
-            if p['y'] > 1: p['y'] = 0
+            if p["x"] < 0:
+                p["x"] = 1
+            if p["x"] > 1:
+                p["x"] = 0
+            if p["y"] < 0:
+                p["y"] = 1
+            if p["y"] > 1:
+                p["y"] = 0
 
             # Damping
-            p['vx'] *= 0.98
-            p['vy'] *= 0.98
+            p["vx"] *= 0.98
+            p["vy"] *= 0.98
 
         # Draw connections between nearby particles
         for i, p1 in enumerate(self.quantum_particles):
-            px1 = int(p1['x'] * 127)
-            py1 = int(p1['y'] * 127)
+            px1 = int(p1["x"] * 127)
+            py1 = int(p1["y"] * 127)
 
-            for p2 in self.quantum_particles[i+1:]:
-                px2 = int(p2['x'] * 127)
-                py2 = int(p2['y'] * 127)
-                dist = math.sqrt((px1 - px2)**2 + (py1 - py2)**2)
+            for p2 in self.quantum_particles[i + 1 :]:
+                px2 = int(p2["x"] * 127)
+                py2 = int(p2["y"] * 127)
+                dist = math.sqrt((px1 - px2) ** 2 + (py1 - py2) ** 2)
 
                 if dist < 40 and dist > 0:
-                    alpha = (1 - dist / 40)
+                    alpha = 1 - dist / 40
                     hue = (t * 30 + i * 5) % 360
                     color = hsv_to_rgb(hue, 0.7, alpha)
                     # Draw line
@@ -3037,7 +3225,7 @@ class RotatingIdleAnimation:
                             buffer[ly, lx] = color
 
             # Draw particle
-            hue = (p1['x'] * 180 + t * 50) % 360
+            hue = (p1["x"] * 180 + t * 50) % 360
             color = hsv_to_rgb(hue, 0.9, 0.9)
             if 0 <= px1 < 128 and 0 <= py1 < 128:
                 buffer[py1, px1] = color
@@ -3083,7 +3271,11 @@ class RotatingIdleAnimation:
                     px = x1 + dx
                     if 0 <= px < 128:
                         brightness = 1.0 - abs(dx) * 0.2
-                        buffer[y, px] = (int(200 * brightness), int(50 * brightness), int(50 * brightness))
+                        buffer[y, px] = (
+                            int(200 * brightness),
+                            int(50 * brightness),
+                            int(50 * brightness),
+                        )
 
             # Draw strand 2 (front when depth > 0)
             if depth2 > 0:
@@ -3091,7 +3283,11 @@ class RotatingIdleAnimation:
                     px = x2 + dx
                     if 0 <= px < 128:
                         brightness = 1.0 - abs(dx) * 0.2
-                        buffer[y, px] = (int(50 * brightness), int(50 * brightness), int(200 * brightness))
+                        buffer[y, px] = (
+                            int(50 * brightness),
+                            int(50 * brightness),
+                            int(200 * brightness),
+                        )
 
             # Base pairs (rungs) - only when strands are at similar depth
             if y % 8 == 0 and abs(depth1 - depth2) < 0.5:
@@ -3145,20 +3341,20 @@ class RotatingIdleAnimation:
 
         # Update and draw snowflakes
         for f in self.snowflakes:
-            x = int(f['x'] + math.sin(t + f['y'] * 0.1) * 2)
-            y = int(f['y'])
+            x = int(f["x"] + math.sin(t + f["y"] * 0.1) * 2)
+            y = int(f["y"])
             if 0 <= x < 128 and 0 <= y < 128:
-                brightness = 200 + f['size'] * 18
+                brightness = 200 + f["size"] * 18
                 # Draw snowflake with size
-                for dx in range(-f['size'] + 1, f['size']):
-                    for dy in range(-f['size'] + 1, f['size']):
+                for dx in range(-f["size"] + 1, f["size"]):
+                    for dy in range(-f["size"] + 1, f["size"]):
                         px, py = x + dx, y + dy
                         if 0 <= px < 128 and 0 <= py < 128:
                             buffer[py, px] = (brightness, brightness, 255)
-            f['y'] += f['speed']
-            if f['y'] > 128:
-                f['y'] = random.randint(-20, -5)
-                f['x'] = random.randint(0, 127)
+            f["y"] += f["speed"]
+            if f["y"] > 128:
+                f["y"] = random.randint(-20, -5)
+                f["x"] = random.randint(0, 127)
 
         # Branding
         draw_centered_text(buffer, "VNVNC", 4, (200, 220, 255), scale=2)
@@ -3192,8 +3388,12 @@ class RotatingIdleAnimation:
 
         for y in range(57, 0, -1):
             for x in range(1, 67):
-                avg = (self.flames[y + 1][x - 1] + self.flames[y + 1][x] +
-                       self.flames[y + 1][x + 1] + self.flames[y][x]) / 4.08
+                avg = (
+                    self.flames[y + 1][x - 1]
+                    + self.flames[y + 1][x]
+                    + self.flames[y + 1][x + 1]
+                    + self.flames[y][x]
+                ) / 4.08
                 self.flames[y][x] = max(0, avg - random.random() * 3)
 
         # Draw fire
@@ -3230,9 +3430,12 @@ class RotatingIdleAnimation:
 
         for y in range(128):
             for x in range(128):
-                v = (math.sin(x / 16 + t) + math.sin(y / 8 + t * 0.5) +
-                     math.sin((x + y) / 16 + t * 0.7) +
-                     math.sin(math.sqrt(x * x + y * y) / 8 + t * 0.3)) / 4
+                v = (
+                    math.sin(x / 16 + t)
+                    + math.sin(y / 8 + t * 0.5)
+                    + math.sin((x + y) / 16 + t * 0.7)
+                    + math.sin(math.sqrt(x * x + y * y) / 8 + t * 0.3)
+                ) / 4
                 color = hsv_to_rgb((v + 1) * 180 + t * 30, 1.0, 0.9)
                 buffer[y, x] = color
 
@@ -3254,7 +3457,7 @@ class RotatingIdleAnimation:
                 dist = math.sqrt(dx * dx + dy * dy) + 0.1
                 angle = math.atan2(dy, dx)
                 v = 1.0 / dist * 20 + t * 2
-                checker = ((int(angle / math.pi * 8) + int(v)) % 2)
+                checker = (int(angle / math.pi * 8) + int(v)) % 2
                 brightness = (0.3 + 0.7 * checker) * min(1, 30 / dist)
                 color = hsv_to_rgb((v * 30 + t * 50) % 360, 0.8, brightness)
                 buffer[y, x] = color
@@ -3276,9 +3479,11 @@ class RotatingIdleAnimation:
                 d2 = math.sqrt((x - 100) ** 2 + (y - 30) ** 2)
                 d3 = math.sqrt((x - 64) ** 2 + (y - 100) ** 2)
 
-                v = (math.sin(d1 / 8 - t * 3) +
-                     math.sin(d2 / 10 - t * 2.5) +
-                     math.sin(d3 / 12 - t * 2)) / 3
+                v = (
+                    math.sin(d1 / 8 - t * 3)
+                    + math.sin(d2 / 10 - t * 2.5)
+                    + math.sin(d3 / 12 - t * 2)
+                ) / 3
 
                 hue = (v * 60 + t * 20 + x + y) % 360
                 brightness = (v + 1) / 2
@@ -3320,10 +3525,10 @@ class RotatingIdleAnimation:
 
         # Multi-layered aurora curtains with different colors
         aurora_colors = [
-            (120, 0.9, 0.9),   # Green
-            (160, 0.7, 0.8),   # Cyan-green
-            (280, 0.6, 0.7),   # Purple
-            (100, 0.8, 0.6),   # Yellow-green
+            (120, 0.9, 0.9),  # Green
+            (160, 0.7, 0.8),  # Cyan-green
+            (280, 0.6, 0.7),  # Purple
+            (100, 0.8, 0.6),  # Yellow-green
         ]
 
         for idx, curtain in enumerate(self.aurora_curtains):
@@ -3336,10 +3541,10 @@ class RotatingIdleAnimation:
 
             for y in range(max(0, y_start), min(128, y_end)):
                 # Complex wave motion for realistic curtain movement
-                wave1 = math.sin(y / 12 + t * 1.5 + curtain['phase']) * 20
-                wave2 = math.sin(y / 6 + t * 2.5 + curtain['phase'] * 2) * 8
+                wave1 = math.sin(y / 12 + t * 1.5 + curtain["phase"]) * 20
+                wave2 = math.sin(y / 6 + t * 2.5 + curtain["phase"] * 2) * 8
                 wave3 = math.sin(y / 25 + t * 0.8) * 12
-                x = int(curtain['x'] + wave1 + wave2 + wave3)
+                x = int(curtain["x"] + wave1 + wave2 + wave3)
 
                 # Intensity varies with height (brightest in middle)
                 y_center = (y_start + y_end) / 2
@@ -3347,7 +3552,7 @@ class RotatingIdleAnimation:
                 height_factor = max(0, 1 - abs(y - y_center) / y_range)
 
                 # Pulsing intensity
-                pulse = 0.6 + 0.4 * math.sin(t * 2 + curtain['phase'] + y / 30)
+                pulse = 0.6 + 0.4 * math.sin(t * 2 + curtain["phase"] + y / 30)
                 intensity = height_factor * pulse
 
                 if intensity > 0.1 and 0 <= x < 128:
@@ -3365,11 +3570,11 @@ class RotatingIdleAnimation:
                             buffer[y, px] = tuple(blend)
 
             # Slow curtain drift
-            curtain['x'] += math.sin(t * 0.3 + curtain['phase']) * 0.4
-            if curtain['x'] < -20:
-                curtain['x'] = 140
-            elif curtain['x'] > 148:
-                curtain['x'] = -12
+            curtain["x"] += math.sin(t * 0.3 + curtain["phase"]) * 0.4
+            if curtain["x"] < -20:
+                curtain["x"] = 140
+            elif curtain["x"] > 148:
+                curtain["x"] = -12
 
         # Occasional bright flash/shimmer
         if int(t * 10) % 40 < 2:
@@ -3433,39 +3638,44 @@ class RotatingIdleAnimation:
 
         # Launch new rockets
         if random.random() < 0.03 and len(self.firework_rockets) < 3:
-            self.firework_rockets.append({
-                'x': random.randint(20, 108),
-                'y': 128.0,
-                'target_y': random.randint(20, 60),
-                'speed': random.uniform(2, 4),
-                'hue': random.randint(0, 360)
-            })
+            self.firework_rockets.append(
+                {
+                    "x": random.randint(20, 108),
+                    "y": 128.0,
+                    "target_y": random.randint(20, 60),
+                    "speed": random.uniform(2, 4),
+                    "hue": random.randint(0, 360),
+                }
+            )
 
         # Update rockets
         new_rockets = []
         for r in self.firework_rockets:
-            r['y'] -= r['speed']
+            r["y"] -= r["speed"]
             # Draw rocket trail
             for i in range(5):
-                ty = int(r['y'] + i * 3)
-                if 0 <= ty < 128 and 0 <= int(r['x']) < 128:
+                ty = int(r["y"] + i * 3)
+                if 0 <= ty < 128 and 0 <= int(r["x"]) < 128:
                     brightness = 200 - i * 40
-                    buffer[ty, int(r['x'])] = (brightness, brightness // 2, 0)
+                    buffer[ty, int(r["x"])] = (brightness, brightness // 2, 0)
 
-            if r['y'] <= r['target_y']:
+            if r["y"] <= r["target_y"]:
                 # Explode!
                 particles = []
                 for _ in range(50):
                     angle = random.uniform(0, 2 * math.pi)
                     speed = random.uniform(1, 4)
-                    particles.append({
-                        'x': r['x'], 'y': r['y'],
-                        'vx': math.cos(angle) * speed,
-                        'vy': math.sin(angle) * speed,
-                        'life': random.uniform(30, 60),
-                        'hue': r['hue'] + random.randint(-20, 20)
-                    })
-                self.firework_explosions.append({'particles': particles, 'age': 0})
+                    particles.append(
+                        {
+                            "x": r["x"],
+                            "y": r["y"],
+                            "vx": math.cos(angle) * speed,
+                            "vy": math.sin(angle) * speed,
+                            "life": random.uniform(30, 60),
+                            "hue": r["hue"] + random.randint(-20, 20),
+                        }
+                    )
+                self.firework_explosions.append({"particles": particles, "age": 0})
             else:
                 new_rockets.append(r)
         self.firework_rockets = new_rockets
@@ -3473,21 +3683,21 @@ class RotatingIdleAnimation:
         # Update explosions
         new_explosions = []
         for exp in self.firework_explosions:
-            exp['age'] += 1
-            for p in exp['particles']:
-                p['x'] += p['vx']
-                p['y'] += p['vy']
-                p['vy'] += 0.08
-                p['life'] -= 1
+            exp["age"] += 1
+            for p in exp["particles"]:
+                p["x"] += p["vx"]
+                p["y"] += p["vy"]
+                p["vy"] += 0.08
+                p["life"] -= 1
 
-                if p['life'] > 0:
-                    px, py = int(p['x']), int(p['y'])
+                if p["life"] > 0:
+                    px, py = int(p["x"]), int(p["y"])
                     if 0 <= px < 128 and 0 <= py < 128:
-                        brightness = p['life'] / 60
-                        color = hsv_to_rgb(p['hue'] % 360, 0.9, brightness)
+                        brightness = p["life"] / 60
+                        color = hsv_to_rgb(p["hue"] % 360, 0.9, brightness)
                         buffer[py, px] = color
 
-            if exp['age'] < 80:
+            if exp["age"] < 80:
                 new_explosions.append(exp)
         self.firework_explosions = new_explosions
 
@@ -3508,23 +3718,31 @@ class RotatingIdleAnimation:
 
         # Update blobs
         for blob in self.lava_blobs:
-            blob['vx'] += (random.random() - 0.5) * 0.002
-            blob['vy'] += (random.random() - 0.5) * 0.002 - 0.0003
+            blob["vx"] += (random.random() - 0.5) * 0.002
+            blob["vy"] += (random.random() - 0.5) * 0.002 - 0.0003
 
-            if blob['y'] > 0.7:
-                blob['vy'] -= 0.001
-            if blob['y'] < 0.3:
-                blob['vy'] += 0.001
+            if blob["y"] > 0.7:
+                blob["vy"] -= 0.001
+            if blob["y"] < 0.3:
+                blob["vy"] += 0.001
 
-            blob['vx'] *= 0.98
-            blob['vy'] *= 0.98
-            blob['x'] += blob['vx']
-            blob['y'] += blob['vy']
+            blob["vx"] *= 0.98
+            blob["vy"] *= 0.98
+            blob["x"] += blob["vx"]
+            blob["y"] += blob["vy"]
 
-            if blob['x'] < 0.1: blob['x'] = 0.1; blob['vx'] *= -0.5
-            if blob['x'] > 0.9: blob['x'] = 0.9; blob['vx'] *= -0.5
-            if blob['y'] < 0.1: blob['y'] = 0.1; blob['vy'] *= -0.5
-            if blob['y'] > 0.9: blob['y'] = 0.9; blob['vy'] *= -0.5
+            if blob["x"] < 0.1:
+                blob["x"] = 0.1
+                blob["vx"] *= -0.5
+            if blob["x"] > 0.9:
+                blob["x"] = 0.9
+                blob["vx"] *= -0.5
+            if blob["y"] < 0.1:
+                blob["y"] = 0.1
+                blob["vy"] *= -0.5
+            if blob["y"] > 0.9:
+                blob["y"] = 0.9
+                blob["vy"] *= -0.5
 
         # Draw blobs
         for y in range(128):
@@ -3532,14 +3750,14 @@ class RotatingIdleAnimation:
                 total = 0
                 avg_hue = 0
                 for blob in self.lava_blobs:
-                    bx = blob['x'] * 128
-                    by = blob['y'] * 128
-                    r = blob['r'] * 128
+                    bx = blob["x"] * 128
+                    by = blob["y"] * 128
+                    r = blob["r"] * 128
                     dist = math.sqrt((x - bx) ** 2 + (y - by) ** 2)
                     if dist < r * 3:
                         influence = (r * r) / (dist * dist + 0.1)
                         total += influence
-                        avg_hue += blob['hue'] * influence
+                        avg_hue += blob["hue"] * influence
 
                 if total > 0.5:
                     avg_hue /= total
@@ -3580,7 +3798,9 @@ class RotatingIdleAnimation:
             self.gol_generation += 1
 
             if self.gol_generation % 200 == 0:
-                self.gol_grid = [[1 if random.random() < 0.3 else 0 for _ in range(128)] for _ in range(128)]
+                self.gol_grid = [
+                    [1 if random.random() < 0.3 else 0 for _ in range(128)] for _ in range(128)
+                ]
 
         # Draw cells
         for y in range(128):
@@ -3635,19 +3855,17 @@ class RotatingIdleAnimation:
         if random.random() < 0.02:
             dist = random.uniform(15, 55)
             angle = random.uniform(0, 2 * math.pi)
-            self.radar_blips.append({
-                'x': cx + dist * math.cos(angle),
-                'y': cy + dist * math.sin(angle),
-                'life': 60
-            })
+            self.radar_blips.append(
+                {"x": cx + dist * math.cos(angle), "y": cy + dist * math.sin(angle), "life": 60}
+            )
 
         # Draw blips
         new_blips = []
         for blip in self.radar_blips:
-            blip['life'] -= 1
-            if blip['life'] > 0:
-                brightness = blip['life'] / 60
-                px, py = int(blip['x']), int(blip['y'])
+            blip["life"] -= 1
+            if blip["life"] > 0:
+                brightness = blip["life"] / 60
+                px, py = int(blip["x"]), int(blip["y"])
                 if 0 <= px < 128 and 0 <= py < 128:
                     color = (0, int(255 * brightness), int(100 * brightness))
                     for dx in [-1, 0, 1]:
@@ -3669,21 +3887,21 @@ class RotatingIdleAnimation:
         fill(buffer, (0, 0, 10))
 
         for star in self.galaxy_stars:
-            angle = star['arm_offset'] + star['dist'] / 15 + t * (1 - star['dist'] / 80)
-            angle += star['spread']
+            angle = star["arm_offset"] + star["dist"] / 15 + t * (1 - star["dist"] / 80)
+            angle += star["spread"]
 
-            x = int(cx + star['dist'] * math.cos(angle))
-            y = int(cy + star['dist'] * math.sin(angle))
+            x = int(cx + star["dist"] * math.cos(angle))
+            y = int(cy + star["dist"] * math.sin(angle))
 
             if 0 <= x < 128 and 0 <= y < 128:
-                twinkle = 0.7 + 0.3 * math.sin(t * 5 + star['dist'])
-                brightness = star['brightness'] * twinkle
+                twinkle = 0.7 + 0.3 * math.sin(t * 5 + star["dist"])
+                brightness = star["brightness"] * twinkle
 
-                if star['dist'] < 15:
+                if star["dist"] < 15:
                     hue = 40
                     sat = 0.5
                 else:
-                    hue = star['hue']
+                    hue = star["hue"]
                     sat = 0.8
 
                 color = hsv_to_rgb(hue, sat, brightness)
@@ -3866,14 +4084,16 @@ class RotatingIdleAnimation:
         self.pacman_ghosts = []
         for (gx, gy), (color, personality, scatter) in zip(ghost_tiles, ghost_colors):
             px, py = self._pacman_tile_center(gx, gy)
-            self.pacman_ghosts.append({
-                "pos": [float(px), float(py)],
-                "dir": (-1, 0),
-                "color": color,
-                "speed": 24.0,
-                "personality": personality,
-                "scatter": scatter,
-            })
+            self.pacman_ghosts.append(
+                {
+                    "pos": [float(px), float(py)],
+                    "dir": (-1, 0),
+                    "color": color,
+                    "speed": 24.0,
+                    "personality": personality,
+                    "scatter": scatter,
+                }
+            )
 
     def _render_pacman(self, buffer: NDArray[np.uint8]) -> None:
         """Render Pac-Man chase scene with roaming maze navigation."""
@@ -3892,8 +4112,16 @@ class RotatingIdleAnimation:
                     x = col_idx * tile
                     y = row_idx * tile
                     draw_rect(buffer, x, y, tile, tile, wall_color)
-                    draw_rect(buffer, x + 1, y + 1, tile - 2, tile - 2, wall_inner,
-                              filled=False, thickness=1)
+                    draw_rect(
+                        buffer,
+                        x + 1,
+                        y + 1,
+                        tile - 2,
+                        tile - 2,
+                        wall_inner,
+                        filled=False,
+                        thickness=1,
+                    )
 
         # Pellets
         pellet_color = (255, 184, 174)
@@ -3926,7 +4154,9 @@ class RotatingIdleAnimation:
         # Move Pac-Man on grid
         pac_tile = self._pacman_tile_from_pos(self.pacman_pos)
         pac_cx, pac_cy = self._pacman_tile_center(*pac_tile)
-        at_center = abs(self.pacman_pos[0] - pac_cx) < 0.5 and abs(self.pacman_pos[1] - pac_cy) < 0.5
+        at_center = (
+            abs(self.pacman_pos[0] - pac_cx) < 0.5 and abs(self.pacman_pos[1] - pac_cy) < 0.5
+        )
         if at_center:
             self.pacman_pos[0] = float(pac_cx)
             self.pacman_pos[1] = float(pac_cy)
@@ -3955,7 +4185,9 @@ class RotatingIdleAnimation:
         for ghost in self.pacman_ghosts:
             ghost_tile = self._pacman_tile_from_pos(ghost["pos"])
             ghost_cx, ghost_cy = self._pacman_tile_center(*ghost_tile)
-            at_center = abs(ghost["pos"][0] - ghost_cx) < 0.5 and abs(ghost["pos"][1] - ghost_cy) < 0.5
+            at_center = (
+                abs(ghost["pos"][0] - ghost_cx) < 0.5 and abs(ghost["pos"][1] - ghost_cy) < 0.5
+            )
             if at_center:
                 ghost["pos"][0] = float(ghost_cx)
                 ghost["pos"][1] = float(ghost_cy)
@@ -3967,11 +4199,15 @@ class RotatingIdleAnimation:
 
                     target = pac_tile
                     if ghost["personality"] == "pink":
-                        target = (pac_tile[0] + self.pacman_dir[0] * 2,
-                                  pac_tile[1] + self.pacman_dir[1] * 2)
+                        target = (
+                            pac_tile[0] + self.pacman_dir[0] * 2,
+                            pac_tile[1] + self.pacman_dir[1] * 2,
+                        )
                     elif ghost["personality"] == "cyan":
-                        target = (pac_tile[0] + self.pacman_dir[0] * 4,
-                                  pac_tile[1] + self.pacman_dir[1] * 4)
+                        target = (
+                            pac_tile[0] + self.pacman_dir[0] * 4,
+                            pac_tile[1] + self.pacman_dir[1] * 4,
+                        )
                     elif ghost["personality"] == "orange":
                         if self._pacman_manhattan(ghost_tile, pac_tile) > 6:
                             target = pac_tile
@@ -3986,14 +4222,14 @@ class RotatingIdleAnimation:
                             dirs,
                             key=lambda d: self._pacman_manhattan(
                                 (ghost_tile[0] + d[0], ghost_tile[1] + d[1]), pac_tile
-                            )
+                            ),
                         )
                     else:
                         ghost["dir"] = min(
                             dirs,
                             key=lambda d: self._pacman_manhattan(
                                 (ghost_tile[0] + d[0], ghost_tile[1] + d[1]), target
-                            )
+                            ),
                         )
 
             ghost_speed = ghost["speed"] * (0.7 if power_mode else 1.0)
@@ -4027,7 +4263,10 @@ class RotatingIdleAnimation:
                     if mouth_open:
                         angle = math.atan2(dy, dx)
                         diff = math.atan2(math.sin(angle - dir_angle), math.cos(angle - dir_angle))
-                        if abs(diff) < math.pi / 6 and (dx * self.pacman_dir[0] + dy * self.pacman_dir[1]) > 0:
+                        if (
+                            abs(diff) < math.pi / 6
+                            and (dx * self.pacman_dir[0] + dy * self.pacman_dir[1]) > 0
+                        ):
                             continue
                     npx, npy = pac_x + dx, pac_y + dy
                     if 0 <= npx < 128 and 0 <= npy < 128:
@@ -4103,21 +4342,25 @@ class RotatingIdleAnimation:
         cat_y = 55 + int(math.sin(t * 10) * 5)
 
         # Add rainbow segment
-        self.nyan_rainbow_trail.append({'x': cat_x - 4, 'y': cat_y + 9})
+        self.nyan_rainbow_trail.append({"x": cat_x - 4, "y": cat_y + 9})
         if len(self.nyan_rainbow_trail) > 50:
             self.nyan_rainbow_trail.pop(0)
 
         # Rainbow colors
         rainbow_colors = [
-            (255, 0, 0), (255, 154, 0), (255, 255, 0),
-            (0, 255, 0), (0, 0, 255), (130, 0, 255)
+            (255, 0, 0),
+            (255, 154, 0),
+            (255, 255, 0),
+            (0, 255, 0),
+            (0, 0, 255),
+            (130, 0, 255),
         ]
 
         # Draw rainbow trail
         for i, segment in enumerate(self.nyan_rainbow_trail):
             for j, color in enumerate(rainbow_colors):
-                ry = int(segment['y'] - 9 + j * 3)
-                rx = int(segment['x'] - (len(self.nyan_rainbow_trail) - i) * 2)
+                ry = int(segment["y"] - 9 + j * 3)
+                rx = int(segment["x"] - (len(self.nyan_rainbow_trail) - i) * 2)
                 if 0 <= rx < 128 and 0 <= ry < 128:
                     for ddy in range(3):
                         for ddx in range(3):
@@ -4190,11 +4433,21 @@ class RotatingIdleAnimation:
 
         # Draw border
         for y in range(offset_y - 2, offset_y + 16 * cell_size + 2):
-            for x in [offset_x - 2, offset_x - 1, offset_x + 13 * cell_size, offset_x + 13 * cell_size + 1]:
+            for x in [
+                offset_x - 2,
+                offset_x - 1,
+                offset_x + 13 * cell_size,
+                offset_x + 13 * cell_size + 1,
+            ]:
                 if 0 <= x < 128 and 0 <= y < 128:
                     buffer[y, x] = (100, 100, 100)
         for x in range(offset_x - 2, offset_x + 13 * cell_size + 2):
-            for y in [offset_y - 2, offset_y - 1, offset_y + 16 * cell_size, offset_y + 16 * cell_size + 1]:
+            for y in [
+                offset_y - 2,
+                offset_y - 1,
+                offset_y + 16 * cell_size,
+                offset_y + 16 * cell_size + 1,
+            ]:
                 if 0 <= x < 128 and 0 <= y < 128:
                     buffer[y, x] = (100, 100, 100)
 
@@ -4218,7 +4471,7 @@ class RotatingIdleAnimation:
         # Spawn new piece
         if self.tetris_piece is None:
             shape, color = random.choice(self.tetris_pieces)
-            self.tetris_piece = {'shape': shape, 'color': color}
+            self.tetris_piece = {"shape": shape, "color": color}
             self.tetris_piece_x = random.randint(0, 13 - len(shape[0]))
             self.tetris_piece_y = 0
 
@@ -4229,7 +4482,7 @@ class RotatingIdleAnimation:
 
             # Check if can move down
             can_move = True
-            shape = self.tetris_piece['shape']
+            shape = self.tetris_piece["shape"]
             for y, row in enumerate(shape):
                 for x, cell in enumerate(row):
                     if cell:
@@ -4243,7 +4496,7 @@ class RotatingIdleAnimation:
                 self.tetris_piece_y += 1
             else:
                 # Lock piece
-                color = self.tetris_piece['color']
+                color = self.tetris_piece["color"]
                 for y, row in enumerate(shape):
                     for x, cell in enumerate(row):
                         if cell:
@@ -4261,8 +4514,8 @@ class RotatingIdleAnimation:
 
         # Draw current piece
         if self.tetris_piece:
-            shape = self.tetris_piece['shape']
-            color = self.tetris_piece['color']
+            shape = self.tetris_piece["shape"]
+            color = self.tetris_piece["color"]
             for y, row in enumerate(shape):
                 for x, cell in enumerate(row):
                     if cell:
@@ -4318,7 +4571,9 @@ class RotatingIdleAnimation:
         self.tree_branch_cache = []
 
         # Draw fractal tree
-        def draw_branch(x: float, y: float, angle: float, length: float, depth: int, max_depth: int):
+        def draw_branch(
+            x: float, y: float, angle: float, length: float, depth: int, max_depth: int
+        ):
             if depth > max_depth or length < 2:
                 if depth >= max_depth - 1:
                     self.tree_branch_cache.append((x, y, depth))
@@ -4356,7 +4611,14 @@ class RotatingIdleAnimation:
             len_var = 0.65 + 0.1 * math.sin(t * 0.5 + x * 0.1)
 
             draw_branch(end_x, end_y, angle + angle_var, length * len_var, depth + 1, max_depth)
-            draw_branch(end_x, end_y, angle - angle_var * 0.9, length * (len_var + 0.05), depth + 1, max_depth)
+            draw_branch(
+                end_x,
+                end_y,
+                angle - angle_var * 0.9,
+                length * (len_var + 0.05),
+                depth + 1,
+                max_depth,
+            )
 
         # Draw main tree
         draw_branch(64, 113, math.pi / 2, 25, 0, 7)
@@ -4379,50 +4641,62 @@ class RotatingIdleAnimation:
 
         # Seasonal particles
         if self.tree_season == 0 and random.random() < 0.1:  # Falling petals
-            self.tree_particles.append({'x': random.randint(0, 128), 'y': -5, 'type': 'petal'})
+            self.tree_particles.append({"x": random.randint(0, 128), "y": -5, "type": "petal"})
         elif self.tree_season == 2 and random.random() < 0.08:  # Falling leaves
-            self.tree_particles.append({'x': random.randint(0, 128), 'y': -5, 'type': 'leaf',
-                                       'hue': random.randint(15, 45)})
+            self.tree_particles.append(
+                {
+                    "x": random.randint(0, 128),
+                    "y": -5,
+                    "type": "leaf",
+                    "hue": random.randint(15, 45),
+                }
+            )
         elif self.tree_season == 3 and random.random() < 0.15:  # Snow
-            self.tree_particles.append({'x': random.randint(0, 128), 'y': -5, 'type': 'snow'})
+            self.tree_particles.append({"x": random.randint(0, 128), "y": -5, "type": "snow"})
         elif self.tree_season == 1 and random.random() < 0.02:  # Fireflies
-            self.tree_particles.append({'x': random.randint(0, 128), 'y': random.randint(20, 100),
-                                       'type': 'firefly', 'life': 60})
+            self.tree_particles.append(
+                {
+                    "x": random.randint(0, 128),
+                    "y": random.randint(20, 100),
+                    "type": "firefly",
+                    "life": 60,
+                }
+            )
 
         # Update and draw particles
         new_particles = []
         for p in self.tree_particles:
-            if p['type'] == 'petal':
-                p['x'] += math.sin(t * 3 + p['y'] * 0.1) * 0.5
-                p['y'] += 0.8
-                if p['y'] < 128:
-                    px, py = int(p['x']), int(p['y'])
+            if p["type"] == "petal":
+                p["x"] += math.sin(t * 3 + p["y"] * 0.1) * 0.5
+                p["y"] += 0.8
+                if p["y"] < 128:
+                    px, py = int(p["x"]), int(p["y"])
                     if 0 <= px < 128 and 0 <= py < 128:
                         buffer[py, px] = [255, 200, 210]
                     new_particles.append(p)
-            elif p['type'] == 'leaf':
-                p['x'] += math.sin(t * 2 + p['y'] * 0.05) * 1.5
-                p['y'] += 1.2
-                if p['y'] < 128:
-                    px, py = int(p['x']), int(p['y'])
+            elif p["type"] == "leaf":
+                p["x"] += math.sin(t * 2 + p["y"] * 0.05) * 1.5
+                p["y"] += 1.2
+                if p["y"] < 128:
+                    px, py = int(p["x"]), int(p["y"])
                     if 0 <= px < 128 and 0 <= py < 128:
-                        buffer[py, px] = hsv_to_rgb(p['hue'], 0.9, 0.8)
+                        buffer[py, px] = hsv_to_rgb(p["hue"], 0.9, 0.8)
                     new_particles.append(p)
-            elif p['type'] == 'snow':
-                p['x'] += math.sin(t * 2 + p['y'] * 0.1) * 0.3
-                p['y'] += 0.6
-                if p['y'] < 118:
-                    px, py = int(p['x']), int(p['y'])
+            elif p["type"] == "snow":
+                p["x"] += math.sin(t * 2 + p["y"] * 0.1) * 0.3
+                p["y"] += 0.6
+                if p["y"] < 118:
+                    px, py = int(p["x"]), int(p["y"])
                     if 0 <= px < 128 and 0 <= py < 128:
                         buffer[py, px] = [255, 255, 255]
                     new_particles.append(p)
-            elif p['type'] == 'firefly':
-                p['x'] += math.sin(t * 4 + p['y']) * 0.5
-                p['y'] += math.cos(t * 3 + p['x'] * 0.1) * 0.3
-                p['life'] -= 1
-                if p['life'] > 0:
-                    glow = int(200 * abs(math.sin(t * 8 + p['x'])))
-                    px, py = int(p['x']), int(p['y'])
+            elif p["type"] == "firefly":
+                p["x"] += math.sin(t * 4 + p["y"]) * 0.5
+                p["y"] += math.cos(t * 3 + p["x"] * 0.1) * 0.3
+                p["life"] -= 1
+                if p["life"] > 0:
+                    glow = int(200 * abs(math.sin(t * 8 + p["x"])))
+                    px, py = int(p["x"]), int(p["y"])
                     if 0 <= px < 128 and 0 <= py < 128:
                         buffer[py, px] = [glow, glow, 50]
                     new_particles.append(p)
@@ -4565,23 +4839,20 @@ class RotatingIdleAnimation:
             return
 
         # Get all image files (sorted by name/date)
-        image_files = sorted(
-            list(assets_dir.glob("*.jpg")) +
-            list(assets_dir.glob("*.png"))
-        )
+        image_files = sorted(list(assets_dir.glob("*.jpg")) + list(assets_dir.glob("*.png")))
 
         self.poster_images = []
         self.poster_dates = []
 
         for img_path in image_files:
             try:
-                img = Image.open(img_path).convert('RGB')
+                img = Image.open(img_path).convert("RGB")
                 # Same resize as VideoMode - direct 128x128
                 img = img.resize((128, 128), Image.Resampling.LANCZOS)
                 self.poster_images.append(np.array(img, dtype=np.uint8))
 
                 # Extract date from filename (format: YYYY-MM-DD_*.jpg)
-                match = re.match(r'(\d{4})-(\d{2})-(\d{2})', img_path.stem)
+                match = re.match(r"(\d{4})-(\d{2})-(\d{2})", img_path.stem)
                 if match:
                     year, month, day = match.groups()
                     date_str = f"{day}.{month}.{year[2:]}"  # DD.MM.YY
@@ -4652,14 +4923,24 @@ class RotatingIdleAnimation:
             brightness = random.randint(150, 255)
             buffer[sparkle_y, sparkle_x] = (brightness, brightness, brightness)
 
-    def _render_ticker_static_winter(self, buffer: NDArray[np.uint8], text: str, color: tuple, t: float) -> None:
+    def _render_ticker_static_winter(
+        self, buffer: NDArray[np.uint8], text: str, color: tuple, t: float
+    ) -> None:
         """Render static ticker text with winter sparkle effects and scrolling for long text."""
         from artifact.graphics.text_utils import render_idle_style_ticker_text
 
         render_idle_style_ticker_text(buffer, text, color, t)
 
-    def _render_ticker_flip(self, buffer: NDArray[np.uint8], old_text: str, new_text: str,
-                            old_color: tuple, new_color: tuple, progress: float, t: float) -> None:
+    def _render_ticker_flip(
+        self,
+        buffer: NDArray[np.uint8],
+        old_text: str,
+        new_text: str,
+        old_color: tuple,
+        new_color: tuple,
+        progress: float,
+        t: float,
+    ) -> None:
         """Render vertical flip transition between two texts."""
         from artifact.graphics.text_utils import draw_centered_text
 
@@ -4676,7 +4957,7 @@ class RotatingIdleAnimation:
             draw_centered_text(temp, old_text, 0, old_color, scale=1)
             # Shift up
             if offset < h:
-                buffer[0:h-offset, :, :] = temp[offset:h, :, :]
+                buffer[0 : h - offset, :, :] = temp[offset:h, :, :]
             # Fade effect
             fade = 1.0 - eased * 2
             buffer[:] = (buffer * fade).astype(np.uint8)
@@ -4688,7 +4969,7 @@ class RotatingIdleAnimation:
             draw_centered_text(temp, new_text, 0, new_color, scale=1)
             # Shift down (slide in from bottom)
             if offset > 0 and offset < h:
-                buffer[offset:h, :, :] = temp[0:h-offset, :, :]
+                buffer[offset:h, :, :] = temp[0 : h - offset, :, :]
             elif offset <= 0:
                 buffer[:] = temp
             # Fade in effect
@@ -4802,7 +5083,9 @@ class RotatingIdleAnimation:
 
                 if time_in_cycle > (cycle_time - transition_time):
                     progress = (time_in_cycle - (cycle_time - transition_time)) / transition_time
-                    self._render_ticker_flip(buffer, current_text, next_text, current_color, next_color, progress, t)
+                    self._render_ticker_flip(
+                        buffer, current_text, next_text, current_color, next_color, progress, t
+                    )
                 else:
                     self._render_ticker_static_winter(buffer, current_text, current_color, t)
             elif self.idle_variant == "summer_camp":
@@ -4828,7 +5111,19 @@ class RotatingIdleAnimation:
                     (255, 255, 255),
                 ]
                 idx = int((t // 3000) % len(two_k17_texts))
-                self._render_ticker_static_winter(buffer, two_k17_texts[idx], two_k17_colors[idx], t)
+                self._render_ticker_static_winter(
+                    buffer, two_k17_texts[idx], two_k17_colors[idx], t
+                )
+            elif self.idle_variant == "world_cup_final":
+                final_texts = ["FINAL", "SPAIN", "ARG", "VNVNC"]
+                final_colors = [
+                    (244, 197, 66),
+                    (229, 41, 47),
+                    (117, 200, 245),
+                    (255, 255, 255),
+                ]
+                idx = int((t // 2800) % len(final_texts))
+                self._render_ticker_static_winter(buffer, final_texts[idx], final_colors[idx], t)
             else:
                 theme_texts = [
                     self.idle_ticker_text,
@@ -4838,13 +5133,16 @@ class RotatingIdleAnimation:
                 ]
                 theme_texts = [text for text in theme_texts if text.strip()]
                 idx = int((t // 2600) % len(theme_texts))
-                self._render_ticker_static_winter(buffer, theme_texts[idx], self._theme.theme_chrome, t)
+                self._render_ticker_static_winter(
+                    buffer, theme_texts[idx], self._theme.theme_chrome, t
+                )
             return
 
         # Special case: POSTER_SLIDESHOW gets a stable label, not dated poster metadata.
         if self.state.current_scene == IdleScene.POSTER_SLIDESHOW and self.poster_dates:
             color = (255, 200, 100)  # Gold/amber
             from artifact.graphics.text_utils import draw_centered_text
+
             draw_centered_text(buffer, "АФИШИ", 0, color, scale=1)
             return
 
@@ -4859,11 +5157,11 @@ class RotatingIdleAnimation:
 
         # Colors cycle with texts - VNVNC red/chrome palette
         colors = [
-            (192, 192, 192),   # Chrome
-            (139, 0, 0),       # Deep red
-            (255, 50, 50),     # Bright red
-            (192, 192, 192),   # Chrome
-            (255, 100, 100),   # Light red
+            (192, 192, 192),  # Chrome
+            (139, 0, 0),  # Deep red
+            (255, 50, 50),  # Bright red
+            (192, 192, 192),  # Chrome
+            (255, 100, 100),  # Light red
         ]
 
         # Timing: 3 seconds per text, with 0.3s transition
@@ -4888,7 +5186,9 @@ class RotatingIdleAnimation:
         if time_in_cycle > (cycle_time - transition_time):
             # In transition - vertical flip effect
             progress = (time_in_cycle - (cycle_time - transition_time)) / transition_time
-            self._render_ticker_flip(buffer, current_text, next_text, current_color, next_color, progress, t)
+            self._render_ticker_flip(
+                buffer, current_text, next_text, current_color, next_color, progress, t
+            )
         else:
             # Static display with sparkle effects
             self._render_ticker_static_winter(buffer, current_text, current_color, t)
@@ -4921,7 +5221,14 @@ class RotatingIdleAnimation:
                 IdleScene.FIREPLACE: ["   УЮТНЫЙ   ", "   КАМИН    ", " НАЖМИ СТАРТ "],
                 IdleScene.HYPERCUBE: [" ГИПЕРКУБ   ", "    4D      ", " НАЖМИ СТАРТ "],
             }
-        elif self.idle_variant in {"circus_maximus", "candy_shop", "2k17", "alye_parusa", "jara"}:
+        elif self.idle_variant in {
+            "circus_maximus",
+            "candy_shop",
+            "2k17",
+            "alye_parusa",
+            "jara",
+            "world_cup_final",
+        }:
             return [
                 f" {self.idle_lcd_prefix} ".center(16)[:16],
                 self.idle_title.center(16)[:16],

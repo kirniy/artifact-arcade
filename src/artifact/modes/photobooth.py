@@ -43,7 +43,12 @@ from artifact.telegram.events import append_bot_event
 
 # When enabled, the completed photobooth image is sent to the print manager.
 # Keep this environment-controlled so local/dev runs can stay digital-only.
-PRINTING_ENABLED = os.getenv("PHOTOBOOTH_PRINTING_ENABLED", "true").lower() not in {"0", "false", "no", "off"}
+PRINTING_ENABLED = os.getenv("PHOTOBOOTH_PRINTING_ENABLED", "true").lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
 USE_AI_GENERATION = True  # Toggle AI generation vs local Polaroid fallback
 from artifact.utils.s3_upload import (
     AsyncUploader,
@@ -86,7 +91,9 @@ def photobooth_ai_enabled() -> bool:
     }
 
 
-def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = None) -> tuple[str, str]:
+def get_moscow_party_stamp(
+    theme: PhotoboothTheme, now: Optional[datetime] = None
+) -> tuple[str, str]:
     """Return the footer date/time strings for a theme in Moscow time."""
     if now is None:
         now = datetime.now(MOSCOW_TZ)
@@ -113,6 +120,7 @@ def get_moscow_party_stamp(theme: PhotoboothTheme, now: Optional[datetime] = Non
 @dataclass
 class PhotoboothState:
     """State for photobooth session."""
+
     countdown: int = 3
     countdown_timer: float = 0.0
     photo_bytes: Optional[bytes] = None  # Original captured photo
@@ -221,7 +229,9 @@ class PhotoboothMode(BaseMode):
         ).lower() in {"1", "true", "yes", "on"}
         self._ai_enabled = photobooth_ai_enabled()
         if not self._ai_enabled:
-            logger.warning("Photobooth AI is disabled; all cameras will capture, upload, and print raw photos")
+            logger.warning(
+                "Photobooth AI is disabled; all cameras will capture, upload, and print raw photos"
+            )
 
         # Theme-derived properties
         self.description = self._theme.description
@@ -237,7 +247,13 @@ class PhotoboothMode(BaseMode):
         self._theme_reference_images = []
         try:
             logo_path = os.path.join(
-                os.path.dirname(__file__), "..", "..", "..", "assets", "images", self._theme.logo_filename
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "..",
+                "assets",
+                "images",
+                self._theme.logo_filename,
             )
             logo_path = os.path.normpath(logo_path)
             if os.path.exists(logo_path):
@@ -270,14 +286,26 @@ class PhotoboothMode(BaseMode):
                         continue
                     seen_filenames.add(reference_filename)
                     reference_path = os.path.join(
-                        os.path.dirname(__file__), "..", "..", "..", "assets", "images", reference_filename
+                        os.path.dirname(__file__),
+                        "..",
+                        "..",
+                        "..",
+                        "assets",
+                        "images",
+                        reference_filename,
                     )
                     reference_path = os.path.normpath(reference_path)
                     if not os.path.exists(reference_path):
-                        logger.warning("Reference asset not found for %s: %s", self._theme.id, reference_filename)
+                        logger.warning(
+                            "Reference asset not found for %s: %s",
+                            self._theme.id,
+                            reference_filename,
+                        )
                         continue
                     with open(reference_path, "rb") as reference_file:
-                        mime_type = "image/png" if reference_path.lower().endswith(".png") else "image/jpeg"
+                        mime_type = (
+                            "image/png" if reference_path.lower().endswith(".png") else "image/jpeg"
+                        )
                         self._theme_reference_images.append((reference_file.read(), mime_type))
                 logger.info(
                     "Loaded %d theme reference asset(s) for %s: %s",
@@ -302,8 +330,11 @@ class PhotoboothMode(BaseMode):
         y1, y2 = max(0, y), min(128, y + h)
         x1, x2 = max(0, x), min(128, x + w)
         sy, sx = y1 - y, x1 - x
-        alpha = self._logo_rgba[sy:sy+(y2-y1), sx:sx+(x2-x1), 3:4].astype(np.float32) / 255.0
-        rgb = self._logo_rgba[sy:sy+(y2-y1), sx:sx+(x2-x1), :3].astype(np.float32)
+        alpha = (
+            self._logo_rgba[sy : sy + (y2 - y1), sx : sx + (x2 - x1), 3:4].astype(np.float32)
+            / 255.0
+        )
+        rgb = self._logo_rgba[sy : sy + (y2 - y1), sx : sx + (x2 - x1), :3].astype(np.float32)
         bg = buffer[y1:y2, x1:x2].astype(np.float32)
         buffer[y1:y2, x1:x2] = (rgb * alpha + bg * (1.0 - alpha)).astype(np.uint8)
 
@@ -446,7 +477,7 @@ class PhotoboothMode(BaseMode):
                     self._state.countdown = 0
                     self._state.pre_flash_timer = 0.15  # Flash screen for 150ms before capture
             return
-        
+
         # Handle pre-flash (flash to light up subjects before capture)
         if self._state.pre_flash_timer > 0:
             self._state.pre_flash_timer -= delta_ms / 1000.0
@@ -515,7 +546,9 @@ class PhotoboothMode(BaseMode):
             self._state.photo_frame = self._decode_photo_frame(jpeg_bytes)
 
             if not self._ai_enabled:
-                logger.info("Photobooth raw mode active; skipping AI and using captured photo directly")
+                logger.info(
+                    "Photobooth raw mode active; skipping AI and using captured photo directly"
+                )
                 self._finish_raw_capture_result()
                 return
 
@@ -575,6 +608,7 @@ class PhotoboothMode(BaseMode):
         """Decode captured JPEG into a 128x128 RGB frame for preview."""
         try:
             from PIL import Image
+
             img = Image.open(io.BytesIO(jpeg_bytes))
             img = img.convert("RGB")
             if img.size != (128, 128):
@@ -697,6 +731,11 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
             )
+        elif ai_style_key == "world_cup_final":
+            return (
+                CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
+            )
         elif ai_style_key == "brainrot":
             return (
                 CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
@@ -726,95 +765,120 @@ class PhotoboothMode(BaseMode):
             import io
             from datetime import datetime, timezone, timedelta
             import urllib.request
-            
+
             if not self._state.photo_bytes:
                 return None
-                
+
             photo = Image.open(io.BytesIO(self._state.photo_bytes))
-            
+
             # Target dimensions (9:16 aspect ratio)
             canvas_w, canvas_h = 900, 1600
-            canvas = Image.new('RGB', (canvas_w, canvas_h), '#FDFDFB') # Off-white Polaroid paper
-            
+            canvas = Image.new("RGB", (canvas_w, canvas_h), "#FDFDFB")  # Off-white Polaroid paper
+
             # Target photo size (maintain aspect ratio 3:4)
             margin = 55
             target_photo_w = canvas_w - (2 * margin)
-            target_photo_h = int(target_photo_w * (4/3))
-            
+            target_photo_h = int(target_photo_w * (4 / 3))
+
             photo_aspect = photo.width / photo.height
-            if photo_aspect > (3/4):
-                new_w = int(photo.height * (3/4))
+            if photo_aspect > (3 / 4):
+                new_w = int(photo.height * (3 / 4))
                 offset = (photo.width - new_w) // 2
                 photo = photo.crop((offset, 0, offset + new_w, photo.height))
-            elif photo_aspect < (3/4):
-                new_h = int(photo.width * (4/3))
+            elif photo_aspect < (3 / 4):
+                new_h = int(photo.width * (4 / 3))
                 offset = (photo.height - new_h) // 2
                 photo = photo.crop((0, offset, photo.width, offset + new_h))
-                
+
             photo = photo.resize((target_photo_w, target_photo_h), Image.Resampling.LANCZOS)
             canvas.paste(photo, (margin, margin))
-            
+
             draw = ImageDraw.Draw(canvas)
-            
+
             try:
-                font_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "fonts", "Caveat-Bold.ttf")
+                font_path = os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    "..",
+                    "assets",
+                    "fonts",
+                    "Caveat-Bold.ttf",
+                )
                 font_path = os.path.normpath(font_path)
                 font_size = 110
-                
+
                 # Fetch font if it doesn't exist
                 if not os.path.exists(font_path):
                     os.makedirs(os.path.dirname(font_path), exist_ok=True)
-                    urllib.request.urlretrieve('https://github.com/google/fonts/raw/main/ofl/caveat/Caveat-Bold.ttf', font_path)
-                    
+                    urllib.request.urlretrieve(
+                        "https://github.com/google/fonts/raw/main/ofl/caveat/Caveat-Bold.ttf",
+                        font_path,
+                    )
+
                 font = ImageFont.truetype(font_path, font_size)
             except Exception as e:
                 logger.warning(f"Could not load custom font, using default: {e}")
                 font = ImageFont.load_default()
-                
+
             def get_text_width(f, t):
-                if hasattr(f, 'getbbox'): return f.getbbox(t)[2] - f.getbbox(t)[0]
-                elif hasattr(f, 'getlength'): return int(f.getlength(t))
+                if hasattr(f, "getbbox"):
+                    return f.getbbox(t)[2] - f.getbbox(t)[0]
+                elif hasattr(f, "getlength"):
+                    return int(f.getlength(t))
                 return f.getsize(t)[0]
 
             footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-            
+
             text_y_row1 = margin + target_photo_h + 100
             text_y_row2 = text_y_row1 + 130
             text_color = "#202022"  # Marker ink
-            
+
             # Left text: VNVNC.RU
             draw.text((margin + 20, text_y_row1), "VNVNC.RU", font=font, fill=text_color)
-            
+
             # Right text: Time
             time_w = get_text_width(font, moscow_time)
-            draw.text((canvas_w - margin - 20 - time_w, text_y_row1), moscow_time, font=font, fill=text_color)
-            
+            draw.text(
+                (canvas_w - margin - 20 - time_w, text_y_row1),
+                moscow_time,
+                font=font,
+                fill=text_color,
+            )
+
             # Bottom row left: footer date (may roll back after midnight for overnight parties)
             draw.text((margin + 20, text_y_row2), footer_date_str, font=font, fill=text_color)
-            
+
             # Bottom row right: Конюшенная 2В
             venue_str = "КОНЮШЕННАЯ 2В"
             venue_w = get_text_width(font, venue_str)
-            draw.text((canvas_w - margin - 20 - venue_w, text_y_row2), venue_str, font=font, fill=text_color)
-            
+            draw.text(
+                (canvas_w - margin - 20 - venue_w, text_y_row2),
+                venue_str,
+                font=font,
+                fill=text_color,
+            )
+
             buf = io.BytesIO()
             canvas.save(buf, format="PNG")
             label_bytes = buf.getvalue()
-            
+
             # Instead of cropping, pad the 9:16 image to 1:1 for the display
-            display_canvas = Image.new('RGB', (canvas_h, canvas_h), '#000000') # 1600x1600 black background
+            display_canvas = Image.new(
+                "RGB", (canvas_h, canvas_h), "#000000"
+            )  # 1600x1600 black background
             offset_x = (canvas_h - canvas_w) // 2
             display_canvas.paste(canvas, (offset_x, 0))
-            
+
             display_buf = io.BytesIO()
             display_canvas.save(display_buf, format="PNG")
             display_bytes = display_buf.getvalue()
-            
+
             # Artificial delay for user experience
             await asyncio.sleep(2.0)
-            
+
             return (display_bytes, label_bytes)
-            
+
         except Exception as e:
             logger.error(f"Local Polaroid generation failed: {e}")
             return None
@@ -861,6 +925,7 @@ class PhotoboothMode(BaseMode):
                 "summer_camp",
                 "alye_parusa",
                 "jara",
+                "world_cup_final",
             }
             if ai_style_key in timestamp_theme_keys:
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
@@ -881,13 +946,28 @@ class PhotoboothMode(BaseMode):
                         f"Use exactly '{footer_date_str}' as the footer day-of-week in Russian, "
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
-                elif ai_style_key in {"office_core", "summer_camp", "2k17", "alye_parusa", "jara"}:
+                elif ai_style_key in {
+                    "office_core",
+                    "summer_camp",
+                    "2k17",
+                    "alye_parusa",
+                    "jara",
+                    "world_cup_final",
+                }:
                     if ai_style_key == "jara":
                         personality_context = (
                             "Do not render footer text inside the AI artwork. Continue the illustrated pool, "
                             "foam, water, and props full bleed to the bottom edge with no empty cyan band or "
                             "blank footer rectangle. Keep faces out of the lowest 13%; the app overlays one "
                             "compact floating information card there."
+                        )
+                    elif ai_style_key == "world_cup_final":
+                        personality_context = (
+                            "Do not render any title, teams, scores, date, time, address, logo, or footer text "
+                            "inside the AI artwork. Continue the illustrated stadium, crowd, pitch, confetti, "
+                            "and ribbons full bleed with no empty band or blank rectangle. Keep faces out of "
+                            "the compact central top branding footprint and the lowest 13%; the app overlays "
+                            "the exact final crest, match names, and one floating information card."
                         )
                     else:
                         personality_context = (
@@ -907,10 +987,12 @@ class PhotoboothMode(BaseMode):
                 reference_photo=self._state.photo_bytes,
                 style=label_style,  # 9:16 vertical
                 personality_context=personality_context,
-                # ЖАРА uses a deterministic transparent logo overlay; omitting
-                # references prevents the model from misspelling/splitting it.
+                # Deterministic-brand themes omit reference images so the model
+                # cannot misspell or invent the event lockup.
                 extra_reference_images=(
-                    None if ai_style_key == "jara" else self._theme_reference_images or None
+                    None
+                    if ai_style_key in {"jara", "world_cup_final"}
+                    else self._theme_reference_images or None
                 ),
                 prompt_variation_index=self.prompt_variation_index,
             )
@@ -922,14 +1004,24 @@ class PhotoboothMode(BaseMode):
                     label_bytes = self._stamp_2k17_footer(label_bytes, footer_date_str, moscow_time)
                 elif ai_style_key in {"office_core", "summer_camp"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-                    label_bytes = self._stamp_white_theme_footer(label_bytes, footer_date_str, moscow_time)
+                    label_bytes = self._stamp_white_theme_footer(
+                        label_bytes, footer_date_str, moscow_time
+                    )
                 elif ai_style_key == "alye_parusa":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-                    label_bytes = self._stamp_alye_parusa_footer(label_bytes, footer_date_str, moscow_time)
+                    label_bytes = self._stamp_alye_parusa_footer(
+                        label_bytes, footer_date_str, moscow_time
+                    )
                 elif ai_style_key == "jara":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_jara_logo(label_bytes)
                     label_bytes = self._stamp_jara_footer(label_bytes, footer_date_str, moscow_time)
+                elif ai_style_key == "world_cup_final":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_world_cup_final_logo(label_bytes)
+                    label_bytes = self._stamp_world_cup_final_footer(
+                        label_bytes, footer_date_str, moscow_time
+                    )
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
 
                 # Create center-cropped 1:1 version for LED display
@@ -948,6 +1040,7 @@ class PhotoboothMode(BaseMode):
         """Center-crop a 9:16 image to 1:1 square for LED display."""
         try:
             from PIL import Image
+
             img = Image.open(io.BytesIO(image_bytes))
             w, h = img.size
 
@@ -966,7 +1059,9 @@ class PhotoboothMode(BaseMode):
             logger.warning(f"Failed to crop to square: {e}")
             return image_bytes
 
-    def _stamp_white_theme_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
+    def _stamp_white_theme_footer(
+        self, image_bytes: bytes, footer_date: str, moscow_time: str
+    ) -> bytes:
         """Paint deterministic white-theme footer text over the AI image."""
         try:
             from PIL import Image, ImageDraw, ImageFont
@@ -1014,7 +1109,12 @@ class PhotoboothMode(BaseMode):
             draw.text((margin_x, row1_y), brand, font=main_font, fill=accent)
 
             time_box = text_bbox(main_font, time_text)
-            draw.text((w - margin_x - (time_box[2] - time_box[0]), row1_y), time_text, font=main_font, fill=secondary)
+            draw.text(
+                (w - margin_x - (time_box[2] - time_box[0]), row1_y),
+                time_text,
+                font=main_font,
+                fill=secondary,
+            )
 
             draw.text((margin_x, row2_y), weekday, font=sub_font, fill=ink)
 
@@ -1029,7 +1129,9 @@ class PhotoboothMode(BaseMode):
             logger.warning(f"Failed to stamp white-theme footer: {e}")
             return image_bytes
 
-    def _stamp_alye_parusa_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
+    def _stamp_alye_parusa_footer(
+        self, image_bytes: bytes, footer_date: str, moscow_time: str
+    ) -> bytes:
         """Paint deterministic Алые Паруса footer text over the AI image."""
         try:
             from PIL import Image, ImageDraw, ImageFont
@@ -1047,7 +1149,9 @@ class PhotoboothMode(BaseMode):
             draw.rectangle((0, y0, w, h), fill=black)
             border = max(3, w // 220)
             draw.line((0, y0, w, y0), fill=scarlet, width=border)
-            draw.line((0, y0 + border + 4, w, y0 + border + 4), fill=white, width=max(1, border // 2))
+            draw.line(
+                (0, y0 + border + 4, w, y0 + border + 4), fill=white, width=max(1, border // 2)
+            )
 
             def load_font(size: int):
                 font_candidates = (
@@ -1080,9 +1184,19 @@ class PhotoboothMode(BaseMode):
             venue = "КОНЮШЕННАЯ 2В"
 
             draw.text((margin_x, row1_y), brand, font=main_font, fill=white)
-            draw.text((w - margin_x - text_width(main_font, time_text), row1_y), time_text, font=main_font, fill=scarlet)
+            draw.text(
+                (w - margin_x - text_width(main_font, time_text), row1_y),
+                time_text,
+                font=main_font,
+                fill=scarlet,
+            )
             draw.text((margin_x, row2_y), weekday, font=sub_font, fill=scarlet)
-            draw.text((w - margin_x - text_width(sub_font, venue), row2_y), venue, font=sub_font, fill=white)
+            draw.text(
+                (w - margin_x - text_width(sub_font, venue), row2_y),
+                venue,
+                font=sub_font,
+                fill=white,
+            )
 
             buf = io.BytesIO()
             img.save(buf, format="PNG")
@@ -1120,9 +1234,7 @@ class PhotoboothMode(BaseMode):
 
             # Frost the actual artwork under the card, then tint it pearl-aqua.
             card_mask = Image.new("L", img.size, 0)
-            ImageDraw.Draw(card_mask).rounded_rectangle(
-                (x0, y0, x1, y1), radius=radius, fill=255
-            )
+            ImageDraw.Draw(card_mask).rounded_rectangle((x0, y0, x1, y1), radius=radius, fill=255)
             frosted = img.filter(ImageFilter.GaussianBlur(max(5, int(w * 0.009))))
             img = Image.composite(frosted, img, card_mask)
             panel = Image.new("RGBA", img.size, (0, 0, 0, 0))
@@ -1249,7 +1361,9 @@ class PhotoboothMode(BaseMode):
                     method=Image.Resampling.LANCZOS,
                     centering=(0.5, 0.5),
                 )
-                masthead = ImageOps.posterize(masthead, 5).filter(ImageFilter.SMOOTH).convert("RGBA")
+                masthead = (
+                    ImageOps.posterize(masthead, 5).filter(ImageFilter.SMOOTH).convert("RGBA")
+                )
 
                 layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
                 layer.paste(masthead, (0, 0))
@@ -1274,7 +1388,9 @@ class PhotoboothMode(BaseMode):
             x = (img.width - target_w) // 2
             y = max(24, int(img.height * 0.035))
 
-            shadow_alpha = logo.getchannel("A").filter(ImageFilter.GaussianBlur(max(4, img.width // 120)))
+            shadow_alpha = logo.getchannel("A").filter(
+                ImageFilter.GaussianBlur(max(4, img.width // 120))
+            )
             shadow = Image.new("RGBA", logo.size, (0, 50, 85, 0))
             shadow.putalpha(shadow_alpha.point(lambda value: int(value * 0.42)))
             img.alpha_composite(shadow, (x, y + max(4, img.height // 350)))
@@ -1285,6 +1401,224 @@ class PhotoboothMode(BaseMode):
             return buf.getvalue()
         except Exception as e:
             logger.warning(f"Failed to stamp Jara logo: {e}")
+            return image_bytes
+
+    def _stamp_world_cup_final_logo(self, image_bytes: bytes) -> bytes:
+        """Overlay the original final crest and exact match copy as one scorebug."""
+        try:
+            from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            w, h = img.size
+            margin_x = max(22, int(w * 0.035))
+            x0, x1 = margin_x, w - margin_x
+            y0 = max(20, int(h * 0.022))
+            card_h = max(190, int(h * 0.165))
+            y1 = y0 + card_h
+            radius = max(22, int(card_h * 0.13))
+
+            shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(shadow).rounded_rectangle(
+                (x0, y0 + 8, x1, y1 + 8), radius=radius, fill=(0, 0, 18, 150)
+            )
+            shadow = shadow.filter(ImageFilter.GaussianBlur(max(8, int(w * 0.014))))
+            img = Image.alpha_composite(img, shadow)
+
+            panel = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            panel_draw = ImageDraw.Draw(panel)
+            panel_draw.rounded_rectangle(
+                (x0, y0, x1, y1),
+                radius=radius,
+                fill=(7, 21, 47, 238),
+                outline=(244, 197, 66, 245),
+                width=max(2, w // 260),
+            )
+            # Two team-color rails make the panel read like a live broadcast
+            # graphic rather than an empty generic header bar.
+            rail_y = y0 + max(6, int(card_h * 0.045))
+            rail_h = max(5, int(card_h * 0.035))
+            mid = (x0 + x1) // 2
+            panel_draw.rounded_rectangle(
+                (x0 + radius, rail_y, mid - 8, rail_y + rail_h),
+                radius=rail_h // 2,
+                fill=(117, 200, 245, 255),
+            )
+            panel_draw.rounded_rectangle(
+                (mid + 8, rail_y, x1 - radius, rail_y + rail_h),
+                radius=rail_h // 2,
+                fill=(229, 41, 47, 255),
+            )
+            img = Image.alpha_composite(img, panel)
+            draw = ImageDraw.Draw(img)
+
+            def load_font(size: int):
+                for font_path in (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+                ):
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            def centered_text(text: str, center_x: int, y: int, font, fill_color) -> None:
+                box = draw.textbbox((0, 0), text, font=font)
+                draw.text((center_x - (box[2] - box[0]) // 2, y), text, font=font, fill=fill_color)
+
+            title_font = load_font(max(25, int(w * 0.041)))
+            team_font = load_font(max(25, int(w * 0.038)))
+            small_font = load_font(max(18, int(w * 0.025)))
+            white = (255, 255, 255, 255)
+            gold = (244, 197, 66, 255)
+
+            centered_text(
+                "WORLD CUP 2026", w // 2, y0 + max(22, int(card_h * 0.12)), title_font, white
+            )
+
+            emblem_path = (
+                Path(__file__).resolve().parents[3]
+                / "assets"
+                / "images"
+                / "world-cup-final-emblem.png"
+            )
+            emblem = Image.open(emblem_path).convert("RGBA")
+            bbox = emblem.getchannel("A").getbbox()
+            if bbox:
+                emblem = emblem.crop(bbox)
+            emblem_h = max(76, int(card_h * 0.48))
+            emblem_w = max(1, int(emblem.width * emblem_h / emblem.height))
+            emblem = emblem.resize((emblem_w, emblem_h), Image.Resampling.LANCZOS)
+            emblem_x = (w - emblem_w) // 2
+            emblem_y = y0 + max(56, int(card_h * 0.31))
+            img.alpha_composite(emblem, (emblem_x, emblem_y))
+            draw = ImageDraw.Draw(img)
+
+            team_y = y0 + max(92, int(card_h * 0.48))
+            left_center = (x0 + w // 2 - emblem_w // 2) // 2
+            right_center = (w // 2 + emblem_w // 2 + x1) // 2
+            centered_text("SPAIN", left_center, team_y, team_font, (255, 255, 255, 255))
+            centered_text("ARGENTINA", right_center, team_y, team_font, (117, 200, 245, 255))
+            centered_text(
+                "FINAL • SUNDAY NIGHT", w // 2, y1 - max(33, int(card_h * 0.18)), small_font, gold
+            )
+
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp World Cup final logo: {e}")
+            return image_bytes
+
+    def _stamp_world_cup_final_footer(
+        self, image_bytes: bytes, footer_date: str, moscow_time: str
+    ) -> bytes:
+        """Overlay one compact night-stadium information card over full-bleed art."""
+        try:
+            from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            w, h = img.size
+            margin_x = max(22, int(w * 0.035))
+            margin_bottom = max(22, int(h * 0.022))
+            card_h = max(132, int(h * 0.108))
+            x0, x1 = margin_x, w - margin_x
+            y0, y1 = h - margin_bottom - card_h, h - margin_bottom
+            radius = max(20, int(card_h * 0.18))
+
+            shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(shadow).rounded_rectangle(
+                (x0, y0 + 8, x1, y1 + 8), radius=radius, fill=(0, 0, 18, 155)
+            )
+            shadow = shadow.filter(ImageFilter.GaussianBlur(max(8, int(w * 0.014))))
+            img = Image.alpha_composite(img, shadow)
+
+            panel = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            panel_draw = ImageDraw.Draw(panel)
+            panel_draw.rounded_rectangle(
+                (x0, y0, x1, y1),
+                radius=radius,
+                fill=(7, 21, 47, 235),
+                outline=(255, 255, 255, 170),
+                width=max(2, w // 300),
+            )
+            mid = (x0 + x1) // 2
+            rail_y = y0 + max(6, int(card_h * 0.05))
+            rail_h = max(4, int(card_h * 0.035))
+            panel_draw.line(
+                (x0 + radius, rail_y, mid - 5, rail_y), fill=(117, 200, 245, 255), width=rail_h
+            )
+            panel_draw.line(
+                (mid - 5, rail_y, mid + 5, rail_y), fill=(244, 197, 66, 255), width=rail_h
+            )
+            panel_draw.line(
+                (mid + 5, rail_y, x1 - radius, rail_y), fill=(229, 41, 47, 255), width=rail_h
+            )
+            img = Image.alpha_composite(img, panel)
+            draw = ImageDraw.Draw(img)
+
+            def load_font(size: int):
+                for font_path in (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                ):
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.044)))
+            time_font = load_font(max(27, int(w * 0.041)))
+            sub_font = load_font(max(19, int(w * 0.028)))
+
+            def text_width(font, text: str) -> int:
+                box = draw.textbbox((0, 0), text, font=font)
+                return box[2] - box[0]
+
+            pad_x = max(22, int(w * 0.038))
+            row1_y = y0 + max(23, int(card_h * 0.19))
+            row2_y = y0 + max(82, int(card_h * 0.64))
+            venue = "КОНЮШЕННАЯ 2В"
+            white = (255, 255, 255, 255)
+            blue = (117, 200, 245, 255)
+            gold = (244, 197, 66, 255)
+            red = (229, 41, 47, 255)
+
+            draw.text((x0 + pad_x, row1_y), "VNVNC.RU", font=main_font, fill=white)
+            time_box = draw.textbbox((0, 0), moscow_time, font=time_font)
+            time_w = time_box[2] - time_box[0]
+            time_h = time_box[3] - time_box[1]
+            pill_pad_x = max(17, int(w * 0.023))
+            pill_pad_y = max(8, int(card_h * 0.075))
+            pill_w = time_w + pill_pad_x * 2
+            pill_h = time_h + pill_pad_y * 2
+            pill_x = x1 - pad_x - pill_w
+            pill_y = row1_y - max(4, int(card_h * 0.025))
+            draw.rounded_rectangle(
+                (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h),
+                radius=pill_h // 2,
+                fill=red,
+                outline=gold,
+                width=max(2, w // 350),
+            )
+            draw.text(
+                (pill_x + pill_pad_x - time_box[0], pill_y + pill_pad_y - time_box[1]),
+                moscow_time,
+                font=time_font,
+                fill=white,
+            )
+            draw.text((x0 + pad_x, row2_y), footer_date.upper(), font=sub_font, fill=blue)
+            draw.text(
+                (x1 - pad_x - text_width(sub_font, venue), row2_y),
+                venue,
+                font=sub_font,
+                fill=gold,
+            )
+
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp World Cup final footer: {e}")
             return image_bytes
 
     def _stamp_2k17_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
@@ -1321,7 +1655,9 @@ class PhotoboothMode(BaseMode):
                 box = draw.textbbox((0, 0), text, font=font)
                 return (box[2] - box[0] + pad_x * 2, box[3] - box[1] + pad_y * 2)
 
-            def draw_label(x: int, y: int, text: str, font, pad_x: int, pad_y: int) -> tuple[int, int]:
+            def draw_label(
+                x: int, y: int, text: str, font, pad_x: int, pad_y: int
+            ) -> tuple[int, int]:
                 label_w, label_h = label_size(font, text, pad_x, pad_y)
                 draw.rectangle((x, y, x + label_w, y + label_h), fill=(0, 0, 0))
                 box = draw.textbbox((0, 0), text, font=font)
@@ -1354,7 +1690,9 @@ class PhotoboothMode(BaseMode):
                 draw_label(w - margin_x - venue_w, row2_y, venue, sub_font, pad_x, pad_y)
             else:
                 row3_y = row2_y + label_size(sub_font, weekday, pad_x, pad_y)[1] + gap_y
-                if row3_y + label_size(sub_font, venue, pad_x, pad_y)[1] <= h - max(8, int(footer_h * 0.04)):
+                if row3_y + label_size(sub_font, venue, pad_x, pad_y)[1] <= h - max(
+                    8, int(footer_h * 0.04)
+                ):
                     draw_label(margin_x, row3_y, venue, sub_font, pad_x, pad_y)
 
             buf = io.BytesIO()
@@ -1372,7 +1710,9 @@ class PhotoboothMode(BaseMode):
         receipt, but that print artifact must never replace the gallery image.
         """
         # Get image for upload
-        caricature_bytes = self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
+        caricature_bytes = (
+            self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
+        )
 
         if not caricature_bytes:
             logger.warning("No image bytes available for upload")
@@ -1380,7 +1720,9 @@ class PhotoboothMode(BaseMode):
 
         if self._should_skip_public_gallery_upload():
             source_photo_path = self._persist_bot_source_photo("faceless")
-            logger.warning("Skipping public photobooth gallery upload: no visible guest face in source photo")
+            logger.warning(
+                "Skipping public photobooth gallery upload: no visible guest face in source photo"
+            )
             append_bot_event(
                 "photobooth_photo",
                 {
@@ -1388,7 +1730,9 @@ class PhotoboothMode(BaseMode):
                     "theme_id": getattr(self._theme, "id", ""),
                     "theme_name": getattr(self._theme, "event_name", ""),
                     "camera_id": self._state.selected_camera_id,
-                    "result_bytes": len(self._state.ai_label_bytes or self._state.ai_display_bytes or b""),
+                    "result_bytes": len(
+                        self._state.ai_label_bytes or self._state.ai_display_bytes or b""
+                    ),
                     "source_photo_bytes": len(self._state.photo_bytes or b""),
                     "source_photo_path": source_photo_path,
                     "success": False,
@@ -1455,7 +1799,7 @@ class PhotoboothMode(BaseMode):
             prefix="photo",
             extension="jpg",
             content_type="image/jpeg",
-            callback=self._on_upload_complete
+            callback=self._on_upload_complete,
         )
 
     def _on_upload_complete(self, result: UploadResult) -> None:
@@ -1520,7 +1864,12 @@ class PhotoboothMode(BaseMode):
 
     def _should_skip_public_gallery_upload(self) -> bool:
         """Conservatively keep obvious empty-booth captures out of the public gallery."""
-        if os.getenv("PHOTOBOOTH_SKIP_FACELESS_GALLERY", "true").lower() in {"0", "false", "no", "off"}:
+        if os.getenv("PHOTOBOOTH_SKIP_FACELESS_GALLERY", "true").lower() in {
+            "0",
+            "false",
+            "no",
+            "off",
+        }:
             return False
         if self._state.selected_camera_id != "primary":
             return False
@@ -1602,12 +1951,16 @@ class PhotoboothMode(BaseMode):
                     return True
 
             if not loaded_detector:
-                logger.warning("Photobooth source face detectors unavailable; allowing gallery upload")
+                logger.warning(
+                    "Photobooth source face detectors unavailable; allowing gallery upload"
+                )
                 return True
             logger.warning("Photobooth source face check found no visible faces")
             return False
         except Exception as e:
-            logger.warning("Photobooth source face check unavailable; allowing gallery upload: %s", e)
+            logger.warning(
+                "Photobooth source face check unavailable; allowing gallery upload: %s", e
+            )
             return True
 
     def _start_printing_now(self) -> None:
@@ -1619,7 +1972,9 @@ class PhotoboothMode(BaseMode):
         if self._state.is_printing:
             return  # Already printing
 
-        image_for_print = self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
+        image_for_print = (
+            self._state.ai_label_bytes or self._state.ai_display_bytes or self._state.photo_bytes
+        )
         if not image_for_print:
             logger.warning("No image available for printing")
             return
@@ -1636,11 +1991,9 @@ class PhotoboothMode(BaseMode):
             "short_url": self._state.qr_url,  # Explicitly pass for footer display
             "qr_image": self._state.qr_image,
         }
-        self.context.event_bus.emit(Event(
-            EventType.PRINT_START,
-            data=print_data,
-            source="photobooth"
-        ))
+        self.context.event_bus.emit(
+            Event(EventType.PRINT_START, data=print_data, source="photobooth")
+        )
 
     def _update_result(self, delta_ms: float) -> None:
         """Update result display timer."""
@@ -1685,7 +2038,7 @@ class PhotoboothMode(BaseMode):
         if self._state.pre_flash_timer > 0:
             fill(buffer, (160, 160, 170))  # Dimmer flash to avoid overexposure
             return
-            
+
         if self._state.flash_timer > 0:
             # Flash effect (from flashOn)
             fill(buffer, (160, 160, 170))
@@ -1759,7 +2112,11 @@ class PhotoboothMode(BaseMode):
             draw_rect(buffer, 10, 38, 108, 28, (0, 0, 0))
             draw_centered_text(buffer, "НЕТ HDMI", 43, (255, 28, 0), scale=1)
             draw_centered_text(buffer, "ЖМИ 1", 55, (255, 224, 23), scale=1)
-        elif selected_hdmi and hdmi_capture_service.wall_is_owner() and not hdmi_capture_service.has_fresh_shared_frame():
+        elif (
+            selected_hdmi
+            and hdmi_capture_service.wall_is_owner()
+            and not hdmi_capture_service.has_fresh_shared_frame()
+        ):
             draw_rect(buffer, 13, 45, 102, 20, (0, 0, 0))
             draw_centered_text(buffer, "ЖДУ HDMI", 51, (255, 224, 23), scale=1)
 
@@ -1767,9 +2124,13 @@ class PhotoboothMode(BaseMode):
         """Render a full-screen waiting state with stable high-contrast text."""
         time_ms = int(self._time_in_phase)
         if self._state.waiting_finish_timer > 0:
-            finish_progress = 1.0 - (self._state.waiting_finish_timer / self.WAITING_FINISH_SPIN_SECONDS)
+            finish_progress = 1.0 - (
+                self._state.waiting_finish_timer / self.WAITING_FINISH_SPIN_SECONDS
+            )
             finish_progress = min(1.0, max(0.0, finish_progress))
-            seconds_left = max(0, int(round(self._state.waiting_finish_from_seconds * (1.0 - finish_progress))))
+            seconds_left = max(
+                0, int(round(self._state.waiting_finish_from_seconds * (1.0 - finish_progress)))
+            )
             countdown_progress = min(1.0, 1.0 - (seconds_left / self.WAITING_COUNTDOWN_SECONDS))
         else:
             elapsed_seconds = max(0, time_ms // 1000)
@@ -1809,13 +2170,17 @@ class PhotoboothMode(BaseMode):
         # Always show camera preview with small logo overlay
         if self._logo_rgba is not None:
             try:
-                small = PILImage.fromarray(self._logo_rgba).resize((32, 32), PILImage.Resampling.LANCZOS)
+                small = PILImage.fromarray(self._logo_rgba).resize(
+                    (32, 32), PILImage.Resampling.LANCZOS
+                )
                 small_arr = np.array(small, dtype=np.uint8)
                 alpha = small_arr[:, :, 3:4].astype(np.float32) / 255.0
                 rgb = small_arr[:, :, :3].astype(np.float32)
                 y1, x1 = 2, 128 - 34
-                bg = buffer[y1:y1+32, x1:x1+32].astype(np.float32)
-                buffer[y1:y1+32, x1:x1+32] = (rgb * alpha + bg * (1.0 - alpha)).astype(np.uint8)
+                bg = buffer[y1 : y1 + 32, x1 : x1 + 32].astype(np.float32)
+                buffer[y1 : y1 + 32, x1 : x1 + 32] = (rgb * alpha + bg * (1.0 - alpha)).astype(
+                    np.uint8
+                )
             except Exception:
                 pass
 
@@ -1846,7 +2211,9 @@ class PhotoboothMode(BaseMode):
             result_band = buffer[-28:, :, :]
             result_band[:] = (result_band.astype(np.float32) * 0.3).astype(np.uint8)
             result_tint = np.asarray(self.THEME_BLACK, dtype=np.uint16) // 2
-            result_band[:] = np.minimum(result_band.astype(np.uint16) + result_tint, 255).astype(np.uint8)
+            result_band[:] = np.minimum(result_band.astype(np.uint16) + result_tint, 255).astype(
+                np.uint8
+            )
             draw_rect(buffer, 0, 100, 128, 2, self.THEME_CHROME)
 
             # Animated diagonal arrow pointing down-right (↘)
@@ -1858,8 +2225,12 @@ class PhotoboothMode(BaseMode):
             # Larger arrow with thicker lines
             for offset in range(-1, 2):  # Draw 3 lines for thickness
                 draw_line(buffer, ax - 18 + offset, ay - 14, ax + offset, ay, arrow_color)  # Shaft
-                draw_line(buffer, ax + offset, ay, ax - 6 + offset, ay - 2, arrow_color)   # Arrowhead left
-                draw_line(buffer, ax + offset, ay, ax - 2 + offset, ay - 6, arrow_color)   # Arrowhead top
+                draw_line(
+                    buffer, ax + offset, ay, ax - 6 + offset, ay - 2, arrow_color
+                )  # Arrowhead left
+                draw_line(
+                    buffer, ax + offset, ay, ax - 2 + offset, ay - 6, arrow_color
+                )  # Arrowhead top
 
             draw_text(buffer, "СКАНИРУЙ КОД", 4, 102, self.THEME_CHROME, scale=1)
             draw_text(buffer, "ЧЕРЕЗ 2-3 МИН ОБНОВИ", 4, 110, (200, 180, 255), scale=1)
@@ -1874,6 +2245,7 @@ class PhotoboothMode(BaseMode):
                 target_size = 120
                 if qr_h != target_size or qr_w != target_size:
                     from PIL import Image
+
                     qr_img = Image.fromarray(self._state.qr_image)
                     qr_img = qr_img.resize((target_size, target_size), Image.Resampling.NEAREST)
                     qr_scaled = np.array(qr_img, dtype=np.uint8)
@@ -1883,7 +2255,7 @@ class PhotoboothMode(BaseMode):
                 qr_h, qr_w = qr_scaled.shape[:2]
                 x_offset = (128 - qr_w) // 2
                 y_offset = (128 - qr_h) // 2
-                buffer[y_offset:y_offset + qr_h, x_offset:x_offset + qr_w] = qr_scaled
+                buffer[y_offset : y_offset + qr_h, x_offset : x_offset + qr_w] = qr_scaled
             elif self._state.is_uploading:
                 fill(buffer, self.THEME_RED)
                 draw_centered_text(buffer, "UPLOAD", 50, self.THEME_CHROME, scale=1)
@@ -1951,6 +2323,8 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("alye-parusa", "alye-parusa"),
         ("alye_parusa", "alye-parusa"),
         ("jara", "jara"),
+        ("world_cup_final", "world-cup-final"),
+        ("world-cup-final", "world-cup-final"),
     ]
 )
 
@@ -1961,10 +2335,8 @@ def _get_theme_menu_display_name(theme: PhotoboothTheme) -> str:
     return theme.menu_display_name or theme.event_name
 
 
-
 def _get_theme_menu_description(theme: PhotoboothTheme) -> str:
     return theme.menu_description or theme.description or theme.event_name
-
 
 
 def _build_theme_photobooth_mode(slot_index: int, theme_id: str) -> Type[PhotoboothMode]:
@@ -1980,7 +2352,6 @@ def _build_theme_photobooth_mode(slot_index: int, theme_id: str) -> Type[Photobo
             "theme_id_override": theme.id,
         },
     )
-
 
 
 def _build_current_theme_variant_mode(
@@ -2006,7 +2377,6 @@ def _build_current_theme_variant_mode(
     )
 
 
-
 def _append_classic_photobooth_modes(
     resolved: list[Type[PhotoboothMode]],
     themed_slot_index: int,
@@ -2014,14 +2384,15 @@ def _append_classic_photobooth_modes(
     current_theme = get_current_theme()
     if current_theme.menu_variants:
         for variant in current_theme.menu_variants:
-            resolved.append(_build_current_theme_variant_mode(themed_slot_index, current_theme, variant))
+            resolved.append(
+                _build_current_theme_variant_mode(themed_slot_index, current_theme, variant)
+            )
             themed_slot_index += 1
         return themed_slot_index
 
     if PhotoboothMode.name not in {mode_cls.name for mode_cls in resolved}:
         resolved.append(PhotoboothMode)
     return themed_slot_index
-
 
 
 def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:

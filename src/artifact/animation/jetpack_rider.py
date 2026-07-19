@@ -66,6 +66,7 @@ class JetpackRider:
         self._logo_alpha: Optional[NDArray] = None
         if theme is None:
             from artifact.modes.photobooth_themes import get_current_theme
+
             self._theme = get_current_theme()
         else:
             self._theme = theme
@@ -75,13 +76,17 @@ class JetpackRider:
             self.CYAN = (218, 165, 32)  # Gold particles
             self.MAGENTA = (128, 0, 32)  # Burgundy
         elif self._theme.id == "malchishnik":
-            self.BG = (12, 8, 5)       # Near-black — nightclub darkness
+            self.BG = (12, 8, 5)  # Near-black — nightclub darkness
             self.CYAN = (210, 170, 60)  # Dirty amber gold — analog film
             self.MAGENTA = (180, 35, 35)  # Blood red — Hangover chaos
         elif self._theme.id == "mtv-night":
-            self.BG = (4, 4, 12)          # Deep black club void
-            self.CYAN = (66, 196, 255)    # Electric blue neon
-            self.MAGENTA = (255, 48, 170) # Hot pink neon
+            self.BG = (4, 4, 12)  # Deep black club void
+            self.CYAN = (66, 196, 255)  # Electric blue neon
+            self.MAGENTA = (255, 48, 170)  # Hot pink neon
+        elif self._theme.id == "world-cup-final":
+            self.BG = (7, 21, 47)  # Midnight stadium navy
+            self.CYAN = (117, 200, 245)  # Argentina sky blue
+            self.MAGENTA = (229, 41, 47)  # Spain red
         else:
             self.BG = (6, 3, 15)  # Dark for Boiling Room / default
         self._load_logo()
@@ -94,7 +99,9 @@ class JetpackRider:
 
         # Try multiple paths (assets/images first, then root fallback)
         candidates = [
-            os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "images", logo_filename),
+            os.path.join(
+                os.path.dirname(__file__), "..", "..", "..", "assets", "images", logo_filename
+            ),
             os.path.join(os.path.dirname(__file__), "..", "..", "..", logo_filename),
         ]
         for path in candidates:
@@ -111,19 +118,22 @@ class JetpackRider:
                 except Exception as e:
                     # Log warning and try next candidate path
                     import logging
+
                     logging.getLogger(__name__).warning(f"Failed to load logo from {path}: {e}")
                     continue
 
     def _init_ambient(self):
         for _ in range(15):
-            self._state.ambient.append(Spark(
-                x=random.uniform(0, 128),
-                y=random.uniform(0, 128),
-                vx=random.uniform(-3, 3),
-                vy=random.uniform(-8, -2),
-                life=random.uniform(0.3, 1.0),
-                color=self.CYAN if random.random() > 0.3 else self.MAGENTA,
-            ))
+            self._state.ambient.append(
+                Spark(
+                    x=random.uniform(0, 128),
+                    y=random.uniform(0, 128),
+                    vx=random.uniform(-3, 3),
+                    vy=random.uniform(-8, -2),
+                    life=random.uniform(0.3, 1.0),
+                    color=self.CYAN if random.random() > 0.3 else self.MAGENTA,
+                )
+            )
 
     def reset(self) -> None:
         old_hs = self._state.high_score
@@ -153,14 +163,16 @@ class JetpackRider:
         for _ in range(25):
             angle = random.uniform(0, 2 * math.pi)
             speed = random.uniform(30, 120)
-            self._state.sparks.append(Spark(
-                x=cx + random.uniform(-4, 4),
-                y=cy + random.uniform(-4, 4),
-                vx=math.cos(angle) * speed,
-                vy=math.sin(angle) * speed,
-                life=1.0,
-                color=random.choice([self.CYAN, self.MAGENTA, self.ORANGE, self.WHITE]),
-            ))
+            self._state.sparks.append(
+                Spark(
+                    x=cx + random.uniform(-4, 4),
+                    y=cy + random.uniform(-4, 4),
+                    vx=math.cos(angle) * speed,
+                    vy=math.sin(angle) * speed,
+                    life=1.0,
+                    color=random.choice([self.CYAN, self.MAGENTA, self.ORANGE, self.WHITE]),
+                )
+            )
         s.rings.append(Ring(cx=cx, cy=cy, radius=5.0, life=1.0))
         return True
 
@@ -193,16 +205,20 @@ class JetpackRider:
             p.life -= dt * 0.3
         s.ambient = [p for p in s.ambient if p.life > 0]
         while len(s.ambient) < 15:
-            s.ambient.append(Spark(
-                x=random.uniform(0, 128),
-                y=128 + random.uniform(0, 10),
-                vx=random.uniform(-3, 3),
-                vy=random.uniform(-12, -4),
-                life=random.uniform(0.6, 1.0),
-                color=self.CYAN if random.random() > 0.3 else self.MAGENTA,
-            ))
+            s.ambient.append(
+                Spark(
+                    x=random.uniform(0, 128),
+                    y=128 + random.uniform(0, 10),
+                    vx=random.uniform(-3, 3),
+                    vy=random.uniform(-12, -4),
+                    life=random.uniform(0.6, 1.0),
+                    color=self.CYAN if random.random() > 0.3 else self.MAGENTA,
+                )
+            )
 
-    def render(self, buffer: NDArray[np.uint8], background: Optional[NDArray[np.uint8]] = None) -> None:
+    def render(
+        self, buffer: NDArray[np.uint8], background: Optional[NDArray[np.uint8]] = None
+    ) -> None:
         s = self._state
         h, w = buffer.shape[:2]
 
@@ -270,7 +286,7 @@ class JetpackRider:
         # Build coordinate grids once (could cache but 128x128 is tiny)
         ys = np.arange(h, dtype=np.float32)
         xs = np.arange(w, dtype=np.float32)
-        yy, xx = np.meshgrid(ys, xs, indexing='ij')
+        yy, xx = np.meshgrid(ys, xs, indexing="ij")
 
         # Warp displacement - two slow sine waves
         dx = np.sin(yy * 0.08 + t * 1.2) * 1.5 + np.sin(yy * 0.15 + t * 0.7) * 0.8

@@ -129,11 +129,11 @@ MALCHISHNIK_THEME = PhotoboothTheme(
     event_name="МАЛЬЧИШНИК",
     event_date="20.02-22.02",
     logo_filename="malchishnik.png",
-    theme_chrome=(210, 170, 60),   # Dirty amber gold — old film, disposable camera
-    theme_red=(180, 35, 35),       # Blood red — Hangover chaos
-    theme_black=(12, 8, 5),        # Near-black — nightclub darkness
+    theme_chrome=(210, 170, 60),  # Dirty amber gold — old film, disposable camera
+    theme_red=(180, 35, 35),  # Blood red — Hangover chaos
+    theme_black=(12, 8, 5),  # Near-black — nightclub darkness
     ticker_idle="BACHELOR",
-    lcd_prefix="МАЛЬЧИ",          # 6 Cyrillic chars — fits LCD countdown
+    lcd_prefix="МАЛЬЧИ",  # 6 Cyrillic chars — fits LCD countdown
     description="МАЛЬЧИШНИК",
     ai_style_key="malchishnik",
 )
@@ -147,11 +147,11 @@ FEYPHORIA_THEME = PhotoboothTheme(
     event_name="ФЕЙФОРИЯ",
     event_date="06-08.03",
     logo_filename="feyphoria.png",
-    theme_chrome=(207, 155, 120),     # Rose gold — enchanted fairy metallic
-    theme_red=(120, 30, 50),          # Burgundy rose — deep botanical accent
-    theme_black=(10, 46, 26),         # Deep emerald green — enchanted forest night
+    theme_chrome=(207, 155, 120),  # Rose gold — enchanted fairy metallic
+    theme_red=(120, 30, 50),  # Burgundy rose — deep botanical accent
+    theme_black=(10, 46, 26),  # Deep emerald green — enchanted forest night
     ticker_idle="FEY",
-    lcd_prefix="ФЕЙФОР",             # 6 Cyrillic chars — fits LCD countdown
+    lcd_prefix="ФЕЙФОР",  # 6 Cyrillic chars — fits LCD countdown
     description="ФЕЙФОРИЯ",
     ai_style_key="feyphoria",
 )
@@ -165,9 +165,9 @@ FIESTA_THEME = PhotoboothTheme(
     event_name="ФИЕСТА",
     event_date="13.03-14.03",
     logo_filename="fiesta.png",
-    theme_chrome=(255, 140, 90),    # Warm peach-orange, party accent
-    theme_red=(180, 30, 40),        # Saturated fiesta red
-    theme_black=(8, 14, 20),        # Deep charcoal-night backdrop
+    theme_chrome=(255, 140, 90),  # Warm peach-orange, party accent
+    theme_red=(180, 30, 40),  # Saturated fiesta red
+    theme_black=(8, 14, 20),  # Deep charcoal-night backdrop
     ticker_idle="ФИЕСТА",
     lcd_prefix="ФИЕСТА",
     description="ФИЕСТА",
@@ -183,11 +183,11 @@ BIGCITYLIFE_THEME = PhotoboothTheme(
     event_name="НОЧЬ В БОЛЬШОМ ГОРОДЕ",
     event_date="20.03-21.03",
     logo_filename="bigcitylife.png",
-    theme_chrome=(255, 220, 50),     # NYC yellow cab / street neon
-    theme_red=(200, 30, 30),         # Graffiti red
-    theme_black=(8, 8, 12),          # Deep night city
-    ticker_idle="BIGCITY",           # 7 Latin chars
-    lcd_prefix="NYC",                # 3 chars for LCD
+    theme_chrome=(255, 220, 50),  # NYC yellow cab / street neon
+    theme_red=(200, 30, 30),  # Graffiti red
+    theme_black=(8, 8, 12),  # Deep night city
+    ticker_idle="BIGCITY",  # 7 Latin chars
+    lcd_prefix="NYC",  # 3 chars for LCD
     description="НОЧЬ В БОЛЬШОМ ГОРОДЕ",
     ai_style_key="bigcitylife",
 )
@@ -201,9 +201,9 @@ BRAINROT_THEME = PhotoboothTheme(
     event_name="КРИНЖ ПАТИ",
     event_date="",
     logo_filename="brainrot.png",
-    theme_chrome=(255, 232, 72),    # Acid yellow headline glow
-    theme_red=(255, 70, 166),       # Candy-magenta outer glow
-    theme_black=(40, 8, 62),        # Deep violet meme-night background
+    theme_chrome=(255, 232, 72),  # Acid yellow headline glow
+    theme_red=(255, 70, 166),  # Candy-magenta outer glow
+    theme_black=(40, 8, 62),  # Deep violet meme-night background
     ticker_idle="КРИНЖ",
     lcd_prefix="BRAINR",
     description="ИТАЛЬЯНСКИЙ БРЕЙНРОТ",
@@ -223,9 +223,9 @@ WEDDING_THEME = PhotoboothTheme(
     event_name="ФАВТФАА ПЭПЭ",
     event_date="",
     logo_filename="brainrot.png",
-    theme_chrome=(255, 214, 232),   # Pink wedding chrome
-    theme_red=(219, 72, 140),       # Satin-magenta accent
-    theme_black=(58, 26, 54),       # Plum VHS shadow
+    theme_chrome=(255, 214, 232),  # Pink wedding chrome
+    theme_red=(219, 72, 140),  # Satin-magenta accent
+    theme_black=(58, 26, 54),  # Plum VHS shadow
     ticker_idle="ГОЛУБИ",
     lcd_prefix="СВАД04",
     description="СЕЛЬСКИЙ ГЛАМУР",
@@ -245,9 +245,9 @@ WHATSAPP_THEME = PhotoboothTheme(
     event_name="ПЭПЭШНЕЙШЕ",
     event_date="",
     logo_filename="brainrot.png",
-    theme_chrome=(255, 218, 84),    # Gold postcard lettering
-    theme_red=(255, 96, 152),       # Rose-pink sparkle accent
-    theme_black=(8, 86, 56),        # WhatsApp green shadow
+    theme_chrome=(255, 218, 84),  # Gold postcard lettering
+    theme_red=(255, 96, 152),  # Rose-pink sparkle accent
+    theme_black=(8, 86, 56),  # WhatsApp green shadow
     ticker_idle="ПЭПЭ",
     lcd_prefix="WAPP",
     description="БАБУШКИН ЧАТ",
@@ -613,16 +613,16 @@ JARA_THEME = PhotoboothTheme(
     event_name="ЖАРА",
     event_date="17.07",
     logo_filename="jara.png",
-    theme_chrome=(255, 54, 35),      # Inflatable-logo red; primary frame and text
-    theme_red=(255, 86, 160),        # Flamingo pink; secondary selection accent
-    theme_black=(4, 38, 82),         # Deep pool blue; high-contrast foundation
+    theme_chrome=(255, 54, 35),  # Inflatable-logo red; primary frame and text
+    theme_red=(255, 86, 160),  # Flamingo pink; secondary selection accent
+    theme_black=(4, 38, 82),  # Deep pool blue; high-contrast foundation
     ticker_idle="ЖАРА",
     lcd_prefix="ЖАРА",
     description="ПЕННАЯ ВЕЧЕРИНКА",
     menu_display_name="ЖАРА",
     menu_description="ПЕННАЯ ВЕЧЕРИНКА",
     menu_color=(255, 54, 35),
-    ticker_color=(0, 220, 255),       # Electric pool cyan; legible on black LEDs
+    ticker_color=(0, 220, 255),  # Electric pool cyan; legible on black LEDs
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="jara",
@@ -630,6 +630,30 @@ JARA_THEME = PhotoboothTheme(
         "jara.png",
         "jara-style-reference.png",
     ),
+)
+
+
+# =============================================================================
+# THEME: WORLD FINAL 2026 — Spain vs Argentina Sunday football final
+# =============================================================================
+WORLD_CUP_FINAL_THEME = PhotoboothTheme(
+    id="world-cup-final",
+    event_name="WORLD CUP 2026",
+    event_date="19.07",
+    logo_filename="world-cup-final-emblem.png",
+    theme_chrome=(117, 200, 245),  # Argentina sky blue; frame and primary UI
+    theme_red=(229, 41, 47),  # Spain red; selection and score accents
+    theme_black=(7, 21, 47),  # Midnight stadium navy
+    ticker_idle="FINAL",
+    lcd_prefix="FINAL",
+    description="SPAIN × ARGENTINA",
+    menu_display_name="WORLD CUP\nFINAL",
+    menu_description="SPAIN × ARGENTINA",
+    menu_color=(244, 197, 66),  # Broadcast gold
+    ticker_color=(244, 197, 66),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="world_cup_final",
 )
 
 
@@ -661,6 +685,7 @@ THEMES = {
     "summer-camp": SUMMER_CAMP_THEME,
     "alye-parusa": ALYE_PARUSA_THEME,
     "jara": JARA_THEME,
+    "world-cup-final": WORLD_CUP_FINAL_THEME,
 }
 
 # Default theme
