@@ -8,6 +8,7 @@ REPO_DIR="/home/kirniy/modular-arcade"
 LOG_FILE="/home/kirniy/modular-arcade/logs/autopull.log"
 PENDING_FILE="/home/kirniy/modular-arcade/.deploy/restart-pending"
 AUTO_ACTIVATE_JARA="${ARTIFACT_AUTO_ACTIVATE_JARA:-1}"
+AUTO_ACTIVATE_WORLD_CUP_FINAL="${ARTIFACT_AUTO_ACTIVATE_WORLD_CUP_FINAL:-1}"
 RECOVERY_TUNNEL_ENABLED="${ARTIFACT_RECOVERY_TUNNEL_ENABLED:-1}"
 RECOVERY_TUNNEL_HOST="${ARTIFACT_RECOVERY_TUNNEL_HOST:-root@82.38.148.239}"
 RECOVERY_TUNNEL_PORT="${ARTIFACT_RECOVERY_TUNNEL_PORT:-22091}"
@@ -57,6 +58,38 @@ env_has_jara() {
         grep -Eq '^GEMINI_IMAGE_MODEL=gemini-3\.1-flash-lite-image$' "$REPO_DIR/.env"
 }
 
+env_has_world_cup_final() {
+    [ -f "$REPO_DIR/.env" ] &&
+        grep -Eq '^PHOTOBOOTH_THEME=world-cup-final$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_MENU_MODES=world_cup_final$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_AI_ENABLED=true$' "$REPO_DIR/.env" &&
+        grep -Eq '^GEMINI_IMAGE_MODEL=gemini-3\.1-flash-lite-image$' "$REPO_DIR/.env"
+}
+
+world_cup_final_window_active() {
+    # Sunday club night continues until noon Monday, matching the booth's
+    # party-date rollover convention.
+    moscow_stamp="$(TZ=Europe/Moscow date '+%Y%m%d%H%M')"
+    [ "$moscow_stamp" -ge 202607190000 ] && [ "$moscow_stamp" -lt 202607201200 ]
+}
+
+ensure_world_cup_final_activation() {
+    if [ "$AUTO_ACTIVATE_WORLD_CUP_FINAL" != "1" ] || ! world_cup_final_window_active; then
+        return 1
+    fi
+    if env_has_world_cup_final; then
+        return 1
+    fi
+    if [ ! -x "$REPO_DIR/scripts/activate-world-cup-final-photobooth.sh" ]; then
+        log "World Cup final activation script is not present yet."
+        return 1
+    fi
+
+    log "Activating WORLD CUP 2026 photobooth env for the Sunday club night..."
+    ARTIFACT_REMOTE_DIR="$REPO_DIR" "$REPO_DIR/scripts/activate-world-cup-final-photobooth.sh"
+    return 0
+}
+
 ensure_jara_activation() {
     if [ "$AUTO_ACTIVATE_JARA" != "1" ]; then
         return 1
@@ -74,6 +107,14 @@ ensure_jara_activation() {
     return 0
 }
 
+ensure_event_activation() {
+    if world_cup_final_window_active; then
+        ensure_world_cup_final_activation
+        return $?
+    fi
+    ensure_jara_activation
+}
+
 # Check for updates
 log "Checking for updates..."
 git fetch origin main
@@ -84,7 +125,7 @@ REMOTE=$(git rev-parse origin/main)
 if [ "$LOCAL" = "$REMOTE" ]; then
     log "Already up to date."
     activation_changed=0
-    if ensure_jara_activation; then
+    if ensure_event_activation; then
         activation_changed=1
     fi
     if [ -f "$PENDING_FILE" ] || [ "$activation_changed" = "1" ]; then
@@ -99,7 +140,7 @@ fi
 log "Updates found, pulling..."
 git pull --ff-only origin main
 
-ensure_jara_activation || true
+ensure_event_activation || true
 
 log "Trying idle-gated restart..."
 ARTIFACT_RESTART_PENDING_FILE="$PENDING_FILE" \
