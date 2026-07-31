@@ -4235,13 +4235,17 @@ ADDITIONAL REFERENCE IMAGES:
 - Wildstyle energy, raw and gritty, thick black outlines, spray fade effects, dripping paint
 - 2D illustration with visible brushstroke/spray-can texture, zero 3D depth or shading"""
             elif is_boilingroom_style:
-                color_instruction = """- FULL COLOR — mostly black, deep red, white, chrome silver, and true skin tones
+                color_instruction = """- FULL COLOR, LIFTED EXPOSURE — warm off-white, pale concrete gray, coral red, clean scarlet, chrome silver, true skin tones, and only limited charcoal/plum shadows
 - Strictly premium 2D illustrated club-poster art, NOT photorealistic, NOT 3D, NOT plastic
 - Chromatic aberration, super wide angle, film grain, analog textures
 - Treat Image 1 as a fixed underdrawing; exact separate face geometry, hair, expression, group order and clothing are mandatory
+- Preserve the recognizable real venue background as a second fixed underdrawing: retain the source-photo room layout, walls, ceiling, lighting fixtures, furniture, plants, decor, architectural edges, objects and background people actually visible behind the guests
+- Stylize that real background into clean 2D poster art instead of inventing a generic club, abstract red-and-black void, invented stage, empty gradient, fantasy architecture or unrelated party set
+- Keep at least 65% of the full image light or mid-tone. Lift shadow detail and background exposure so objects behind the guests stay readable; no crushed black void, black wall, muddy maroon fog, vignette swallowing the room, or large dark empty regions
+- Preserve the source lighting directions and practical-light positions, translating their colors into bright cream, coral, scarlet and chrome highlights while keeping natural facial exposure
 - Image 2 is the canonical BOILING ROOM emblem; faithfully model-render its exact chrome ring and two-line lettering inside the poster
 - Images 3 and later are identity crops of the same guests, never extra people
-- Dark printed-paper feel, halftone traces, visible venue background, polished canonical chrome emblem"""
+- Light printed-paper feel, restrained halftone traces, clearly readable source-faithful venue background, polished canonical chrome emblem"""
             elif is_fiesta_style:
                 color_instruction = """- FULL COLOR — distinctly Spanish mediterranean print palette: deep red, paprika, burnt orange, olive, aged gold, warm cream
 - High-end photorealistic editorial output with natural skin tones and realistic lighting
@@ -4279,6 +4283,12 @@ ADDITIONAL REFERENCE IMAGES:
                     "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
                     "perform an identity-preserving high-fidelity 2D rotoscope/background replacement; do "
                     "not synthesize, beautify, or re-stage substitute people."
+                )
+            elif is_boilingroom_style:
+                task_opening = (
+                    "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat both its people and its visible venue "
+                    "background as fixed underdrawings: preserve the exact guests and the recognizable real "
+                    "room behind them while translating the whole photograph into bright premium 2D poster art."
                 )
             elif is_jara_style or is_world_cup_final_style:
                 task_opening = (
@@ -4405,7 +4415,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:
-                image_style = "Premium 2D underground club poster illustration, fixed-underdrawing face preservation, precise individual facial geometry and hair, drawn graphic art, chromatic aberration, super wide angle, film grain, analog textures, visible venue background, canonical supplied BOILING ROOM chrome-ring emblem faithfully model-rendered inside the poster, exact group count, likeness and clothing from reference photo"
+                image_style = "Bright premium 2D underground club poster illustration edited directly from the source photograph; fixed-underdrawing face preservation with precise individual facial geometry and hair; preserve the recognizable real venue background, room layout, walls, ceiling, practical lights, furniture, plants, decor, objects and background figures actually visible behind the guests; lifted exposure with at least 65% light or mid-tone warm off-white, pale concrete gray, coral, clean scarlet and chrome, limited charcoal shadows, no crushed black void or generic replacement club; drawn graphic art, restrained chromatic aberration, super wide angle, film grain and light analog paper texture; canonical supplied BOILING ROOM chrome-ring emblem faithfully model-rendered inside the poster; exact group count, likeness, clothing, pose and source composition preserved"
             elif is_malchishnik_style:
                 image_style = "Analog disposable camera photography, Polaroid film photo, heavy film grain, blown flash, warm pushed colors, party chaos, Hangover movie aesthetic"
             elif (

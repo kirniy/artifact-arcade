@@ -114,6 +114,11 @@ def test_boilingroom_prompt_keeps_2d_style_and_locks_faces(monkeypatch) -> None:
     assert "only readable text" in prompt
     assert "strictly a drawn / illustrated image" in prompt
     assert "not photorealistic, not 3d" in prompt
+    assert "visible venue background as fixed underdrawings" in prompt
+    assert "preserve the recognizable real venue background" in prompt
+    assert "at least 65%" in prompt
+    assert "no crushed black void" in prompt
+    assert "instead of inventing a generic club" in prompt
     assert "no dates, times, address" in prompt
     assert "empty footer bar" in prompt
     assert "27.03" not in prompt

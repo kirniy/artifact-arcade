@@ -1057,8 +1057,14 @@ class PhotoboothMode(BaseMode):
                             "as a fixed underdrawing with exact individual geometry, hairline, expression and "
                             "natural asymmetry; never average or beautify faces. Do not render date, time, venue, "
                             "VNVNC.RU, pseudo-text, or any readable words beyond the emblem itself. Continue the "
-                            "dark red/black illustrated venue and paper texture full bleed to the bottom with no "
-                            "empty bar or placeholder. Keep faces out of the lowest 13%; the app overlays one "
+                            "actual source-photo venue as a second fixed underdrawing: preserve its recognizable "
+                            "walls, ceiling, practical lights, furniture, plants, decor, objects and background "
+                            "people instead of inventing a generic club. Render that real environment with lifted "
+                            "exposure, bright cream/coral/scarlet/chrome tones, readable shadow detail and at least "
+                            "65% light or mid-tone area; avoid crushed blacks, muddy maroon fog, dark empty walls "
+                            "and replacement scenery. Continue the source-faithful illustrated venue and light paper "
+                            "texture full bleed to the bottom with no empty bar or placeholder. Keep faces out of "
+                            "the lowest 13%; the app overlays one "
                             "compact verified information card there."
                         )
                     elif ai_style_key == "jara":
