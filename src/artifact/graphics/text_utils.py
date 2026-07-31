@@ -1379,16 +1379,78 @@ def render_idle_style_ticker_text(
     text: str,
     color: Tuple[int, int, int],
     time_ms: float,
+    compact_static: bool = False,
+    x_offset: int = 0,
+    safe_left: int = 0,
 ) -> None:
     """Render ticker text using the exact static idle-scene ticker layout."""
-    # Approximate character width at scale=1 (including spacing)
+    if compact_static:
+        full_font = load_font("cyrillic")
+        full_width, _ = full_font.measure_text(text)
+        safe_left = max(0, min(buffer.shape[1] - 1, safe_left))
+        available_width = buffer.shape[1] - safe_left
+        if full_width > available_width:
+            # Keep the normal full-height 5x7 glyphs. Only remove the 1px gap
+            # when a label would touch the cabinet's unreadable left seam.
+            fitted_font = PixelFont(
+                name=f"{full_font.name}_fitted",
+                char_height=full_font.char_height,
+                char_width=full_font.char_width,
+                spacing=0,
+                glyphs=full_font.glyphs,
+            )
+            fitted_width, _ = fitted_font.measure_text(text)
+            if fitted_width > available_width and text == "ФОТОБУДКА":
+                # This cabinet's first physical 8-column segment is not legible.
+                # Preserve the full 7px height while using carefully drawn narrow
+                # glyphs for this one nine-letter label so the initial Ф is visible.
+                glyphs = dict(full_font.glyphs)
+                glyphs.update(
+                    {
+                        "Ф": [[0, 0, 1, 0, 0], [0, 1, 1, 1, 0], [1, 0, 1, 0, 1], [1, 0, 1, 0, 1], [1, 0, 1, 0, 1], [0, 1, 1, 1, 0], [0, 0, 1, 0, 0]],
+                        "О": [[0, 1, 1, 0], [1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1], [0, 1, 1, 0]],
+                        "Т": [[1, 1, 1, 1], [0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 0]],
+                        "Б": [[1, 1, 1, 1], [1, 0, 0, 0], [1, 1, 1, 0], [1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1], [1, 1, 1, 0]],
+                        "У": [[1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1], [0, 1, 1, 1], [0, 0, 0, 1], [1, 0, 0, 1], [0, 1, 1, 0]],
+                        "К": [[1, 0, 0, 1], [1, 0, 1, 0], [1, 1, 0, 0], [1, 0, 0, 0], [1, 1, 0, 0], [1, 0, 1, 0], [1, 0, 0, 1]],
+                        "А": [[0, 1, 1, 0], [1, 0, 0, 1], [1, 0, 0, 1], [1, 1, 1, 1], [1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1]],
+                    }
+                )
+                fitted_font = PixelFont(
+                    name=f"{full_font.name}_safe_compact",
+                    char_height=full_font.char_height,
+                    char_width=4,
+                    spacing=0,
+                    glyphs=glyphs,
+                )
+                fitted_width, _ = fitted_font.measure_text(text)
+            x = safe_left + (available_width - fitted_width) // 2
+            draw_text_bitmap(buffer, text, x, 0, color, fitted_font, scale=1)
+            return
+
+        # Short labels keep the exact ЖАРА-era 5x7 font and spacing, but are
+        # centered inside the physically readable portion of this cabinet.
+        x = safe_left + (available_width - full_width) // 2 + x_offset
+        x = max(safe_left, min(buffer.shape[1] - full_width, x))
+        draw_text_bitmap(buffer, text, x, 0, color, full_font, scale=1)
+        return
+
+    # This is the cabinet-verified f328679 renderer. Keep the normal theme path
+    # byte-for-byte equivalent to that final production baseline.
     char_width = 6
     text_width = len(text) * char_width
     ticker_width = buffer.shape[1]  # 48 pixels
 
     if text_width <= ticker_width:
-        # Short text - just center it
-        draw_centered_text(buffer, text, 0, color, scale=1)
+        if x_offset:
+            font = load_font("cyrillic")
+            measured_width, _ = font.measure_text(text)
+            x = (ticker_width - measured_width) // 2 + x_offset
+            x = max(0, min(ticker_width - measured_width, x))
+            draw_text_bitmap(buffer, text, x, 0, color, font, scale=1)
+        else:
+            # Short text - just center it
+            draw_centered_text(buffer, text, 0, color, scale=1)
     else:
         # Long text - horizontal scroll
         # Scroll speed: complete scroll in ~2.5 seconds (fits within 3s display time)

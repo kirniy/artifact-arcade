@@ -430,6 +430,8 @@ class RotatingIdleAnimation:
             if item.strip()
         }
         theme_id = os.environ.get("PHOTOBOOTH_THEME", "").strip().lower() or self._theme.id
+        if theme_id == "boilingroom":
+            return "boilingroom"
         if theme_id == "candy-shop":
             return "candy_shop"
         if theme_id in slavic_keys:
@@ -454,6 +456,8 @@ class RotatingIdleAnimation:
             return "2k17"
         if theme_id == "jara":
             return "jara"
+        if theme_id == "sunset-palms":
+            return "sunset_palms"
         if theme_id == "world-cup-final":
             return "world_cup_final"
         if requested_modes & slavic_keys:
@@ -474,6 +478,8 @@ class RotatingIdleAnimation:
 
     def _build_variant_scene_titles(self) -> Dict[IdleScene, str]:
         """Return per-scene labels for the active idle package."""
+        if self.idle_variant == "boilingroom":
+            return {IdleScene.CRINGE_HERO: "BOILING ROOM"}
         if self.idle_variant == "slavic":
             return {
                 IdleScene.CRINGE_HERO: "SLAVIC CORE",
@@ -528,6 +534,10 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
+        if self.idle_variant == "sunset_palms":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "SUNSET PALMS",
+            }
         if self.idle_variant == "world_cup_final":
             return {
                 IdleScene.CRINGE_HERO: "ЧЕМПИОНАТ МИРА 2026",
@@ -544,6 +554,8 @@ class RotatingIdleAnimation:
 
     def _build_idle_scene_playlist(self) -> List[IdleScene]:
         """Return the active idle scene order."""
+        if self.idle_variant == "boilingroom":
+            return [IdleScene.CRINGE_HERO]
         if self.idle_variant == "slavic":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "candy_shop":
@@ -567,6 +579,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "2k17":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "jara":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "sunset_palms":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "world_cup_final":
             return [IdleScene.CRINGE_HERO]
@@ -607,6 +621,28 @@ class RotatingIdleAnimation:
             return
 
         from PIL import Image, ImageOps
+
+        if self.idle_variant == "boilingroom":
+            logo_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "images"
+                / "boilingroom.png"
+            )
+            frames: List[NDArray[np.uint8]] = []
+            if logo_path.exists():
+                emblem = Image.open(logo_path).convert("RGBA")
+                bbox = emblem.getchannel("A").getbbox()
+                if bbox:
+                    emblem = emblem.crop(bbox)
+                emblem.thumbnail((104, 104), Image.Resampling.LANCZOS)
+                frame = Image.new("RGBA", (128, 128), (3, 3, 5, 255))
+                frame.alpha_composite(emblem, ((128 - emblem.width) // 2, 4))
+                frames.append(np.array(frame.convert("RGB"), dtype=np.uint8))
+            else:
+                logger.warning("Boiling Room idle emblem not found: %s", logo_path)
+            self.cringe_assets = {IdleScene.CRINGE_HERO: frames}
+            return
 
         if self.idle_variant == "candy_shop":
             logo_path = (
@@ -727,12 +763,14 @@ class RotatingIdleAnimation:
                 self._theme.theme_chrome
                 if self.idle_variant
                 in {
+                    "boilingroom",
                     "circus_maximus",
                     "shadow_kingdom",
                     "candy_shop",
                     "2k17",
                     "alye_parusa",
                     "jara",
+                    "sunset_palms",
                     "world_cup_final",
                 }
                 else ((255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90))
@@ -782,6 +820,9 @@ class RotatingIdleAnimation:
     def _draw_cringe_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene) -> None:
         """Add lightweight scene tint, border, doodles, and event footer."""
         t = self.state.scene_time / 1000.0
+        if self.idle_variant == "boilingroom":
+            self._draw_boilingroom_overlay(buffer, t)
+            return
         if self.idle_variant == "2k17":
             self._draw_2k17_overlay(buffer, scene, t)
             return
@@ -799,12 +840,14 @@ class RotatingIdleAnimation:
                 IdleScene.CRINGE_WHATSAPP: (255, 214, 126),
             }
         elif self.idle_variant in {
+            "boilingroom",
             "circus_maximus",
             "shadow_kingdom",
             "candy_shop",
             "2k17",
             "alye_parusa",
             "jara",
+            "sunset_palms",
             "world_cup_final",
         }:
             accent_map = {
@@ -859,6 +902,24 @@ class RotatingIdleAnimation:
         title = self.cringe_scene_titles.get(scene, fallback_title)
         self._draw_centered_title(buffer, title, 4, accent)
         draw_centered_text(buffer, "VNVNC.RU", 112, accent, scale=1)
+
+    def _draw_boilingroom_overlay(self, buffer: NDArray[np.uint8], t: float) -> None:
+        """Keep the canonical chrome emblem clean inside a restrained red club frame."""
+        chrome = self._theme.theme_chrome
+        red = self._theme.theme_red
+        buffer[108:128] = (buffer[108:128].astype(np.float32) * 0.42).astype(np.uint8)
+
+        pulse = 0.68 + 0.20 * math.sin(t * 2.1)
+        border = tuple(max(18, int(channel * pulse)) for channel in red)
+        buffer[0:2, :] = border
+        buffer[126:128, :] = border
+        buffer[:, 0:2] = border
+        buffer[:, 126:128] = border
+        buffer[4:5, 10:118] = tuple(int(channel * 0.55) for channel in chrome)
+
+        self._draw_corner_cross(buffer, 10, 16, red)
+        self._draw_corner_cross(buffer, 118, 16, red)
+        draw_centered_text(buffer, "VNVNC.RU", 114, chrome, scale=1)
 
     def _draw_2k17_overlay(self, buffer: NDArray[np.uint8], scene: IdleScene, t: float) -> None:
         """2K17 idle overlay: black label bars, white pixel type, flame-orange accents."""
@@ -1072,6 +1133,29 @@ class RotatingIdleAnimation:
                 return
 
         if self.idle_variant == "vnvnc_bday":
+            return
+        if self.idle_variant == "sunset_palms":
+            filename = self._theme.idle_video_filename
+            if not filename:
+                logger.error("Sunset Palms idle-video slot is not configured")
+                return
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "sunset_palms"
+                / "video"
+                / filename
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded accepted Sunset Palms idle video: {video_path.name}")
+            else:
+                logger.error(
+                    "Required accepted Sunset Palms idle video is not installed: %s; "
+                    "activation must remain gated",
+                    video_path,
+                )
             return
         if self.idle_variant == "mtv_night":
             video_path = (
@@ -1501,7 +1585,9 @@ class RotatingIdleAnimation:
         return False
 
     def get_scene_name(self) -> str:
-        if self.idle_variant == "slavic":
+        if self.idle_variant == "boilingroom":
+            names = {IdleScene.CRINGE_HERO: "BOILING ROOM"}
+        elif self.idle_variant == "slavic":
             names = {
                 IdleScene.CRINGE_HERO: "SLAVIC",
                 IdleScene.CRINGE_CIRCLE_VIDEO: "SLAVIC",
@@ -1612,6 +1698,10 @@ class RotatingIdleAnimation:
         elif self.idle_variant == "jara":
             names = {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
+            }
+        elif self.idle_variant == "sunset_palms":
+            names = {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "SUNSET PALMS",
             }
         elif self.idle_variant == "world_cup_final":
             names = {
@@ -4924,12 +5014,27 @@ class RotatingIdleAnimation:
             buffer[sparkle_y, sparkle_x] = (brightness, brightness, brightness)
 
     def _render_ticker_static_winter(
-        self, buffer: NDArray[np.uint8], text: str, color: tuple, t: float
+        self,
+        buffer: NDArray[np.uint8],
+        text: str,
+        color: tuple,
+        t: float,
+        compact_static: bool = False,
+        x_offset: int = 0,
+        safe_left: int = 0,
     ) -> None:
         """Render static ticker text with winter sparkle effects and scrolling for long text."""
         from artifact.graphics.text_utils import render_idle_style_ticker_text
 
-        render_idle_style_ticker_text(buffer, text, color, t)
+        render_idle_style_ticker_text(
+            buffer,
+            text,
+            color,
+            t,
+            compact_static=compact_static,
+            x_offset=x_offset,
+            safe_left=safe_left,
+        )
 
     def _render_ticker_flip(
         self,
@@ -4986,11 +5091,15 @@ class RotatingIdleAnimation:
         t = self.state.time  # Use global time for consistent animation
 
         # The main screen carries idle animation; keep the physical ticker stable.
+        text = self._theme.ticker_idle_text_at(t)
         self._render_ticker_static_winter(
             buffer,
-            self.idle_ticker_text,
+            text,
             self._theme.ticker_color or self._theme.theme_chrome,
             t,
+            compact_static=self._theme.ticker_compact_static,
+            x_offset=self._theme.ticker_x_offset if text == self._theme.ticker_idle else 0,
+            safe_left=self._theme.ticker_safe_left,
         )
         return
 
@@ -5222,11 +5331,13 @@ class RotatingIdleAnimation:
                 IdleScene.HYPERCUBE: [" ГИПЕРКУБ   ", "    4D      ", " НАЖМИ СТАРТ "],
             }
         elif self.idle_variant in {
+            "boilingroom",
             "circus_maximus",
             "candy_shop",
             "2k17",
             "alye_parusa",
             "jara",
+            "sunset_palms",
             "world_cup_final",
         }:
             return [

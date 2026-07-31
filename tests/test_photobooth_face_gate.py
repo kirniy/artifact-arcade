@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 import tempfile
 import types
@@ -78,6 +79,29 @@ class PhotoboothFaceGateTests(unittest.TestCase):
 
             with patch.dict(sys.modules, {"cv2": fake_cv2}):
                 self.assertTrue(mode._source_photo_has_visible_face())
+
+    def test_gallery_gate_fails_open_by_default(self) -> None:
+        mode = object.__new__(PhotoboothMode)
+        mode._state = PhotoboothState(
+            photo_bytes=self._photo_bytes(),
+            selected_camera_id="primary",
+            source_has_visible_face=False,
+        )
+
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PHOTOBOOTH_SKIP_FACELESS_GALLERY", None)
+            self.assertFalse(mode._should_skip_public_gallery_upload())
+
+    def test_strict_gallery_gate_trusts_existing_identity_face_crop(self) -> None:
+        mode = object.__new__(PhotoboothMode)
+        mode._state = PhotoboothState(
+            photo_bytes=self._photo_bytes(),
+            selected_camera_id="primary",
+            source_identity_face_count=1,
+        )
+
+        with patch.dict(os.environ, {"PHOTOBOOTH_SKIP_FACELESS_GALLERY": "true"}):
+            self.assertFalse(mode._should_skip_public_gallery_upload())
 
 
 if __name__ == "__main__":

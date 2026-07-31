@@ -60,28 +60,54 @@ class PhotoboothTheme:
     party_date_rollover_hour: Optional[int] = None  # Use previous date before this Moscow hour
     footer_date_mode: str = "date"  # "date" or "weekday_ru"
     reference_image_filenames: Tuple[str, ...] = ()
+    required_reference_sha256: Optional[str] = None  # Exact canonical reference integrity pin
     menu_display_name: Optional[str] = None  # Optional selector label override
     menu_description: Optional[str] = None  # Optional selector ticker description
     menu_color: Optional[Tuple[int, int, int]] = None  # Optional selector accent color
     ticker_color: Optional[Tuple[int, int, int]] = None  # Physical 48x8 ticker override
+    ticker_compact_static: bool = False  # Fit only overlong labels without reducing glyph height
+    ticker_x_offset: int = 0  # Optional seam correction for one static idle label
+    ticker_safe_left: int = 0  # Avoid a cabinet-specific unreadable left seam
+    ticker_idle_cycle: Tuple[str, ...] = ()  # Optional hard-cut idle labels
+    ticker_idle_cycle_ms: int = 2200
     menu_variants: Tuple[PhotoboothMenuVariant, ...] = ()
+    idle_video_filename: Optional[str] = None  # Theme-owned, adapted 128x128 idle master
+    idle_video_required: bool = False  # Activation must fail closed while this asset is absent
+
+    def ticker_idle_text_at(self, time_ms: float) -> str:
+        """Return a deterministic static idle label for the physical ticker."""
+        labels = self.ticker_idle_cycle or (self.ticker_idle,)
+        slot = max(0, int(time_ms)) // max(1, self.ticker_idle_cycle_ms)
+        return labels[slot % len(labels)]
 
 
 # =============================================================================
-# THEME: BOILING ROOM (March 27-29, 2026)
+# THEME: BOILING ROOM — evergreen weekend edition
 # =============================================================================
 BOILINGROOM_THEME = PhotoboothTheme(
     id="boilingroom",
     event_name="BOILING ROOM",
-    event_date="27.03-29.03",
+    event_date="",
     logo_filename="boilingroom.png",
     theme_chrome=(192, 192, 192),  # Chrome silver
     theme_red=(139, 0, 0),  # Deep red
     theme_black=(0, 0, 0),  # Black
     ticker_idle="BOILING",
     lcd_prefix="BOILING",
-    description="BOILING ROOM",
+    description="АНДЕГРАУНД-КЛАБ",
+    menu_display_name="BOILING\nROOM",
+    menu_description="АНДЕГРАУНД-КЛАБ",
+    menu_color=(192, 192, 192),
+    ticker_idle_cycle=("BOILING", "ROOM"),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
     ai_style_key="boilingroom",
+    # The model renders this exact chrome-ring emblem inside the poster.
+    # The app never pastes it over the generated people afterward.
+    reference_image_filenames=("boilingroom.png",),
+    required_reference_sha256=(
+        "d0e7cfe95790cfa0d8dd31d5b58be04d192528f772e87aa84662c3da963ea3ea"
+    ),
 )
 
 
@@ -659,6 +685,48 @@ WORLD_CUP_FINAL_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: SUNSET PALMS — premium 3D sunset festival world
+# =============================================================================
+SUNSET_PALMS_THEME = PhotoboothTheme(
+    id="sunset-palms",
+    event_name="SUNSET PALMS",
+    event_date="",
+    logo_filename="sunset-palms-emblem.png",
+    theme_chrome=(255, 177, 87),  # Apricot/amber sunset highlight
+    theme_red=(242, 91, 117),  # Coral-pink secondary accent
+    theme_black=(54, 27, 67),  # Twilight plum foundation
+    ticker_idle="SUNSET",
+    lcd_prefix="PALMS",
+    description="ФЕСТИВАЛЬ ЗАКАТА",
+    menu_display_name="SUNSET\nPALMS",
+    menu_description="ФЕСТИВАЛЬ ЗАКАТА",
+    menu_color=(255, 177, 87),
+    # Exact onsite-verified WS2812B color from the July 11 ticker baseline.
+    # Any red input still deforms this cabinet's physical ticker, even when
+    # dimmed; keep red at zero. Main-screen sunset colors remain unchanged.
+    ticker_color=(0, 255, 48),
+    # Keep normal full-height 5x7 glyphs. Only the overlong nine-letter label
+    # loses its 1px inter-character gaps; SUNSET gets a seam correction.
+    ticker_compact_static=True,
+    ticker_x_offset=2,
+    ticker_safe_left=8,
+    ticker_idle_cycle=("SUNSET", "PALMS", "ФОТОБУДКА"),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="sunset_palms",
+    # This exact canonical emblem is passed as Image 2 to every generation.
+    # The model renders it inside the scene; the app never overlays it afterward.
+    reference_image_filenames=("sunset-palms-emblem.png",),
+    required_reference_sha256=(
+        "75da4849ac164cc099e1309933916fada4d718e3cd18a40edf204e6128f6a448"
+    ),
+    # Reserved for the accepted Sunset Palms fan master after local adaptation/QC.
+    idle_video_filename="sunset-palms-fans.mp4",
+    idle_video_required=True,
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -687,6 +755,7 @@ THEMES = {
     "alye-parusa": ALYE_PARUSA_THEME,
     "jara": JARA_THEME,
     "world-cup-final": WORLD_CUP_FINAL_THEME,
+    "sunset-palms": SUNSET_PALMS_THEME,
 }
 
 # Default theme

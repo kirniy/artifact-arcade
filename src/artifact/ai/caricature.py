@@ -134,6 +134,12 @@ class CaricatureStyle(Enum):
     )
     PHOTOBOOTH_JARA = "photobooth_jara"  # 9:16 vertical - ЖАРА 2D foam pool-party mode
     PHOTOBOOTH_JARA_SQUARE = "photobooth_jara_square"  # 1:1 square - ЖАРА 2D foam pool-party mode
+    PHOTOBOOTH_SUNSET_PALMS = (
+        "photobooth_sunset_palms"  # 9:16 vertical - identity-locked 2D sunset festival mode
+    )
+    PHOTOBOOTH_SUNSET_PALMS_SQUARE = (
+        "photobooth_sunset_palms_square"  # 1:1 square - identity-locked 2D sunset festival mode
+    )
     PHOTOBOOTH_WORLD_CUP_FINAL = (
         "photobooth_world_cup_final"  # 9:16 vertical - Spain vs Argentina 2D football final
     )
@@ -279,30 +285,29 @@ Googie architecture vibes, optimistic tomorrow, stylized cool.
 Clean vector style, retrofuture aesthetic. Square aspect ratio.""",
 ]
 
-# PHOTOBOOTH VARIATIONS - BOILING ROOM underground DJ party theme VERTICAL photo strip
-# OUTPUT: 9:16 VERTICAL aspect ratio — fixed prompt, no random styling drift
-# STYLE: Premium 2D club-poster illustration, wide-angle, dark paper, visible venue
-# DATES: 27.03-29.03  VENUE: КОНЮШЕННАЯ 2В  BRAND: VNVNC.RU
-# NOTE: Moscow time is passed via personality_context and must appear in footer
+# PHOTOBOOTH VARIATIONS - BOILING ROOM evergreen weekend theme
+# OUTPUT: 9:16 vertical, premium 2D club-poster illustration on dark paper.
+# The app adds the live Russian weekday/time/venue footer after generation.
 PHOTOBOOTH_VARIATIONS = [
     """BOILING ROOM — GRAPHIC CLUB POSTER PHOTO BOOTH (VERTICAL 9:16)
 
 Create a VERTICAL 9:16 photo booth strip with 4 illustrated frames in a 2×2 grid on dark textured paper.
 
-ABSOLUTE #1 PRIORITY — EXACT LIKENESS, EXACT CLOTHING, EXACT GROUP:
-- These must be THE EXACT PEOPLE from the source photo in all 4 frames
-- Same faces, same facial structure, same hairstyle, same hair color, same glasses, same facial hair, same makeup, same body proportions
+NON-NEGOTIABLE IDENTITY LOCK — SOURCE PHOTO IS A FIXED UNDERDRAWING:
+- Rotoscope the exact people from Image 1; do not invent, replace, average, beautify, age, or homogenize anyone
+- Preserve exact skull and jaw silhouette, face width/length ratio, hairline, hairstyle, hair color, eyebrow shape, eye shape, inter-eye distance, nose bridge/tip, mouth width, lips, ears, facial hair, glasses, makeup, expression and natural asymmetry
+- Keep the exact person count and left-to-right identity order from Image 1 in every frame; never duplicate or omit a guest
 - SAME clothing, SAME accessories, SAME styling from the source photo
 - Preserve ANY text, logos, prints, or graphics on clothing letter-for-letter
 - If the source photo is a group shot, include ALL people from the source photo in EVERY frame
-- Do NOT replace them with generic club characters, do NOT beautify beyond recognition
+- Only pose/expression energy may vary slightly between frames; identity geometry may not drift
 
-CRITICAL TEXT RULES:
-- ONLY these texts allowed: "BOILING ROOM", "27.03-29.03", "VNVNC.RU", the time from personality_context, "КОНЮШЕННАЯ 2В"
-- NO OTHER TEXT WHATSOEVER — no captions, no labels, no words, no letters anywhere else
-- "VNVNC.RU" must stay exact Latin text in tall condensed white letters inside a thin red rectangular border
-- The timestamp must come from personality_context exactly as written
-- NO per-frame timestamps. NO "МСК". NO year. The date appears once at the top only
+CANONICAL EMBLEM AND TEXT:
+- Image 2 is the canonical BOILING ROOM chrome-ring emblem
+- Faithfully render that exact circular chrome ring, condensed two-line BOILING / ROOM letter geometry and metallic highlights as a model-native illustrated lockup at the top
+- Do not paste a flat image, redraw a generic ring, simplify the lettering, or create a substitute logo
+- The emblem's own words "BOILING ROOM" are the ONLY readable text allowed inside the AI artwork
+- NO dates, times, address, VNVNC.RU, captions, labels, pseudo-text, random letters, signatures, watermarks, sponsor marks, or per-frame timestamps; the app adds one verified information card later
 
 STYLE — PREMIUM DRAWN CLUB POSTER ILLUSTRATION:
 - Strictly a DRAWN / ILLUSTRATED image, NOT photorealistic, NOT 3D, NOT a vinyl toy
@@ -344,17 +349,12 @@ COLOR PALETTE:
 - Frame 4: Side angle or over-shoulder variation, all people still included if it is a group photo
 
 TOP:
-- "BOILING ROOM" in beautiful metallic chrome letters, polished silver / chromed type on the dark paper
-- "27.03-29.03" below in clean condensed type
+- Model-render the canonical Image 2 chrome-ring BOILING ROOM emblem faithfully inside the poster
 
-BOTTOM LEFT:
-- exact text "VNVNC.RU" — tall condensed white letters inside thin red rectangular border
-
-BOTTOM RIGHT:
-- time from personality_context, exact digits as written
-
-SMALL BELOW TIME:
-- exact text "КОНЮШЕННАЯ 2В" in ALL CAPS
+BOTTOM SAFE ZONE:
+- Continue the illustrated venue, paper grain, red light and frame geometry full bleed to the bottom edge
+- Do not draw an empty footer bar, blank rectangle, second info panel, text, or placeholder
+- Keep faces and essential clothing details out of the lowest 13%; the app overlays one compact information card there
 
 9:16 VERTICAL. Dark printed club-poster photo booth strip with visible venue background and exact likeness.""",
 ]
@@ -396,7 +396,8 @@ COLOR:
 - Same exact people in all 4 frames, slight expression / angle changes only
 
 BRANDING:
-- exact text "VNVNC" in tall condensed white letters inside a thin red rectangular border
+- Faithfully model-render the canonical Image 2 chrome-ring BOILING ROOM emblem
+- Its own words "BOILING ROOM" are the only readable text; no dates, times, address, pseudo-text or fake logos
 
 SQUARE 1:1. Dark printed club-poster illustration with visible venue background and exact likeness.""",
 ]
@@ -3404,6 +3405,54 @@ Place the guests centrally and frame them with spectacular layered foam and bubb
 ]
 
 
+SUNSET_PALMS_VARIATIONS = [
+    """SUNSET PALMS — IDENTITY-LOCKED PREMIUM 2D FESTIVAL POSTER (VERTICAL 9:16)
+
+Create one full-bleed 9:16 hero poster. No grid, strip, panels, repeated guests, alternate poses, or pasted-on logo.
+
+IDENTITY IS THE HIGHEST PRIORITY:
+- Input image 1 is the real booth photograph and the only source of people. Count all visible guests first; include each person exactly once and add nobody.
+- Treat that photo as a fixed underdrawing. Preserve exact left/center/right order, coordinates, spacing, overlaps, camera perspective, head angles, gaze, expressions, pose, gestures, proportions, outfit silhouette, accessories, and visible garment details.
+- For every guest separately preserve head silhouette, forehead, hairline, inter-eye distance, eye shape/tilt, brows, nose bridge/length/tip, cheeks, lip contour, jaw, chin, ears, skin tone, age cues, facial hair, and distinctive asymmetries. Trace real curl pattern, fringe, part, volume, texture, and hair color.
+- Render clean stable facial geometry even if the source is motion-blurred. Never beautify, average faces, substitute generic attractive models, face-swap, de-age, change ethnicity, redesign hair, change outfit identity, invent hands, or cover identity details.
+- Rotoscope every guest as a refined hand-drawn 2D editorial portrait with precise facial linework. Use restrained cel shading and subtle screenprint grain, but preserve the measured face geometry before applying graphic style. Adult proportions; no caricature, face redesign, idealized symmetry, generic house-style face, childlike head, Pixar imitation, anime, plastic skin, photoreal cutout, or 3D head.
+
+MANDATORY CANONICAL EMBLEM REFERENCE:
+- Input image 2 is the canonical exact SUNSET PALMS emblem and a required brand reference, not loose inspiration.
+- Faithfully reproduce its complete protected structure: orange-to-coral oval sunset, horizontal horizon bars, two black palm silhouettes, exact SUNSΞT geometry including the distinctive stylized E, and the PALMS tracking below.
+- Render it natively inside the generated illustration as one faithful flat 2D emblem lockup in the central upper 18-21%, using clean ink edges, exact internal geometry and subtle screenprint texture. The model must draw it as part of the poster; it must never look pasted over the image, never become generic words, and never be duplicated.
+- The emblem's own exact wording SUNSET PALMS is the only readable text allowed. No VNVNC text, slogans, dates, weekdays, times, address, signs, labels, pseudo-text, or extra logos in the AI artwork. If the source clothing contains lettering, preserve the garment's shape and color but remove/abstract that lettering for this theme.
+
+PREMIUM CLEAN 2D VISUAL WORLD:
+- Use the same high-fidelity 2D rotoscope/editorial-poster discipline as the successful ЖАРА theme: confident hand-inked contours, natural adult anatomy, restrained four-to-six-color cel shading, controlled halftone shadows, subtle paper grain and slight print misregistration. Faces receive the finest linework. The image must feel airy, expensive and deliberately graphic, never murky, glossy-plastic or AI-cartoonish.
+- Palette is predominantly pale apricot, peach cream, papaya, coral pink, warm ivory, sunlit sand and champagne gold, with small cactus-green and soft plum accents only. At least 70% of the background should be light or mid-tone. No black/purple night field, midnight aubergine sky, heavy brown cast, crushed shadows or large dark shapes.
+- Use a clean designed sunset screenprint: deliberate horizontal papaya-to-apricot-to-coral ink bands, one large flat sun disk, two or three long hand-drawn cloud ribbons, subtle halftone rays and a clear horizon. No bland empty gradient, puffy fantasy cloud piles, storm clouds, dramatic purple night, fiery apocalypse sky or generic concept-art spectacle.
+- Build an ordered festival set with generous breathing room: two or three palms framing only the outer edges, a single neat festoon-light arc, one restrained pennant line, sparse curated confetti, a few daisies, one pale woven rug and low sculptural plinths. Every object has a reason and a clear silhouette.
+- Include one anatomically credible handpan as a secondary foreground prop with a central Ding and eight distinct tone fields. Add only a few tasteful festival instruments such as bongos, shaker, tambourine, kalimba or small frame drum. Instruments must be plausible and playable, never melted decorative blobs and never obscure people.
+- Keep the real guests large, waist-up, and central. Head tops begin just below the emblem zone, around 23-27% of height; each head is about 12-16% of canvas height. Environment supports the guests rather than shrinking them.
+- Continue the world full bleed to every edge. Keep the lowest 13% free of faces for one compact app-rendered information card, but fill it cleanly with pale rug, warm ground light and only one or two instrument details—no empty bar, blank rectangle, UI panel, dense object pile or artificial negative-space strip.
+
+TONE AND EXCLUSIONS:
+- Stylish adult festival/party energy: celebratory, tactile, warm and fashion-forward. Not a calm wellness retreat, meditation class, yoga/spa advertisement, children's event, generic neon-strobe club, cyberpunk, EDM laser rave, dark Mad Max desert, dystopia, tribal caricature, or cluttered AI concept art.
+- No random lettering, warped palms, duplicate limbs, melted instruments, fake stage machinery, excessive lens flare, fog over faces, muddy gradients, wax skin, oversaturated neon, logo overlay, dark palm canopy, wall-to-wall props, confetti storm, reflective-orb clutter, or brown-on-brown rendering.
+
+OUTPUT: the exact recognizable real group as high-fidelity flat 2D editorial portraits, the canonical emblem faithfully model-rendered inside the illustration, a rich intentional screenprint sunset sky, palms, warm festival details, handpan and tasteful percussion, full bleed, and no empty footer bar.""",
+]
+
+
+SUNSET_PALMS_SQUARE_VARIATIONS = [
+    """SUNSET PALMS — IDENTITY-LOCKED PREMIUM 2D FESTIVAL HERO (SQUARE 1:1)
+
+Create one full-bleed square composition. Input image 1 is a fixed underdrawing and the only source of people: preserve exact person count, identities, individual facial geometry, expressions, hairlines and texture, skin tones, positions, spacing, overlaps, poses, gestures, body proportions, outfits, accessories, and visible garment details. Include each adult once; no generic beautified replacements, face averaging, invented hands, childlike proportions, plastic skin, anime, 3D heads, or photoreal cutouts.
+
+Input image 2 is the canonical SUNSET PALMS emblem. Faithfully reproduce its orange-coral oval sunset, horizon bars, two black palms, exact SUNSΞT geometry with stylized E, and PALMS tracking as one model-native flat 2D illustrated lockup at the top. It must be drawn into the poster, not pasted on, reworded, simplified, or duplicated. Its exact SUNSET PALMS wording is the only readable text; add no dates, times, address, slogans, pseudo-text, or other logos.
+
+Rotoscope faces with exact real geometry, asymmetry and hairline irregularities; spend the most detail on eyes, nose, lips, jaw and hair. Render a bright high-key flat 2D festival poster in pale apricot, peach cream, papaya, coral, warm ivory, sunlit sand and champagne gold, with small cactus-green and soft-plum accents. Use precise ink contours, restrained cel shading, halftone shadows, paper grain and slight print misregistration. Add a designed banded sunset, one flat sun disk, two or three long cloud ribbons, edge-framing palms, one festoon arc, one pennant line, sparse confetti, a few daisies, one pale rug, low illustrated plinths and a credible handpan with central Ding plus eight tone fields. Keep generous breathing room and clear silhouettes.
+
+Keep the recognizable guests large and central. Full bleed, no blank bars or UI panels. Adult festive party energy—not a calm retreat, neon-strobe club, cyberpunk scene, children's party, Mad Max desert, generic fantasy, cluttered AI slop, dark canopy, storm sky, heavy brown cast, wall-to-wall props, warped instruments, melted anatomy, or fog over faces. Square 1:1.""",
+]
+
+
 WORLD_CUP_FINAL_VARIATIONS = [
     """ЧЕМПИОНАТ МИРА 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (VERTICAL 9:16)
 
@@ -3658,6 +3707,8 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE: "ALYE_PARUSA_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_JARA: "JARA_VARIATION",
     CaricatureStyle.PHOTOBOOTH_JARA_SQUARE: "JARA_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS: "SUNSET_PALMS_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE: "SUNSET_PALMS_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL: "WORLD_CUP_FINAL_VARIATION",
     CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE: "WORLD_CUP_FINAL_SQUARE_VARIATION",
     # =========================================================================
@@ -3779,6 +3830,8 @@ class CaricatureService:
                 "ALYE_PARUSA_SQUARE_VARIATION": ALYE_PARUSA_SQUARE_VARIATIONS,
                 "JARA_VARIATION": JARA_VARIATIONS,
                 "JARA_SQUARE_VARIATION": JARA_SQUARE_VARIATIONS,
+                "SUNSET_PALMS_VARIATION": SUNSET_PALMS_VARIATIONS,
+                "SUNSET_PALMS_SQUARE_VARIATION": SUNSET_PALMS_SQUARE_VARIATIONS,
                 "WORLD_CUP_FINAL_VARIATION": WORLD_CUP_FINAL_VARIATIONS,
                 "WORLD_CUP_FINAL_SQUARE_VARIATION": WORLD_CUP_FINAL_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
@@ -3814,7 +3867,30 @@ introverts get serene expressions, risk-takers get dynamic energy, etc.
 
             reference_asset_hint = ""
             if extra_reference_images:
-                reference_asset_hint = """
+                if style in (
+                    CaricatureStyle.PHOTOBOOTH,
+                    CaricatureStyle.PHOTOBOOTH_SQUARE,
+                ):
+                    reference_asset_hint = """
+ADDITIONAL REFERENCE IMAGES — ROLE-LOCKED:
+- Image 2 is the SHA-256-verified canonical BOILING ROOM chrome-ring emblem. It is the only branding reference.
+- Images 3 and later, when present, are tight identity crops of the SAME real guests already visible in Image 1, ordered left-to-right. They are not extra people and must never create duplicates.
+- Use those crops only to preserve each guest's exact facial geometry, skin texture, hairline, ears and asymmetry. Image 1 remains authoritative for person count, group order, pose, hands, clothing and composition.
+- Never borrow a face from one crop for another guest, average their features, or turn the closeups into floating portraits.
+"""
+                elif style in (
+                    CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
+                    CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
+                ):
+                    reference_asset_hint = """
+ADDITIONAL REFERENCE IMAGES — ROLE-LOCKED:
+- Image 2 is the SHA-256-verified canonical SUNSET PALMS emblem. It is the only branding reference.
+- Images 3 and later, when present, are tight identity crops of the SAME real guests already visible in Image 1, ordered left-to-right. They are not extra people and must never create duplicates.
+- Use those crops only to preserve each guest's exact facial geometry, skin texture, hairline, ears and asymmetry. Image 1 remains authoritative for person count, group order, pose, hands, clothing and composition.
+- Never borrow a face from one crop for another guest, average their features, or turn the closeups into floating portraits.
+"""
+                else:
+                    reference_asset_hint = """
 ADDITIONAL REFERENCE IMAGES:
 - Extra reference images are official style or branding anchors, not extra people.
 - The first extra reference image is the official party emblem/logo for this theme. Treat it as a brand lockup, not loose inspiration.
@@ -3873,6 +3949,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
+                CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
             )
@@ -3968,6 +4046,10 @@ ADDITIONAL REFERENCE IMAGES:
             is_jara_style = style in (
                 CaricatureStyle.PHOTOBOOTH_JARA,
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
+            )
+            is_sunset_palms_style = style in (
+                CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
+                CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
             )
             is_world_cup_final_style = style in (
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
@@ -4118,6 +4200,20 @@ ADDITIONAL REFERENCE IMAGES:
 - Keep the top 20-22% clear for the app's exact official emblem overlay; do not render ЖАРА or any other readable text, logo, sign, or label
 - Artwork continues full bleed to the bottom with pool, foam and props; never create an empty cyan band or reserved blank footer rectangle. Keep faces out of only the lowest 13%, where the app overlays a floating information card
 """
+            elif is_sunset_palms_style:
+                color_instruction = """- FULL COLOR, HIGH KEY — predominantly pale apricot, peach cream, papaya, coral pink, warm ivory, sunlit sand and champagne gold; only small cactus-green and soft-plum accents
+- Strictly one full-bleed hero composition; no grid, strip, panels, repeated people, pasted logo, blank bar, empty footer rectangle, or generated UI
+- Premium flat 2D editorial illustration is mandatory: high-fidelity source-photo rotoscope, precise hand-inked facial contours, natural adult anatomy, restrained four-to-six-color cel shading, controlled halftone shadows, subtle paper grain and slight print misregistration
+- Exact identity outranks every theme element. Treat the source people as a fixed underdrawing and preserve every guest's separate facial geometry, real person count, expression, hairline and texture, pose, gesture, proportions, spacing, overlaps, outfit silhouette and visible details
+- Preserve eyelid shape, inter-eye distance, under-eye structure, nose geometry, lip contour, jaw angle, chin, ears, hairline irregularities and facial asymmetry. Do not homogenize different guests into one illustrated face style. No generic beautified models, idealized symmetry, face averaging, childlike heads, Pixar imitation, anime, 3D heads, photoreal cutouts, invented hands, or clothing redesign
+- Input image 2 is the canonical exact SUNSET PALMS emblem. Reproduce its orange-coral oval sunset, horizon bars, two black palms, exact SUNSΞT geometry with stylized E, and PALMS tracking as one model-native flat 2D illustrated lockup in the central top 18-21%
+- The model must draw the emblem inside the poster with clean ink edges and exact geometry. Never paste it over the image, simplify it into generic words, spell it differently, or duplicate it
+- The canonical emblem wording SUNSET PALMS is the only readable text. No VNVNC text, dates, weekday, time, address, slogans, labels, signs, pseudo-text, or other logos. Preserve source garment shape/color but remove or abstract any clothing lettering for this theme
+- At least 70% of the background is light or mid-tone. Use deliberate papaya-to-apricot-to-coral screenprint bands, one flat sun disk, two or three long hand-drawn cloud ribbons, halftone rays and a clear horizon. No bland empty gradient, black/purple night field, storm clouds, fiery sky, heavy brown cast, crushed shadows or large dark palm canopy
+- Keep the set ordered and spacious: two or three palms only at outer edges, one neat festoon arc, one restrained pennant line, sparse curated confetti, a few daisies, one pale rug, low plinths, one credible handpan with central Ding and eight tone fields, and at most two supporting percussion props. No chrome-orb pile or wall-to-wall object clutter
+- Keep the group large and central with heads below the emblem zone. Continue natural festival details full bleed through the lowest 13% while keeping faces out of that footer-safe zone
+- Not a calm retreat, meditation/yoga/spa scene, children's party, neon-strobe club, cyberpunk or EDM laser rave, Mad Max desert, dystopia, generic AI fantasy, foggy concept art, stormy night, brown-on-brown render, melted instrument display, or cluttered prop collage
+"""
             elif is_world_cup_final_style:
                 color_instruction = """- FULL COLOR — Argentina sky blue and white, Spain red and warm gold, deep midnight stadium navy, pitch green, clean neutral skin tones
 - Strictly one centered hero composition; no grid, strip, panels, repeated guests, alternate poses, or invented people
@@ -4142,8 +4238,10 @@ ADDITIONAL REFERENCE IMAGES:
                 color_instruction = """- FULL COLOR — mostly black, deep red, white, chrome silver, and true skin tones
 - Strictly premium 2D illustrated club-poster art, NOT photorealistic, NOT 3D, NOT plastic
 - Chromatic aberration, super wide angle, film grain, analog textures
-- Strong likeness and exact clothing from the reference photo are mandatory
-- Dark printed-paper feel, halftone traces, visible venue background, polished chrome headline"""
+- Treat Image 1 as a fixed underdrawing; exact separate face geometry, hair, expression, group order and clothing are mandatory
+- Image 2 is the canonical BOILING ROOM emblem; faithfully model-render its exact chrome ring and two-line lettering inside the poster
+- Images 3 and later are identity crops of the same guests, never extra people
+- Dark printed-paper feel, halftone traces, visible venue background, polished canonical chrome emblem"""
             elif is_fiesta_style:
                 color_instruction = """- FULL COLOR — distinctly Spanish mediterranean print palette: deep red, paprika, burnt orange, olive, aged gold, warm cream
 - High-end photorealistic editorial output with natural skin tones and realistic lighting
@@ -4176,15 +4274,31 @@ ADDITIONAL REFERENCE IMAGES:
 - NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic"""
 
-            task_opening = (
-                "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
-                "perform an identity-preserving 2D rotoscope/background replacement; do not synthesize or "
-                "re-stage new versions of them."
-                if is_jara_style or is_world_cup_final_style
-                else "Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo."
-            )
+            if is_sunset_palms_style:
+                task_opening = (
+                    "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
+                    "perform an identity-preserving high-fidelity 2D rotoscope/background replacement; do "
+                    "not synthesize, beautify, or re-stage substitute people."
+                )
+            elif is_jara_style or is_world_cup_final_style:
+                task_opening = (
+                    "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
+                    "perform an identity-preserving 2D rotoscope/background replacement; do not synthesize "
+                    "or re-stage new versions of them."
+                )
+            else:
+                task_opening = (
+                    "Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo."
+                )
 
-            if is_world_cup_final_style:
+            if is_sunset_palms_style:
+                text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
+  * Image 2 is mandatory canonical brand geometry, not loose inspiration
+  * Render the exact supplied SUNSET PALMS emblem natively as a flat 2D illustrated lockup inside the poster; never composite or imitate it as generic typography
+  * Preserve its exact oval sunset, horizon bars, two palms, SUNSΞT geometry including the stylized E, and PALMS tracking
+  * SUNSET PALMS inside that emblem is the only readable text allowed
+  * Do not add VNVNC, Russian captions, date, time, address, slogan, signs, labels, extra logos, or pseudo-text"""
+            elif is_world_cup_final_style:
                 text_language_rules = """- TEXT LANGUAGE RULES (CRITICAL):
   * Render exactly "ЧЕМПИОНАТ МИРА 2026" in Russian Cyrillic; the year 2026 is mandatory for this theme
   * Render exactly "ИСПАНИЯ × АРГЕНТИНА" in Russian Cyrillic
@@ -4202,7 +4316,7 @@ ADDITIONAL REFERENCE IMAGES:
 
 CRITICAL REQUIREMENTS:
 - IDENTITY LOCK: preserve THE EXACT REAL PERSON OR REAL GROUP IN THE PHOTO. The output must look like the same people, not prettier substitutes, generic models, characters, or lookalikes.
-- Preserve face shape, eyes, nose, mouth, jawline, skin tone, skin texture, hairline, hairstyle, hair color, facial hair, glasses, expression, height relationship, body proportions, pose, clothing silhouette, and visible clothing text/logos from the source photo.
+- Preserve face shape, eyes, nose, mouth, jawline, skin tone, skin texture, hairline, hairstyle, hair color, facial hair, glasses, expression, height relationship, body proportions, pose, clothing silhouette, and visible clothing text/logos from the source photo, unless a theme-specific text rule below explicitly prohibits non-emblem lettering.
 - Style modifications are allowed only in the environment, color palette, lighting, typography, props, and non-obscuring accessories. Do not change personal appearance.
 - Do not beautify, age, de-age, slim, widen, gender-swap, ethnicity-shift, change hair, change skin tone, change expression, change outfit identity, or cover/replace faces.
 - If the reference photo contains multiple people, preserve the exact people count and keep every visible person in the final image with equal importance.
@@ -4245,6 +4359,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_SUMMER_CAMP,
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
                 CaricatureStyle.PHOTOBOOTH_JARA,
+                CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
             ):
                 aspect_ratio = "9:16"
@@ -4283,12 +4398,14 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "Premium flat 2D Russian Scarlet Sails poster, black field, white clouds, scarlet sails, red-and-white ribbons, thin ink wave lines, elegant negative space, exact human likeness preserved, no footer text"
             elif is_jara_style:
                 image_style = "High-fidelity 2D rotoscope of the attached real people in their original positions and poses, large resolved source-photo faces and exact hair traced rather than redesigned, clean stable anatomy even where the source has motion blur, confident hand-inked editorial contours, restrained four-to-six-color screenprint shading and subtle print misregistration, adult modern tropical pool-party campaign, deliberately designed mid-century Riviera sky with cobalt-to-azure ink bands, flat citrus sun disk, long cirrus ribbons, halftone rays and no dead blue gap, bright pool, wet lacy micro-bubble foam rather than cloud shapes, palms, iridescent bubbles, hot-pink and translucent floaties, striped beach chairs, towels, chic cooler and summer props, full-bleed artwork, exact human likeness and group count preserved, no generated text, no visible foam or bubble equipment, no generic AI cartoon scenery"
+            elif is_sunset_palms_style:
+                image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses, expressions and clothes; large individually resolved faces and exact hair traced rather than redesigned; precise hand-inked editorial contours, natural adult anatomy, restrained four-to-six-color cel shading, controlled halftone shadows, subtle paper grain and slight print misregistration; bright clean papaya-apricot-coral Sunset Palms festival screenprint with flat sun disk, long cloud ribbons, spacious edge palms, festoon arc, pennants, sparse confetti, pale rug, credible handpan and at most two percussion props; canonical supplied SUNSET PALMS emblem faithfully model-rendered as a native flat 2D illustrated lockup; full bleed, no empty bars, no 3D, photoreal cutouts, generic face averaging, dark canopy, storm sky, brown cast, clutter, neon club, calm retreat, Mad Max or AI-slop scenery"
             elif is_world_cup_final_style:
                 image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses and clothes, large individually resolved faces and exact hair traced rather than redesigned, natural adult anatomy, crisp editorial ink contours, restrained cel shading, premium sports screenprint texture, deliberate Spain versus Argentina final-night stadium architecture, geometric floodlights, halftone crowd, pitch bands, paper-cut confetti and ribbon energy, balanced sky-blue-white and red-gold team color fields, full-bleed artwork, exact human likeness and group count preserved, supplied original football-and-cup emblem faithfully redrawn and integrated by the model, exact Russian title ЧЕМПИОНАТ МИРА 2026 and exact Russian match line ИСПАНИЯ × АРГЕНТИНА, no extra text, no official marks, no 3D and no generic AI fantasy background"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:
-                image_style = "Premium 2D underground club poster illustration, drawn graphic art, chromatic aberration, super wide angle, film grain, analog textures, visible venue background, metallic chrome headline, exact likeness and exact clothing from reference photo"
+                image_style = "Premium 2D underground club poster illustration, fixed-underdrawing face preservation, precise individual facial geometry and hair, drawn graphic art, chromatic aberration, super wide angle, film grain, analog textures, visible venue background, canonical supplied BOILING ROOM chrome-ring emblem faithfully model-rendered inside the poster, exact group count, likeness and clothing from reference photo"
             elif is_malchishnik_style:
                 image_style = "Analog disposable camera photography, Polaroid film photo, heavy film grain, blown flash, warm pushed colors, party chaos, Hangover movie aesthetic"
             elif (

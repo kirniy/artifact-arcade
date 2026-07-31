@@ -7,7 +7,11 @@ set -euo pipefail
 REPO_DIR="/home/kirniy/modular-arcade"
 LOG_FILE="/home/kirniy/modular-arcade/logs/autopull.log"
 PENDING_FILE="/home/kirniy/modular-arcade/.deploy/restart-pending"
-AUTO_ACTIVATE_JARA="${ARTIFACT_AUTO_ACTIVATE_JARA:-1}"
+AUTO_ACTIVATE_BOILINGROOM="${ARTIFACT_AUTO_ACTIVATE_BOILINGROOM:-1}"
+# Theme activation is explicit. A historical event must never silently replace
+# the currently selected weekend theme on a routine auto-pull.
+AUTO_ACTIVATE_SUNSET_PALMS="${ARTIFACT_AUTO_ACTIVATE_SUNSET_PALMS:-0}"
+AUTO_ACTIVATE_JARA="${ARTIFACT_AUTO_ACTIVATE_JARA:-0}"
 AUTO_ACTIVATE_WORLD_CUP_FINAL="${ARTIFACT_AUTO_ACTIVATE_WORLD_CUP_FINAL:-1}"
 RECOVERY_TUNNEL_ENABLED="${ARTIFACT_RECOVERY_TUNNEL_ENABLED:-1}"
 RECOVERY_TUNNEL_HOST="${ARTIFACT_RECOVERY_TUNNEL_HOST:-root@82.38.148.239}"
@@ -58,6 +62,22 @@ env_has_jara() {
         grep -Eq '^GEMINI_IMAGE_MODEL=gemini-3\.1-flash-lite-image$' "$REPO_DIR/.env"
 }
 
+env_has_boilingroom() {
+    [ -f "$REPO_DIR/.env" ] &&
+        grep -Eq '^PHOTOBOOTH_THEME=boilingroom$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_MENU_MODES=boilingroom$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_AI_ENABLED=true$' "$REPO_DIR/.env" &&
+        grep -Eq '^GEMINI_IMAGE_MODEL=gemini-3\.1-flash-lite-image$' "$REPO_DIR/.env"
+}
+
+env_has_sunset_palms() {
+    [ -f "$REPO_DIR/.env" ] &&
+        grep -Eq '^PHOTOBOOTH_THEME=sunset-palms$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_MENU_MODES=sunset-palms$' "$REPO_DIR/.env" &&
+        grep -Eq '^PHOTOBOOTH_AI_ENABLED=true$' "$REPO_DIR/.env" &&
+        grep -Eq '^GEMINI_IMAGE_MODEL=gemini-3\.1-flash-lite-image$' "$REPO_DIR/.env"
+}
+
 env_has_world_cup_final() {
     [ -f "$REPO_DIR/.env" ] &&
         grep -Eq '^PHOTOBOOTH_THEME=world-cup-final$' "$REPO_DIR/.env" &&
@@ -71,6 +91,30 @@ world_cup_final_window_active() {
     # party-date rollover convention.
     moscow_stamp="$(TZ=Europe/Moscow date '+%Y%m%d%H%M')"
     [ "$moscow_stamp" -ge 202607190000 ] && [ "$moscow_stamp" -lt 202607201200 ]
+}
+
+boilingroom_weekend_window_active() {
+    # Friday setup through Monday noon, Moscow time. Outside this one event
+    # window the auto-updater never forces Boiling Room.
+    moscow_stamp="$(TZ=Europe/Moscow date '+%Y%m%d%H%M')"
+    [ "$moscow_stamp" -ge 202607311200 ] && [ "$moscow_stamp" -lt 202608031200 ]
+}
+
+ensure_boilingroom_activation() {
+    if [ "$AUTO_ACTIVATE_BOILINGROOM" != "1" ] || ! boilingroom_weekend_window_active; then
+        return 1
+    fi
+    if env_has_boilingroom; then
+        return 1
+    fi
+    if [ ! -x "$REPO_DIR/scripts/activate-boilingroom-photobooth.sh" ]; then
+        log "Boiling Room activation script is not present yet."
+        return 1
+    fi
+
+    log "Activating Boiling Room for the current weekend..."
+    ARTIFACT_REMOTE_DIR="$REPO_DIR" "$REPO_DIR/scripts/activate-boilingroom-photobooth.sh"
+    return 0
 }
 
 ensure_world_cup_final_activation() {
@@ -107,10 +151,34 @@ ensure_jara_activation() {
     return 0
 }
 
+ensure_sunset_palms_activation() {
+    if [ "$AUTO_ACTIVATE_SUNSET_PALMS" != "1" ]; then
+        return 1
+    fi
+    if env_has_sunset_palms; then
+        return 1
+    fi
+    if [ ! -x "$REPO_DIR/scripts/activate-sunset-palms-photobooth.sh" ]; then
+        log "Sunset Palms activation script is not present yet."
+        return 1
+    fi
+
+    log "Activating Sunset Palms photobooth env..."
+    ARTIFACT_REMOTE_DIR="$REPO_DIR" "$REPO_DIR/scripts/activate-sunset-palms-photobooth.sh"
+    return 0
+}
+
 ensure_event_activation() {
     if world_cup_final_window_active; then
         ensure_world_cup_final_activation
         return $?
+    fi
+    if boilingroom_weekend_window_active; then
+        ensure_boilingroom_activation
+        return $?
+    fi
+    if ensure_sunset_palms_activation; then
+        return 0
     fi
     ensure_jara_activation
 }

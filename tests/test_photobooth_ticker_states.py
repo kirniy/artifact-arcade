@@ -18,7 +18,13 @@ def _mode(*, phase: ModePhase = ModePhase.ACTIVE, style: str = "summer_camp") ->
     mode = object.__new__(PhotoboothMode)
     mode.phase = phase
     mode._state = PhotoboothState()
-    mode._theme = SimpleNamespace(ai_style_key=style, ticker_idle="SUMMER")
+    mode._theme = SimpleNamespace(
+        ai_style_key=style,
+        ticker_idle="SUMMER",
+        ticker_compact_static=False,
+        ticker_x_offset=0,
+        ticker_idle_text_at=lambda _time_ms: "SUMMER",
+    )
     mode.TICKER_COLOR = SUMMER_ACCENT
     mode._time_in_phase = 1234.0
     return mode
@@ -63,7 +69,9 @@ def test_render_ticker_uses_single_idle_renderer_on_black(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "artifact.modes.photobooth.render_idle_style_ticker_text",
-        lambda buffer, text, color, time_ms: calls.append((buffer.copy(), text, color, time_ms)),
+        lambda buffer, text, color, time_ms, **kwargs: calls.append(
+            (buffer.copy(), text, color, time_ms, kwargs)
+        ),
     )
 
     import numpy as np
@@ -72,9 +80,10 @@ def test_render_ticker_uses_single_idle_renderer_on_black(monkeypatch) -> None:
     mode.render_ticker(buffer)
 
     assert len(calls) == 1
-    cleared_buffer, text, color, time_ms = calls[0]
+    cleared_buffer, text, color, time_ms, kwargs = calls[0]
     assert not cleared_buffer.any()
     assert (text, color, time_ms) == ("ФОТО", SUMMER_ACCENT, 1234.0)
+    assert kwargs == {"compact_static": False, "x_offset": 0, "safe_left": 0}
 
 
 def test_summer_camp_ticker_words_are_static_theme_color_on_black() -> None:

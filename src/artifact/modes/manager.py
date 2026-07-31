@@ -2001,11 +2001,15 @@ class ModeManager:
             # Clean "Word Cycle" ticker (RSVP style) - No horizontal scrolling
             theme = _get_theme_for_mode_cls(mode.cls)
             if theme is not None:
+                text = theme.ticker_idle_text_at(self._time_in_state)
                 render_idle_style_ticker_text(
                     buffer,
-                    theme.ticker_idle,
+                    text,
                     theme.ticker_color or theme.theme_chrome,
                     self._time_in_state,
+                    compact_static=theme.ticker_compact_static,
+                    x_offset=theme.ticker_x_offset if text == theme.ticker_idle else 0,
+                    safe_left=theme.ticker_safe_left,
                 )
                 return
             description = self._get_mode_description_text(mode)

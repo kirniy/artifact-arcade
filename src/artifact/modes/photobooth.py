@@ -20,6 +20,7 @@ import logging
 import io
 import os
 import asyncio
+import hashlib
 from collections import OrderedDict
 from typing import Optional, Type
 from dataclasses import dataclass
@@ -148,6 +149,7 @@ class PhotoboothState:
     awaiting_camera_selection: bool = False
     selected_camera_id: str = "primary"
     source_has_visible_face: Optional[bool] = None
+    source_identity_face_count: Optional[int] = None
 
 
 class PhotoboothMode(BaseMode):
@@ -303,10 +305,22 @@ class PhotoboothMode(BaseMode):
                         )
                         continue
                     with open(reference_path, "rb") as reference_file:
+                        reference_bytes = reference_file.read()
+                        expected_sha256 = self._theme.required_reference_sha256
+                        if expected_sha256:
+                            actual_sha256 = hashlib.sha256(reference_bytes).hexdigest()
+                            if actual_sha256 != expected_sha256:
+                                logger.error(
+                                    "Rejected non-canonical reference for %s: %s (sha256=%s)",
+                                    self._theme.id,
+                                    reference_filename,
+                                    actual_sha256,
+                                )
+                                continue
                         mime_type = (
                             "image/png" if reference_path.lower().endswith(".png") else "image/jpeg"
                         )
-                        self._theme_reference_images.append((reference_file.read(), mime_type))
+                        self._theme_reference_images.append((reference_bytes, mime_type))
                 logger.info(
                     "Loaded %d theme reference asset(s) for %s: %s",
                     len(self._theme_reference_images),
@@ -618,6 +632,79 @@ class PhotoboothMode(BaseMode):
         except Exception:
             return None
 
+    def _build_identity_face_references(self) -> list[tuple[bytes, str]]:
+        """Create ordered face crops to reinforce likeness without changing group layout."""
+        if not self._state.photo_bytes:
+            self._state.source_identity_face_count = None
+            return []
+        try:
+            import cv2
+
+            image = PILImage.open(io.BytesIO(self._state.photo_bytes)).convert("RGB")
+            frame = np.array(image)
+            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            equalized = cv2.equalizeHist(gray)
+            min_side = max(28, min(gray.shape[:2]) // 18)
+            cascade_dir = Path(cv2.data.haarcascades)
+            candidates: list[tuple[int, int, int, int]] = []
+            for cascade_name, detection_image in (
+                ("haarcascade_frontalface_default.xml", equalized),
+                ("haarcascade_frontalface_alt2.xml", gray),
+            ):
+                detector = cv2.CascadeClassifier(str(cascade_dir / cascade_name))
+                if detector.empty():
+                    continue
+                detections = detector.detectMultiScale(
+                    detection_image,
+                    scaleFactor=1.07,
+                    minNeighbors=3,
+                    minSize=(min_side, min_side),
+                    flags=cv2.CASCADE_SCALE_IMAGE,
+                )
+                candidates.extend(tuple(int(value) for value in face) for face in detections)
+
+            def overlap_ratio(
+                a: tuple[int, int, int, int], b: tuple[int, int, int, int]
+            ) -> float:
+                ax, ay, aw, ah = a
+                bx, by, bw, bh = b
+                ix0, iy0 = max(ax, bx), max(ay, by)
+                ix1, iy1 = min(ax + aw, bx + bw), min(ay + ah, by + bh)
+                intersection = max(0, ix1 - ix0) * max(0, iy1 - iy0)
+                if not intersection:
+                    return 0.0
+                return intersection / float(min(aw * ah, bw * bh))
+
+            unique_faces: list[tuple[int, int, int, int]] = []
+            for face in sorted(candidates, key=lambda item: item[2] * item[3], reverse=True):
+                if any(overlap_ratio(face, existing) > 0.45 for existing in unique_faces):
+                    continue
+                unique_faces.append(face)
+            unique_faces.sort(key=lambda item: item[0] + item[2] / 2)
+
+            references: list[tuple[bytes, str]] = []
+            for x, y, width, height in unique_faces[:5]:
+                center_x = x + width / 2
+                center_y = y + height / 2
+                crop_side = max(width, height) * 2.0
+                x0 = max(0, int(center_x - crop_side / 2))
+                y0 = max(0, int(center_y - crop_side * 0.46))
+                x1 = min(image.width, int(center_x + crop_side / 2))
+                y1 = min(image.height, int(center_y + crop_side * 0.54))
+                crop = image.crop((x0, y0, x1, y1))
+                crop.thumbnail((640, 640), PILImage.Resampling.LANCZOS)
+                encoded = io.BytesIO()
+                crop.save(encoded, format="JPEG", quality=96, subsampling=0)
+                references.append((encoded.getvalue(), "image/jpeg"))
+
+            self._state.source_identity_face_count = len(references)
+            logger.info("Built %d ordered identity face reference crop(s)", len(references))
+            return references
+        except Exception as e:
+            self._state.source_identity_face_count = None
+            logger.warning("Could not build identity face reference crops: %s", e)
+            return []
+
     def _get_selected_preview_frame(self) -> Optional[NDArray[np.uint8]]:
         if self._state.selected_camera_id == "hdmi":
             # HDMICaptureService crop-fills 16:9 capture-card video into the 128x128 LED preview.
@@ -730,6 +817,11 @@ class PhotoboothMode(BaseMode):
             return (
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
+            )
+        elif ai_style_key == "sunset_palms":
+            return (
+                CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
             )
         elif ai_style_key == "world_cup_final":
             return (
@@ -925,6 +1017,7 @@ class PhotoboothMode(BaseMode):
                 "summer_camp",
                 "alye_parusa",
                 "jara",
+                "sunset_palms",
                 "world_cup_final",
             }
             if ai_style_key in timestamp_theme_keys:
@@ -947,19 +1040,47 @@ class PhotoboothMode(BaseMode):
                         f"use exactly '{moscow_time}' as the footer time, and do not show any numeric date."
                     )
                 elif ai_style_key in {
+                    "boilingroom",
                     "office_core",
                     "summer_camp",
                     "2k17",
                     "alye_parusa",
                     "jara",
+                    "sunset_palms",
                     "world_cup_final",
                 }:
-                    if ai_style_key == "jara":
+                    if ai_style_key == "boilingroom":
+                        personality_context = (
+                            "Image 2 is the canonical exact BOILING ROOM emblem. Faithfully model-render its "
+                            "chrome circular ring and condensed two-line BOILING / ROOM geometry as part of the "
+                            "illustrated poster; never paste or replace it. Rotoscope every face from the source "
+                            "as a fixed underdrawing with exact individual geometry, hairline, expression and "
+                            "natural asymmetry; never average or beautify faces. Do not render date, time, venue, "
+                            "VNVNC.RU, pseudo-text, or any readable words beyond the emblem itself. Continue the "
+                            "dark red/black illustrated venue and paper texture full bleed to the bottom with no "
+                            "empty bar or placeholder. Keep faces out of the lowest 13%; the app overlays one "
+                            "compact verified information card there."
+                        )
+                    elif ai_style_key == "jara":
                         personality_context = (
                             "Do not render footer text inside the AI artwork. Continue the illustrated pool, "
                             "foam, water, and props full bleed to the bottom edge with no empty cyan band or "
                             "blank footer rectangle. Keep faces out of the lowest 13%; the app overlays one "
                             "compact floating information card there."
+                        )
+                    elif ai_style_key == "sunset_palms":
+                        personality_context = (
+                            "Image 2 is the canonical exact SUNSET PALMS emblem. Faithfully reproduce its "
+                            "orange-coral oval sunset, horizon bars, two black palms, exact SUNSΞT geometry "
+                            "including the stylized E, and PALMS tracking as one model-native flat 2D "
+                            "illustrated lockup in the top 18-21%. Never paste or simplify it. Its own SUNSET "
+                            "PALMS wording is the only readable text allowed. Rotoscope every face from the "
+                            "source underdrawing with exact individual geometry, hairline, expression and "
+                            "asymmetry; never average or beautify faces. Use a bright high-key hand-inked "
+                            "papaya/apricot/coral screenprint sunset with restrained cel shading, halftone texture, "
+                            "spacious edge palms, sparse accents, handpan and at most two percussion props. "
+                            "No dark canopy, storm sky, brown cast, object pile or empty bar. Keep faces out of the lowest "
+                            "13%, where the app adds one compact information card."
                         )
                     elif ai_style_key == "world_cup_final":
                         personality_context = (
@@ -985,14 +1106,21 @@ class PhotoboothMode(BaseMode):
                     )
 
             # Generate only the label (9:16) image
+            if self._theme.required_reference_sha256 and not self._theme_reference_images:
+                raise RuntimeError(
+                    f"{self._theme.event_name} generation refused: canonical emblem reference is missing or invalid"
+                )
+            generation_reference_images = list(self._theme_reference_images)
+            if ai_style_key in {"boilingroom", "sunset_palms"}:
+                generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
                 style=label_style,  # 9:16 vertical
                 personality_context=personality_context,
-                # ЖАРА remains deterministic; the World Cup theme deliberately
-                # gives the original emblem to the model for an integrated lockup.
+                # ЖАРА remains deterministic; emblem-native themes deliberately
+                # give the canonical original asset to the model for integration.
                 extra_reference_images=(
-                    None if ai_style_key == "jara" else self._theme_reference_images or None
+                    None if ai_style_key == "jara" else generation_reference_images or None
                 ),
                 prompt_variation_index=self.prompt_variation_index,
             )
@@ -1002,6 +1130,11 @@ class PhotoboothMode(BaseMode):
                 if ai_style_key == "2k17":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_2k17_footer(label_bytes, footer_date_str, moscow_time)
+                elif ai_style_key == "boilingroom":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_boilingroom_footer(
+                        label_bytes, footer_date_str, moscow_time
+                    )
                 elif ai_style_key in {"office_core", "summer_camp"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(
@@ -1019,6 +1152,11 @@ class PhotoboothMode(BaseMode):
                 elif ai_style_key == "world_cup_final":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_world_cup_final_footer(
+                        label_bytes, footer_date_str, moscow_time
+                    )
+                elif ai_style_key == "sunset_palms":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_sunset_palms_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
@@ -1047,7 +1185,10 @@ class PhotoboothMode(BaseMode):
             # a model-rendered emblem/title above the faces, so bias its crop
             # upward enough to keep both branding and guests on the main screen.
             if w < h:
-                if getattr(self._theme, "ai_style_key", None) == "world_cup_final":
+                if getattr(self._theme, "ai_style_key", None) in {
+                    "world_cup_final",
+                    "sunset_palms",
+                }:
                     offset = int((h - w) * 0.06)
                 else:
                     offset = (h - w) // 2
@@ -1061,6 +1202,110 @@ class PhotoboothMode(BaseMode):
             return buf.getvalue()
         except Exception as e:
             logger.warning(f"Failed to crop to square: {e}")
+            return image_bytes
+
+    def _stamp_boilingroom_footer(
+        self, image_bytes: bytes, footer_date: str, moscow_time: str
+    ) -> bytes:
+        """Overlay one compact chrome/red club-pass card on full-bleed artwork."""
+        try:
+            from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            w, h = img.size
+            margin_x = max(22, int(w * 0.035))
+            margin_bottom = max(22, int(h * 0.022))
+            card_h = max(132, int(h * 0.108))
+            x0, x1 = margin_x, w - margin_x
+            y0, y1 = h - margin_bottom - card_h, h - margin_bottom
+            radius = max(14, int(card_h * 0.14))
+
+            shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(shadow).rounded_rectangle(
+                (x0, y0 + 9, x1, y1 + 9), radius=radius, fill=(0, 0, 0, 175)
+            )
+            shadow = shadow.filter(ImageFilter.GaussianBlur(max(7, int(w * 0.012))))
+            img = Image.alpha_composite(img, shadow)
+
+            panel = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            panel_draw = ImageDraw.Draw(panel)
+            panel_draw.rounded_rectangle(
+                (x0, y0, x1, y1),
+                radius=radius,
+                fill=(8, 8, 10, 234),
+                outline=(205, 205, 210, 220),
+                width=max(2, w // 300),
+            )
+            rail_y = y0 + max(6, int(card_h * 0.05))
+            panel_draw.line(
+                (x0 + radius, rail_y, x1 - radius, rail_y),
+                fill=(139, 0, 0, 255),
+                width=max(4, int(card_h * 0.035)),
+            )
+            img = Image.alpha_composite(img, panel)
+            draw = ImageDraw.Draw(img)
+
+            def load_font(size: int):
+                for font_path in (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                ):
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.044)))
+            time_font = load_font(max(27, int(w * 0.041)))
+            sub_font = load_font(max(19, int(w * 0.028)))
+
+            def text_width(font, text: str) -> int:
+                box = draw.textbbox((0, 0), text, font=font)
+                return box[2] - box[0]
+
+            pad_x = max(22, int(w * 0.038))
+            row1_y = y0 + max(23, int(card_h * 0.19))
+            row2_y = y0 + max(82, int(card_h * 0.64))
+            chrome = (224, 224, 228, 255)
+            white = (255, 255, 255, 255)
+            muted = (184, 184, 190, 255)
+            red = (139, 0, 0, 255)
+            venue = "КОНЮШЕННАЯ 2В"
+
+            draw.text((x0 + pad_x, row1_y), "VNVNC.RU", font=main_font, fill=chrome)
+            time_box = draw.textbbox((0, 0), moscow_time, font=time_font)
+            time_w = time_box[2] - time_box[0]
+            time_h = time_box[3] - time_box[1]
+            pill_pad_x = max(17, int(w * 0.023))
+            pill_pad_y = max(8, int(card_h * 0.075))
+            pill_w = time_w + pill_pad_x * 2
+            pill_h = time_h + pill_pad_y * 2
+            pill_x = x1 - pad_x - pill_w
+            pill_y = row1_y - max(4, int(card_h * 0.025))
+            draw.rounded_rectangle(
+                (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h),
+                radius=pill_h // 2,
+                fill=red,
+            )
+            draw.text(
+                (pill_x + pill_pad_x - time_box[0], pill_y + pill_pad_y - time_box[1]),
+                moscow_time,
+                font=time_font,
+                fill=white,
+            )
+            draw.text((x0 + pad_x, row2_y), footer_date.upper(), font=sub_font, fill=muted)
+            draw.text(
+                (x1 - pad_x - text_width(sub_font, venue), row2_y),
+                venue,
+                font=sub_font,
+                fill=muted,
+            )
+
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp Boiling Room footer: {e}")
             return image_bytes
 
     def _stamp_white_theme_footer(
@@ -1631,6 +1876,125 @@ class PhotoboothMode(BaseMode):
             logger.warning(f"Failed to stamp World Cup final footer: {e}")
             return image_bytes
 
+    def _stamp_sunset_palms_footer(
+        self, image_bytes: bytes, footer_date: str, moscow_time: str
+    ) -> bytes:
+        """Overlay one compact sunset-glass information card; never overlay the emblem."""
+        try:
+            from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            w, h = img.size
+            margin_x = max(22, int(w * 0.035))
+            margin_bottom = max(22, int(h * 0.022))
+            card_h = max(132, int(h * 0.108))
+            x0, x1 = margin_x, w - margin_x
+            y0, y1 = h - margin_bottom - card_h, h - margin_bottom
+            radius = max(20, int(card_h * 0.18))
+
+            shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(shadow).rounded_rectangle(
+                (x0, y0 + 9, x1, y1 + 9), radius=radius, fill=(30, 10, 38, 150)
+            )
+            shadow = shadow.filter(ImageFilter.GaussianBlur(max(8, int(w * 0.014))))
+            img = Image.alpha_composite(img, shadow)
+
+            panel = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            panel_draw = ImageDraw.Draw(panel)
+            panel_draw.rounded_rectangle(
+                (x0, y0, x1, y1),
+                radius=radius,
+                fill=(54, 27, 67, 232),
+                outline=(255, 221, 174, 185),
+                width=max(2, w // 300),
+            )
+            rail_y = y0 + max(6, int(card_h * 0.05))
+            rail_h = max(4, int(card_h * 0.035))
+            rail_x0, rail_x1 = x0 + radius, x1 - radius
+            third = (rail_x1 - rail_x0) // 3
+            panel_draw.line(
+                (rail_x0, rail_y, rail_x0 + third, rail_y),
+                fill=(255, 177, 87, 255),
+                width=rail_h,
+            )
+            panel_draw.line(
+                (rail_x0 + third, rail_y, rail_x0 + 2 * third, rail_y),
+                fill=(242, 91, 117, 255),
+                width=rail_h,
+            )
+            panel_draw.line(
+                (rail_x0 + 2 * third, rail_y, rail_x1, rail_y),
+                fill=(116, 55, 126, 255),
+                width=rail_h,
+            )
+            img = Image.alpha_composite(img, panel)
+            draw = ImageDraw.Draw(img)
+
+            def load_font(size: int):
+                for font_path in (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                ):
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.044)))
+            time_font = load_font(max(27, int(w * 0.041)))
+            sub_font = load_font(max(19, int(w * 0.028)))
+
+            def text_width(font, text: str) -> int:
+                box = draw.textbbox((0, 0), text, font=font)
+                return box[2] - box[0]
+
+            pad_x = max(22, int(w * 0.038))
+            row1_y = y0 + max(23, int(card_h * 0.19))
+            row2_y = y0 + max(82, int(card_h * 0.64))
+            venue = "КОНЮШЕННАЯ 2В"
+            cream = (255, 244, 224, 255)
+            amber = (255, 177, 87, 255)
+            coral = (242, 91, 117, 255)
+            apricot = (255, 205, 146, 255)
+
+            draw.text((x0 + pad_x, row1_y), "VNVNC.RU", font=main_font, fill=cream)
+            time_box = draw.textbbox((0, 0), moscow_time, font=time_font)
+            time_w = time_box[2] - time_box[0]
+            time_h = time_box[3] - time_box[1]
+            pill_pad_x = max(17, int(w * 0.023))
+            pill_pad_y = max(8, int(card_h * 0.075))
+            pill_w = time_w + pill_pad_x * 2
+            pill_h = time_h + pill_pad_y * 2
+            pill_x = x1 - pad_x - pill_w
+            pill_y = row1_y - max(4, int(card_h * 0.025))
+            draw.rounded_rectangle(
+                (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h),
+                radius=pill_h // 2,
+                fill=coral,
+                outline=amber,
+                width=max(2, w // 350),
+            )
+            draw.text(
+                (pill_x + pill_pad_x - time_box[0], pill_y + pill_pad_y - time_box[1]),
+                moscow_time,
+                font=time_font,
+                fill=cream,
+            )
+            draw.text((x0 + pad_x, row2_y), footer_date.upper(), font=sub_font, fill=apricot)
+            draw.text(
+                (x1 - pad_x - text_width(sub_font, venue), row2_y),
+                venue,
+                font=sub_font,
+                fill=amber,
+            )
+
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp Sunset Palms footer: {e}")
+            return image_bytes
+
     def _stamp_2k17_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
         """Paint deterministic 2K17 black-label footer text over the AI image."""
         try:
@@ -1873,8 +2237,13 @@ class PhotoboothMode(BaseMode):
             return None
 
     def _should_skip_public_gallery_upload(self) -> bool:
-        """Conservatively keep obvious empty-booth captures out of the public gallery."""
-        if os.getenv("PHOTOBOOTH_SKIP_FACELESS_GALLERY", "true").lower() in {
+        """Skip only when strict faceless filtering is explicitly enabled."""
+        # Haar cascades are not reliable enough under tilted, magenta/green
+        # club lighting to be a default publication gate. A false rejection
+        # loses a paid/generated guest photo, while an occasional empty frame
+        # is recoverable. Production therefore fails open; operators may opt
+        # into strict filtering explicitly after validating their lighting.
+        if os.getenv("PHOTOBOOTH_SKIP_FACELESS_GALLERY", "false").lower() in {
             "0",
             "false",
             "no",
@@ -1890,6 +2259,12 @@ class PhotoboothMode(BaseMode):
     def _source_photo_has_visible_face(self) -> bool:
         """Return False only when all conservative face checks miss."""
         if not self._state.photo_bytes:
+            return True
+        if (self._state.source_identity_face_count or 0) > 0:
+            logger.info(
+                "Photobooth source face check passed using %d identity reference crop(s)",
+                self._state.source_identity_face_count,
+            )
             return True
         try:
             import cv2
@@ -2292,13 +2667,25 @@ class PhotoboothMode(BaseMode):
                 return "QR", self.TICKER_COLOR
             text = "ФОТО" if int(self._time_in_phase // 3000) % 2 == 0 else "НА ЧЕКЕ"
             return text, self.TICKER_COLOR
-        return self._theme.ticker_idle, self.TICKER_COLOR
+        return self._theme.ticker_idle_text_at(self._time_in_phase), self.TICKER_COLOR
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         """Render every photobooth state through the idle ticker renderer."""
         fill(buffer, (0, 0, 0))
         text, color = self._get_ticker_presentation()
-        render_idle_style_ticker_text(buffer, text, color, self._time_in_phase)
+        render_idle_style_ticker_text(
+            buffer,
+            text,
+            color,
+            self._time_in_phase,
+            compact_static=getattr(self._theme, "ticker_compact_static", False),
+            x_offset=(
+                getattr(self._theme, "ticker_x_offset", 0)
+                if text == self._theme.ticker_idle
+                else 0
+            ),
+            safe_left=getattr(self._theme, "ticker_safe_left", 0),
+        )
 
     def get_lcd_text(self) -> str:
         """Get LCD display text."""
@@ -2317,6 +2704,7 @@ class PhotoboothMode(BaseMode):
 PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
     [
         ("classic", None),
+        ("boilingroom", "boilingroom"),
         ("slavic_soul", "slavic_soul"),
         ("slavic_tales", "slavic_tales"),
         ("banya_chic", "banya_chic"),
@@ -2335,6 +2723,8 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("jara", "jara"),
         ("world_cup_final", "world-cup-final"),
         ("world-cup-final", "world-cup-final"),
+        ("sunset_palms", "sunset-palms"),
+        ("sunset-palms", "sunset-palms"),
     ]
 )
 
