@@ -146,6 +146,10 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE = (
         "photobooth_world_cup_final_square"  # 1:1 square - Spain vs Argentina 2D football final
     )
+    PHOTOBOOTH_VSE_SVOI = "photobooth_vse_svoi"  # 9:16 - VNVNC classic 2D club mode
+    PHOTOBOOTH_VSE_SVOI_SQUARE = (
+        "photobooth_vse_svoi_square"  # 1:1 square - VNVNC classic 2D club mode
+    )
     Y2K = "y2k"  # 2000s era character portrait
     BAD_SANTA = "bad_santa"  # Naughty/nice Santa verdict
 
@@ -3953,6 +3957,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_VSE_SVOI,
+                CaricatureStyle.PHOTOBOOTH_VSE_SVOI_SQUARE,
             )
             is_boilingroom_style = style in (
                 CaricatureStyle.PHOTOBOOTH,
@@ -4054,6 +4060,10 @@ ADDITIONAL REFERENCE IMAGES:
             is_world_cup_final_style = style in (
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
+            )
+            is_vse_svoi_style = style in (
+                CaricatureStyle.PHOTOBOOTH_VSE_SVOI,
+                CaricatureStyle.PHOTOBOOTH_VSE_SVOI_SQUARE,
             )
 
             if is_brainrot_style:
@@ -4228,6 +4238,19 @@ ADDITIONAL REFERENCE IMAGES:
 - Continue the illustrated stadium and pitch full bleed to the bottom with no blank footer band or second information bar; keep faces out of only the lowest 13% for one compact floating footer card
 - Never use photoreal cutouts, 3D, plastic dolls, anime, childish cartoon faces, melted stadium architecture, random flags, generic neon cyberpunk, smoky voids, or AI-fantasy spectacle
 """
+            elif is_vse_svoi_style:
+                color_instruction = """- FULL COLOR, LIFTED EXPOSURE — warm off-white, pale concrete gray, coral red, clean scarlet, chrome silver, true skin tones, and only limited charcoal/plum shadows
+- Strictly one full-bleed hero composition; no grid, strip, panels, repeated guests, pasted poster, blank bar, empty footer rectangle, or generated UI
+- Use the same premium bright 2D underground club-poster language as the current BOILING ROOM theme: strictly 2D, no 3D; precise hand-inked facial contours, natural adult anatomy, restrained cel shading, chromatic aberration, film grain, analog paper texture and subtle print misregistration
+- Treat both the source guests and the visible real venue behind them as fixed underdrawings. Preserve every guest's distinct facial geometry, exact count, expression, hairline, pose, clothing silhouette, spacing and overlaps; preserve recognizable walls, lights, furniture, plants, decor, objects and background people
+- Preserve eyelid shape, inter-eye distance, brow angle, under-eye structure, nose bridge and nostrils, lip contour, jaw angle, chin, ears, facial asymmetry, skin tone and hairline irregularities for every separate guest
+- Exact identity outranks every party prop. Do not beautify, average faces, replace anyone with a generic model, change expressions or costumes, or cover faces with objects
+- Image 2 is the canonical VNVNC CLASSIC LOGO. Faithfully model-render its exact tall condensed VNVNC letter geometry and rectangular border as the only emblem, integrated natively into the poster; never paste it and never substitute a different VNVNC mark
+- Keep at least 65% of the scene light or mid-tone through warm cream, pale concrete, coral, scarlet and chrome highlights, readable venue detail and clean facial exposure; no black void, crushed shadows, muddy maroon fog, generic replacement nightclub or large empty regions
+- The only readable model-rendered text is exactly VNVNC inside the classic logo. No ВСЕ СВОИ title inside the artwork, date, weekday, time, address, slogans, labels, signs, garment pseudo-text or extra logos
+- Continue artwork full bleed through the lowest 13%, while keeping faces out of that footer-safe area for the app's one compact information card
+- No photoreal cutouts, 3D plastic, Pixar/anime faces, generic neon-strobe replacement scenery, chaotic object pile, fake event flyer text or AI-slop background
+"""
             elif is_bigcitylife_style:
                 color_instruction = """- FULL COLOR — 90s NYC palette: NYC cab yellow, graffiti red, concrete grey, night black, spray-can neon orange
 - Strictly 2D graffiti character art — flat fills, bold spray-can outlines, paint drips and fades
@@ -4278,7 +4301,13 @@ ADDITIONAL REFERENCE IMAGES:
 - NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic"""
 
-            if is_sunset_palms_style:
+            if is_vse_svoi_style:
+                task_opening = (
+                    "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
+                    "perform an identity-preserving high-fidelity 2D rotoscope; preserve the recognizable "
+                    "real venue behind them and do not synthesize, beautify, or re-stage substitute people."
+                )
+            elif is_sunset_palms_style:
                 task_opening = (
                     "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
                     "perform an identity-preserving high-fidelity 2D rotoscope/background replacement; do "
@@ -4301,7 +4330,13 @@ ADDITIONAL REFERENCE IMAGES:
                     "Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo."
                 )
 
-            if is_sunset_palms_style:
+            if is_vse_svoi_style:
+                text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
+  * Image 2 is the mandatory canonical VNVNC CLASSIC LOGO geometry, not loose inspiration
+  * Model-render exactly its tall condensed Latin VNVNC letters and rectangular border as one native illustrated emblem
+  * VNVNC inside that emblem is the only readable text allowed in the AI artwork
+  * Do not add ВСЕ СВОИ, date, weekday, time, address, slogan, signs, labels, extra logos, pseudo-text or any other readable words"""
+            elif is_sunset_palms_style:
                 text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
   * Image 2 is mandatory canonical brand geometry, not loose inspiration
   * Render the exact supplied SUNSET PALMS emblem natively as a flat 2D illustrated lockup inside the poster; never composite or imitate it as generic typography
@@ -4371,6 +4406,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_JARA,
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
+                CaricatureStyle.PHOTOBOOTH_VSE_SVOI,
             ):
                 aspect_ratio = "9:16"
             else:
@@ -4412,6 +4448,8 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses, expressions and clothes; large individually resolved faces and exact hair traced rather than redesigned; precise hand-inked editorial contours, natural adult anatomy, restrained four-to-six-color cel shading, controlled halftone shadows, subtle paper grain and slight print misregistration; bright clean papaya-apricot-coral Sunset Palms festival screenprint with flat sun disk, long cloud ribbons, spacious edge palms, festoon arc, pennants, sparse confetti, pale rug, credible handpan and at most two percussion props; canonical supplied SUNSET PALMS emblem faithfully model-rendered as a native flat 2D illustrated lockup; full bleed, no empty bars, no 3D, photoreal cutouts, generic face averaging, dark canopy, storm sky, brown cast, clutter, neon club, calm retreat, Mad Max or AI-slop scenery"
             elif is_world_cup_final_style:
                 image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses and clothes, large individually resolved faces and exact hair traced rather than redesigned, natural adult anatomy, crisp editorial ink contours, restrained cel shading, premium sports screenprint texture, deliberate Spain versus Argentina final-night stadium architecture, geometric floodlights, halftone crowd, pitch bands, paper-cut confetti and ribbon energy, balanced sky-blue-white and red-gold team color fields, full-bleed artwork, exact human likeness and group count preserved, supplied original football-and-cup emblem faithfully redrawn and integrated by the model, exact Russian title ЧЕМПИОНАТ МИРА 2026 and exact Russian match line ИСПАНИЯ × АРГЕНТИНА, no extra text, no official marks, no 3D and no generic AI fantasy background"
+            elif is_vse_svoi_style:
+                image_style = "Bright premium 2D underground club-poster illustration in the current BOILING ROOM visual language, edited directly from the source photograph; fixed-underdrawing face preservation with precise individual facial geometry and hair; preserve the recognizable real venue background, room layout, walls, ceiling, practical lights, furniture, plants, decor, objects and background figures actually visible behind the guests; lifted exposure with at least 65% light or mid-tone warm off-white, pale concrete gray, coral, clean scarlet and chrome, limited charcoal shadows, no crushed black void or generic replacement club; drawn graphic art, restrained chromatic aberration, super wide angle, film grain and light analog paper texture; canonical supplied VNVNC CLASSIC LOGO faithfully model-rendered inside the poster; exact group count, likeness, clothing, pose and source composition preserved"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

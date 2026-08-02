@@ -460,6 +460,8 @@ class RotatingIdleAnimation:
             return "sunset_palms"
         if theme_id == "world-cup-final":
             return "world_cup_final"
+        if theme_id == "vse-svoi":
+            return "vse_svoi"
         if requested_modes & slavic_keys:
             return "slavic"
         if "2k17" in requested_modes:
@@ -542,6 +544,8 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_HERO: "ЧЕМПИОНАТ МИРА 2026",
             }
+        if self.idle_variant == "vse_svoi":
+            return {IdleScene.CRINGE_HERO: "ВСЕ СВОИ"}
 
         return {
             IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
@@ -583,6 +587,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "sunset_palms":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "world_cup_final":
+            return [IdleScene.CRINGE_HERO]
+        if self.idle_variant == "vse_svoi":
             return [IdleScene.CRINGE_HERO]
 
         playlist = [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -641,6 +647,28 @@ class RotatingIdleAnimation:
                 frames.append(np.array(frame.convert("RGB"), dtype=np.uint8))
             else:
                 logger.warning("Boiling Room idle emblem not found: %s", logo_path)
+            self.cringe_assets = {IdleScene.CRINGE_HERO: frames}
+            return
+
+        if self.idle_variant == "vse_svoi":
+            logo_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "logos"
+                / "vnvnc-logo-classic-border-letters-black.png"
+            )
+            frames: List[NDArray[np.uint8]] = []
+            if logo_path.exists():
+                image = Image.open(logo_path).convert("RGB")
+                fitted = ImageOps.fit(
+                    image,
+                    (128, 128),
+                    method=Image.Resampling.LANCZOS,
+                    centering=(0.5, 0.5),
+                )
+                frames.append(np.array(fitted, dtype=np.uint8))
+            else:
+                logger.warning("VNVNC Classic idle emblem not found: %s", logo_path)
             self.cringe_assets = {IdleScene.CRINGE_HERO: frames}
             return
 
@@ -772,6 +800,7 @@ class RotatingIdleAnimation:
                     "jara",
                     "sunset_palms",
                     "world_cup_final",
+                    "vse_svoi",
                 }
                 else ((255, 222, 150) if self.idle_variant == "slavic" else (255, 214, 90))
             )
@@ -823,6 +852,9 @@ class RotatingIdleAnimation:
         if self.idle_variant == "boilingroom":
             self._draw_boilingroom_overlay(buffer, t)
             return
+        if self.idle_variant == "vse_svoi":
+            self._draw_boilingroom_overlay(buffer, t)
+            return
         if self.idle_variant == "2k17":
             self._draw_2k17_overlay(buffer, scene, t)
             return
@@ -849,6 +881,7 @@ class RotatingIdleAnimation:
             "jara",
             "sunset_palms",
             "world_cup_final",
+            "vse_svoi",
         }:
             accent_map = {
                 IdleScene.CRINGE_HERO: self._theme.theme_chrome,
@@ -1707,6 +1740,8 @@ class RotatingIdleAnimation:
             names = {
                 IdleScene.CRINGE_HERO: "ЧЕМПИОНАТ МИРА 2026",
             }
+        elif self.idle_variant == "vse_svoi":
+            names = {IdleScene.CRINGE_HERO: "ВСЕ СВОИ"}
         else:
             names = {
                 IdleScene.CRINGE_HERO: "КРИНЖ ПАТИ",
@@ -5339,6 +5374,7 @@ class RotatingIdleAnimation:
             "jara",
             "sunset_palms",
             "world_cup_final",
+            "vse_svoi",
         }:
             return [
                 f" {self.idle_lcd_prefix} ".center(16)[:16],

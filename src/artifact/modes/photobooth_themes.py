@@ -727,6 +727,39 @@ SUNSET_PALMS_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: ВСЕ СВОИ — Boiling Room visual language with classic VNVNC emblem
+# =============================================================================
+VSE_SVOI_THEME = PhotoboothTheme(
+    id="vse-svoi",
+    event_name="ВСЕ СВОИ",
+    event_date="",
+    logo_filename="../logos/vnvnc-logo-classic-border-letters-black.png",
+    theme_chrome=(192, 192, 192),
+    theme_red=(139, 0, 0),
+    theme_black=(0, 0, 0),
+    ticker_idle="ВСЕ",
+    lcd_prefix="ВСЕ СВОИ",
+    description="СВОЯ КОМПАНИЯ",
+    menu_display_name="ВСЕ\nСВОИ",
+    menu_description="СВОЯ КОМПАНИЯ",
+    menu_color=(192, 192, 192),
+    # The installed ticker distorts any red component. Keep the proven green
+    # electrical baseline while the main display retains the full party palette.
+    ticker_color=(0, 255, 48),
+    ticker_compact_static=True,
+    ticker_safe_left=8,
+    ticker_idle_cycle=("ВСЕ", "СВОИ", "ФОТОБУДКА"),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="vse_svoi",
+    reference_image_filenames=("../logos/vnvnc-logo-classic-border-letters-black.png",),
+    required_reference_sha256=(
+        "6608303c03fb0565f3c998e8cda85064303477edbb672f07e55a9b462ac79570"
+    ),
+)
+
+
+# =============================================================================
 # THEME REGISTRY
 # =============================================================================
 THEMES = {
@@ -756,6 +789,7 @@ THEMES = {
     "jara": JARA_THEME,
     "world-cup-final": WORLD_CUP_FINAL_THEME,
     "sunset-palms": SUNSET_PALMS_THEME,
+    "vse-svoi": VSE_SVOI_THEME,
 }
 
 # Default theme

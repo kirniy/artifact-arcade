@@ -828,6 +828,11 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
             )
+        elif ai_style_key == "vse_svoi":
+            return (
+                CaricatureStyle.PHOTOBOOTH_VSE_SVOI_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_VSE_SVOI,
+            )
         elif ai_style_key == "brainrot":
             return (
                 CaricatureStyle.PHOTOBOOTH_BRAINROT_SQUARE,
@@ -1019,6 +1024,7 @@ class PhotoboothMode(BaseMode):
                 "jara",
                 "sunset_palms",
                 "world_cup_final",
+                "vse_svoi",
             }
             if ai_style_key in timestamp_theme_keys:
                 footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
@@ -1048,6 +1054,7 @@ class PhotoboothMode(BaseMode):
                     "jara",
                     "sunset_palms",
                     "world_cup_final",
+                    "vse_svoi",
                 }:
                     if ai_style_key == "boilingroom":
                         personality_context = (
@@ -1098,6 +1105,21 @@ class PhotoboothMode(BaseMode):
                             "confetti, and ribbons full bleed with no empty band or blank rectangle. Keep faces "
                             "out of the lowest 13%; the app overlays only one compact information card there."
                         )
+                    elif ai_style_key == "vse_svoi":
+                        personality_context = (
+                            "Image 2 is the canonical exact VNVNC CLASSIC LOGO. Faithfully model-render its "
+                            "tall condensed Latin VNVNC letter geometry and rectangular border as part of the "
+                            "illustrated poster; never paste, replace or redesign it. Rotoscope every face from "
+                            "the source as a fixed underdrawing with exact individual geometry, hairline, expression "
+                            "and natural asymmetry; never average or beautify faces. Preserve the actual source-photo "
+                            "venue as a second fixed underdrawing: its walls, ceiling, practical lights, furniture, "
+                            "plants, decor, objects and background people. Use the current bright BOILING ROOM 2D "
+                            "visual language with lifted cream/coral/scarlet/chrome exposure and at least 65% light "
+                            "or mid-tone area. VNVNC inside the classic emblem is the only readable AI text. Do not "
+                            "render ВСЕ СВОИ, date, time, venue, pseudo-text or any extra words. Continue the real "
+                            "illustrated venue full bleed and keep faces out of the lowest 13%, where the app adds "
+                            "one compact verified information card."
+                        )
                     else:
                         personality_context = (
                             "Do not render footer text inside the AI artwork. "
@@ -1117,7 +1139,7 @@ class PhotoboothMode(BaseMode):
                     f"{self._theme.event_name} generation refused: canonical emblem reference is missing or invalid"
                 )
             generation_reference_images = list(self._theme_reference_images)
-            if ai_style_key in {"boilingroom", "sunset_palms"}:
+            if ai_style_key in {"boilingroom", "sunset_palms", "vse_svoi"}:
                 generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
@@ -1137,6 +1159,11 @@ class PhotoboothMode(BaseMode):
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_2k17_footer(label_bytes, footer_date_str, moscow_time)
                 elif ai_style_key == "boilingroom":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_boilingroom_footer(
+                        label_bytes, footer_date_str, moscow_time
+                    )
+                elif ai_style_key == "vse_svoi":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_boilingroom_footer(
                         label_bytes, footer_date_str, moscow_time
@@ -2731,6 +2758,8 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("world-cup-final", "world-cup-final"),
         ("sunset_palms", "sunset-palms"),
         ("sunset-palms", "sunset-palms"),
+        ("vse_svoi", "vse-svoi"),
+        ("vse-svoi", "vse-svoi"),
     ]
 )
 
