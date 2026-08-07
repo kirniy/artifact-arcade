@@ -10,6 +10,7 @@ import asyncio
 import glob
 import logging
 import os
+import stat
 from typing import Optional, Union
 
 from artifact.hardware.base import Printer
@@ -26,6 +27,14 @@ try:
     PYUSB_AVAILABLE = True
 except ImportError:
     PYUSB_AVAILABLE = False
+
+
+def _is_character_device(path: str) -> bool:
+    """Return true only for a live kernel device node, never a stale spool file."""
+    try:
+        return stat.S_ISCHR(os.stat(path).st_mode)
+    except OSError:
+        return False
 
 
 class _RP80PyUSBBackend:
@@ -98,10 +107,12 @@ class _RP80PyUSBBackend:
 def auto_detect_rp80_printer() -> Optional[Union[str, dict]]:
     """Find the RP80 printer using env override, Linux device, or pyusb."""
     env_port = os.environ.get("ARTIFACT_RP80_PRINTER_PORT") or os.environ.get("ARTIFACT_PRINTER_PORT")
-    if env_port and os.path.exists(env_port):
+    if env_port and _is_character_device(env_port):
         return env_port
 
-    usb_printers = glob.glob("/dev/usb/lp*")
+    usb_printers = [
+        path for path in glob.glob("/dev/usb/lp*") if _is_character_device(path)
+    ]
     if usb_printers:
         return sorted(usb_printers)[0]
 
@@ -145,7 +156,10 @@ class RP80ReceiptPrinter(Printer):
                     return False
                 self._pyusb_backend = backend
             else:
-                self._file_backend_path = str(self._port_config)
+                port_path = str(self._port_config)
+                if not _is_character_device(port_path):
+                    raise RuntimeError(f"RP80 path is not a character device: {port_path}")
+                self._file_backend_path = port_path
             self._connected = True
             await self._send_command(b"\x1b@")
             logger.info("RP80 receipt printer connected")
@@ -203,6 +217,8 @@ class RP80ReceiptPrinter(Printer):
             await asyncio.to_thread(self._write_file_backend, data)
 
     def _write_file_backend(self, data: bytes) -> None:
+        if not self._file_backend_path or not _is_character_device(self._file_backend_path):
+            raise RuntimeError("RP80 USB device disappeared; refusing to create a spool file")
         with open(self._file_backend_path, "wb") as handle:
             handle.write(data)
             handle.flush()

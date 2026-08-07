@@ -21,6 +21,7 @@ Override with env var: ARTIFACT_PRINTER_PORT=/dev/usb/lp0
 import logging
 import asyncio
 import os
+import stat
 import sys
 import glob
 from typing import Optional, Union
@@ -29,6 +30,15 @@ from artifact.hardware.base import Printer
 from artifact.printing.receipt import Receipt
 
 logger = logging.getLogger(__name__)
+
+
+def _is_character_device(path: str) -> bool:
+    """Return true only for a live kernel device node, never a stale spool file."""
+    try:
+        return stat.S_ISCHR(os.stat(path).st_mode)
+    except OSError:
+        return False
+
 
 # USB identifiers for AIYIN IP-802 / IPRT LABELPrinter
 USB_VENDOR_ID = 0x353D
@@ -145,12 +155,14 @@ def auto_detect_label_printer() -> Optional[Union[str, dict]]:
     """
     # 1. Check environment override first
     env_port = os.environ.get("ARTIFACT_PRINTER_PORT")
-    if env_port and os.path.exists(env_port):
+    if env_port and _is_character_device(env_port):
         logger.info(f"Using printer port from env: {env_port}")
         return env_port
 
     # 2. Check USB printer class device (primary for Linux)
-    usb_printers = glob.glob("/dev/usb/lp*")
+    usb_printers = [
+        path for path in glob.glob("/dev/usb/lp*") if _is_character_device(path)
+    ]
     if usb_printers:
         port = sorted(usb_printers)[0]
         logger.info(f"Auto-detected USB label printer: {port}")
@@ -242,7 +254,13 @@ class IP802Printer(Printer):
                     raise RuntimeError("PyUSB connection failed")
             else:
                 # Use file backend (Linux /dev/usb/lp*) - store path, open on demand
-                port_path = self._port_config if isinstance(self._port_config, str) else str(self._port_config)
+                port_path = (
+                    self._port_config
+                    if isinstance(self._port_config, str)
+                    else str(self._port_config)
+                )
+                if not _is_character_device(port_path):
+                    raise RuntimeError(f"Printer path is not a character device: {port_path}")
                 self._file_backend_path = port_path
                 self._connected = True
                 logger.info(f"IP-802 label printer connected on {port_path} (TSPL)")
@@ -647,6 +665,8 @@ class IP802Printer(Printer):
         
         Opens fresh handle each time to handle USB re-enumeration.
         """
+        if not self._file_backend_path or not _is_character_device(self._file_backend_path):
+            raise RuntimeError("USB printer disappeared; refusing to create a spool file")
         with open(self._file_backend_path, "wb") as f:
             f.write(data)
             f.flush()
