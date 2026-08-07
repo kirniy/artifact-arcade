@@ -15,6 +15,7 @@ from artifact.modes.photobooth import PhotoboothMode, get_configured_photobooth_
 from artifact.modes.photobooth_themes import THEMES
 
 
+ROOT = Path(__file__).resolve().parents[1]
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yF9kAAAAASUVORK5CYII="
 )
@@ -168,3 +169,13 @@ def test_vertex_authorization_key_is_used_without_adc() -> None:
     headers = client._auth_headers("secret-test-key")
     assert headers["x-goog-api-key"] == "secret-test-key"
     assert "Authorization" not in headers
+
+
+def test_jara_activation_disables_historical_auto_reactivation() -> None:
+    script = (ROOT / "scripts" / "activate-jara-photobooth.sh").read_text()
+    assert "set_env PHOTOBOOTH_THEME jara" in script
+    assert "set_env PHOTOBOOTH_MENU_MODES jara" in script
+    assert "set_env ARTIFACT_AUTO_ACTIVATE_BOILINGROOM 0" in script
+    assert "set_env ARTIFACT_AUTO_ACTIVATE_SUNSET_PALMS 0" in script
+    assert "set_env ARTIFACT_AUTO_ACTIVATE_JARA 0" in script
+    assert "set_env ARTIFACT_AUTO_ACTIVATE_WORLD_CUP_FINAL 0" in script

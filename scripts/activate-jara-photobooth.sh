@@ -67,6 +67,11 @@ set_env GOOGLE_CLOUD_PROJECT project-8b5b3334-3456-4605-b2c
 set_env GOOGLE_CLOUD_LOCATION global
 set_env GEMINI_IMAGE_MODEL gemini-3.1-flash-lite-image
 set_env VNVNC_INPROCESS_TV_WALL_ENABLED false
+# Manual theme activation must win over every historical dated auto-switch.
+set_env ARTIFACT_AUTO_ACTIVATE_BOILINGROOM 0
+set_env ARTIFACT_AUTO_ACTIVATE_SUNSET_PALMS 0
+set_env ARTIFACT_AUTO_ACTIVATE_JARA 0
+set_env ARTIFACT_AUTO_ACTIVATE_WORLD_CUP_FINAL 0
 
 PYTHON_BIN="${VNVNC_PYTHON:-}"
 if [ -z "${PYTHON_BIN}" ]; then
