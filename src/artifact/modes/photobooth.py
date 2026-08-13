@@ -1107,16 +1107,20 @@ class PhotoboothMode(BaseMode):
                         )
                     elif ai_style_key == "vse_svoi":
                         personality_context = (
-                            "Image 2 is the canonical exact VNVNC CLASSIC LOGO. Faithfully model-render its "
-                            "tall condensed Latin VNVNC letter geometry and rectangular border as part of the "
-                            "illustrated poster; never paste, replace or redesign it. Rotoscope every face from "
+                            "Image 2 is the canonical exact silver VNVNC chain pendant. Put one small faithful "
+                            "replica around every foreground guest's neck, preserving the exact five V-N-V-N-C "
+                            "shapes, final open C, rectangular frame and chain. Never output VNVNG or substitute "
+                            "any letter. Leave the central top 38% as clean venue background with no model-rendered "
+                            "logo or pendant because the app composites the huge exact master there. Reframe the intact group "
+                            "lower as one unit while preserving every relative position and overlap. Rotoscope every face from "
                             "the source as a fixed underdrawing with exact individual geometry, hairline, expression "
                             "and natural asymmetry; never average or beautify faces. Preserve the actual source-photo "
                             "venue as a second fixed underdrawing: its walls, ceiling, practical lights, furniture, "
                             "plants, decor, objects and background people. Use the current bright BOILING ROOM 2D "
                             "visual language with lifted cream/coral/scarlet/chrome exposure and at least 65% light "
-                            "or mid-tone area. VNVNC inside the classic emblem is the only readable AI text. Do not "
-                            "render ВСЕ СВОИ, date, time, venue, pseudo-text or any extra words. Continue the real "
+                            "or mid-tone area. Pendant VNVNC geometry is the only readable AI lettering. Do not "
+                            "render ВСЕ СВОИ, captions, paragraphs, prompt text, instructions, white text panels, "
+                            "date, time, venue, garment lettering, pseudo-text or any extra words. Continue the real "
                             "illustrated venue full bleed and keep faces out of the lowest 13%, where the app adds "
                             "one compact verified information card."
                         )
@@ -1165,6 +1169,7 @@ class PhotoboothMode(BaseMode):
                     )
                 elif ai_style_key == "vse_svoi":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_vse_svoi_pendants(label_bytes)
                     label_bytes = self._stamp_boilingroom_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
@@ -1221,6 +1226,7 @@ class PhotoboothMode(BaseMode):
                 if getattr(self._theme, "ai_style_key", None) in {
                     "world_cup_final",
                     "sunset_palms",
+                    "vse_svoi",
                 }:
                     offset = int((h - w) * 0.06)
                 else:
@@ -1235,6 +1241,112 @@ class PhotoboothMode(BaseMode):
             return buf.getvalue()
         except Exception as e:
             logger.warning(f"Failed to crop to square: {e}")
+            return image_bytes
+
+    def _stamp_vse_svoi_pendants(self, image_bytes: bytes) -> bytes:
+        """Remove generated caption leakage and composite exact pendant geometry."""
+        try:
+            from PIL import Image, ImageFilter
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            w, h = img.size
+
+            # The top is owned by the deterministic master pendant. Rebuild it
+            # from nearby venue color/texture so a disobedient model cannot
+            # leave a misspelled logo, sign, or second pendant behind it.
+            top_h = max(120, int(h * 0.38))
+            sample_h = max(64, int(h * 0.075))
+            sample_y1 = min(h, top_h + sample_h)
+            top_fill = img.crop((0, top_h, w, sample_y1)).resize(
+                (w, top_h), Image.Resampling.BICUBIC
+            ).filter(ImageFilter.GaussianBlur(max(8, int(w * 0.018))))
+            img.paste(top_fill, (0, 0))
+
+            # Gemini occasionally invents a large off-white prompt/caption panel.
+            # Detect a sustained neutral-light band and replace it with a blurred
+            # continuation of the artwork before applying our verified footer.
+            rgb = np.asarray(img.convert("RGB"))
+            lower_start = int(h * 0.54)
+            lower_end = int(h * 0.88)
+            channel_min = rgb.min(axis=2)
+            channel_span = rgb.max(axis=2) - channel_min
+            neutral_light = (channel_min > 210) & (channel_span < 24)
+            row_ratio = neutral_light.mean(axis=1)
+            run = max(10, h // 120)
+            caption_y = None
+            for y in range(lower_start, max(lower_start, lower_end - run)):
+                if float(row_ratio[y : y + run].mean()) >= 0.68:
+                    caption_y = y
+                    break
+            if caption_y is not None:
+                strip_h = max(48, int(h * 0.045))
+                strip_y = max(0, caption_y - strip_h)
+                continuation = img.crop((0, strip_y, w, caption_y))
+                continuation = continuation.resize(
+                    (w, h - caption_y), Image.Resampling.BICUBIC
+                ).filter(ImageFilter.GaussianBlur(max(5, int(w * 0.012))))
+                img.paste(continuation, (0, caption_y))
+                logger.info("Removed generated ВСЕ СВОИ caption band at y=%d", caption_y)
+
+            pendant_path = Path(__file__).resolve().parents[3] / "assets" / "images" / "vnvnc-pendant.png"
+            pendant = Image.open(pendant_path).convert("RGBA")
+            pendant_rgb = np.asarray(pendant.convert("RGB"), dtype=np.uint8)
+            alpha = pendant_rgb.max(axis=2)
+            alpha = np.clip((alpha.astype(np.int16) - 4) * 3, 0, 255).astype(np.uint8)
+            pendant.putalpha(Image.fromarray(alpha, mode="L"))
+            bbox = pendant.getbbox()
+            if bbox:
+                pendant = pendant.crop(bbox)
+
+            def resized_pendant(target_w: int) -> Image.Image:
+                target_w = max(24, target_w)
+                target_h = max(24, round(pendant.height * target_w / pendant.width))
+                return pendant.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+            # Detect illustrated faces before placing the exact small pendants.
+            faces = []
+            try:
+                import cv2
+
+                gray = cv2.cvtColor(np.asarray(img.convert("RGB")), cv2.COLOR_RGB2GRAY)
+                detector = cv2.CascadeClassifier(
+                    str(Path(cv2.data.haarcascades) / "haarcascade_frontalface_alt2.xml")
+                )
+                if not detector.empty():
+                    faces = detector.detectMultiScale(
+                        gray,
+                        scaleFactor=1.08,
+                        minNeighbors=4,
+                        minSize=(max(30, w // 14), max(30, w // 14)),
+                        flags=cv2.CASCADE_SCALE_IMAGE,
+                    )
+            except Exception as face_error:
+                logger.info("Skipping deterministic small pendant placement: %s", face_error)
+            for x, y, face_w, face_h in faces[:6]:
+                small = resized_pendant(max(34, int(face_w * 0.58)))
+                px = int(x + face_w / 2 - small.width / 2)
+                py = int(y + face_h * 0.88)
+                if py + small.height < int(h * 0.88):
+                    img.alpha_composite(small, (px, py))
+
+            # The hero pendant is always deterministic: exact source pixels,
+            # centered, with its chain entering from beyond the top edge.
+            hero = resized_pendant(int(w * 0.43))
+            hero_x = (w - hero.width) // 2
+            hero_y = -max(2, int(hero.height * 0.025))
+            shadow_alpha = hero.getchannel("A").filter(
+                ImageFilter.GaussianBlur(max(5, int(w * 0.009)))
+            )
+            shadow = Image.new("RGBA", hero.size, (0, 0, 0, 0))
+            shadow.putalpha(shadow_alpha.point(lambda value: int(value * 0.55)))
+            img.alpha_composite(shadow, (hero_x + max(3, w // 180), hero_y + max(5, h // 220)))
+            img.alpha_composite(hero, (hero_x, hero_y))
+
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning("Failed to stamp ВСЕ СВОИ pendants: %s", e)
             return image_bytes
 
     def _stamp_boilingroom_footer(

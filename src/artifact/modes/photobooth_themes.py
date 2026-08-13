@@ -727,13 +727,13 @@ SUNSET_PALMS_THEME = PhotoboothTheme(
 
 
 # =============================================================================
-# THEME: ВСЕ СВОИ — Boiling Room visual language with classic VNVNC emblem
+# THEME: ВСЕ СВОИ — Boiling Room visual language with exact VNVNC pendants
 # =============================================================================
 VSE_SVOI_THEME = PhotoboothTheme(
     id="vse-svoi",
     event_name="ВСЕ СВОИ",
     event_date="",
-    logo_filename="../logos/vnvnc-logo-classic-border-letters-black.png",
+    logo_filename="vnvnc-pendant.png",
     theme_chrome=(192, 192, 192),
     theme_red=(139, 0, 0),
     theme_black=(0, 0, 0),
@@ -752,9 +752,9 @@ VSE_SVOI_THEME = PhotoboothTheme(
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",
     ai_style_key="vse_svoi",
-    reference_image_filenames=("../logos/vnvnc-logo-classic-border-letters-black.png",),
+    reference_image_filenames=("vnvnc-pendant.png",),
     required_reference_sha256=(
-        "6608303c03fb0565f3c998e8cda85064303477edbb672f07e55a9b462ac79570"
+        "d2b2bbf4047b834bfb3bf1132048cbd64d0e38a89d8a689bb3280b719d47342a"
     ),
 )
 

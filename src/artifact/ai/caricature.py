@@ -146,9 +146,9 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE = (
         "photobooth_world_cup_final_square"  # 1:1 square - Spain vs Argentina 2D football final
     )
-    PHOTOBOOTH_VSE_SVOI = "photobooth_vse_svoi"  # 9:16 - VNVNC classic 2D club mode
+    PHOTOBOOTH_VSE_SVOI = "photobooth_vse_svoi"  # 9:16 - exact VNVNC pendant 2D club mode
     PHOTOBOOTH_VSE_SVOI_SQUARE = (
-        "photobooth_vse_svoi_square"  # 1:1 square - VNVNC classic 2D club mode
+        "photobooth_vse_svoi_square"  # 1:1 square - exact VNVNC pendant 2D club mode
     )
     Y2K = "y2k"  # 2000s era character portrait
     BAD_SANTA = "bad_santa"  # Naughty/nice Santa verdict
@@ -4245,9 +4245,12 @@ ADDITIONAL REFERENCE IMAGES:
 - Treat both the source guests and the visible real venue behind them as fixed underdrawings. Preserve every guest's distinct facial geometry, exact count, expression, hairline, pose, clothing silhouette, spacing and overlaps; preserve recognizable walls, lights, furniture, plants, decor, objects and background people
 - Preserve eyelid shape, inter-eye distance, brow angle, under-eye structure, nose bridge and nostrils, lip contour, jaw angle, chin, ears, facial asymmetry, skin tone and hairline irregularities for every separate guest
 - Exact identity outranks every party prop. Do not beautify, average faces, replace anyone with a generic model, change expressions or costumes, or cover faces with objects
-- Image 2 is the canonical VNVNC CLASSIC LOGO. Faithfully model-render its exact tall condensed VNVNC letter geometry and rectangular border as the only emblem, integrated natively into the poster; never paste it and never substitute a different VNVNC mark
+- Preserve the guests' exact relative arrangement and overlaps, but reframe the whole group lower as one unit so all faces and hair sit completely below the reserved top 38%; extend the real venue upward rather than cropping or shrinking faces
+- Image 2 is the canonical silver VNVNC chain pendant. Every foreground guest wears one small faithful replica around their neck: the exact five-letter geometry V-N-V-N-C, including the final open C, inside the exact rectangular silver frame. Never spell it VNVNG, VNVNQ, VNVNO, or invent a sixth letter
+- Reserve the central top 38% as uncluttered illustrated venue background, with faces below it. Do not model-render any top logo, sign, title, emblem, chain or pendant there; the app composites one huge exact pendant hanging from the top edge after generation
 - Keep at least 65% of the scene light or mid-tone through warm cream, pale concrete, coral, scarlet and chrome highlights, readable venue detail and clean facial exposure; no black void, crushed shadows, muddy maroon fog, generic replacement nightclub or large empty regions
-- The only readable model-rendered text is exactly VNVNC inside the classic logo. No ВСЕ СВОИ title inside the artwork, date, weekday, time, address, slogans, labels, signs, garment pseudo-text or extra logos
+- The VNVNC geometry inside the small worn pendants is the only readable model-rendered lettering. No ВСЕ СВОИ title, caption, paragraph, prompt text, date, weekday, time, address, slogans, labels, signs, garment lettering, pseudo-text or extra logos anywhere
+- Absolutely no white caption panel, magazine caption, footer band, text box, instructions, descriptive prose, UI or typography below the people. Continue clean illustrated venue artwork full bleed
 - Continue artwork full bleed through the lowest 13%, while keeping faces out of that footer-safe area for the app's one compact information card
 - No photoreal cutouts, 3D plastic, Pixar/anime faces, generic neon-strobe replacement scenery, chaotic object pile, fake event flyer text or AI-slop background
 """
@@ -4332,10 +4335,11 @@ ADDITIONAL REFERENCE IMAGES:
 
             if is_vse_svoi_style:
                 text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
-  * Image 2 is the mandatory canonical VNVNC CLASSIC LOGO geometry, not loose inspiration
-  * Model-render exactly its tall condensed Latin VNVNC letters and rectangular border as one native illustrated emblem
-  * VNVNC inside that emblem is the only readable text allowed in the AI artwork
-  * Do not add ВСЕ СВОИ, date, weekday, time, address, slogan, signs, labels, extra logos, pseudo-text or any other readable words"""
+  * Image 2 is the mandatory canonical silver VNVNC chain pendant, not loose inspiration
+  * Put one small faithful pendant replica around each foreground guest's neck, preserving the exact five shapes V-N-V-N-C and final open C inside the rectangular silver frame
+  * Never spell the pendant VNVNG, VNVNQ, VNVNO, or add/substitute any letter
+  * Leave the central top 38% free of model-rendered logos or pendants because the app composites the huge exact master pendant there
+  * Do not add ВСЕ СВОИ, captions, paragraphs, prompt/instruction text, white text panels, date, weekday, time, address, slogans, signs, garment lettering, labels, extra logos, pseudo-text or any other readable words"""
             elif is_sunset_palms_style:
                 text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
   * Image 2 is mandatory canonical brand geometry, not loose inspiration
@@ -4449,7 +4453,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
             elif is_world_cup_final_style:
                 image_style = "High-fidelity flat 2D rotoscope of the attached real guests in their exact original positions, poses and clothes, large individually resolved faces and exact hair traced rather than redesigned, natural adult anatomy, crisp editorial ink contours, restrained cel shading, premium sports screenprint texture, deliberate Spain versus Argentina final-night stadium architecture, geometric floodlights, halftone crowd, pitch bands, paper-cut confetti and ribbon energy, balanced sky-blue-white and red-gold team color fields, full-bleed artwork, exact human likeness and group count preserved, supplied original football-and-cup emblem faithfully redrawn and integrated by the model, exact Russian title ЧЕМПИОНАТ МИРА 2026 and exact Russian match line ИСПАНИЯ × АРГЕНТИНА, no extra text, no official marks, no 3D and no generic AI fantasy background"
             elif is_vse_svoi_style:
-                image_style = "Bright premium 2D underground club-poster illustration in the current BOILING ROOM visual language, edited directly from the source photograph; fixed-underdrawing face preservation with precise individual facial geometry and hair; preserve the recognizable real venue background, room layout, walls, ceiling, practical lights, furniture, plants, decor, objects and background figures actually visible behind the guests; lifted exposure with at least 65% light or mid-tone warm off-white, pale concrete gray, coral, clean scarlet and chrome, limited charcoal shadows, no crushed black void or generic replacement club; drawn graphic art, restrained chromatic aberration, super wide angle, film grain and light analog paper texture; canonical supplied VNVNC CLASSIC LOGO faithfully model-rendered inside the poster; exact group count, likeness, clothing, pose and source composition preserved"
+                image_style = "Bright premium 2D underground club-poster illustration in the current BOILING ROOM visual language, edited directly from the source photograph; fixed-underdrawing face preservation with precise individual facial geometry and hair; preserve the recognizable real venue background, room layout, walls, ceiling, practical lights, furniture, plants, decor, objects and background figures actually visible behind the guests; lifted exposure with at least 65% light or mid-tone warm off-white, pale concrete gray, coral, clean scarlet and chrome, limited charcoal shadows, no crushed black void or generic replacement club; drawn graphic art, restrained chromatic aberration, super wide angle, film grain and light analog paper texture; every foreground guest wears a faithful small replica of the canonical supplied silver VNVNC chain pendant with exact V-N-V-N-C geometry and final open C; central top 38% reserved as clean venue background for deterministic master-pendant compositing, with the intact group reframed lower as one unit; absolutely no caption, paragraph, prompt text, white text panel or generated UI; exact group count, likeness, clothing, pose and relative arrangement preserved"
             elif is_bigcitylife_style:
                 image_style = "90s New York City graffiti character art, 2D spray-can illustration, wildstyle graffiti mural, raw and gritty NYC street art, TATS CRU / COPE2 style"
             elif is_boilingroom_style:

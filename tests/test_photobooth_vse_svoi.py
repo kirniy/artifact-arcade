@@ -1,8 +1,11 @@
 import asyncio
 import base64
 import hashlib
+import io
 import sys
 from pathlib import Path
+
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -16,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yF9kAAAAASUVORK5CYII="
 )
-CLASSIC_LOGO_SHA256 = "6608303c03fb0565f3c998e8cda85064303477edbb672f07e55a9b462ac79570"
+PENDANT_SHA256 = "d2b2bbf4047b834bfb3bf1132048cbd64d0e38a89d8a689bb3280b719d47342a"
 
 
 class FakeGeminiClient:
@@ -29,26 +32,25 @@ class FakeGeminiClient:
         return PNG_1X1
 
 
-def test_vse_svoi_theme_uses_classic_vnvnc_logo_and_safe_ticker() -> None:
+def test_vse_svoi_theme_uses_exact_vnvnc_pendant_and_safe_ticker() -> None:
     theme = THEMES["vse-svoi"]
     assert theme.event_name == "ВСЕ СВОИ"
     assert theme.footer_date_mode == "weekday_ru"
     assert theme.ai_style_key == "vse_svoi"
     assert theme.ticker_idle_cycle == ("ВСЕ", "СВОИ", "ФОТОБУДКА")
     assert theme.ticker_color[0] == 0
-    assert theme.reference_image_filenames == (
-        "../logos/vnvnc-logo-classic-border-letters-black.png",
-    )
-    assert theme.required_reference_sha256 == CLASSIC_LOGO_SHA256
+    assert theme.logo_filename == "vnvnc-pendant.png"
+    assert theme.reference_image_filenames == ("vnvnc-pendant.png",)
+    assert theme.required_reference_sha256 == PENDANT_SHA256
 
-    logo = ROOT / "assets" / "logos" / "vnvnc-logo-classic-border-letters-black.png"
-    assert hashlib.sha256(logo.read_bytes()).hexdigest() == CLASSIC_LOGO_SHA256
+    pendant = ROOT / "assets" / "images" / "vnvnc-pendant.png"
+    assert hashlib.sha256(pendant.read_bytes()).hexdigest() == PENDANT_SHA256
 
     mode = PhotoboothMode.__new__(PhotoboothMode)
     mode._theme = theme
     mode._load_logo()
     assert len(mode._theme_reference_images) == 1
-    assert hashlib.sha256(mode._theme_reference_images[0][0]).hexdigest() == CLASSIC_LOGO_SHA256
+    assert hashlib.sha256(mode._theme_reference_images[0][0]).hexdigest() == PENDANT_SHA256
 
 
 def test_vse_svoi_menu_style_and_idle_package(monkeypatch) -> None:
@@ -78,7 +80,7 @@ def test_vse_svoi_menu_style_and_idle_package(monkeypatch) -> None:
     assert len(idle.cringe_assets[IdleScene.CRINGE_HERO]) == 1
 
 
-def test_vse_svoi_prompt_matches_boiling_style_but_uses_classic_logo(monkeypatch) -> None:
+def test_vse_svoi_prompt_matches_boiling_style_and_requires_exact_pendants(monkeypatch) -> None:
     fake_client = FakeGeminiClient()
     monkeypatch.setattr("artifact.ai.caricature.get_gemini_client", lambda: fake_client)
     service = CaricatureService()
@@ -100,12 +102,36 @@ def test_vse_svoi_prompt_matches_boiling_style_but_uses_classic_logo(monkeypatch
     assert "exact identity outranks" in prompt
     assert "inter-eye distance" in prompt
     assert "at least 65%" in prompt
-    assert "vnvnc classic logo" in prompt
-    assert "tall condensed latin vnvnc" in prompt
-    assert "only readable text" in prompt
-    assert "no все свои title inside the artwork" in prompt
+    assert "canonical silver vnvnc chain pendant" in prompt
+    assert "every foreground guest wears one" in prompt
+    assert "exact five-letter geometry v-n-v-n-c" in prompt
+    assert "never spell it vnvng" in prompt
+    assert "central top 38%" in prompt
+    assert "no white caption panel" in prompt
+    assert "prompt text" in prompt
     assert "no 3d" in prompt
-    assert "VNVNC CLASSIC LOGO" in call["style"]
+    assert "silver VNVNC chain pendant" in call["style"]
+    assert "exact V-N-V-N-C geometry" in call["style"]
+
+
+def test_vse_svoi_postprocess_removes_caption_band_and_adds_hero_pendant() -> None:
+    source = Image.new("RGB", (900, 1600), (174, 113, 86))
+    draw = ImageDraw.Draw(source)
+    draw.rectangle((0, 1080, 900, 1600), fill=(248, 246, 240))
+    draw.text((40, 1140), "RANDOM PROMPT LEAK TEXT", fill=(15, 15, 15))
+    encoded = io.BytesIO()
+    source.save(encoded, format="PNG")
+
+    mode = PhotoboothMode.__new__(PhotoboothMode)
+    result = Image.open(io.BytesIO(mode._stamp_vse_svoi_pendants(encoded.getvalue()))).convert(
+        "RGB"
+    )
+    assert result.size == source.size
+    # The exact metal hero pendant changes the previously flat top-center area.
+    top_center = result.crop((260, 0, 640, 420))
+    assert len(top_center.getcolors(maxcolors=1_000_000)) > 100
+    # The generated white prose panel is replaced by artwork continuation.
+    assert result.getpixel((450, 1200)) != (248, 246, 240)
 
 
 def test_vse_svoi_activation_disables_expired_event_overrides() -> None:
