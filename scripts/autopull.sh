@@ -169,6 +169,19 @@ ensure_sunset_palms_activation() {
 }
 
 ensure_event_activation() {
+    weekly_output="$(ARTIFACT_REMOTE_DIR="$REPO_DIR" \
+        "$REPO_DIR/scripts/sync-weekly-photobooth-theme.sh")"
+    while IFS= read -r line; do
+        [ -n "$line" ] && log "Weekly theme schedule: $line"
+    done <<<"$weekly_output"
+    if grep -q '^THEME_CHANGED=1$' <<<"$weekly_output"; then
+        return 0
+    fi
+    if grep -q '^THEME_SCHEDULE=disabled$' <<<"$weekly_output"; then
+        # A deliberate manual override owns theme selection while disabled.
+        return 1
+    fi
+
     if world_cup_final_window_active; then
         ensure_world_cup_final_activation
         return $?
