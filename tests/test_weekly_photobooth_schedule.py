@@ -43,8 +43,10 @@ def scheduled_theme(at: str, tmp_path: Path) -> str:
 
 def test_weekly_theme_schedule_boundaries(tmp_path: Path) -> None:
     assert scheduled_theme("202608132259", tmp_path) == "vse-svoi"
-    assert scheduled_theme("202608132300", tmp_path) == "2k17"
-    assert scheduled_theme("202608141200", tmp_path) == "2k17"
+    assert scheduled_theme("202608132300", tmp_path) == "vse-svoi"
+    assert scheduled_theme("202608141200", tmp_path) == "unchanged"
+    assert scheduled_theme("202608142259", tmp_path) == "unchanged"
+    assert scheduled_theme("202608142300", tmp_path) == "2k17"
     assert scheduled_theme("202608152359", tmp_path) == "2k17"
     assert scheduled_theme("202608160659", tmp_path) == "2k17"
     assert scheduled_theme("202608160700", tmp_path) == "vse-svoi"

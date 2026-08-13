@@ -1,7 +1,7 @@
 #!/bin/bash
 # Keep the recurring Moscow club-week theme schedule in sync.
 #
-# One-off 2K17 window: 2026-08-13 23:00 through 2026-08-16 06:59.
+# One-off 2K17 window: Friday 2026-08-14 23:00 through Sunday 2026-08-16 06:59.
 # Recurring ВСЕ СВОИ enforcement: every Thursday and Sunday outside that window.
 # Other weekdays retain the current theme so one-off events can be selected.
 #
@@ -65,7 +65,7 @@ fi
 target_theme=""
 target_menu=""
 activation_script=""
-if [ "${stamp}" -ge 202608132300 ] && [ "${stamp}" -lt 202608160700 ]; then
+if [ "${stamp}" -ge 202608142300 ] && [ "${stamp}" -lt 202608160700 ]; then
     target_theme="2k17"
     target_menu="2k17"
     activation_script="activate-2k17-photobooth.sh"
