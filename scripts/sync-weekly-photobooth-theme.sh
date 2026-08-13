@@ -1,8 +1,9 @@
 #!/bin/bash
 # Keep the recurring Moscow club-week theme schedule in sync.
 #
-# ВСЕ СВОИ: Sunday 07:00 through Thursday 22:59.
-# 2K17:     Thursday 23:00 through Sunday 06:59.
+# One-off 2K17 window: 2026-08-13 23:00 through 2026-08-16 06:59.
+# Recurring ВСЕ СВОИ enforcement: every Thursday and Sunday outside that window.
+# Other weekdays retain the current theme so one-off events can be selected.
 #
 # Set ARTIFACT_WEEKLY_THEME_SCHEDULE_ENABLED=0 in .env to pause automatic
 # switching for a one-off manual theme.
@@ -19,11 +20,11 @@ while [ "$#" -gt 0 ]; do
         --dry-run) DRY_RUN=1 ;;
         --at)
             shift
-            [ "$#" -gt 0 ] || { echo "--at requires DOW:HHMM" >&2; exit 2; }
+            [ "$#" -gt 0 ] || { echo "--at requires YYYYMMDDHHMM" >&2; exit 2; }
             AT="$1"
             ;;
         -h|--help)
-            echo "Usage: $0 [--dry-run] [--at DOW:HHMM]"
+            echo "Usage: $0 [--dry-run] [--at YYYYMMDDHHMM]"
             exit 0
             ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
@@ -50,26 +51,32 @@ fi
 
 if [ -n "${AT}" ]; then
     case "${AT}" in
-        [1-7]:[0-2][0-9][0-5][0-9]) ;;
+        20[0-9][0-9][01][0-9][0-3][0-9][0-2][0-9][0-5][0-9]) ;;
         *) echo "Invalid --at value: ${AT}" >&2; exit 2 ;;
     esac
-    dow="${AT%%:*}"
-    hhmm="${AT#*:}"
+    stamp="${AT}"
+    dow="$(TZ=Europe/Moscow date -j -f '%Y%m%d%H%M' "${AT}" +%u 2>/dev/null || \
+        TZ=Europe/Moscow date -d "${AT:0:4}-${AT:4:2}-${AT:6:2} ${AT:8:2}:${AT:10:2}" +%u)"
 else
+    stamp="$(TZ=Europe/Moscow date +%Y%m%d%H%M)"
     dow="$(TZ=Europe/Moscow date +%u)"
-    hhmm="$(TZ=Europe/Moscow date +%H%M)"
 fi
 
-target_theme="vse-svoi"
-target_menu="vse_svoi"
-activation_script="activate-vse-svoi-photobooth.sh"
-if { [ "${dow}" -eq 4 ] && [ "${hhmm}" -ge 2300 ]; } || \
-   [ "${dow}" -eq 5 ] || \
-   [ "${dow}" -eq 6 ] || \
-   { [ "${dow}" -eq 7 ] && [ "${hhmm}" -lt 0700 ]; }; then
+target_theme=""
+target_menu=""
+activation_script=""
+if [ "${stamp}" -ge 202608132300 ] && [ "${stamp}" -lt 202608160700 ]; then
     target_theme="2k17"
     target_menu="2k17"
     activation_script="activate-2k17-photobooth.sh"
+elif [ "${dow}" -eq 4 ] || [ "${dow}" -eq 7 ]; then
+    target_theme="vse-svoi"
+    target_menu="vse_svoi"
+    activation_script="activate-vse-svoi-photobooth.sh"
+else
+    echo "THEME_TARGET=unchanged"
+    echo "THEME_CHANGED=0"
+    exit 0
 fi
 
 current_theme="$(read_env_value PHOTOBOOTH_THEME)"

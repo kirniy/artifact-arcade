@@ -42,13 +42,19 @@ def scheduled_theme(at: str, tmp_path: Path) -> str:
 
 
 def test_weekly_theme_schedule_boundaries(tmp_path: Path) -> None:
-    assert scheduled_theme("4:2259", tmp_path) == "vse-svoi"
-    assert scheduled_theme("4:2300", tmp_path) == "2k17"
-    assert scheduled_theme("5:1200", tmp_path) == "2k17"
-    assert scheduled_theme("6:2359", tmp_path) == "2k17"
-    assert scheduled_theme("7:0659", tmp_path) == "2k17"
-    assert scheduled_theme("7:0700", tmp_path) == "vse-svoi"
-    assert scheduled_theme("1:1200", tmp_path) == "vse-svoi"
+    assert scheduled_theme("202608132259", tmp_path) == "vse-svoi"
+    assert scheduled_theme("202608132300", tmp_path) == "2k17"
+    assert scheduled_theme("202608141200", tmp_path) == "2k17"
+    assert scheduled_theme("202608152359", tmp_path) == "2k17"
+    assert scheduled_theme("202608160659", tmp_path) == "2k17"
+    assert scheduled_theme("202608160700", tmp_path) == "vse-svoi"
+
+
+def test_future_schedule_only_enforces_vse_svoi_thursday_and_sunday(tmp_path: Path) -> None:
+    assert scheduled_theme("202608201200", tmp_path) == "vse-svoi"
+    assert scheduled_theme("202608211200", tmp_path) == "unchanged"
+    assert scheduled_theme("202608231200", tmp_path) == "vse-svoi"
+    assert scheduled_theme("202608241200", tmp_path) == "unchanged"
 
 
 def test_2k17_footer_uses_live_time_and_club_night_date() -> None:
