@@ -103,15 +103,16 @@ def test_vse_svoi_prompt_matches_boiling_style_and_requires_exact_pendants(monke
     assert "inter-eye distance" in prompt
     assert "at least 65%" in prompt
     assert "canonical silver vnvnc chain pendant" in prompt
-    assert "every foreground guest wears one" in prompt
-    assert "exact five-letter geometry v-n-v-n-c" in prompt
-    assert "never spell it vnvng" in prompt
+    assert "exactly one pendant is allowed" in prompt
+    assert "do not put any pendant" in prompt
+    assert "vnvnc jewelry" in prompt
     assert "central top 38%" in prompt
     assert "no white caption panel" in prompt
     assert "prompt text" in prompt
     assert "no 3d" in prompt
-    assert "silver VNVNC chain pendant" in call["style"]
-    assert "exact V-N-V-N-C geometry" in call["style"]
+    assert "vnvnc chain pendant" not in call["style"].lower()
+    assert "no pendants, necklaces, chains" in call["style"]
+    assert "one deterministic master pendant" in call["style"]
 
 
 def test_vse_svoi_postprocess_removes_caption_band_and_adds_hero_pendant() -> None:
@@ -132,6 +133,25 @@ def test_vse_svoi_postprocess_removes_caption_band_and_adds_hero_pendant() -> No
     assert len(top_center.getcolors(maxcolors=1_000_000)) > 100
     # The generated white prose panel is replaced by artwork continuation.
     assert result.getpixel((450, 1200)) != (248, 246, 240)
+
+
+def test_vse_svoi_overlay_does_not_blur_or_rebuild_background() -> None:
+    source = Image.new("RGB", (900, 1600), "white")
+    draw = ImageDraw.Draw(source)
+    for y in range(0, 700, 8):
+        draw.line((0, y, 900, y), fill=(220, 20, 20), width=2)
+    for x in range(0, 900, 8):
+        draw.line((x, 0, x, 700), fill=(20, 20, 220), width=2)
+    encoded = io.BytesIO()
+    source.save(encoded, format="PNG")
+
+    mode = PhotoboothMode.__new__(PhotoboothMode)
+    result = Image.open(io.BytesIO(mode._stamp_vse_svoi_pendants(encoded.getvalue()))).convert(
+        "RGB"
+    )
+    # Outside the hero pendant bounds, the sharp source pixels stay byte-identical.
+    for point in ((20, 20), (120, 160), (760, 240), (870, 500)):
+        assert result.getpixel(point) == source.getpixel(point)
 
 
 def test_vse_svoi_activation_disables_expired_event_overrides() -> None:

@@ -1107,10 +1107,10 @@ class PhotoboothMode(BaseMode):
                         )
                     elif ai_style_key == "vse_svoi":
                         personality_context = (
-                            "Image 2 is the canonical exact silver VNVNC chain pendant. Put one small faithful "
-                            "replica around every foreground guest's neck, preserving the exact five V-N-V-N-C "
-                            "shapes, final open C, rectangular frame and chain. Never output VNVNG or substitute "
-                            "any letter. Leave the central top 38% as clean venue background with no model-rendered "
+                            "Image 2 is the canonical exact silver VNVNC chain pendant used only by the app for "
+                            "one deterministic hero pendant. Do not put pendants, necklaces, chains, medallions, "
+                            "badges, VNVNC jewelry, or VNVNC lettering on any person. Leave the central top 38% "
+                            "as clean venue background with no model-rendered "
                             "logo or pendant because the app composites the huge exact master there. Reframe the intact group "
                             "lower as one unit while preserving every relative position and overlap. Rotoscope every face from "
                             "the source as a fixed underdrawing with exact individual geometry, hairline, expression "
@@ -1246,21 +1246,10 @@ class PhotoboothMode(BaseMode):
     def _stamp_vse_svoi_pendants(self, image_bytes: bytes) -> bytes:
         """Remove generated caption leakage and composite exact pendant geometry."""
         try:
-            from PIL import Image, ImageFilter
+            from PIL import Image
 
             img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
             w, h = img.size
-
-            # The top is owned by the deterministic master pendant. Rebuild it
-            # from nearby venue color/texture so a disobedient model cannot
-            # leave a misspelled logo, sign, or second pendant behind it.
-            top_h = max(120, int(h * 0.38))
-            sample_h = max(64, int(h * 0.075))
-            sample_y1 = min(h, top_h + sample_h)
-            top_fill = img.crop((0, top_h, w, sample_y1)).resize(
-                (w, top_h), Image.Resampling.BICUBIC
-            ).filter(ImageFilter.GaussianBlur(max(8, int(w * 0.018))))
-            img.paste(top_fill, (0, 0))
 
             # Gemini occasionally invents a large off-white prompt/caption panel.
             # Detect a sustained neutral-light band and replace it with a blurred
@@ -1284,7 +1273,7 @@ class PhotoboothMode(BaseMode):
                 continuation = img.crop((0, strip_y, w, caption_y))
                 continuation = continuation.resize(
                     (w, h - caption_y), Image.Resampling.BICUBIC
-                ).filter(ImageFilter.GaussianBlur(max(5, int(w * 0.012))))
+                )
                 img.paste(continuation, (0, caption_y))
                 logger.info("Removed generated ВСЕ СВОИ caption band at y=%d", caption_y)
 
@@ -1303,40 +1292,12 @@ class PhotoboothMode(BaseMode):
                 target_h = max(24, round(pendant.height * target_w / pendant.width))
                 return pendant.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-            # Detect illustrated faces before placing the exact small pendants.
-            faces = []
-            try:
-                import cv2
-
-                gray = cv2.cvtColor(np.asarray(img.convert("RGB")), cv2.COLOR_RGB2GRAY)
-                detector = cv2.CascadeClassifier(
-                    str(Path(cv2.data.haarcascades) / "haarcascade_frontalface_alt2.xml")
-                )
-                if not detector.empty():
-                    faces = detector.detectMultiScale(
-                        gray,
-                        scaleFactor=1.08,
-                        minNeighbors=4,
-                        minSize=(max(30, w // 14), max(30, w // 14)),
-                        flags=cv2.CASCADE_SCALE_IMAGE,
-                    )
-            except Exception as face_error:
-                logger.info("Skipping deterministic small pendant placement: %s", face_error)
-            for x, y, face_w, face_h in faces[:6]:
-                small = resized_pendant(max(34, int(face_w * 0.58)))
-                px = int(x + face_w / 2 - small.width / 2)
-                py = int(y + face_h * 0.88)
-                if py + small.height < int(h * 0.88):
-                    img.alpha_composite(small, (px, py))
-
             # The hero pendant is always deterministic: exact source pixels,
             # centered, with its chain entering from beyond the top edge.
             hero = resized_pendant(int(w * 0.43))
             hero_x = (w - hero.width) // 2
             hero_y = -max(2, int(hero.height * 0.025))
-            shadow_alpha = hero.getchannel("A").filter(
-                ImageFilter.GaussianBlur(max(5, int(w * 0.009)))
-            )
+            shadow_alpha = hero.getchannel("A")
             shadow = Image.new("RGBA", hero.size, (0, 0, 0, 0))
             shadow.putalpha(shadow_alpha.point(lambda value: int(value * 0.55)))
             img.alpha_composite(shadow, (hero_x + max(3, w // 180), hero_y + max(5, h // 220)))
