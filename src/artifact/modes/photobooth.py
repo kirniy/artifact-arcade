@@ -1244,38 +1244,12 @@ class PhotoboothMode(BaseMode):
             return image_bytes
 
     def _stamp_vse_svoi_pendants(self, image_bytes: bytes) -> bytes:
-        """Remove generated caption leakage and composite exact pendant geometry."""
+        """Composite the exact pendant without altering generated artwork."""
         try:
             from PIL import Image
 
             img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
             w, h = img.size
-
-            # Gemini occasionally invents a large off-white prompt/caption panel.
-            # Detect a sustained neutral-light band and replace it with a blurred
-            # continuation of the artwork before applying our verified footer.
-            rgb = np.asarray(img.convert("RGB"))
-            lower_start = int(h * 0.54)
-            lower_end = int(h * 0.88)
-            channel_min = rgb.min(axis=2)
-            channel_span = rgb.max(axis=2) - channel_min
-            neutral_light = (channel_min > 210) & (channel_span < 24)
-            row_ratio = neutral_light.mean(axis=1)
-            run = max(10, h // 120)
-            caption_y = None
-            for y in range(lower_start, max(lower_start, lower_end - run)):
-                if float(row_ratio[y : y + run].mean()) >= 0.68:
-                    caption_y = y
-                    break
-            if caption_y is not None:
-                strip_h = max(48, int(h * 0.045))
-                strip_y = max(0, caption_y - strip_h)
-                continuation = img.crop((0, strip_y, w, caption_y))
-                continuation = continuation.resize(
-                    (w, h - caption_y), Image.Resampling.BICUBIC
-                )
-                img.paste(continuation, (0, caption_y))
-                logger.info("Removed generated ВСЕ СВОИ caption band at y=%d", caption_y)
 
             pendant_path = Path(__file__).resolve().parents[3] / "assets" / "images" / "vnvnc-pendant.png"
             pendant = Image.open(pendant_path).convert("RGBA")

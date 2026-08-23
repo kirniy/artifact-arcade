@@ -115,11 +115,15 @@ def test_vse_svoi_prompt_matches_boiling_style_and_requires_exact_pendants(monke
     assert "one deterministic master pendant" in call["style"]
 
 
-def test_vse_svoi_postprocess_removes_caption_band_and_adds_hero_pendant() -> None:
+def test_vse_svoi_postprocess_preserves_light_artwork_and_adds_hero_pendant() -> None:
     source = Image.new("RGB", (900, 1600), (174, 113, 86))
     draw = ImageDraw.Draw(source)
+    # This sustained neutral-light region used to be mistaken for a generated
+    # caption panel. The repair then stretched a thin strip over the rest of the
+    # image, producing the vertical smearing seen in real guest photos.
     draw.rectangle((0, 1080, 900, 1600), fill=(248, 246, 240))
-    draw.text((40, 1140), "RANDOM PROMPT LEAK TEXT", fill=(15, 15, 15))
+    for x in range(0, 900, 36):
+        draw.line((x, 1080, x + 90, 1600), fill=(120, 120, 120), width=2)
     encoded = io.BytesIO()
     source.save(encoded, format="PNG")
 
@@ -131,8 +135,10 @@ def test_vse_svoi_postprocess_removes_caption_band_and_adds_hero_pendant() -> No
     # The exact metal hero pendant changes the previously flat top-center area.
     top_center = result.crop((260, 0, 640, 420))
     assert len(top_center.getcolors(maxcolors=1_000_000)) > 100
-    # The generated white prose panel is replaced by artwork continuation.
-    assert result.getpixel((450, 1200)) != (248, 246, 240)
+    # Outside the pendant, postprocessing must never rebuild or stretch artwork.
+    assert result.crop((0, 700, 900, 1600)).tobytes() == source.crop(
+        (0, 700, 900, 1600)
+    ).tobytes()
 
 
 def test_vse_svoi_overlay_does_not_blur_or_rebuild_background() -> None:
