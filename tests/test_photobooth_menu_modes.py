@@ -38,29 +38,34 @@ def test_raw_mode_finishes_capture_without_starting_ai() -> None:
     assert finished == [True]
 
 
-def test_default_photobooth_menu_is_2k17_only(monkeypatch) -> None:
+EXPECTED_DEFAULT_THEMES = ["brainrot", "wedding", "whatsapp"]
+EXPECTED_DEFAULT_MODE_NAMES = ["photobooth_mode_1", "photobooth_mode_2", "photobooth_mode_3"]
+
+
+def _assert_current_default_menu(modes) -> None:
+    assert [mode.name for mode in modes] == EXPECTED_DEFAULT_MODE_NAMES
+    assert [mode.theme_id_override for mode in modes] == EXPECTED_DEFAULT_THEMES
+
+
+def test_default_photobooth_menu_uses_current_three_slot_profile(monkeypatch) -> None:
     monkeypatch.delenv("PHOTOBOOTH_MENU_MODES", raising=False)
 
     modes = get_configured_photobooth_modes()
 
-    assert [mode.name for mode in modes] == ["photobooth_mode_1"]
-    assert modes[0].theme_id_override == "2k17"
-    assert modes[0].display_name == "2K17"
+    _assert_current_default_menu(modes)
 
 
-def test_empty_photobooth_menu_falls_back_to_2k17_only(monkeypatch) -> None:
+def test_empty_photobooth_menu_falls_back_to_current_default(monkeypatch) -> None:
     monkeypatch.setenv("PHOTOBOOTH_MENU_MODES", " ")
 
     modes = get_configured_photobooth_modes()
 
-    assert [mode.name for mode in modes] == ["photobooth_mode_1"]
-    assert modes[0].theme_id_override == "2k17"
+    _assert_current_default_menu(modes)
 
 
-def test_unknown_photobooth_menu_falls_back_to_2k17_only(monkeypatch) -> None:
+def test_unknown_photobooth_menu_falls_back_to_current_default(monkeypatch) -> None:
     monkeypatch.setenv("PHOTOBOOTH_MENU_MODES", "nope")
 
     modes = get_configured_photobooth_modes()
 
-    assert [mode.name for mode in modes] == ["photobooth_mode_1"]
-    assert modes[0].theme_id_override == "2k17"
+    _assert_current_default_menu(modes)

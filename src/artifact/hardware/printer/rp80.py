@@ -10,8 +10,9 @@ import asyncio
 import glob
 import logging
 import os
+from pathlib import Path
 import stat
-from typing import Optional, Union
+from typing import Optional, Protocol, Union
 
 from artifact.hardware.base import Printer
 
@@ -19,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 USB_VENDOR_ID = 0x0FE6
 USB_PRODUCT_ID = 0x811E
+USB_SYSFS_CLASS_ROOTS = (Path("/sys/class/usb"), Path("/sys/class/usbmisc"))
+
+
+class ESCPosRasterReceipt(Protocol):
+    """Structural type shared by photobooth and prize-drum roll receipts."""
+
+    raw_commands: bytes
 
 try:
     import usb.core
@@ -35,6 +43,25 @@ def _is_character_device(path: str) -> bool:
         return stat.S_ISCHR(os.stat(path).st_mode)
     except OSError:
         return False
+
+
+def _usb_vid_pid_for_printer_path(path: str) -> tuple[int, int] | None:
+    """Resolve a Linux ``/dev/usb/lp*`` node to its parent USB VID/PID."""
+    node_name = Path(path).name
+    for class_root in USB_SYSFS_CLASS_ROOTS:
+        device_link = class_root / node_name / "device"
+        try:
+            interface = device_link.resolve(strict=True)
+        except OSError:
+            continue
+        for candidate in (interface, interface.parent):
+            try:
+                vendor = int((candidate / "idVendor").read_text().strip(), 16)
+                product = int((candidate / "idProduct").read_text().strip(), 16)
+            except (OSError, ValueError):
+                continue
+            return vendor, product
+    return None
 
 
 class _RP80PyUSBBackend:
@@ -106,15 +133,18 @@ class _RP80PyUSBBackend:
 
 def auto_detect_rp80_printer() -> Optional[Union[str, dict]]:
     """Find the RP80 printer using env override, Linux device, or pyusb."""
-    env_port = os.environ.get("ARTIFACT_RP80_PRINTER_PORT") or os.environ.get("ARTIFACT_PRINTER_PORT")
+    # The dedicated override is an explicit operator assertion.  Never inherit
+    # ARTIFACT_PRINTER_PORT: that generic node commonly belongs to the IP-802.
+    env_port = os.environ.get("ARTIFACT_RP80_PRINTER_PORT")
     if env_port and _is_character_device(env_port):
         return env_port
 
     usb_printers = [
         path for path in glob.glob("/dev/usb/lp*") if _is_character_device(path)
     ]
-    if usb_printers:
-        return sorted(usb_printers)[0]
+    for path in sorted(usb_printers):
+        if _usb_vid_pid_for_printer_path(path) == (USB_VENDOR_ID, USB_PRODUCT_ID):
+            return path
 
     if PYUSB_AVAILABLE:
         try:
@@ -201,7 +231,7 @@ class RP80ReceiptPrinter(Printer):
         finally:
             self._busy = False
 
-    async def print_receipt(self, receipt) -> bool:
+    async def print_receipt(self, receipt: ESCPosRasterReceipt) -> bool:
         return await self.print_raw(receipt.raw_commands)
 
     async def print_text_async(self, text: str) -> bool:
@@ -265,4 +295,6 @@ def create_rp80_printer(mock: bool = False) -> RP80ReceiptPrinter:
     port = auto_detect_rp80_printer()
     if port:
         return RP80ReceiptPrinter(port=port)
-    return MockRP80ReceiptPrinter()
+    # Production callers must see a disconnected real driver when hardware is
+    # absent.  A mock success is allowed only through the explicit mock flag.
+    return RP80ReceiptPrinter(port="")

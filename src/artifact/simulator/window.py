@@ -2,7 +2,7 @@
 Main simulator window using pygame.
 
 Provides a desktop development environment that simulates
-all ARTIFACT hardware components.
+all ФОТОБУДКА ВИНОВНИЦЫ hardware components.
 """
 
 import pygame
@@ -89,6 +89,7 @@ class SimulatorWindow:
         self.left_button = SimulatedArcade("left")
         self.right_button = SimulatedArcade("right")
         self.keypad = SimulatedKeypad()
+        self._kp9_down = False
 
         # UI elements positions (calculated on init)
         self._layout: dict[str, pygame.Rect] = {}
@@ -310,7 +311,19 @@ class SimulatorWindow:
             self.event_bus.emit(Event(EventType.ARCADE_RIGHT, source="arcade"))
 
         # Keypad
-        elif key in range(pygame.K_0, pygame.K_9 + 1):
+        elif key in (pygame.K_9, pygame.K_KP9):
+            # Numeric-row 9 mirrors physical KP9 in the laptop simulator.
+            # ModeManager resolves the edge pair into either a short digit or a
+            # completed hidden-mode hold, so SDL repeat can never leak digits.
+            if not self._kp9_down:
+                self._kp9_down = True
+                self.keypad._press("9")
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_PRESS,
+                    data={"key": "9", "physical": "numpad"},
+                    source="keypad"
+                ))
+        elif key in range(pygame.K_0, pygame.K_8 + 1):
             char = chr(key)
             self.keypad._press(char)
             self.event_bus.emit(Event(
@@ -346,7 +359,7 @@ class SimulatorWindow:
             self.event_bus.emit(Event(
                 EventType.KEYPAD_INPUT, data={"key": "6"}, source="keypad"
             ))
-        elif key in range(pygame.K_KP1, pygame.K_KP9 + 1):
+        elif key in range(pygame.K_KP1, pygame.K_KP8 + 1):
             char = str(key - pygame.K_KP1 + 1)
             self.keypad._press(char)
             self.event_bus.emit(Event(
@@ -385,6 +398,15 @@ class SimulatorWindow:
             self.left_button._release()
         elif key == pygame.K_RIGHT:
             self.right_button._release()
+        elif key in (pygame.K_9, pygame.K_KP9):
+            if self._kp9_down:
+                self._kp9_down = False
+                self.keypad._release()
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_RELEASE,
+                    data={"key": "9", "physical": "numpad"},
+                    source="keypad"
+                ))
         else:
             # Release keypad state so buttons don't stay "held"
             keypad_keys = set(range(pygame.K_0, pygame.K_9 + 1))
@@ -639,7 +661,7 @@ class SimulatorWindow:
             return
 
         # Main title
-        title = f"◆ ARTIFACT Simulator ◆ | {self.state_machine.state.name}"
+        title = f"◆ ФОТОБУДКА ВИНОВНИЦЫ Simulator ◆ | {self.state_machine.state.name}"
         text_surface = self._font.render(title, True, self.config.accent_color)
         self._screen.blit(text_surface, (20, 15))
 

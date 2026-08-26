@@ -252,7 +252,7 @@ class BaseMode(ABC):
     def emit_event(self, event_type: EventType, data: Dict = None) -> None:
         """Emit an event through the event bus."""
         self.context.event_bus.emit(Event(
-            event_type=event_type,
+            type=event_type,
             data=data or {},
             source=f"mode_{self.name}"
         ))

@@ -29,6 +29,10 @@ from artifact.printing.photobooth_roll import (
     PhotoboothRollReceipt,
     PhotoboothRollReceiptGenerator,
 )
+from artifact.printing.wheel_prize_roll import (
+    WheelPrizeRollReceipt,
+    WheelPrizeRollReceiptGenerator,
+)
 from artifact.printing.layout import (
     LayoutEngine,
     ReceiptLayout,
@@ -62,6 +66,8 @@ __all__ = [
     "Receipt",
     "PhotoboothRollReceipt",
     "PhotoboothRollReceiptGenerator",
+    "WheelPrizeRollReceipt",
+    "WheelPrizeRollReceiptGenerator",
     "LayoutEngine",
     "ReceiptLayout",
     "TextBlock",

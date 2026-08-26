@@ -24,6 +24,11 @@ from artifact.hardware.printer.rp80 import (
 from artifact.printing.label_receipt import LabelReceiptGenerator, LabelReceipt
 from artifact.printing.photobooth_roll import PhotoboothRollReceipt, PhotoboothRollReceiptGenerator
 from artifact.printing.receipt import ReceiptGenerator, Receipt
+from artifact.printing.wheel_prize_roll import (
+    WHEEL_PRIZE_MODE_NAME,
+    WheelPrizeRollReceipt,
+    WheelPrizeRollReceiptGenerator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +52,7 @@ MODE_NAMES_RU = {
     "tower_stack": "🏗️ Башня",
     "brick_breaker": "🧱 Кирпичи",
     "video": "🎬 Видео",
+    WHEEL_PRIZE_MODE_NAME: "🎁 Барабан призов",
 }
 
 
@@ -102,11 +108,17 @@ class PrintManager:
         self._task: Optional[asyncio.Task[None]] = None
         self._running = False
         self._telegram_bot = None  # Lazy-loaded to avoid circular imports
+        # Prize issue IDs are server-authoritative idempotency keys.  Keep a
+        # small in-memory ledger so repeated UI/events cannot print a second
+        # redeemable receipt for the same issue during this process lifetime.
+        self._pending_print_keys: set[str] = set()
+        self._completed_print_keys: dict[str, None] = {}
+        self._completed_print_key_limit = 256
 
-    async def _select_rp80_printer(self) -> bool:
+    async def _select_rp80_printer(self, *, mock: bool = False) -> bool:
         """Switch this manager to the RP80 receipt printer when USB is present."""
-        detected = auto_detect_rp80_printer()
-        if not detected:
+        detected = None if mock else auto_detect_rp80_printer()
+        if not mock and not detected:
             return False
 
         if self._printer and getattr(self._printer, "is_connected", False):
@@ -115,18 +127,28 @@ class PrintManager:
             except Exception as exc:
                 logger.debug("Ignoring disconnect error while switching to RP80: %s", exc)
 
-        self._printer = create_rp80_printer(mock=False)
+        # Pass the already-resolved device through directly.  Calling the
+        # factory after detection creates a race where a vanished device used
+        # to turn into a silent mock printer.
+        self._printer = (
+            MockRP80ReceiptPrinter()
+            if mock
+            else RP80ReceiptPrinter(port=detected)
+        )
         self._generator = PhotoboothRollReceiptGenerator()
         self._use_legacy = False
         self._use_rp80 = True
-        logger.info("RP80 USB printer detected; photobooth prints will use 80mm receipt output")
+        logger.info("RP80 receipt printer selected for 80mm roll output")
         return True
 
     async def _maybe_select_rp80_for_job(self, mode_name: str) -> None:
-        """Hot-plug RP80 for photobooth jobs without requiring app restart."""
-        if self._mock_requested or self._use_legacy or self._use_rp80 or mode_name != "photobooth":
+        """Hot-plug RP80 for the two modes that own 80mm roll layouts."""
+        if mode_name not in {"photobooth", WHEEL_PRIZE_MODE_NAME} or self._use_rp80:
             return
-        await self._select_rp80_printer()
+        if self._mock_requested:
+            await self._select_rp80_printer(mock=True)
+            return
+        await self._select_rp80_printer(mock=False)
 
     @property
     def is_label_printer(self) -> bool:
@@ -276,7 +298,7 @@ class PrintManager:
                 await bot.broadcast_photo(
                     photo_data=image_bytes,
                     caption=caption,
-                    source="ARTIFACT ARCADE"
+                    source="ФОТОБУДКА ВИНОВНИЦЫ"
                 )
                 logger.info(f"Broadcast {mode_name} photo to Telegram")
             else:
@@ -288,26 +310,71 @@ class PrintManager:
     def handle_print_start(self, event: Event) -> None:
         """Queue a print job from an event."""
         data = event.data if isinstance(event.data, dict) else {}
+        job_key = self._claim_print_job(data)
+        if job_key is False:
+            return
         try:
             self._queue.put_nowait(data)
             logger.info("Queued print job")
         except Exception as exc:
+            self._release_print_job(job_key)
             logger.error(f"Failed to queue print job: {exc}")
 
     async def queue_print(self, data: Dict[str, Any]) -> None:
         """Queue a print job directly (async version)."""
-        await self._queue.put(data)
+        job_key = self._claim_print_job(data)
+        if job_key is False:
+            return
+        try:
+            await self._queue.put(data)
+        except Exception:
+            self._release_print_job(job_key)
+            raise
         logger.info("Queued print job (async)")
 
     def queue_print_sync(self, data: Dict[str, Any]) -> bool:
         """Queue a print job synchronously. Returns True if successful."""
+        job_key = self._claim_print_job(data)
+        if job_key is False:
+            return True
         try:
             self._queue.put_nowait(data)
             logger.info("Queued print job (sync)")
             return True
         except Exception as exc:
+            self._release_print_job(job_key)
             logger.error(f"Failed to queue print job: {exc}")
             return False
+
+    def _prize_print_job_key(self, data: Dict[str, Any]) -> Optional[str]:
+        mode_name = data.get("type") or data.get("mode") or data.get("mode_name")
+        if mode_name != WHEEL_PRIZE_MODE_NAME:
+            return None
+        value = str(data.get("print_job_key") or data.get("issue_id") or "").strip()
+        return value or None
+
+    def _claim_print_job(self, data: Dict[str, Any]) -> Optional[str] | bool:
+        """Reserve a prize print key; ``False`` means an idempotent duplicate."""
+        key = self._prize_print_job_key(data)
+        if key is None:
+            return None
+        if key in self._pending_print_keys or key in self._completed_print_keys:
+            logger.warning("Ignoring duplicate prize print job: %s", key)
+            return False
+        self._pending_print_keys.add(key)
+        return key
+
+    def _release_print_job(self, key: Optional[str] | bool) -> None:
+        if isinstance(key, str):
+            self._pending_print_keys.discard(key)
+
+    def _complete_print_job(self, key: Optional[str]) -> None:
+        if key is None:
+            return
+        self._pending_print_keys.discard(key)
+        self._completed_print_keys[key] = None
+        while len(self._completed_print_keys) > self._completed_print_key_limit:
+            self._completed_print_keys.pop(next(iter(self._completed_print_keys)))
 
     async def _ensure_connected(self) -> bool:
         """Ensure printer is connected."""
@@ -323,6 +390,8 @@ class PrintManager:
             except asyncio.CancelledError:
                 break
 
+            print_job_key = self._prize_print_job_key(data)
+            print_succeeded = False
             try:
                 mode_name = (
                     data.get("type") or
@@ -331,6 +400,9 @@ class PrintManager:
                     "generic"
                 )
                 await self._maybe_select_rp80_for_job(mode_name)
+
+                if mode_name == WHEEL_PRIZE_MODE_NAME and not self._use_rp80:
+                    raise RuntimeError("RP80 receipt printer is required for prize_drum")
 
                 if not await self._ensure_connected():
                     if mode_name == "photobooth":
@@ -341,7 +413,9 @@ class PrintManager:
                 # Generate receipt using appropriate generator. The RP80 layout is
                 # intentionally photobooth-specific; other modes still use the
                 # generic receipt renderer if they reach this printer.
-                if self._use_rp80 and mode_name != "photobooth":
+                if mode_name == WHEEL_PRIZE_MODE_NAME:
+                    receipt = WheelPrizeRollReceiptGenerator().generate_receipt(mode_name, data)
+                elif self._use_rp80 and mode_name != "photobooth":
                     receipt = ReceiptGenerator().generate_receipt(mode_name, data)
                 else:
                     receipt = self._generator.generate_receipt(mode_name, data)
@@ -350,9 +424,15 @@ class PrintManager:
                 ok = await self._print_receipt(receipt)
 
                 if ok:
+                    print_succeeded = True
+                    self._complete_print_job(print_job_key)
                     self._event_bus.emit(Event(
                         EventType.PRINT_COMPLETE,
-                        data={"type": mode_name},
+                        data={
+                            "type": mode_name,
+                            "issue_id": data.get("issue_id"),
+                            "print_job_key": print_job_key,
+                        },
                         source="print_manager",
                     ))
                     # Broadcast to Telegram subscribers
@@ -368,24 +448,36 @@ class PrintManager:
                 logger.error(f"Print failed: {exc}")
                 self._event_bus.emit(Event(
                     EventType.PRINT_ERROR,
-                    data={"error": str(exc)},
+                    data={
+                        "type": data.get("type") or data.get("mode") or data.get("mode_name"),
+                        "issue_id": data.get("issue_id"),
+                        "print_job_key": print_job_key,
+                        "error": str(exc),
+                    },
                     source="print_manager",
                 ))
             finally:
+                if not print_succeeded:
+                    self._release_print_job(print_job_key)
                 self._queue.task_done()
 
-    async def _print_receipt(self, receipt: Union[LabelReceipt, Receipt, PhotoboothRollReceipt]) -> bool:
+    async def _print_receipt(
+        self,
+        receipt: Union[LabelReceipt, Receipt, PhotoboothRollReceipt, WheelPrizeRollReceipt],
+    ) -> bool:
         """Print a receipt/label.
 
         Handles both LabelReceipt (IP802) and Receipt (EM5820) formats.
         """
+        if isinstance(receipt, WheelPrizeRollReceipt):
+            if not isinstance(self._printer, RP80ReceiptPrinter):
+                logger.error("Refusing to route a redeemable prize receipt outside RP80")
+                return False
+            return await self._printer.print_raw(receipt.raw_commands)
+
         if isinstance(receipt, PhotoboothRollReceipt):
             if isinstance(self._printer, RP80ReceiptPrinter):
                 return await self._printer.print_raw(receipt.raw_commands)
-            if isinstance(self._printer, MockRP80ReceiptPrinter):
-                logger.info("=== MOCK RP80 PHOTOBOOTH PRINT ===")
-                logger.info("Preview image: %d bytes", len(receipt.preview_image))
-                return True
             return await self._printer.print_raw(receipt.raw_commands)
 
         if isinstance(receipt, LabelReceipt):
@@ -419,7 +511,7 @@ class PrintManager:
             return await self._printer.self_test()
         else:
             # Legacy printer test
-            await self._printer.print_text("=== ARTIFACT TEST ===")
+            await self._printer.print_text("=== ФОТОБУДКА ВИНОВНИЦЫ TEST ===")
             await self._printer.print_text("Printer is working!")
             await self._printer.feed_paper(3)
             return True

@@ -1,7 +1,7 @@
 """
-Simulator entry point - Fully integrated with mode system.
+ФОТОБУДКА ВИНОВНИЦЫ simulator entry point — fully integrated with the mode system.
 
-Runs the ARTIFACT arcade machine in a desktop pygame window.
+Runs the ФОТОБУДКА ВИНОВНИЦЫ software in a desktop pygame window.
 """
 
 import asyncio
@@ -42,6 +42,23 @@ from artifact.audio.engine import AudioEngine, get_audio_engine
 from artifact.utils.camera_service import camera_service
 
 logger = logging.getLogger(__name__)
+
+
+_PRIZE_DRUM_SOUND_METHODS = {
+    "reel_start": "play_roulette_spin",
+    "reel_tick": "play_wheel_tick",
+    "reel_win": "play_jackpot",
+    "bonus_ready": "play_score_up",
+}
+
+
+def _route_prize_drum_sound(audio: AudioEngine, event: Event) -> bool:
+    """Play an existing simulator sound for a semantic prize-drum cue."""
+    method_name = _PRIZE_DRUM_SOUND_METHODS.get(str(event.data.get("sound") or ""))
+    if method_name is None:
+        return False
+    getattr(audio, method_name)()
+    return True
 
 
 def is_real_printer_enabled() -> bool:
@@ -127,7 +144,7 @@ class ArtifactSimulator:
         self.window_config = WindowConfig(
             width=1280,
             height=720,
-            title="ARTIFACT Simulator",
+            title="ФОТОБУДКА ВИНОВНИЦЫ Simulator",
             fps=60
         )
         self.window = SimulatorWindow(
@@ -159,7 +176,7 @@ class ArtifactSimulator:
         # Wire up event handlers
         self._setup_event_handlers()
 
-        logger.info("ArtifactSimulator initialized")
+        logger.info("ФОТОБУДКА ВИНОВНИЦЫ simulator initialized")
 
     def _setup_real_printer(self) -> None:
         """Setup real USB printer for testing."""
@@ -256,6 +273,10 @@ class ArtifactSimulator:
         self.event_bus.subscribe(EventType.ARCADE_LEFT, self._on_nav_sound)
         self.event_bus.subscribe(EventType.ARCADE_RIGHT, self._on_nav_sound)
         self.event_bus.subscribe(EventType.BACK, self._on_back_sound)
+        self.event_bus.subscribe(
+            EventType.SOUND_PLAY,
+            lambda event: _route_prize_drum_sound(self.audio, event),
+        )
 
         # Printer preview - show receipt when printing starts
         self.event_bus.subscribe(EventType.PRINT_START, self._on_print_start)
@@ -283,12 +304,24 @@ class ArtifactSimulator:
         # Also print to real printer if enabled
         if self._real_printer and is_real_printer_enabled():
             asyncio.create_task(self._print_to_real_printer(print_data))
+        elif print_data.get("type") == "prize_drum":
+            # Preview-only simulator printing is an immediate successful sink.
+            self.event_bus.emit(Event(
+                EventType.PRINT_COMPLETE,
+                data={
+                    "type": "prize_drum",
+                    "issue_id": print_data.get("issue_id"),
+                    "print_job_key": print_data.get("issue_id"),
+                },
+                source="simulator_printer_preview",
+            ))
 
         # Play printer sound effect
         self.audio.play_reward()
 
     async def _print_to_real_printer(self, print_data: dict) -> None:
         """Print to real USB printer."""
+        mode_type = print_data.get('type', 'unknown')
         try:
             # Connect if not connected
             if not self._real_printer.is_connected:
@@ -298,7 +331,6 @@ class ArtifactSimulator:
             from artifact.printing.label_receipt import LabelReceiptGenerator
             from artifact.printing.label_layout import LabelLayoutEngine
 
-            mode_type = print_data.get('type', 'unknown')
             generator = LabelReceiptGenerator()
             receipt = generator.generate_receipt(mode_type, print_data)
 
@@ -309,9 +341,30 @@ class ArtifactSimulator:
             # Send to printer
             await self._real_printer.print_raw(tspl_commands)
             logger.info(f"Real printer: sent {len(tspl_commands)} bytes")
+            if mode_type == "prize_drum":
+                self.event_bus.emit(Event(
+                    EventType.PRINT_COMPLETE,
+                    data={
+                        "type": mode_type,
+                        "issue_id": print_data.get("issue_id"),
+                        "print_job_key": print_data.get("issue_id"),
+                    },
+                    source="simulator_real_printer",
+                ))
 
         except Exception as e:
             logger.error(f"Real printer error: {e}")
+            if mode_type == "prize_drum":
+                self.event_bus.emit(Event(
+                    EventType.PRINT_ERROR,
+                    data={
+                        "type": mode_type,
+                        "issue_id": print_data.get("issue_id"),
+                        "print_job_key": print_data.get("issue_id"),
+                        "error": str(e),
+                    },
+                    source="simulator_real_printer",
+                ))
 
     def _on_tick(self, event: Event) -> None:
         """Handle frame tick - update and render."""
@@ -345,7 +398,7 @@ class ArtifactSimulator:
 
     async def run(self) -> None:
         """Run the simulator."""
-        logger.info("Starting ARTIFACT Simulator...")
+        logger.info("Starting ФОТОБУДКА ВИНОВНИЦЫ Simulator...")
 
         # Play startup fanfare!
         self.audio.play_startup()
@@ -375,7 +428,7 @@ def main() -> None:
 
     logger = logging.getLogger(__name__)
     logger.info("=" * 50)
-    logger.info("ARTIFACT Simulator Starting")
+    logger.info("ФОТОБУДКА ВИНОВНИЦЫ Simulator Starting")
     logger.info("=" * 50)
     logger.info("")
     logger.info("Controls:")

@@ -16,7 +16,24 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from artifact.core.state import StateMachine
-from artifact.core.events import EventBus
+from artifact.core.events import Event, EventBus
+
+
+PRIZE_DRUM_SOUND_ROUTES = {
+    "reel_start": "roulette_spin",
+    "reel_tick": "wheel_tick",
+    "reel_win": "jackpot",
+    "bonus_ready": "score_up",
+}
+
+
+def _route_prize_drum_sound(event: Event, play_sound) -> bool:
+    """Translate semantic reel cues to existing, royalty-free engine sounds."""
+    sound_name = PRIZE_DRUM_SOUND_ROUTES.get(str(event.data.get("sound") or ""))
+    if sound_name is None:
+        return False
+    play_sound(sound_name)
+    return True
 
 
 def setup_logging(debug: bool = False) -> None:
@@ -55,7 +72,7 @@ async def run_hardware() -> None:
     from artifact.graphics.renderer import Renderer
     from artifact.animation.engine import AnimationEngine
     from artifact.modes.manager import ModeManager
-    from artifact.core.events import Event, EventType
+    from artifact.core.events import EventType
     from artifact.printing.manager import PrintManager
     from artifact.utils.camera_service import camera_service
 
@@ -92,13 +109,18 @@ async def run_hardware() -> None:
     )
 
     # Create mode manager
+    prize_drum_enabled = os.getenv("ARTIFACT_PRIZE_DRUM_ENABLED", "false").lower() in {
+        "1", "true", "yes", "on"
+    }
     mode_manager = ModeManager(
         state_machine=state_machine,
         event_bus=event_bus,
         renderer=renderer,
         animation_engine=animation_engine,
-        theme="mystical"
+        theme="mystical",
+        enable_prize_drum=prize_drum_enabled,
     )
+    logger.info("Hidden prize drum enabled=%s (hold numpad 9 for 2.0s)", prize_drum_enabled)
 
     # Check for API key
     has_api_key = bool(os.environ.get("GEMINI_API_KEY"))
@@ -233,6 +255,10 @@ async def run_hardware() -> None:
     event_bus.subscribe(EventType.ARCADE_UP, on_navigation)
     event_bus.subscribe(EventType.ARCADE_DOWN, on_navigation)
     event_bus.subscribe(EventType.KEYPAD_INPUT, on_keypad)
+    event_bus.subscribe(
+        EventType.SOUND_PLAY,
+        lambda event: _route_prize_drum_sound(event, runner.play_sound),
+    )
 
     # Wire up tick handler to update and render
     def on_tick(event: Event) -> None:
@@ -283,7 +309,7 @@ def main() -> None:
     setup_logging(debug)
 
     logger = logging.getLogger(__name__)
-    logger.info("ARTIFACT starting...")
+    logger.info("ФОТОБУДКА ВИНОВНИЦЫ starting...")
 
     # Determine environment
     env = os.getenv("ARTIFACT_ENV", "simulator")
@@ -305,7 +331,7 @@ def main() -> None:
         logger.exception(f"Fatal error: {e}")
         sys.exit(1)
 
-    logger.info("ARTIFACT stopped")
+    logger.info("ФОТОБУДКА ВИНОВНИЦЫ stopped")
 
 
 if __name__ == "__main__":

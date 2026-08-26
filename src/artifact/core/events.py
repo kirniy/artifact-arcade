@@ -9,9 +9,17 @@ from typing import Any, Callable, Awaitable
 from enum import Enum, auto
 import asyncio
 import logging
+import time
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
+
+
+def _event_timestamp() -> float:
+    try:
+        return asyncio.get_running_loop().time()
+    except RuntimeError:
+        return time.time()
 
 
 class EventType(Enum):
@@ -20,6 +28,9 @@ class EventType(Enum):
     BUTTON_PRESS = auto()
     BUTTON_RELEASE = auto()
     KEYPAD_INPUT = auto()
+    KEYPAD_PRESS = auto()  # Physical key edge; used for deliberate hold gestures
+    KEYPAD_RELEASE = auto()
+    PRIZE_DRUM_TOGGLE = auto()  # Emitted once after an exact 2s KP9 hold
     ARCADE_LEFT = auto()
     ARCADE_RIGHT = auto()
     ARCADE_UP = auto()
@@ -70,6 +81,64 @@ class EventType(Enum):
 
 
 @dataclass
+class HoldKeyDetector:
+    """Frame-clock hold detector with release-to-rearm semantics.
+
+    The detector intentionally uses accumulated frame delta instead of wall time.
+    That keeps hardware and simulator behaviour identical and makes the 2.0 second
+    boundary deterministic under tests and variable frame rate.
+    """
+
+    key: str
+    threshold_ms: float
+    _held: bool = False
+    _fired: bool = False
+    _elapsed_ms: float = 0.0
+
+    @property
+    def held(self) -> bool:
+        return self._held
+
+    @property
+    def elapsed_ms(self) -> float:
+        return self._elapsed_ms
+
+    @property
+    def fired(self) -> bool:
+        """Whether this physical hold has already crossed its threshold."""
+        return self._fired
+
+    def press(self, key: str) -> bool:
+        """Arm on the first matching down edge; reject key-repeat."""
+        if key != self.key or self._held:
+            return False
+        self._held = True
+        self._fired = False
+        self._elapsed_ms = 0.0
+        return True
+
+    def release(self, key: str) -> bool:
+        """Release and rearm the gesture for the next physical press."""
+        if key != self.key or not self._held:
+            return False
+        self._held = False
+        self._fired = False
+        self._elapsed_ms = 0.0
+        return True
+
+    def update(self, delta_ms: float) -> bool:
+        """Return True exactly once when the threshold is crossed."""
+        if not self._held or self._fired:
+            return False
+        self._elapsed_ms += max(0.0, float(delta_ms))
+        if self._elapsed_ms + 1e-9 < self.threshold_ms:
+            return False
+        self._elapsed_ms = self.threshold_ms
+        self._fired = True
+        return True
+
+
+@dataclass
 class Event:
     """
     Event data container.
@@ -83,12 +152,10 @@ class Event:
     type: EventType | str
     data: dict[str, Any] = field(default_factory=dict)
     source: str = "system"
-    timestamp: float = field(default_factory=lambda: asyncio.get_event_loop().time()
-                             if asyncio.get_event_loop().is_running() else 0.0)
+    timestamp: float = field(default_factory=_event_timestamp)
 
     def __post_init__(self) -> None:
         if self.timestamp == 0.0:
-            import time
             self.timestamp = time.time()
 
 

@@ -128,6 +128,10 @@ class HardwareRunner:
         self._backspace_pressed_time: float | None = None
         self._shutdown_hold_duration = 3.0  # seconds to hold for shutdown
 
+        # KP9 is a deliberate two-second hidden-mode gesture.  It has its own
+        # edge state so SDL key repeat can never leak a digit/camera trigger.
+        self._kp9_down = False
+
         # Use mock displays if hardware unavailable
         self._use_mocks = os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
 
@@ -582,6 +586,7 @@ class HardwareRunner:
                 'back': self._audio_engine.play_ui_back,
                 'move': self._audio_engine.play_ui_move,
                 'success': self._audio_engine.play_success,
+                'score_up': self._audio_engine.play_score_up,
                 'failure': self._audio_engine.play_failure,
                 'countdown_tick': self._audio_engine.play_countdown_tick,
                 'countdown_go': self._audio_engine.play_countdown_go,
@@ -811,11 +816,13 @@ class HardwareRunner:
                 source="keypad"
             ))
         elif key == pygame.K_KP9:
-            self.event_bus.emit(Event(
-                EventType.KEYPAD_INPUT,
-                data={"key": "9"},
-                source="keypad"
-            ))
+            if not self._kp9_down:
+                self._kp9_down = True
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_PRESS,
+                    data={"key": "9", "physical": "numpad"},
+                    source="keypad"
+                ))
         elif key == pygame.K_ASTERISK or key == pygame.K_KP_MULTIPLY:
             # Toggle mute with asterisk key
             if self._audio_engine:
@@ -850,6 +857,15 @@ class HardwareRunner:
                 self._backspace_pressed_time = None
                 if held_duration < self._shutdown_hold_duration:
                     self.event_bus.emit(Event(EventType.BACK, source="keyboard"))
+
+        elif key == pygame.K_KP9:
+            if self._kp9_down:
+                self._kp9_down = False
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_RELEASE,
+                    data={"key": "9", "physical": "numpad"},
+                    source="keypad"
+                ))
 
     def _update_displays(self) -> None:
         """Update all displays from their buffers."""
@@ -890,7 +906,7 @@ class HardwareRunner:
         last_watchdog = 0.0
 
         # Mark the unit ready once the loop is about to enter steady state.
-        self._systemd_notify("READY=1\nSTATUS=ARTIFACT hardware loop running")
+        self._systemd_notify("READY=1\nSTATUS=ФОТОБУДКА ВИНОВНИЦЫ hardware loop running")
 
         while self._running:
             # Handle events from hardware

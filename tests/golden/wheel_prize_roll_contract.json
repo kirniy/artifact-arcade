@@ -1,0 +1,10 @@
+{
+  "paper_width_px": 576,
+  "height_min_px": 1350,
+  "height_max_px": 1800,
+  "minimum_side_whitespace_px": 20,
+  "primary_payload": "VNVNC-KSK-8F2M9Q",
+  "secondary_payload": "https://t.me/vnvncbattlebot?start=wheel",
+  "secondary_error_correction": "H",
+  "quiet_zone_modules": 4
+}

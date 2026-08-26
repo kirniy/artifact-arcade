@@ -1,6 +1,6 @@
 """Mode manager for ARTIFACT - handles mode selection, transitions, and idle state."""
 
-from typing import Dict, List, Optional, Type, Callable
+from typing import Any, Dict, List, Optional, Type, Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 import logging
@@ -8,7 +8,7 @@ import random
 import math
 import os
 
-from artifact.core.events import EventBus, Event, EventType
+from artifact.core.events import EventBus, Event, EventType, HoldKeyDetector
 from artifact.core.state import StateMachine, State
 from artifact.animation.engine import AnimationEngine
 from artifact.animation.idle_scenes import RotatingIdleAnimation
@@ -505,7 +505,10 @@ class ModeManager:
         event_bus: EventBus,
         renderer: Renderer,
         animation_engine: AnimationEngine,
-        theme: str = "mystical"
+        theme: str = "mystical",
+        *,
+        enable_prize_drum: bool | None = None,
+        prize_drum_client: Any = None,
     ):
         self.state_machine = state_machine
         self.event_bus = event_bus
@@ -520,6 +523,22 @@ class ModeManager:
         self._selected_index: int = 0
         self._current_mode: Optional[BaseMode] = None
         self._last_result: Optional[ModeResult] = None
+
+        # Hidden exclusive prize-drum profile.  Hardware requires an explicit
+        # enable flag; simulator defaults on so the operator can approve it.
+        if enable_prize_drum is None:
+            env = os.getenv("ARTIFACT_ENV", "simulator").strip().lower()
+            configured = os.getenv("ARTIFACT_PRIZE_DRUM_ENABLED", "").strip().lower()
+            enable_prize_drum = configured in {"1", "true", "yes", "on"} or (
+                env != "hardware" and configured == ""
+            )
+        self._prize_drum_enabled = bool(enable_prize_drum)
+        self._prize_drum_client = prize_drum_client
+        self._prize_drum_active = False
+        self._prize_drum_restore_state = ManagerState.MODE_SELECT
+        self._prize_drum_restore_index = 0
+        self._pending_prize_drum_exit = False
+        self._prize_drum_hold = HoldKeyDetector("9", threshold_ms=2000.0)
 
         # Idle animation - uses the new rotating scene system
         self._idle_animation = RotatingIdleAnimation()
@@ -826,6 +845,11 @@ class ModeManager:
         self.event_bus.subscribe(EventType.ARCADE_LEFT, self._on_arcade_left)
         self.event_bus.subscribe(EventType.ARCADE_RIGHT, self._on_arcade_right)
         self.event_bus.subscribe(EventType.KEYPAD_INPUT, self._on_keypad_input)
+        self.event_bus.subscribe(EventType.KEYPAD_PRESS, self._on_keypad_press)
+        self.event_bus.subscribe(EventType.KEYPAD_RELEASE, self._on_keypad_release)
+        self.event_bus.subscribe(EventType.PRIZE_DRUM_TOGGLE, self._on_prize_drum_toggle)
+        self.event_bus.subscribe(EventType.PRINT_COMPLETE, self._on_prize_drum_print_status)
+        self.event_bus.subscribe(EventType.PRINT_ERROR, self._on_prize_drum_print_status)
         self.event_bus.subscribe(EventType.BACK, self._on_back)
         self.event_bus.subscribe(EventType.REBOOT, self._on_reboot)
 
@@ -1223,10 +1247,60 @@ class ModeManager:
         if self._state == ManagerState.MODE_ACTIVE and self._current_mode:
             self._current_mode.handle_input(event)
 
+    def _on_keypad_press(self, event: Event) -> None:
+        """Arm the hidden KP9 hold without forwarding a capture digit."""
+        self._prize_drum_hold.press(str(event.data.get("key", "")))
+
+    def _on_keypad_release(self, event: Event) -> None:
+        """Rearm KP9 and preserve one short-press digit outside hidden mode."""
+        key = str(event.data.get("key", ""))
+        short_press = (
+            key == "9"
+            and self._prize_drum_hold.held
+            and not self._prize_drum_hold.fired
+            and not self._prize_drum_active
+        )
+        self._prize_drum_hold.release(key)
+        if short_press:
+            self.event_bus.emit(Event(
+                EventType.KEYPAD_INPUT,
+                data={"key": "9"},
+                source="mode_manager_kp9_short_press",
+            ))
+
+    def _on_prize_drum_toggle(self, event: Event) -> None:
+        if not self._prize_drum_enabled:
+            logger.info("Prize drum KP9 gesture ignored: feature disabled")
+            return
+        if self._prize_drum_active:
+            mode = self._current_mode
+            if mode is not None and getattr(mode, "is_safe_to_exit", False):
+                self._exit_prize_drum()
+            else:
+                self._pending_prize_drum_exit = True
+                logger.info("Prize drum exit deferred until award/animation is safe")
+            return
+
+        if self._can_enter_prize_drum():
+            self._enter_prize_drum()
+        else:
+            # Do not surprise-activate after a public capture/result finishes.
+            # Staff must perform a fresh deliberate hold from idle/menu.
+            logger.info("Prize drum entry ignored outside safe idle/menu state")
+
+    def _on_prize_drum_print_status(self, event: Event) -> None:
+        if self._prize_drum_active and self._current_mode:
+            self._current_mode.handle_input(event)
+
     def _on_back(self, event: Event) -> None:
         """Handle back/cancel button - go back one step."""
         self._last_input_time = self._time_in_state
         self._audio.play_ui_back()
+
+        if self._prize_drum_active:
+            # The hidden profile has one deliberate exit gesture (hold KP9).
+            # A stray/back key must not interrupt a committed award.
+            return
 
         if self._state == ManagerState.MODE_SELECT:
             # Go back to idle from mode select
@@ -1256,6 +1330,10 @@ class ModeManager:
     def _on_reboot(self, event: Event) -> None:
         """Handle reboot/restart - return to idle and reset everything."""
         logger.info("System reboot requested")
+
+        self._pending_prize_drum_exit = False
+        self._prize_drum_active = False
+        self._prize_drum_hold.release("9")
 
         # Clean up current mode if any
         if self._current_mode:
@@ -1383,10 +1461,67 @@ class ModeManager:
             self._change_state(ManagerState.ADMIN_MENU)
             logger.info("Admin menu activated")
 
+    def _can_enter_prize_drum(self) -> bool:
+        return self._current_mode is None and self._state in {
+            ManagerState.IDLE,
+            ManagerState.MODE_SELECT,
+        }
+
+    def _enter_prize_drum(self) -> None:
+        """Replace the public profile atomically without adding a menu item."""
+        if self._prize_drum_active or not self._can_enter_prize_drum():
+            return
+        from artifact.modes.prize_drum import PrizeDrumMode
+
+        self._prize_drum_restore_state = self._state
+        self._prize_drum_restore_index = self._selected_index
+        self._close_selector_camera()
+        context = ModeContext(
+            state_machine=self.state_machine,
+            event_bus=self.event_bus,
+            renderer=self.renderer,
+            animation_engine=self.animation_engine,
+            theme="vnvnc_prize_drum",
+        )
+        self._current_mode = PrizeDrumMode(context, client=self._prize_drum_client)
+        self._prize_drum_active = True
+        self._audio.stop_music(fade_out_ms=120)
+        self._display_coordinator.clear_effect()
+        self._change_state(ManagerState.MODE_ACTIVE)
+        self._current_mode.enter()
+        logger.info("Hidden ФОТОБУДКА ВИНОВНИЦЫ prize drum activated")
+
+    def _exit_prize_drum(self) -> None:
+        if not self._prize_drum_active:
+            return
+        restore_state = self._prize_drum_restore_state
+        restore_index = self._prize_drum_restore_index
+        self._pending_prize_drum_exit = False
+        if self._current_mode:
+            self._current_mode.exit()
+        self._current_mode = None
+        self._prize_drum_active = False
+
+        # MODE_ACTIVE -> IDLE is a valid core transition; restore the public menu
+        # in a second step so StateMachine and ModeManager never diverge.
+        self._change_state(ManagerState.IDLE)
+        self._idle_animation.reset()
+        if restore_state == ManagerState.MODE_SELECT and self._mode_order:
+            self._enter_mode_select()
+            self._selected_index = restore_index % len(self._mode_order)
+        logger.info("Hidden ФОТОБУДКА ВИНОВНИЦЫ prize drum deactivated")
+
     # Update loop
     def update(self, delta_ms: float) -> None:
         """Update manager state."""
         self._time_in_state += delta_ms
+
+        if self._prize_drum_hold.update(delta_ms):
+            self.event_bus.emit(Event(
+                EventType.PRIZE_DRUM_TOGGLE,
+                data={"key": "9", "held_ms": 2000.0},
+                source="mode_manager",
+            ))
 
         # Update cross-display effects coordinator
         self._display_coordinator.update(delta_ms)
@@ -1453,6 +1588,13 @@ class ModeManager:
             # Print phase: 0-8s printing, 8-14s "take receipt" prompt, then idle
             if self._time_in_state > 14000:
                 self._return_to_idle()
+
+        if self._pending_prize_drum_exit and self._prize_drum_active:
+            if (
+                self._current_mode is not None
+                and getattr(self._current_mode, "is_safe_to_exit", False)
+            ):
+                self._exit_prize_drum()
 
     # Rendering
     def render_main(self, buffer) -> None:
