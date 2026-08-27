@@ -250,8 +250,10 @@ class HardwareRunner:
     def _init_audio(self) -> bool:
         """Initialize full audio system with all chiptune sounds and music.
 
-        Sets up Pi 3.5mm jack (hw:2,0) and loads the complete AudioEngine
-        with procedural synthwave sounds and music loops.
+        Uses the ALSA default pinned to bcm2835 Headphones by setup-audio.sh
+        and loads the complete AudioEngine with procedural sounds and music.
+        ALSA card numbers are deliberately not hard-coded because USB device
+        enumeration changes them across boots.
         """
         import os
         import subprocess
@@ -270,9 +272,11 @@ class HardwareRunner:
             # Load bcm2835 module for 3.5mm jack
             subprocess.run(['modprobe', 'snd-bcm2835'], capture_output=True)
 
-            # Use 3.5mm headphone jack (card 2)
-            os.environ['AUDIODEV'] = 'hw:2,0'
-            os.environ['SDL_AUDIODRIVER'] = 'alsa'
+            # setup-audio.sh pins ALSA's stable `default` route to the onboard
+            # Headphones card. Respect an explicit service override, otherwise
+            # use that route instead of a volatile hw:N,0 card number.
+            audio_device = os.environ.setdefault('AUDIODEV', 'default')
+            os.environ.setdefault('SDL_AUDIODRIVER', 'alsa')
 
             # Quit existing mixer (initialized by pygame.init()) and reinitialize
             # with correct audio device settings
@@ -291,7 +295,7 @@ class HardwareRunner:
             pygame.mixer.init()
             pygame.mixer.set_num_channels(16)
 
-            logger.info(f"Mixer reinitialized for hw:2,0 (3.5mm jack)")
+            logger.info("Mixer reinitialized for ALSA device %s", audio_device)
 
             # Get and initialize the full audio engine (skip its mixer init)
             self._audio_engine = get_audio_engine()
@@ -300,7 +304,10 @@ class HardwareRunner:
             # Load pre-generated WAV files (instant startup!)
             self._audio_engine._load_generated_sounds()
 
-            logger.info("Audio initialized: 3.5mm jack (hw:2,0) with pre-generated sounds")
+            logger.info(
+                "Audio initialized: ALSA %s with pre-generated sounds",
+                audio_device,
+            )
             self._audio_enabled = True
             return True
 

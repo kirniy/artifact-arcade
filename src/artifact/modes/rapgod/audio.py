@@ -33,14 +33,14 @@ class AudioPlayer:
         self,
         audio_bytes: bytes,
         duration_sec: float = 12.0,
-        device: str = "hw:2,0",
+        device: str = "default",
     ) -> bool:
         """Play audio preview for a limited duration.
 
         Args:
             audio_bytes: MP3 audio data
             duration_sec: How long to play (seconds)
-            device: ALSA device (hw:2,0 = 3.5mm jack on Pi)
+            device: ALSA device (``default`` is pinned to 3.5mm Headphones)
 
         Returns:
             True if playback started successfully

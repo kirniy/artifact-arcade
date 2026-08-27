@@ -120,7 +120,7 @@ fi
 echo ""
 echo "Audio configured:"
 echo "  - Driver: snd-bcm2835 (auto-loads at boot)"
-echo "  - Device: hw:2,0 (3.5mm headphones)"
+echo "  - Device: ALSA default -> bcm2835 Headphones"
 echo "  - Volume: +4dB (maximum nightclub volume!)"
 echo ""
 echo "Data stored in: /home/kirniy/modular-arcade/data/"
