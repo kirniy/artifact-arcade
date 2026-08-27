@@ -196,14 +196,63 @@ ensure_event_activation() {
     ensure_jara_activation
 }
 
+# The booth runs on a machine-local branch. Its intentional asset-footprint
+# commit may differ from GitHub, but deployed code must remain clean and
+# canonical. Refuse to trample an unexpected on-site edit or an untracked path
+# that a release is about to add; an operator can then reconcile it explicitly.
+runtime_tree_is_safe_to_merge() {
+    local remote_ref="$1"
+    local collision=0
+    local path
+
+    if ! git diff --quiet --ignore-submodules -- ||
+        ! git diff --cached --quiet --ignore-submodules --; then
+        log "Update deferred: tracked on-site changes are not in the runtime branch."
+        return 1
+    fi
+
+    while IFS= read -r -d '' path; do
+        if git cat-file -e "${remote_ref}:${path}" 2>/dev/null; then
+            log "Update deferred: upstream path collides with local untracked file: $path"
+            collision=1
+        fi
+    done < <(git ls-files --others --exclude-standard -z)
+
+    [ "$collision" = "0" ]
+}
+
+merge_remote_release() {
+    local remote_ref="$1"
+    local before_merge
+
+    if git merge-base --is-ancestor "$remote_ref" HEAD; then
+        return 1
+    fi
+
+    runtime_tree_is_safe_to_merge "$remote_ref"
+    before_merge="$(git rev-parse HEAD)"
+    log "Merging release $(git rev-parse --short "$remote_ref") into runtime branch..."
+    if ! git \
+        -c user.name="VNVNC PHOTOBOOTH Autopuller" \
+        -c user.email="photobooth-autopull@localhost" \
+        merge --no-edit --no-ff -X ours "$remote_ref"; then
+        log "Release merge failed; restoring the clean runtime checkpoint."
+        git merge --abort >/dev/null 2>&1 || true
+        # merge --abort restores the exact pre-merge index and worktree. Keep
+        # the explicit revision in the log for a deterministic recovery audit.
+        log "Runtime checkpoint remains at $(git rev-parse --short "$before_merge")."
+        return 1
+    fi
+    return 0
+}
+
 # Check for updates
 log "Checking for updates..."
 git fetch origin main
 
-LOCAL=$(git rev-parse @)
 REMOTE=$(git rev-parse origin/main)
 
-if [ "$LOCAL" = "$REMOTE" ]; then
+if git merge-base --is-ancestor "$REMOTE" HEAD; then
     log "Already up to date."
     activation_changed=0
     if ensure_event_activation; then
@@ -218,8 +267,8 @@ if [ "$LOCAL" = "$REMOTE" ]; then
     exit 0
 fi
 
-log "Updates found, pulling..."
-git pull --ff-only origin main
+log "Updates found."
+merge_remote_release origin/main
 
 ensure_event_activation || true
 
