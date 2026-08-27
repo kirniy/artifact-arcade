@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import os
+import socket
 import subprocess
 import time
 from dataclasses import dataclass
@@ -146,13 +147,22 @@ class HardwareRunner:
         logger.info("HardwareRunner created")
 
     @staticmethod
-    def _systemd_notify(message: str) -> None:
-        """Best-effort systemd notification for READY/WATCHDOG state."""
+    def _systemd_notify(message: str) -> bool:
+        """Send a UTF-8 READY/WATCHDOG payload to systemd when supervised."""
+        address = os.getenv("NOTIFY_SOCKET")
+        if not address:
+            return False
+        if address.startswith("@"):
+            address = "\0" + address[1:]
+
         try:
-            import sdnotify
-            sdnotify.SystemdNotifier().notify(message)
-        except Exception:
-            pass
+            with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as notifier:
+                notifier.connect(address)
+                notifier.sendall(message.encode("utf-8"))
+            return True
+        except (OSError, UnicodeError) as exc:
+            logger.warning("systemd notification failed: %s", exc)
+            return False
 
     def _init_displays(self) -> bool:
         """Initialize all display hardware."""
