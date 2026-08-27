@@ -169,6 +169,7 @@ PREFLIGHT_SERVICE_ENV="$PREFLIGHT_SERVICE_ENV" \
 PREFLIGHT_DOTENV="$PREFLIGHT_DOTENV" \
 "$PREFLIGHT_PYTHON" - <<'PY'
 import os
+import ipaddress
 import shlex
 from pathlib import Path
 from urllib.parse import urlparse
@@ -201,8 +202,27 @@ if len(values.get("ARTIFACT_KIOSK_DEVICE_SECRET", "").strip()) < 24:
     errors.append("device secret is absent or too short")
 base_url = values.get("VNVNC_KIOSK_API_BASE_URL", "")
 parsed = urlparse(base_url)
-if parsed.scheme != "https" or not parsed.hostname:
-    errors.append("VNVNC kiosk API is not an explicit HTTPS URL")
+
+
+def is_tailscale_ipv4(hostname):
+    try:
+        return ipaddress.ip_address(hostname or "") in ipaddress.ip_network("100.64.0.0/10")
+    except ValueError:
+        return False
+
+
+safe_api_url = bool(parsed.hostname) and (
+    parsed.scheme == "https"
+    or (
+        parsed.scheme == "http"
+        and (
+            parsed.hostname in {"127.0.0.1", "localhost"}
+            or is_tailscale_ipv4(parsed.hostname)
+        )
+    )
+)
+if not safe_api_url:
+    errors.append("VNVNC kiosk API is not HTTPS or a literal Tailscale IPv4 URL")
 enabled = values.get("ARTIFACT_PRIZE_DRUM_ENABLED", "").strip().lower() in truthy
 post = os.environ.get("PREFLIGHT_POST_ACTIVATION", "false") == "true"
 if enabled != post:

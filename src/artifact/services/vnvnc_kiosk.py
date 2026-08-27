@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import secrets
@@ -23,6 +24,30 @@ from urllib.parse import urlparse
 
 
 REGULAR_WHEEL_QR_PAYLOAD = "https://t.me/vnvncbattlebot?start=wheel"
+TAILSCALE_IPV4_NETWORK = ipaddress.ip_network("100.64.0.0/10")
+
+
+def is_safe_kiosk_api_url(base_url: str) -> bool:
+    """Allow HTTPS, loopback HTTP, or HTTP to a literal Tailscale IPv4 address.
+
+    Tailscale encrypts the CGNAT hop and the kiosk signs every request with a
+    device HMAC.  Requiring a literal 100.64.0.0/10 address prevents a public
+    hostname or ordinary LAN endpoint from silently downgrading to HTTP.
+    """
+
+    parsed = urlparse(base_url)
+    if not parsed.hostname:
+        return False
+    if parsed.scheme == "https":
+        return True
+    if parsed.scheme != "http":
+        return False
+    if parsed.hostname in {"127.0.0.1", "localhost"}:
+        return True
+    try:
+        return ipaddress.ip_address(parsed.hostname) in TAILSCALE_IPV4_NETWORK
+    except ValueError:
+        return False
 
 
 class KioskClientError(RuntimeError):
@@ -184,9 +209,10 @@ class VNVNCKioskClient:
         device_secret: str,
         timeout_seconds: float = 8.0,
     ) -> None:
-        parsed = urlparse(base_url)
-        if parsed.scheme != "https" and parsed.hostname not in {"127.0.0.1", "localhost"}:
-            raise KioskConfigurationError("Kiosk API must use HTTPS")
+        if not is_safe_kiosk_api_url(base_url):
+            raise KioskConfigurationError(
+                "Kiosk API must use HTTPS or a literal Tailscale IPv4 address"
+            )
         if not device_id.strip() or not device_secret.strip():
             raise KioskConfigurationError("Kiosk device credential is missing")
         self.base_url = base_url.rstrip("/")

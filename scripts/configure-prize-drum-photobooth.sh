@@ -32,10 +32,37 @@ if [ "${#DEVICE_SECRET}" -lt 24 ]; then
     echo "ARTIFACT_KIOSK_DEVICE_SECRET is absent or too short" >&2
     exit 2
 fi
-case "${API_BASE_URL}" in
-    https://*) ;;
-    *) echo "VNVNC_KIOSK_API_BASE_URL must use HTTPS" >&2; exit 2 ;;
-esac
+API_BASE_URL="${API_BASE_URL}" python3 - <<'PY'
+import ipaddress
+import os
+from urllib.parse import urlparse
+
+value = os.environ["API_BASE_URL"]
+parsed = urlparse(value)
+
+
+def is_tailscale_ipv4(hostname: str | None) -> bool:
+    try:
+        return ipaddress.ip_address(hostname or "") in ipaddress.ip_network("100.64.0.0/10")
+    except ValueError:
+        return False
+
+
+safe = bool(parsed.hostname) and (
+    parsed.scheme == "https"
+    or (
+        parsed.scheme == "http"
+        and (
+            parsed.hostname in {"127.0.0.1", "localhost"}
+            or is_tailscale_ipv4(parsed.hostname)
+        )
+    )
+)
+if not safe:
+    raise SystemExit(
+        "VNVNC_KIOSK_API_BASE_URL must use HTTPS or a literal Tailscale IPv4 address"
+    )
+PY
 
 mkdir -p "$(dirname "${ENV_FILE}")"
 touch "${ENV_FILE}"

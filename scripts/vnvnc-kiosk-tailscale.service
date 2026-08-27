@@ -1,0 +1,11 @@
+[Unit]
+Description=VNVNC kiosk Tailscale-only API proxy
+After=vnvncbattlebot.service
+Requires=vnvncbattlebot.service
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd 127.0.0.1:8080
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

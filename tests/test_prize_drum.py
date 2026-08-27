@@ -51,6 +51,7 @@ from artifact.services.vnvnc_kiosk import (
     KioskAward,
     KioskAuth,
     KioskClientError,
+    KioskConfigurationError,
     KioskCoupon,
     KioskPrize,
     KioskSession,
@@ -1442,6 +1443,32 @@ def test_production_signature_matches_backend_canonical_contract(monkeypatch) ->
     ).encode()
     expected = hmac.new(b"top-secret", canonical, hashlib.sha256).hexdigest()
     assert headers["X-Artifact-Signature"] == expected
+
+
+def test_production_client_accepts_tailscale_only_http_transport() -> None:
+    client = VNVNCKioskClient(
+        base_url="http://100.114.78.88:8085",
+        device_id="artifact-test",
+        device_secret="top-secret",
+    )
+    assert client.base_url == "http://100.114.78.88:8085"
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    (
+        "http://api.vnvnc.ru",
+        "http://82.38.148.239:8085",
+        "http://192.168.2.1:8085",
+    ),
+)
+def test_production_client_rejects_non_tailscale_http_transport(base_url: str) -> None:
+    with pytest.raises(KioskConfigurationError):
+        VNVNCKioskClient(
+            base_url=base_url,
+            device_id="artifact-test",
+            device_secret="top-secret",
+        )
 
 
 class _EventProbeMode(BaseMode):
