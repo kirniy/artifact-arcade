@@ -10,6 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFLIGHT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PREFLIGHT_DOTENV="$PREFLIGHT_ROOT/.env"
 PREFLIGHT_HARDWARE=false
 PREFLIGHT_POST_ACTIVATION=false
 PREFLIGHT_FOCUSED=false
@@ -165,13 +166,23 @@ preflight_pass "IMX708 camera is available"
 PREFLIGHT_SERVICE_ENV="$(systemctl show artifact --property=Environment --value)"
 PREFLIGHT_POST_ACTIVATION="$PREFLIGHT_POST_ACTIVATION" \
 PREFLIGHT_SERVICE_ENV="$PREFLIGHT_SERVICE_ENV" \
+PREFLIGHT_DOTENV="$PREFLIGHT_DOTENV" \
 "$PREFLIGHT_PYTHON" - <<'PY'
 import os
 import shlex
+from pathlib import Path
 from urllib.parse import urlparse
 
 raw = os.environ.get("PREFLIGHT_SERVICE_ENV", "")
 values = {}
+dotenv_path = Path(os.environ["PREFLIGHT_DOTENV"])
+if dotenv_path.is_file():
+    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
 for token in shlex.split(raw):
     if "=" in token:
         key, value = token.split("=", 1)
@@ -202,13 +213,25 @@ if errors:
 PY
 PREFLIGHT_API_URL="$(PREFLIGHT_POST_ACTIVATION="$PREFLIGHT_POST_ACTIVATION" \
   PREFLIGHT_SERVICE_ENV="$PREFLIGHT_SERVICE_ENV" \
+  PREFLIGHT_DOTENV="$PREFLIGHT_DOTENV" \
   "$PREFLIGHT_PYTHON" - <<'PY'
 import os
 import shlex
+from pathlib import Path
+values = {}
+dotenv_path = Path(os.environ["PREFLIGHT_DOTENV"])
+if dotenv_path.is_file():
+    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
 for token in shlex.split(os.environ["PREFLIGHT_SERVICE_ENV"]):
-    if token.startswith("VNVNC_KIOSK_API_BASE_URL="):
-        print(token.split("=", 1)[1].rstrip("/"))
-        break
+    if "=" in token:
+        key, value = token.split("=", 1)
+        values[key] = value
+print(values.get("VNVNC_KIOSK_API_BASE_URL", "").rstrip("/"))
 PY
 )"
 [[ -n "$PREFLIGHT_API_URL" ]] || preflight_fail "kiosk API URL was not resolved"

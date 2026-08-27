@@ -59,6 +59,16 @@ def test_future_schedule_only_enforces_vse_svoi_thursday_and_sunday(tmp_path: Pa
     assert scheduled_theme("202608241200", tmp_path) == "unchanged"
 
 
+def test_vnvnc_bday_covers_both_club_nights_and_restores_sunday(tmp_path: Path) -> None:
+    assert scheduled_theme("202608282259", tmp_path) == "unchanged"
+    assert scheduled_theme("202608282300", tmp_path) == "vnvnc-bday"
+    assert scheduled_theme("202608290659", tmp_path) == "vnvnc-bday"
+    assert scheduled_theme("202608291200", tmp_path) == "vnvnc-bday"
+    assert scheduled_theme("202608292300", tmp_path) == "vnvnc-bday"
+    assert scheduled_theme("202608300659", tmp_path) == "vnvnc-bday"
+    assert scheduled_theme("202608300700", tmp_path) == "vse-svoi"
+
+
 def test_2k17_footer_uses_live_time_and_club_night_date() -> None:
     theme = THEMES["2k17"]
     assert get_moscow_party_stamp(
@@ -78,6 +88,15 @@ def test_2k17_activation_keeps_current_ai_stack() -> None:
     script = (ROOT / "scripts" / "activate-2k17-photobooth.sh").read_text()
     assert "set_env PHOTOBOOTH_THEME 2k17" in script
     assert "set_env PHOTOBOOTH_MENU_MODES 2k17" in script
+    assert "set_env PHOTOBOOTH_AI_ENABLED true" in script
+    assert "set_env ARTIFACT_IMAGE_PROVIDER vertex" in script
+    assert "set_env GEMINI_IMAGE_MODEL gemini-3.1-flash-lite-image" in script
+
+
+def test_vnvnc_bday_activation_keeps_current_ai_stack() -> None:
+    script = (ROOT / "scripts" / "activate-vnvnc-bday-photobooth.sh").read_text()
+    assert "set_env PHOTOBOOTH_THEME vnvnc-bday" in script
+    assert "set_env PHOTOBOOTH_MENU_MODES classic" in script
     assert "set_env PHOTOBOOTH_AI_ENABLED true" in script
     assert "set_env ARTIFACT_IMAGE_PROVIDER vertex" in script
     assert "set_env GEMINI_IMAGE_MODEL gemini-3.1-flash-lite-image" in script
