@@ -66,7 +66,8 @@ GPIO 21 (PWM) -----> DIN (Data In)
 5V (external) -----> VCC
 GND          -----> GND
 
-Note: Using GPIO 21 (not 18) to avoid conflict with 3.5mm audio.
+Note: Using GPIO 21 (not 18) avoids the PWM path used by 3.5mm audio, so
+`dtparam=audio=on` is supported on the current cabinet wiring.
 Power WS2812B from external 5V supply, not Pi.
 Connect grounds together.
 ```
@@ -102,6 +103,11 @@ Left          GPIO 23 With pull-up
 Right         GPIO 24 With pull-up
 Ground        GND     Common ground
 ```
+
+### RP80 Prize Receipt Printer
+
+The prize drum requires the USB ESC/POS RP80 identified by USB VID:PID
+`0fe6:811e`. It must be detected exactly before the mode can be enabled.
 
 ### EM5820 Thermal Printer
 ```

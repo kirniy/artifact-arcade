@@ -22,7 +22,7 @@
    ```
 4. Add to `/boot/config.txt`:
    ```
-   dtparam=audio=off
+   dtparam=audio=on
    dtparam=i2c_arm=on
    dtparam=spi=on
    enable_uart=1
@@ -42,7 +42,7 @@
 
 ### Step 3: Connect WS2812B Ticker
 
-1. Connect data wire to GPIO 18
+1. Connect data wire to GPIO 21
 2. Connect 5V power from external supply (not Pi)
 3. Connect ground (shared with Pi ground)
 4. Test LEDs light up

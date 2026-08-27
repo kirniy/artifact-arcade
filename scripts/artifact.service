@@ -13,9 +13,10 @@ Environment=XDG_RUNTIME_DIR=/run/user/0
 Environment=SDL_VIDEO_FULLSCREEN_DISPLAY=0
 # Printer: USB connection
 Environment=ARTIFACT_PRINTER_PORT=/dev/usb/lp0
-# Audio: Use ALSA driver with card 2 (3.5mm headphones)
+# Audio: ALSA default is pinned by setup-audio.sh to bcm2835 Headphones.
+# Never use a numeric card here: USB enumeration changes card numbers.
 Environment=SDL_AUDIODRIVER=alsa
-Environment=AUDIODEV=hw:2,0
+Environment=AUDIODEV=default
 # Let pygame auto-detect kmsdrm - do NOT set SDL_VIDEODRIVER explicitly!
 # Ensure SDL has a valid runtime dir under systemd.
 ExecStartPre=/bin/mkdir -p /run/user/0

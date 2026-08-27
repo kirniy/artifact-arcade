@@ -47,7 +47,7 @@ ssh -o BatchMode=yes "${HOST}" "
   echo '---'
   nmcli con show VNVNC || true
   echo '---'
-  systemctl is-enabled artifact artifact-dashboard artifact-update.timer tailscaled 2>/dev/null || true
+  systemctl is-enabled artifact artifact-dashboard arcade-autopull.timer tailscaled 2>/dev/null || true
   echo '---'
   journalctl -u artifact -b -n 300 --no-pager || true
 " > "${REMOTE_DIR}/diagnostics.txt"
