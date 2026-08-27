@@ -60,7 +60,9 @@ def test_future_schedule_only_enforces_vse_svoi_thursday_and_sunday(tmp_path: Pa
 
 
 def test_vnvnc_bday_covers_both_club_nights_and_restores_sunday(tmp_path: Path) -> None:
-    assert scheduled_theme("202608282259", tmp_path) == "unchanged"
+    assert scheduled_theme("202608272259", tmp_path) == "vse-svoi"
+    assert scheduled_theme("202608272300", tmp_path) == "vnvnc-bday"
+    assert scheduled_theme("202608282259", tmp_path) == "vnvnc-bday"
     assert scheduled_theme("202608282300", tmp_path) == "vnvnc-bday"
     assert scheduled_theme("202608290659", tmp_path) == "vnvnc-bday"
     assert scheduled_theme("202608291200", tmp_path) == "vnvnc-bday"
@@ -109,6 +111,7 @@ def test_vnvnc_bday_has_independent_exact_boundary_timer() -> None:
     assert "sync-weekly-photobooth-theme.sh" in service
     assert "restart-artifact-if-idle.sh" in service
     assert "ARTIFACT_MARK_RESTART_PENDING=1" in service
+    assert "OnCalendar=2026-08-27 23:00:00 Europe/Moscow" in timer
     assert "OnCalendar=2026-08-28 23:00:00 Europe/Moscow" in timer
     assert "OnCalendar=2026-08-30 07:00:00 Europe/Moscow" in timer
     assert "Persistent=true" in timer

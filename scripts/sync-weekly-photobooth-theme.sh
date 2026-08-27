@@ -1,8 +1,8 @@
 #!/bin/bash
 # Keep the recurring Moscow club-week theme schedule in sync.
 #
-# One-off VNVNC B'DAY window: Friday 2026-08-28 23:00 through Sunday
-# 2026-08-30 06:59, covering both Friday and Saturday club nights.
+# One-off VNVNC B'DAY window: Thursday 2026-08-27 23:00 through Sunday
+# 2026-08-30 06:59, covering today's ВСЕ СВОИ plus Friday and Saturday.
 # Historical 2K17 window: Friday 2026-08-14 23:00 through Sunday
 # 2026-08-16 06:59.
 # Recurring ВСЕ СВОИ enforcement: every Thursday and Sunday outside event windows.
@@ -68,7 +68,7 @@ fi
 target_theme=""
 target_menu=""
 activation_script=""
-if [ "${stamp}" -ge 202608282300 ] && [ "${stamp}" -lt 202608300700 ]; then
+if [ "${stamp}" -ge 202608272300 ] && [ "${stamp}" -lt 202608300700 ]; then
     target_theme="vnvnc-bday"
     target_menu="classic"
     activation_script="activate-vnvnc-bday-photobooth.sh"
