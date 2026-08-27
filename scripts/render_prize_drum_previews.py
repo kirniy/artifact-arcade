@@ -504,6 +504,36 @@ def render_receipt_previews(output_dir: Path) -> None:
         },
     )
     _render_receipt(
+        output_dir / "wheel-prize-roll-cocktail-friday-preview.png",
+        {
+            "issue_id": "KIOSK-20260828-COCKFRI",
+            "prize_id": "COCKTL",
+            "prize_title": "БЕСПЛАТНЫЙ КОКТЕЙЛЬ",
+            "terms": "Действует до конца текущей клубной ночи.",
+            "coupon_code": "VNVNC-KSK-COCKFRI",
+            "redeem_qr_payload": "VNVNC-KSK-COCKFRI",
+            "club_night": "2026-08-28",
+            "issued_at": "2026-08-29T01:15:00+03:00",
+            "expires_at": "2026-08-29T07:00:00+03:00",
+            "regular_wheel_qr_payload": "https://t.me/vnvncbattlebot?start=wheel",
+        },
+    )
+    _render_receipt(
+        output_dir / "wheel-prize-roll-cocktail-saturday-preview.png",
+        {
+            "issue_id": "KIOSK-20260829-COCKSAT",
+            "prize_id": "COCKTL",
+            "prize_title": "БЕСПЛАТНЫЙ КОКТЕЙЛЬ",
+            "terms": "Действует до конца текущей клубной ночи.",
+            "coupon_code": "VNVNC-KSK-COCKSAT",
+            "redeem_qr_payload": "VNVNC-KSK-COCKSAT",
+            "club_night": "2026-08-29",
+            "issued_at": "2026-08-30T01:15:00+03:00",
+            "expires_at": "2026-08-30T07:00:00+03:00",
+            "regular_wheel_qr_payload": "https://t.me/vnvncbattlebot?start=wheel",
+        },
+    )
+    _render_receipt(
         output_dir / "wheel-prize-roll-merch-preview.png",
         {
             "issue_id": "KIOSK-20260829-0002",
@@ -514,6 +544,36 @@ def render_receipt_previews(output_dir: Path) -> None:
             "redeem_qr_payload": "VNVNC-KSK-MERCH1",
             "club_night": "2026-08-29",
             "issued_at": "2026-08-30T01:20:00+03:00",
+            "expires_at": "2026-08-30T07:00:00+03:00",
+            "regular_wheel_qr_payload": "https://t.me/vnvncbattlebot?start=wheel",
+        },
+    )
+    _render_receipt(
+        output_dir / "wheel-prize-roll-shot-set-friday-preview.png",
+        {
+            "issue_id": "KIOSK-20260828-SETFRI",
+            "prize_id": "SHOTFR",
+            "prize_title": "СЕТ ШОТОВ",
+            "terms": "Один сет фирменных шотов VNVNC.",
+            "coupon_code": "VNVNC-KSK-SETFRI",
+            "redeem_qr_payload": "VNVNC-KSK-SETFRI",
+            "club_night": "2026-08-28",
+            "issued_at": "2026-08-29T01:45:00+03:00",
+            "expires_at": "2026-08-29T07:00:00+03:00",
+            "regular_wheel_qr_payload": "https://t.me/vnvncbattlebot?start=wheel",
+        },
+    )
+    _render_receipt(
+        output_dir / "wheel-prize-roll-shot-set-saturday-preview.png",
+        {
+            "issue_id": "KIOSK-20260829-SETSAT",
+            "prize_id": "SHOTFR",
+            "prize_title": "СЕТ ШОТОВ",
+            "terms": "Один сет фирменных шотов VNVNC.",
+            "coupon_code": "VNVNC-KSK-SETSAT",
+            "redeem_qr_payload": "VNVNC-KSK-SETSAT",
+            "club_night": "2026-08-29",
+            "issued_at": "2026-08-30T01:45:00+03:00",
             "expires_at": "2026-08-30T07:00:00+03:00",
             "regular_wheel_qr_payload": "https://t.me/vnvncbattlebot?start=wheel",
         },
@@ -557,8 +617,8 @@ def render_receipt_previews(output_dir: Path) -> None:
             "terms": "Один человек, один проход.",
             "coupon_code": "VNVNC-KSK-TICKET01",
             "redeem_qr_payload": "VNVNC-KSK-TICKET01",
-            "club_night": "2026-08-29",
-            "issued_at": "2026-08-30T03:10:00+03:00",
+            "club_night": "2026-08-28",
+            "issued_at": "2026-08-29T02:10:00+03:00",
             "expires_at": "2026-09-06T07:00:00+03:00",
             "validity_slots": [
                 {"club_night": "2026-09-04", "label": "04.09.2026"},

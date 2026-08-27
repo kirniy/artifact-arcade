@@ -12,19 +12,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFLIGHT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PREFLIGHT_DOTENV="$PREFLIGHT_ROOT/.env"
 PREFLIGHT_HARDWARE=false
+PREFLIGHT_HARDWARE_ONLY=false
 PREFLIGHT_POST_ACTIVATION=false
 PREFLIGHT_FOCUSED=false
 
 for preflight_arg in "$@"; do
   case "$preflight_arg" in
     --hardware) PREFLIGHT_HARDWARE=true ;;
+    --hardware-only)
+      PREFLIGHT_HARDWARE=true
+      PREFLIGHT_HARDWARE_ONLY=true
+      ;;
     --post-activation)
       PREFLIGHT_HARDWARE=true
       PREFLIGHT_POST_ACTIVATION=true
       ;;
     --focused) PREFLIGHT_FOCUSED=true ;;
     -h|--help)
-      echo "usage: $0 [--focused] [--hardware|--post-activation]"
+      echo "usage: $0 [--focused] [--hardware|--hardware-only|--post-activation]"
       exit 0
       ;;
     *)
@@ -54,6 +59,7 @@ fi
 
 cd "$PREFLIGHT_ROOT"
 
+if [[ "$PREFLIGHT_HARDWARE_ONLY" != true ]]; then
 "$PREFLIGHT_PYTHON" -m py_compile \
   src/artifact/modes/prize_drum.py \
   src/artifact/services/vnvnc_kiosk.py \
@@ -66,6 +72,7 @@ preflight_pass "critical Python modules compile"
 if [[ "$PREFLIGHT_FOCUSED" == true ]]; then
   PREFLIGHT_TEST_TARGETS=(
     tests/test_prize_drum.py
+    tests/test_prize_drum_activation.py
     tests/test_prize_drum_canary_backend.py
     tests/test_wheel_prize_roll.py
     tests/test_printer_device_detection.py
@@ -87,7 +94,8 @@ PYTHONPATH=src "$PREFLIGHT_PYTHON" scripts/render_prize_drum_previews.py \
 
 for preflight_video in \
   "$PREFLIGHT_TMP/prize-drum-motion-preview.mp4" \
-  "$PREFLIGHT_TMP/prize-drum-walkthrough.mp4"; do
+  "$PREFLIGHT_TMP/prize-drum-walkthrough.mp4" \
+  "$PREFLIGHT_TMP/prize-drum-tix50-walkthrough.mp4"; do
   [[ -s "$preflight_video" ]] || preflight_fail "preview video was not produced"
   preflight_codec="$(ffprobe -v error -select_streams v:0 \
     -show_entries stream=codec_name,pix_fmt -of csv=p=0 "$preflight_video")"
@@ -102,9 +110,10 @@ for preflight_video in \
     preflight_fail "black interval detected in $(basename "$preflight_video")"
   fi
 done
-preflight_pass "H.264 previews are silent, yuv420p, and contain no black interval"
+preflight_pass "all H.264 previews are silent, yuv420p, and contain no black interval"
 
 PREFLIGHT_WALKTHROUGH="$PREFLIGHT_TMP/prize-drum-walkthrough.mp4" \
+PREFLIGHT_TIX50_WALKTHROUGH="$PREFLIGHT_TMP/prize-drum-tix50-walkthrough.mp4" \
 PYTHONPATH=src "$PREFLIGHT_PYTHON" - <<'PY'
 import os
 import sys
@@ -118,26 +127,45 @@ expected = {
     preview.AUTH_URL,
     preview._award().coupon.redeem_qr_payload,
 }
-found: set[str] = set()
-capture = cv2.VideoCapture(os.environ["PREFLIGHT_WALKTHROUGH"])
-frame_index = 0
-detector = cv2.QRCodeDetector()
-while True:
-    ok, frame = capture.read()
-    if not ok:
-        break
-    if frame_index % 5 == 0:
-        main = frame[92:860, 96:864]
-        value, points, _straight = detector.detectAndDecode(main)
-        if points is not None and value:
-            found.add(value)
-    frame_index += 1
-capture.release()
+
+
+def decoded_main_qrs(path: str) -> set[str]:
+    found: set[str] = set()
+    capture = cv2.VideoCapture(path)
+    frame_index = 0
+    detector = cv2.QRCodeDetector()
+    while True:
+        ok, frame = capture.read()
+        if not ok:
+            break
+        if frame_index % 5 == 0:
+            # The documentation render places an 8x nearest-neighbour copy of
+            # the physical 128x128 LED framebuffer at this fixed rectangle.
+            main = frame[92:860, 96:864]
+            value, points, _straight = detector.detectAndDecode(main)
+            if points is not None and value:
+                found.add(value)
+        frame_index += 1
+    capture.release()
+    return found
+
+
+found = decoded_main_qrs(os.environ["PREFLIGHT_WALKTHROUGH"])
 missing = expected - found
 if missing:
     raise SystemExit(f"compressed walkthrough QR decode failed for {len(missing)} payload(s)")
+
+# TIX50 is deliberately redeemed as a visible TicketsCloud text code.  A
+# stale staff-redemption QR on any compressed result frame would violate that
+# production contract even if the live numpy-frame unit test still passed.
+tix50_qrs = decoded_main_qrs(os.environ["PREFLIGHT_TIX50_WALKTHROUGH"])
+if tix50_qrs:
+    raise SystemExit("TIX50 compressed walkthrough unexpectedly contains a QR payload")
 PY
-preflight_pass "both compressed-video QR payloads decode exactly"
+preflight_pass "compressed auth/redeem QRs decode exactly and TIX50 contains no QR"
+else
+  preflight_pass "cabinet-only gate selected; canonical software gate must be run separately"
+fi
 
 if [[ "$PREFLIGHT_HARDWARE" != true ]]; then
   preflight_pass "local gate complete; cabinet checks were not requested"
@@ -145,16 +173,19 @@ if [[ "$PREFLIGHT_HARDWARE" != true ]]; then
 fi
 
 [[ "$(uname -s)" == Linux ]] || preflight_fail "--hardware must run on ФОТОБУДКА ВИНОВНИЦЫ"
-for preflight_command in systemctl journalctl lsusb rpicam-hello curl; do
+for preflight_command in systemctl journalctl lsusb rpicam-hello curl aplay; do
   command -v "$preflight_command" >/dev/null || \
     preflight_fail "$preflight_command is unavailable on the cabinet"
 done
 
-for preflight_service in artifact artifact-dashboard tailscaled; do
+for preflight_service in \
+  artifact artifact-audio tailscaled arcade-autopull.timer; do
   systemctl is-active --quiet "$preflight_service" || \
     preflight_fail "$preflight_service is not active"
+  systemctl is-enabled --quiet "$preflight_service" || \
+    preflight_fail "$preflight_service is not enabled for reboot"
 done
-preflight_pass "cabinet services are active"
+preflight_pass "cabinet services and idle-gated updater are active and enabled"
 
 lsusb -d 0fe6:811e >/dev/null || preflight_fail "RP80 0fe6:811e is not connected"
 preflight_pass "exact RP80 USB identity is present"
@@ -162,6 +193,19 @@ preflight_pass "exact RP80 USB identity is present"
 preflight_camera_list="$(rpicam-hello --list-cameras 2>&1)"
 grep -qi 'imx708' <<<"$preflight_camera_list" || preflight_fail "IMX708 camera is unavailable"
 preflight_pass "IMX708 camera is available"
+
+# The physical mode's reel/start/near-hit/win feedback requires the stable
+# bcm2835 Headphones identity. ALSA card indices float when HDMI/USB devices
+# enumerate, so validate the named card plus the configured default route.
+# The application intentionally survives without audio, which means ordinary
+# service health alone cannot prove this contract.
+preflight_audio_devices="$(aplay -l 2>&1 || true)"
+grep -Eq '^card [0-9]+: Headphones \[bcm2835 Headphones\],' <<<"$preflight_audio_devices" || \
+  preflight_fail "bcm2835 Headphones playback device is unavailable"
+if ! aplay -q -D default -f S16_LE -r 44100 -c 2 -d 1 /dev/zero; then
+  preflight_fail "ALSA default playback route is unavailable"
+fi
+preflight_pass "stable Headphones identity and ALSA default playback route are available"
 
 PREFLIGHT_SERVICE_ENV="$(systemctl show artifact --property=Environment --value)"
 PREFLIGHT_POST_ACTIVATION="$PREFLIGHT_POST_ACTIVATION" \
@@ -262,7 +306,7 @@ preflight_http_code="$(curl --silent --show-error --output /dev/null \
 preflight_pass "production configuration is fail-closed and API is reachable"
 
 preflight_recent_logs="$(journalctl -u artifact --since '15 minutes ago' --no-pager)"
-if grep -Eiq 'Traceback|CRITICAL|segmentation fault|watchdog.*(timeout|failed)|mock RP80|black frame' \
+if grep -Eiq 'Traceback|CRITICAL|segmentation fault|watchdog.*(timeout|failed)|mock RP80|black frame|Audio init failed' \
   <<<"$preflight_recent_logs"; then
   preflight_fail "critical pattern found in recent artifact.service logs"
 fi

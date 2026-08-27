@@ -370,7 +370,11 @@ class WheelPrizeRollReceiptGenerator:
         y += 10
 
         self._draw_finish_bar(draw, y, left=left, right=right)
-        y += 16
+        # The finish bar occupies through y + 13 (the 3 px rule is centred on
+        # y + 12).  Keep a real white trailing safety area after it so the
+        # RP80 raster never ends on printed dots or risks clipping the rule at
+        # the label/feed boundary.
+        y += 20
 
         if y > MAX_RECEIPT_HEIGHT_PX:
             raise ValueError("wheel prize receipt content exceeds maximum roll height")

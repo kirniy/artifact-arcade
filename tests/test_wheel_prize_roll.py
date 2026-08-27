@@ -156,6 +156,8 @@ def test_merch_receipt_prints_opposite_cloakroom_location_and_keeps_qrs(
     ("prize_id", "club_night", "expected_venue"),
     [
         ("COCKTL", "2026-08-28", "В МАЛУЮ ВИНОВНИЦУ"),
+        ("COCKTL", "2026-08-29", "В АНГАР"),
+        ("SHOTFR", "2026-08-28", "В МАЛУЮ ВИНОВНИЦУ"),
         ("SHOTFR", "2026-08-29", "В АНГАР"),
         ("SHOT1FREE", "2026-09-04", "В МАЛУЮ ВИНОВНИЦУ"),
     ],
@@ -194,6 +196,176 @@ def test_drink_receipt_routes_by_club_night_and_keeps_exact_qrs(
     assert not any("ГАРДЕРОБ" in line for line in rendered_lines)
     assert _decode_qr(path, receipt.qr_regions["redeem"]) == GOLDEN["primary_payload"]
     assert _decode_qr(path, receipt.qr_regions["regular_wheel"]) == REGULAR_WHEEL_URL
+
+
+@pytest.mark.parametrize(
+    (
+        "prize_id",
+        "prize_title",
+        "coupon_code",
+        "club_night",
+        "issued_at",
+        "expires_at",
+        "validity_slots",
+        "expected_copy",
+        "has_primary_qr",
+    ),
+    [
+        (
+            "SHOT1FREE",
+            "БЕСПЛАТНЫЙ ШОТ",
+            "VNVNC-KSK-SHOTONE1",
+            "2026-08-28",
+            "2026-08-29T02:40:00+03:00",
+            "2026-08-29T07:00:00+03:00",
+            [],
+            ("СОХРАНИ ИМЕННО ЭТОТ ЧЕК", "В МАЛУЮ ВИНОВНИЦУ"),
+            True,
+        ),
+        (
+            "COCKTL",
+            "БЕСПЛАТНЫЙ КОКТЕЙЛЬ",
+            "VNVNC-KSK-COCKFRI",
+            "2026-08-28",
+            "2026-08-29T01:15:00+03:00",
+            "2026-08-29T07:00:00+03:00",
+            [],
+            ("СОХРАНИ ИМЕННО ЭТОТ ЧЕК", "В МАЛУЮ ВИНОВНИЦУ"),
+            True,
+        ),
+        (
+            "COCKTL",
+            "БЕСПЛАТНЫЙ КОКТЕЙЛЬ",
+            "VNVNC-KSK-COCKSAT",
+            "2026-08-29",
+            "2026-08-30T01:15:00+03:00",
+            "2026-08-30T07:00:00+03:00",
+            [],
+            ("СОХРАНИ ИМЕННО ЭТОТ ЧЕК", "В АНГАР"),
+            True,
+        ),
+        (
+            "SHOTFR",
+            "СЕТ ШОТОВ",
+            "VNVNC-KSK-SETFRI",
+            "2026-08-28",
+            "2026-08-29T01:45:00+03:00",
+            "2026-08-29T07:00:00+03:00",
+            [],
+            ("СОХРАНИ ИМЕННО ЭТОТ ЧЕК", "В МАЛУЮ ВИНОВНИЦУ"),
+            True,
+        ),
+        (
+            "SHOTFR",
+            "СЕТ ШОТОВ",
+            "VNVNC-KSK-SETSAT",
+            "2026-08-29",
+            "2026-08-30T01:45:00+03:00",
+            "2026-08-30T07:00:00+03:00",
+            [],
+            ("СОХРАНИ ИМЕННО ЭТОТ ЧЕК", "В АНГАР"),
+            True,
+        ),
+        (
+            "MERCHFREE",
+            "БЕСПЛАТНЫЙ МЕРЧ",
+            "VNVNC-KSK-MERCH1",
+            "2026-08-29",
+            "2026-08-30T01:20:00+03:00",
+            "2026-08-30T07:00:00+03:00",
+            [],
+            MERCH_REDEEM_LOCATION_LINES,
+            True,
+        ),
+        (
+            "TIX1FREE",
+            "БИЛЕТ НА ОДНОГО",
+            "VNVNC-KSK-TICKET01",
+            "2026-08-28",
+            "2026-08-29T02:10:00+03:00",
+            "2026-09-06T07:00:00+03:00",
+            [
+                {"club_night": "2026-09-04", "label": "04.09.2026"},
+                {"club_night": "2026-09-05", "label": "05.09.2026"},
+            ],
+            (
+                "1 ЧЕЛОВЕК · 1 ПРОХОД",
+                "ПТ 04.09.2026 · 23:00–07:00",
+                "СБ 05.09.2026 · 23:00–07:00",
+            ),
+            True,
+        ),
+        (
+            "TIX50",
+            "СКИДКА 50% НА ЛЮБОЙ БИЛЕТ",
+            "260826-1234567890-50",
+            "2026-08-29",
+            "2026-08-30T03:20:00+03:00",
+            "2026-09-30T23:59:00+03:00",
+            [],
+            (
+                "2 БЛИЖАЙШИЕ ВЕЧЕРИНКИ",
+                "КРОМЕ «ВСЕ СВОИ»",
+                "ВВЕДИ КОД В TICKETSCLOUD",
+            ),
+            False,
+        ),
+    ],
+)
+def test_tomorrow_rp80_canary_receipt_matrix(
+    prize_id,
+    prize_title,
+    coupon_code,
+    club_night,
+    issued_at,
+    expires_at,
+    validity_slots,
+    expected_copy,
+    has_primary_qr,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    generator = WheelPrizeRollReceiptGenerator()
+    rendered_lines = _capture_receipt_text(generator, monkeypatch)
+    receipt = generator.generate_receipt(
+        WHEEL_PRIZE_MODE_NAME,
+        _sample_job(
+            prize_id=prize_id,
+            prize_title=prize_title,
+            terms="Canary contract terms.",
+            coupon_code=coupon_code,
+            redeem_qr_payload=coupon_code,
+            club_night=club_night,
+            issued_at=issued_at,
+            expires_at=expires_at,
+            validity_slots=validity_slots,
+        ),
+    )
+    path = tmp_path / f"canary-{prize_id}-{club_night}.png"
+    path.write_bytes(receipt.preview_image)
+
+    assert PUBLIC_DEVICE_NAME in rendered_lines
+    assert all(text in rendered_lines for text in expected_copy)
+    expected_regions = {"regular_wheel", "redeem"} if has_primary_qr else {"regular_wheel"}
+    assert set(receipt.qr_regions) == expected_regions
+    if has_primary_qr:
+        assert _decode_qr(path, receipt.qr_regions["redeem"]) == coupon_code
+    assert _decode_qr(path, receipt.qr_regions["regular_wheel"]) == REGULAR_WHEEL_URL
+
+    with Image.open(path) as preview:
+        mono = preview.convert("L")
+        assert preview.width == PAPER_WIDTH_PX == 576
+        assert preview.height <= GOLDEN["height_max_px"]
+        assert mono.crop((0, 0, 20, preview.height)).getextrema() == (255, 255)
+        assert mono.crop((preview.width - 20, 0, preview.width, preview.height)).getextrema() == (
+            255,
+            255,
+        )
+        assert mono.crop((0, 0, preview.width, 20)).getextrema() == (255, 255)
+        assert mono.crop((0, preview.height - 3, preview.width, preview.height)).getextrema() == (
+            255,
+            255,
+        )
 
 
 @pytest.mark.parametrize(

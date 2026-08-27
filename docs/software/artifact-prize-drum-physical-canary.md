@@ -41,7 +41,11 @@ test Telegram accounts with 0 / 1 / 2+ boosts:
 Read-only cabinet checks:
 
 ```bash
-systemctl is-active artifact artifact-dashboard tailscaled
+systemctl is-active artifact artifact-audio tailscaled arcade-autopull.timer
+
+# The Pi production venv intentionally excludes pytest. Run the full software
+# gate on canonical source first, then the cabinet-only hardware gate here:
+scripts/preflight-prize-drum-deployment.sh --hardware-only
 lsusb | grep -i '0fe6:811e'
 rpicam-hello --list-cameras
 journalctl -u artifact --since '15 minutes ago' --no-pager | tail -200

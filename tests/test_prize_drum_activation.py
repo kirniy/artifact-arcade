@@ -1,5 +1,7 @@
+import json
 import os
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -14,20 +16,23 @@ def _run(
     *args: str,
     secret: str = "s" * 32,
     api_base_url: str = "https://api.vnvnc.ru/",
+    extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    env = {
+        **os.environ,
+        "ARTIFACT_REMOTE_DIR": str(ROOT),
+        "ARTIFACT_ENV_FILE": str(env_file),
+        "ARTIFACT_KIOSK_DEVICE_ID": "artifact",
+        "ARTIFACT_KIOSK_DEVICE_SECRET": secret,
+        "VNVNC_KIOSK_API_BASE_URL": api_base_url,
+    }
+    env.update(extra_env or {})
     return subprocess.run(
         ["bash", str(SCRIPT), *args],
         cwd=ROOT,
         capture_output=True,
         text=True,
-        env={
-            **os.environ,
-            "ARTIFACT_REMOTE_DIR": str(ROOT),
-            "ARTIFACT_ENV_FILE": str(env_file),
-            "ARTIFACT_KIOSK_DEVICE_ID": "artifact",
-            "ARTIFACT_KIOSK_DEVICE_SECRET": secret,
-            "VNVNC_KIOSK_API_BASE_URL": api_base_url,
-        },
+        env=env,
     )
 
 
@@ -59,6 +64,33 @@ def test_configure_prize_drum_enables_only_when_explicit(tmp_path: Path) -> None
     result = _run(env_file, "--enable")
     assert result.returncode == 0
     assert _values(env_file)["ARTIFACT_PRIZE_DRUM_ENABLED"] == "true"
+
+
+def test_one_command_enable_queues_idle_gated_restart_when_booth_is_busy(
+    tmp_path: Path,
+) -> None:
+    env_file = tmp_path / ".env"
+    status_file = tmp_path / "status.json"
+    pending_file = tmp_path / "restart-pending"
+    status_file.write_text(
+        json.dumps({"timestamp": time.time(), "mode": "photobooth"}),
+        encoding="utf-8",
+    )
+
+    result = _run(
+        env_file,
+        "--enable",
+        "--restart",
+        extra_env={
+            "ARCADE_STATUS_FILE": str(status_file),
+            "ARTIFACT_RESTART_PENDING_FILE": str(pending_file),
+        },
+    )
+
+    assert result.returncode == 0
+    assert _values(env_file)["ARTIFACT_PRIZE_DRUM_ENABLED"] == "true"
+    assert pending_file.is_file()
+    assert "busy (photobooth" in pending_file.read_text(encoding="utf-8")
 
 
 def test_configure_prize_drum_rejects_short_secret(tmp_path: Path) -> None:
