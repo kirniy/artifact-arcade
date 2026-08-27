@@ -71,6 +71,11 @@ class AILogger:
         today = datetime.now().strftime("%Y-%m-%d")
         day_dir = self.log_dir / today
         self._prepare_directory(day_dir)
+        # The process commonly stays alive across midnight.  Initialization
+        # creates these directories only for the startup date, so make the
+        # daily lookup self-sufficient for the next club night/day too.
+        for subdir in ["text", "images", "metadata"]:
+            self._prepare_directory(day_dir / subdir)
         return day_dir
 
     def _prepare_directory(self, path: Path) -> None:
