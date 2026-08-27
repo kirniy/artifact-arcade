@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import math
 import os
@@ -41,6 +42,17 @@ from artifact.services.vnvnc_kiosk import (
 )
 
 logger = logging.getLogger(__name__)
+PRIZE_DRUM_AUDIT_PREFIX = "PRIZE_DRUM_AUDIT "
+
+
+def _audit_prize_drum_event(event: str, **fields: Any) -> None:
+    """Emit one secret-safe machine-readable physical-canary evidence row."""
+    payload = {"event": str(event), **fields}
+    logger.info(
+        "%s%s",
+        PRIZE_DRUM_AUDIT_PREFIX,
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+    )
 
 
 RED = (204, 0, 24)
@@ -606,6 +618,17 @@ class PrizeDrumMode(BaseMode):
                 self._emit_reel_ticks(previous_index, current_index)
             if self._motion.complete:
                 self._reel_position = self._motion.target_position
+                landed_prize_id = self._reel_item_at(
+                    int(round(self._reel_position / SECTOR_STEP))
+                )[0]
+                _audit_prize_drum_event(
+                    "reel_landed",
+                    issue_id=self._award.id if self._award else "",
+                    prize_id=self._award.prize.id if self._award else "",
+                    landed_prize_id=landed_prize_id,
+                    test_mode=bool(self._award and self._award.test_mode),
+                    ticks=self._tick_count,
+                )
                 self.screen = PrizeDrumScreen.REVEAL
                 self._reveal_elapsed_ms = 0.0
 
@@ -626,6 +649,12 @@ class PrizeDrumMode(BaseMode):
                 return False
             self._pending_print_issue_id = None
             self._print_failed = event.type == EventType.PRINT_ERROR
+            _audit_prize_drum_event(
+                "print_error" if self._print_failed else "print_complete",
+                issue_id=issue_id,
+                prize_id=self._award.prize.id if self._award else "",
+                test_mode=bool(self._award and self._award.test_mode),
+            )
             return True
 
         flow = self._flow_for_event(event)
@@ -975,6 +1004,19 @@ class PrizeDrumMode(BaseMode):
         self._clear_pending_spin()
         self._session = result.session
         self._award = result.award
+        coupon_audit_id = (
+            result.award.coupon.code
+            if result.award.test_mode
+            else hashlib.sha256(result.award.coupon.code.encode("utf-8")).hexdigest()[:16]
+        )
+        _audit_prize_drum_event(
+            "award_committed",
+            issue_id=result.award.id,
+            prize_id=result.award.prize.id,
+            coupon_audit_id=coupon_audit_id,
+            idempotent=bool(result.idempotent),
+            test_mode=bool(result.award.test_mode),
+        )
         if result.award.prize.id == TICKET_DISCOUNT_PRIZE_ID:
             # TicketsCloud consumes this award as a text promo code. A QR on
             # the result screen would imply the wrong staff-redemption flow.

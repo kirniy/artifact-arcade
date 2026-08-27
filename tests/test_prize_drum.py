@@ -1,6 +1,8 @@
 import asyncio
 import hashlib
 import hmac
+import json
+import logging
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -24,6 +26,7 @@ from artifact.modes.prize_drum import (
     LCD_PRIZE_HEADLINES,
     OFF_WHITE,
     PRESENTATION_ONLY_PRIZE_IDS,
+    PRIZE_DRUM_AUDIT_PREFIX,
     PrizeDrumFlow,
     PrizeDrumMode,
     PrizeDrumScreen,
@@ -484,6 +487,46 @@ async def test_committed_award_drives_motion_print_and_clears_final_identity() -
 
     sounds = [event.data["sound"] for event in context.event_bus.get_history(EventType.SOUND_PLAY)]
     assert "reel_win" in sounds
+
+
+@pytest.mark.asyncio
+async def test_runtime_emits_secret_safe_correlated_physical_soak_rows(caplog) -> None:
+    caplog.set_level(logging.INFO, logger="artifact.modes.prize_drum")
+    context = _context()
+    mode = PrizeDrumMode(context, client=LocalKioskStub(auto_auth_after_polls=None))
+    mode.preferred_flow = PrizeDrumFlow.GUEST
+    mode.set_motion_debug(reduced=True)
+    mode.enter()
+    await _settle(mode)
+    mode.handle_input(Event(EventType.BUTTON_PRESS, source="center"))
+    await _settle(mode)
+    mode.update(260.0)
+    mode.update(220.0)
+
+    print_event = context.event_bus.get_history(EventType.PRINT_START)[0]
+    issue_id = str(print_event.data["issue_id"])
+    mode.handle_input(
+        Event(
+            EventType.PRINT_COMPLETE,
+            {"type": "prize_drum", "issue_id": issue_id},
+            source="printer",
+        )
+    )
+
+    rows = [
+        json.loads(record.getMessage().split(PRIZE_DRUM_AUDIT_PREFIX, 1)[1])
+        for record in caplog.records
+        if PRIZE_DRUM_AUDIT_PREFIX in record.getMessage()
+    ]
+    assert [row["event"] for row in rows] == [
+        "award_committed",
+        "reel_landed",
+        "print_complete",
+    ]
+    assert {row["issue_id"] for row in rows} == {issue_id}
+    assert rows[1]["landed_prize_id"] == rows[0]["prize_id"]
+    assert len(rows[0]["coupon_audit_id"]) == 16
+    assert print_event.data["coupon_code"] not in caplog.text
 
 
 @pytest.mark.asyncio

@@ -66,7 +66,9 @@ if [[ "$PREFLIGHT_HARDWARE_ONLY" != true ]]; then
   src/artifact/printing/wheel_prize_roll.py \
   src/artifact/hardware/printer/rp80.py \
   scripts/render_prize_drum_previews.py \
+  scripts/audit_prize_drum_soak_log.py \
   scripts/run_prize_drum_canary_backend.py
+bash -n scripts/manage-prize-drum-physical-canary.sh
 preflight_pass "critical Python modules compile"
 
 if [[ "$PREFLIGHT_FOCUSED" == true ]]; then
@@ -74,6 +76,8 @@ if [[ "$PREFLIGHT_FOCUSED" == true ]]; then
     tests/test_prize_drum.py
     tests/test_prize_drum_activation.py
     tests/test_prize_drum_canary_backend.py
+    tests/test_prize_drum_canary_services.py
+    tests/test_prize_drum_soak_audit.py
     tests/test_wheel_prize_roll.py
     tests/test_printer_device_detection.py
     tests/test_photobooth_menu_modes.py

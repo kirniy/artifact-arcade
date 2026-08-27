@@ -1,0 +1,36 @@
+[Unit]
+Description=ФОТОБУДКА ВИНОВНИЦЫ supervised physical prize-drum canary UI
+After=network.target artifact-audio.service artifact-prize-drum-canary-backend.service
+Requires=artifact-audio.service artifact-prize-drum-canary-backend.service
+BindsTo=artifact-prize-drum-canary-backend.service
+Conflicts=artifact.service
+
+[Service]
+Type=notify
+User=root
+WorkingDirectory=/home/kirniy/modular-arcade
+EnvironmentFile=/home/kirniy/modular-arcade/.env
+Environment=ARTIFACT_ENV=hardware
+Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+Environment=XDG_RUNTIME_DIR=/run/user/0
+Environment=SDL_VIDEO_FULLSCREEN_DISPLAY=0
+Environment=ARTIFACT_PRINTER_PORT=/dev/usb/lp0
+Environment=SDL_AUDIODRIVER=alsa
+Environment=AUDIODEV=default
+Environment=NO_PROXY=localhost,127.0.0.1
+Environment=ARTIFACT_PRIZE_DRUM_ENABLED=true
+Environment=ARTIFACT_KIOSK_STUB=false
+Environment=ARTIFACT_MOCK_PRINTER=false
+Environment=ARTIFACT_MOCK_HARDWARE=false
+Environment=VNVNC_KIOSK_API_BASE_URL=http://127.0.0.1:8765
+ExecStartPre=/bin/mkdir -p /run/user/0
+ExecStartPre=/bin/chmod 700 /run/user/0
+ExecStartPre=/bin/bash -c 'killall -9 labwc wf-panel-pi 2>/dev/null || true'
+ExecStartPre=/bin/sleep 2
+ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.main
+# Restore the fail-closed production service after any stop, crash or backend loss.
+ExecStopPost=/bin/systemctl --no-block start artifact.service
+WatchdogSec=30
+Restart=no
+
+# Deliberately no [Install] section: this supervised canary must never start at boot.

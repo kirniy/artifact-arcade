@@ -74,12 +74,24 @@ Configuration checks must report presence/boolean only:
 
 Use the real cabinet, displays, keypad, audio and RP80, but a separately signed canary backend. Every printed ticket must say `ТЕСТ · НЕ ДЕЙСТВИТЕЛЕН`; it must not create a production `Spin`, `Coupon`, admin alert or user chest item.
 
-The repository includes a signed loopback-only implementation:
+The repository includes signed loopback-only units and a fail-safe manager.
+Install them once (neither unit can be enabled at boot), then start only after
+the exact RP80 is connected:
 
 ```bash
 cd ~/modular-arcade
-sudo -E ARTIFACT_ENV=hardware PYTHONPATH=src \
-  .venv/bin/python scripts/run_prize_drum_canary_backend.py --host 127.0.0.1 --port 8765
+sudo scripts/manage-prize-drum-physical-canary.sh install
+sudo scripts/manage-prize-drum-physical-canary.sh start
+```
+
+`start` runs the hardware-only gate first, refuses any printer except RP80
+`0fe6:811e`, never edits `.env`, loads the existing device secret without
+printing it, and starts a loopback backend plus a mutually exclusive canary UI.
+The canary UI is bound to its backend; stopping or losing it restores the
+normal fail-closed `artifact.service`. End every attended pass with:
+
+```bash
+sudo scripts/manage-prize-drum-physical-canary.sh stop
 ```
 
 It refuses non-loopback binding, requires the configured device ID/HMAC secret without printing either value, rejects stale/replayed signatures, and cycles the exact eight-sector visual contract: the six active prize types plus the two visual-only deposit sectors. It issues only `TEST-VNVNC-*` codes with the terms `ТЕСТОВЫЙ ЧЕК — НЕ ДЕЙСТВИТЕЛЕН`. `TIX50` follows the production text-code contract and never exposes a staff-redemption QR. Point the supervised ФОТОБУДКА ВИНОВНИЦЫ process to `http://127.0.0.1:8765`; localhost HTTP is accepted only for this same-machine path. Keep `ARTIFACT_KIOSK_STUB=false` so the real signed HTTP client and real RP80 path are exercised.
@@ -170,8 +182,17 @@ Capture bounded logs without secrets:
 
 ```bash
 journalctl -u artifact --since 'CANARY_START_TIME' --no-pager > /tmp/artifact-prize-drum-canary.log
+python3 scripts/audit_prize_drum_soak_log.py \
+  /tmp/artifact-prize-drum-canary.log --expected 60
 systemctl is-active artifact
 ```
+
+The audit command must return `"status": "pass"`, 60 unique issues and coupon
+audit IDs, one correlated award → exact landed sector → `PRINT_COMPLETE` chain
+per issue, zero `PRINT_ERROR`, and at least one occurrence of every visual
+sector. Production coupon codes are never written to the journal; only a
+one-way short fingerprint is logged. Loopback canary codes are safe,
+non-redeemable `TEST-VNVNC-*` values and remain visible for paper comparison.
 
 After the supervised switch, run the same gate against the enabled service:
 

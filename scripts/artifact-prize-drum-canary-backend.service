@@ -1,0 +1,16 @@
+[Unit]
+Description=ФОТОБУДКА ВИНОВНИЦЫ non-redeemable prize-drum canary backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/kirniy/modular-arcade
+EnvironmentFile=/home/kirniy/modular-arcade/.env
+Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+Environment=NO_PROXY=localhost,127.0.0.1
+ExecStart=/home/kirniy/modular-arcade/.venv/bin/python /home/kirniy/modular-arcade/scripts/run_prize_drum_canary_backend.py --host 127.0.0.1 --port 8765
+Restart=on-failure
+RestartSec=2
+
+# Deliberately no [Install] section: this supervised canary must never start at boot.

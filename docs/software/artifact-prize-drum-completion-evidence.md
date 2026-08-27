@@ -26,6 +26,7 @@ canary and 60-print physical soak pass**.
 - Receipt uses VNVNC Classic logo and exact regular-wheel QR. Merch directs the guest to the desk opposite the cloakroom; Friday drinks direct them to the bar in «Малая Виновница», Saturday drinks to «Ангар»; `TIX1FREE` prints its exact Fri/Sat validity; `TIX50` prints a large TicketsCloud text code and deliberately has no staff QR.
 - RP80 detection accepts only VID:PID `0fe6:811e` and rejects IP-802 `353d:1249`/generic printer paths.
 - A loopback-only signed canary backend cycles the exact eight-sector visual contract and issues only `TEST-VNVNC-*` non-redeemable codes for the real 60-print RP80 soak; its HMAC/replay/idempotency/real-client transport and `TIX50` no-staff-QR tests pass.
+- The physical soak emits secret-safe JSON journal rows for award, exact landing and print completion. `scripts/audit_prize_drum_soak_log.py` fails closed on duplicates, mismatches, missing/error prints, production awards or missing visual sectors. Two manual-only systemd units and `scripts/manage-prize-drum-physical-canary.sh` start the canary without editing `.env`, refuse any printer except RP80 `0fe6:811e`, never enable at boot and restore normal `artifact.service` after any stop/backend loss.
 - The approved eight-row policy is stored in `vnvnc-bot/deploy/artifact-kiosk-policy.approved.json` and is applied in production: `SHOT1FREE 38`, `COCKTL 35`, `SHOTFR 15` (5/night), `TIX50 6` (1/night), `TIX1FREE 4` (4/night), `MERCHFREE 2` (1/night), with `DEP1K`/`DEP2K` inactive at weight zero and all total-stock fields unlimited.
 - Canary awards are visibly marked `TEST` on every display and their RP80 receipt begins with `ТЕСТ · НЕ ДЕЙСТВИТЕЛЕН`; the final rendered receipt still exact-decodes both QR payloads.
 - The full official Telegram OIDC/PKCE URL remains server-side. ФОТОБУДКА ВИНОВНИЦЫ receives only an opaque single-use short pairing URL rendered as a full-screen, exact-decodable LED QR. `/k/{pairing_id}` validates TTL/session/attempt and redirects to the official Code+S256 flow; production OIDC credentials, callback and trusted origin are configured outside git and a real redirect smoke passed.
@@ -41,7 +42,7 @@ canary and 60-print physical soak pass**.
 ```text
 modular-arcade:
 scripts/preflight-prize-drum-deployment.sh
-=> 214 passed (2 pre-existing Pillow deprecation warnings); critical modules
+=> 223 passed (2 pre-existing Pillow deprecation warnings); critical modules
    compile; all three H.264/yuv420p preview videos are silent and contain no
    black interval; compressed auth/redeem QRs decode exactly and TIX50 has none
 
