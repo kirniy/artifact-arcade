@@ -31,8 +31,10 @@ PRIZES = (
     ("DEP1K", "ДЕПОЗИТ 1 000 ₽"),
     ("DEP2K", "ДЕПОЗИТ 2 000 ₽"),
     ("MERCHFREE", "БЕСПЛАТНЫЙ МЕРЧ"),
-    ("SHOTFR", "БЕСПЛАТНЫЙ СЕТ ШОТОВ"),
+    ("SHOT1FREE", "БЕСПЛАТНЫЙ ШОТ"),
+    ("SHOTFR", "СЕТ ШОТОВ"),
     ("TIX1FREE", "БИЛЕТ НА ОДНОГО"),
+    ("TIX50", "СКИДКА 50% НА ЛЮБОЙ БИЛЕТ"),
 )
 
 
@@ -160,6 +162,7 @@ class CanaryState:
         expiry = issued + timedelta(hours=1)
         issue_id = f"canary-issue-{self.award_sequence:06d}"
         coupon_code = f"TEST-VNVNC-{self.award_sequence:06d}"
+        is_text_code = prize_id == "TIX50"
         flat = {
             "issue_id": issue_id,
             "prize_id": prize_id,
@@ -168,7 +171,11 @@ class CanaryState:
             "prize_description": TEST_TERMS,
             "terms": TEST_TERMS,
             "coupon_code": coupon_code,
-            "redeem_qr_payload": coupon_code,
+            "redeem_qr_payload": "" if is_text_code else coupon_code,
+            "redemption_method": "text_code" if is_text_code else "staff_qr",
+            "show_prize_qr": not is_text_code,
+            "redeemable_via_staff": not is_text_code,
+            "text_promo_code": coupon_code if is_text_code else None,
             "issued_at": issued.isoformat(),
             "expires_at": expiry.isoformat(),
             "validity_slots": [],

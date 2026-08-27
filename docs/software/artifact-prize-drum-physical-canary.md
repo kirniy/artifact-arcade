@@ -82,7 +82,7 @@ sudo -E ARTIFACT_ENV=hardware PYTHONPATH=src \
   .venv/bin/python scripts/run_prize_drum_canary_backend.py --host 127.0.0.1 --port 8765
 ```
 
-It refuses non-loopback binding, requires the configured device ID/HMAC secret without printing either value, rejects stale/replayed signatures, cycles all six sectors, and issues only `TEST-VNVNC-*` codes with the terms `ТЕСТОВЫЙ ЧЕК — НЕ ДЕЙСТВИТЕЛЕН`. Point the supervised ФОТОБУДКА ВИНОВНИЦЫ process to `http://127.0.0.1:8765`; localhost HTTP is accepted only for this same-machine path. Keep `ARTIFACT_KIOSK_STUB=false` so the real signed HTTP client and real RP80 path are exercised.
+It refuses non-loopback binding, requires the configured device ID/HMAC secret without printing either value, rejects stale/replayed signatures, and cycles the exact eight-sector visual contract: the six active prize types plus the two visual-only deposit sectors. It issues only `TEST-VNVNC-*` codes with the terms `ТЕСТОВЫЙ ЧЕК — НЕ ДЕЙСТВИТЕЛЕН`. `TIX50` follows the production text-code contract and never exposes a staff-redemption QR. Point the supervised ФОТОБУДКА ВИНОВНИЦЫ process to `http://127.0.0.1:8765`; localhost HTTP is accepted only for this same-machine path. Keep `ARTIFACT_KIOSK_STUB=false` so the real signed HTTP client and real RP80 path are exercised.
 
 Exercise:
 
@@ -102,7 +102,7 @@ Exercise:
 
 ## 3. Owner-approved production canary
 
-Apply the signed policy manifest first in dry-run mode. Verify the diff contains exactly six `ARTIFACT_KIOSK` rows and no ordinary `Prize` mutation. Production apply requires all three controls:
+Apply the signed policy manifest first in dry-run mode. Verify the diff contains exactly eight canonical `ARTIFACT_KIOSK` rows—six active prize types and two inactive, zero-weight deposit rows—and no ordinary-wheel `Prize` mutation. Production apply requires all three controls:
 
 ```text
 manifest operator_approval.approved = true
@@ -130,10 +130,14 @@ Required real cases:
 - two simultaneous staff redeem attempts: one success, one `ALREADY_REDEEMED`;
 - boundary verification at 06:59:59 and 07:00:00 on a controlled clock/staging record.
 
-Both paper QRs must scan from the actual RP80 roll:
+For every staff-redeemable prize, both paper QRs must scan from the actual RP80 roll:
 
 1. primary QR decodes to the exact uppercase coupon code;
 2. secondary QR decodes exactly to `https://t.me/vnvncbattlebot?start=wheel`.
+
+`TIX50` is the deliberate exception: it must contain no primary/staff QR at all.
+Its large TicketsCloud text code must match the issued coupon exactly, and its
+single Telegram QR must decode to the same canonical wheel URL above.
 
 ## 4. Fifty-plus physical spin/print soak
 
@@ -142,7 +146,7 @@ Return to the non-redeemable canary backend. Run at least 60 iterations to provi
 ```text
 iteration, session_id, request_id, issue_id, coupon_code,
 server prize, landed sector, PRINT_COMPLETE/PRINT_ERROR,
-paper QR1 decode, paper QR2 decode, ticker fit, main-screen health
+paper QR1 decode/not-applicable, paper QR2 decode, ticker fit, main-screen health
 ```
 
 Pass conditions:
@@ -154,6 +158,8 @@ Pass conditions:
 - zero clipped ticker strings; no lit pixels left of physical `x=8`;
 - no main-screen black interval or camera-loss regression;
 - all reel landings equal the server prize;
+- every one of the eight visual sectors appears at least once in the canary sequence;
+- `TIX50` never contains a staff QR; its visible text code remains exact;
 - no duplicate personal/admin message for the same issue;
 - no critical/error traceback or service restart;
 - thermal output remains readable at the end of the roll/soak.
@@ -192,7 +198,8 @@ Rollback does not delete issued prizes. Already committed coupons remain valid/a
 - [ ] policy values/wording approved and applied
 - [ ] real LED OIDC QR decoded
 - [ ] live boost counts 0/1/2+ verified
-- [ ] real RP80 primary QR decoded
+- [ ] real RP80 primary QR decoded for every staff-redeemable prize
+- [ ] real RP80 TIX50 contains no primary QR and its text code is exact
 - [ ] real RP80 secondary QR decoded
 - [ ] unplug/reconnect/retry passed
 - [ ] guest and authenticated chest/bot/admin flows agree

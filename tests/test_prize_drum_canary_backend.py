@@ -10,7 +10,7 @@ import sys
 import pytest
 from aiohttp import web
 
-from artifact.services.vnvnc_kiosk import VNVNCKioskClient
+from artifact.services.vnvnc_kiosk import VNVNCKioskClient, parse_spin_response
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "run_prize_drum_canary_backend.py"
@@ -94,6 +94,54 @@ def test_canary_award_is_idempotent_nonredeemable_and_cycles_catalog() -> None:
     second_session = state.create_session(request_id="s2", auth_mode="guest")["session"]["id"]
     second = state.spin(session_id=second_session, request_id="spin-2")
     assert second["prize_id"] != first["prize_id"]
+
+
+def test_canary_cycles_the_exact_eight_sector_presentation_contract() -> None:
+    state = canary.CanaryState("artifact-canary", b"canary-secret-that-is-long-enough")
+    expected = (
+        ("COCKTL", "БЕСПЛАТНЫЙ КОКТЕЙЛЬ"),
+        ("DEP1K", "ДЕПОЗИТ 1 000 ₽"),
+        ("DEP2K", "ДЕПОЗИТ 2 000 ₽"),
+        ("MERCHFREE", "БЕСПЛАТНЫЙ МЕРЧ"),
+        ("SHOT1FREE", "БЕСПЛАТНЫЙ ШОТ"),
+        ("SHOTFR", "СЕТ ШОТОВ"),
+        ("TIX1FREE", "БИЛЕТ НА ОДНОГО"),
+        ("TIX50", "СКИДКА 50% НА ЛЮБОЙ БИЛЕТ"),
+    )
+
+    actual = []
+    for index in range(len(expected)):
+        session_id = state.create_session(
+            request_id=f"catalog-session-{index}", auth_mode="guest"
+        )["session"]["id"]
+        award = state.spin(
+            session_id=session_id, request_id=f"catalog-spin-{index}"
+        )
+        actual.append((award["prize_id"], award["prize_title"]))
+
+    assert tuple(actual) == expected
+
+
+def test_canary_tix50_is_text_code_only_and_parses_through_real_client_contract() -> None:
+    state = canary.CanaryState("artifact-canary", b"canary-secret-that-is-long-enough")
+    state.award_sequence = len(canary.PRIZES) - 1
+    session_id = state.create_session(request_id="tix50-session", auth_mode="guest")[
+        "session"
+    ]["id"]
+
+    payload = state.spin(session_id=session_id, request_id="tix50-spin")
+    result = parse_spin_response(payload)
+
+    assert result.award.prize.id == "TIX50"
+    assert payload["redeem_qr_payload"] == ""
+    assert payload["redemption_method"] == "text_code"
+    assert payload["show_prize_qr"] is False
+    assert payload["redeemable_via_staff"] is False
+    assert payload["text_promo_code"] == payload["coupon_code"]
+    assert result.award.coupon.redemption_method == "text_code"
+    assert result.award.coupon.show_prize_qr is False
+    assert result.award.coupon.redeemable_via_staff is False
+    assert result.award.coupon.text_promo_code == payload["coupon_code"]
 
 
 def test_canary_telegram_flow_never_impersonates_real_login() -> None:
