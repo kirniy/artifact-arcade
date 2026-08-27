@@ -252,7 +252,10 @@ class VNVNCKioskClient:
         headers = self._signed_headers(method, path, raw_body)
         timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
         try:
-            async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
+            # The cabinet keeps legacy proxy variables for Gemini traffic.
+            # Prize issuance must use the router/Tailscale route directly: an
+            # ambient HTTP proxy can drop HMAC requests or see their headers.
+            async with aiohttp.ClientSession(timeout=timeout, trust_env=False) as session:
                 async with session.request(
                     method.upper(),
                     f"{self.base_url}{path}",

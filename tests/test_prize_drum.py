@@ -1471,6 +1471,53 @@ def test_production_client_rejects_non_tailscale_http_transport(base_url: str) -
         )
 
 
+def test_production_client_ignores_ambient_http_proxy(monkeypatch) -> None:
+    import aiohttp
+
+    captured = {}
+
+    class FakeResponse:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def json(self, *, content_type=None):
+            return {"success": True}
+
+    class FakeSession:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        def request(self, method, url, **kwargs):
+            captured["method"] = method
+            captured["url"] = url
+            return FakeResponse()
+
+    monkeypatch.setenv("https_proxy", "http://legacy-proxy.invalid:40000")
+    monkeypatch.setattr(aiohttp, "ClientSession", FakeSession)
+    client = VNVNCKioskClient(
+        base_url="https://api.vnvnc.ru",
+        device_id="artifact-test",
+        device_secret="top-secret",
+    )
+
+    result = asyncio.run(client._request("GET", "/health"))
+
+    assert result == {"success": True}
+    assert captured["trust_env"] is False
+    assert captured["url"] == "https://api.vnvnc.ru/health"
+
+
 class _EventProbeMode(BaseMode):
     def on_enter(self):
         pass
