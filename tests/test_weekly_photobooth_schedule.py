@@ -100,3 +100,16 @@ def test_vnvnc_bday_activation_keeps_current_ai_stack() -> None:
     assert "set_env PHOTOBOOTH_AI_ENABLED true" in script
     assert "set_env ARTIFACT_IMAGE_PROVIDER vertex" in script
     assert "set_env GEMINI_IMAGE_MODEL gemini-3.1-flash-lite-image" in script
+
+
+def test_vnvnc_bday_has_independent_exact_boundary_timer() -> None:
+    service = (ROOT / "scripts" / "artifact-vnvnc-bday-schedule.service").read_text()
+    timer = (ROOT / "scripts" / "artifact-vnvnc-bday-schedule.timer").read_text()
+
+    assert "sync-weekly-photobooth-theme.sh" in service
+    assert "restart-artifact-if-idle.sh" in service
+    assert "ARTIFACT_MARK_RESTART_PENDING=1" in service
+    assert "OnCalendar=2026-08-28 23:00:00 Europe/Moscow" in timer
+    assert "OnCalendar=2026-08-30 07:00:00 Europe/Moscow" in timer
+    assert "Persistent=true" in timer
+    assert "AccuracySec=1s" in timer

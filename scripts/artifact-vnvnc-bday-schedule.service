@@ -1,0 +1,13 @@
+[Unit]
+Description=Apply the VNVNC B'DAY photobooth schedule
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=kirniy
+Group=kirniy
+WorkingDirectory=/home/kirniy/modular-arcade
+Environment=ARTIFACT_MARK_RESTART_PENDING=1
+ExecStart=/home/kirniy/modular-arcade/scripts/sync-weekly-photobooth-theme.sh
+ExecStartPost=-/home/kirniy/modular-arcade/scripts/restart-artifact-if-idle.sh
