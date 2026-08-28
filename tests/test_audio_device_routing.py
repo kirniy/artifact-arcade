@@ -22,6 +22,10 @@ class _FakeMixer:
         pass
 
 
+class _FakeClock:
+    pass
+
+
 def test_hardware_audio_uses_stable_default_route(monkeypatch) -> None:
     mixer = _FakeMixer()
     fake_pygame = SimpleNamespace(mixer=mixer)
@@ -71,3 +75,21 @@ def test_hardware_audio_can_be_disabled_without_initializing_mixer(monkeypatch) 
     assert runner._init_audio() is False
     assert runner._audio_enabled is False
     assert runner._audio_engine is None
+
+
+def test_disabled_audio_uses_dummy_driver_before_pygame_init(monkeypatch) -> None:
+    calls: list[str] = []
+    fake_pygame = SimpleNamespace(
+        init=lambda: calls.append(os.environ.get("SDL_AUDIODRIVER", "")),
+        time=SimpleNamespace(Clock=_FakeClock),
+        display=SimpleNamespace(get_driver=lambda: "KMSDRM"),
+    )
+
+    monkeypatch.setenv("ARTIFACT_DISABLE_AUDIO", "true")
+    monkeypatch.setenv("SDL_AUDIODRIVER", "alsa")
+    monkeypatch.setattr(runner_module, "_get_pygame", lambda: fake_pygame)
+
+    runner = runner_module.HardwareRunner(event_bus=EventBus())
+    assert runner._init_pygame() is True
+    assert calls == ["dummy"]
+    assert os.environ["SDL_AUDIODRIVER"] == "dummy"

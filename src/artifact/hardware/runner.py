@@ -679,6 +679,15 @@ class HardwareRunner:
     def _init_pygame(self) -> bool:
         """Initialize pygame for event handling."""
         try:
+            # pygame.init() initializes the mixer before _init_audio() runs.
+            # When cabinet audio is disabled, force SDL's no-output backend up
+            # front so ALSA is never opened and cannot flood the service log
+            # with underruns or slow down startup.
+            if os.getenv("ARTIFACT_DISABLE_AUDIO", "").strip().lower() in {
+                "1", "true", "yes", "on"
+            }:
+                os.environ["SDL_AUDIODRIVER"] = "dummy"
+
             # NOTE: Do NOT set SDL_VIDEODRIVER=kmsdrm explicitly on Debian Trixie!
             # Let pygame auto-detect the driver - explicit setting breaks initialization.
             pygame = _get_pygame()
