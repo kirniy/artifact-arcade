@@ -316,6 +316,115 @@ async def test_kp4_kp6_mirror_pair_selects_flow_once_and_persists() -> None:
 
 
 @pytest.mark.asyncio
+async def test_kp4_forces_fresh_login_qr_from_authenticated_ready_session() -> None:
+    """KP4 means "show login QR", even when the old session was Telegram."""
+    stub = LocalKioskStub(auto_auth_after_polls=1)
+    mode = PrizeDrumMode(_context(), client=stub)
+    mode.enter()
+    await _settle(mode)
+    assert mode.screen == PrizeDrumScreen.AUTH_QR
+    mode.update(900.0)
+    await _settle(mode)
+    assert mode.screen == PrizeDrumScreen.READY
+    assert mode._session is not None and mode._session.authenticated
+    old_session_id = mode._session.id
+
+    mode.handle_input(Event(EventType.ARCADE_LEFT, source="numpad"))
+    mode.handle_input(Event(EventType.KEYPAD_INPUT, {"key": "4"}, source="keypad"))
+    assert mode.screen == PrizeDrumScreen.CONNECTING
+    assert mode.preferred_flow == PrizeDrumFlow.AUTH
+    await _settle(mode, frames=36)
+
+    assert mode.screen == PrizeDrumScreen.AUTH_QR
+    assert mode._auth_qr is not None
+    assert mode._auth_qr.shape[0] >= 120
+    assert mode._session is not None
+    assert mode._session.id != old_session_id
+    assert mode._session.auth_mode == "telegram"
+    assert not mode._session.authenticated
+
+
+@pytest.mark.asyncio
+async def test_manager_forwards_numlock_off_kp8_and_mirror_pair_reprints_once(
+    monkeypatch,
+) -> None:
+    """KP8 is ARCADE_UP without Num Lock and two events with Num Lock on."""
+    import artifact.modes.manager as manager_module
+
+    monkeypatch.setattr(manager_module, "get_audio_engine", lambda: _SilentAudio())
+    bus = EventBus()
+    manager = ModeManager(
+        StateMachine(),
+        bus,
+        Renderer(),
+        AnimationEngine(),
+        enable_prize_drum=True,
+        prize_drum_client=LocalKioskStub(),
+    )
+    manager._enter_prize_drum()
+    mode = manager._current_mode
+    assert isinstance(mode, PrizeDrumMode)
+    mode.screen = PrizeDrumScreen.RESULT
+    mode._last_print_data = {
+        "type": "prize_drum",
+        "mode": "prize_drum",
+        "issue_id": "immutable-reprint-issue",
+        "coupon_code": "VNVNC-KSK-REPRINT",
+    }
+
+    # Num Lock off: Linux exposes physical KP8 only as the Up event.
+    bus.emit(Event(EventType.ARCADE_UP, source="numpad"))
+    prints = bus.get_history(EventType.PRINT_START)
+    assert len(prints) == 1
+    assert prints[0].data["manual_reprint"] is True
+
+    # Num Lock on mirrors ARCADE_UP + digit 8. The pending physical job is a
+    # synchronous latch, so the pair can never enqueue a duplicate copy.
+    bus.emit(Event(EventType.ARCADE_UP, source="numpad"))
+    bus.emit(Event(EventType.KEYPAD_INPUT, {"key": "8"}, source="keypad"))
+    assert len(bus.get_history(EventType.PRINT_START)) == 1
+
+
+@pytest.mark.asyncio
+async def test_spin_countdown_flashes_confetti_and_counts_3_2_1_before_motion() -> None:
+    stub = LocalKioskStub(auto_auth_after_polls=None)
+    context = _context()
+    mode = PrizeDrumMode(context, client=stub)
+    mode.preferred_flow = PrizeDrumFlow.GUEST
+    mode.enter()
+    await _settle(mode)
+    mode.handle_input(Event(EventType.BUTTON_PRESS, source="center"))
+    await _settle(mode)
+
+    assert mode.screen == PrizeDrumScreen.SPINNING
+    assert mode._countdown_active
+    assert mode._countdown_value() == 3
+    assert mode._reel_position == 0.0
+    assert mode._ticker_text() == "3"
+    assert mode.get_lcd_text().strip() == "3"
+
+    frame = np.zeros((128, 128, 3), dtype=np.uint8)
+    mode.render_main(frame)
+    assert np.count_nonzero(frame) > 12_000
+    assert np.any(np.all(frame == np.asarray(RED), axis=2))
+    assert np.any(np.all(frame == np.asarray(WHITE), axis=2))
+
+    mode.update(900.0)
+    assert mode._countdown_value() == 2
+    assert mode._reel_position == 0.0
+    mode.update(900.0)
+    assert mode._countdown_value() == 1
+    assert mode._reel_position == 0.0
+    mode.update(900.0)
+    assert not mode._countdown_active
+    assert mode._reel_position == 0.0
+
+    sounds = [event.data["sound"] for event in context.event_bus.get_history(EventType.SOUND_PLAY)]
+    assert sounds[:3] == ["countdown_tick", "countdown_tick", "countdown_tick"]
+    assert sounds[-2:] == ["countdown_go", "reel_start"]
+
+
+@pytest.mark.asyncio
 async def test_offline_issue_never_starts_reel_or_prints() -> None:
     stub = LocalKioskStub(online=False)
     context = _context()
@@ -518,14 +627,17 @@ async def test_runtime_emits_secret_safe_correlated_physical_soak_rows(caplog) -
         for record in caplog.records
         if PRIZE_DRUM_AUDIT_PREFIX in record.getMessage()
     ]
-    assert [row["event"] for row in rows] == [
+    assert rows[0]["event"] == "session_created"
+    assert rows[0]["session_auth_mode"] == "guest"
+    award_rows = [row for row in rows if "issue_id" in row]
+    assert [row["event"] for row in award_rows] == [
         "award_committed",
         "reel_landed",
         "print_complete",
     ]
-    assert {row["issue_id"] for row in rows} == {issue_id}
-    assert rows[1]["landed_prize_id"] == rows[0]["prize_id"]
-    assert len(rows[0]["coupon_audit_id"]) == 16
+    assert {row["issue_id"] for row in award_rows} == {issue_id}
+    assert award_rows[1]["landed_prize_id"] == award_rows[0]["prize_id"]
+    assert len(award_rows[0]["coupon_audit_id"]) == 16
     assert print_event.data["coupon_code"] not in caplog.text
 
 

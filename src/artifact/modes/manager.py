@@ -844,6 +844,7 @@ class ModeManager:
         self.event_bus.subscribe(EventType.BUTTON_PRESS, self._on_button_press)
         self.event_bus.subscribe(EventType.ARCADE_LEFT, self._on_arcade_left)
         self.event_bus.subscribe(EventType.ARCADE_RIGHT, self._on_arcade_right)
+        self.event_bus.subscribe(EventType.ARCADE_UP, self._on_arcade_up)
         self.event_bus.subscribe(EventType.KEYPAD_INPUT, self._on_keypad_input)
         self.event_bus.subscribe(EventType.KEYPAD_PRESS, self._on_keypad_press)
         self.event_bus.subscribe(EventType.KEYPAD_RELEASE, self._on_keypad_release)
@@ -1203,6 +1204,22 @@ class ModeManager:
                 if self._result_view_index == 0:
                     self._result_text_page_index = 0
                 self._audio.play_ui_move()
+
+    def _on_arcade_up(self, event: Event) -> None:
+        """Forward KP8 with Num Lock off to the hidden prize-drum mode.
+
+        Linux reports physical numpad 8 as ``ARCADE_UP`` while Num Lock is
+        disabled.  Keep that otherwise-unused event scoped to the hidden mode
+        so staff reprint works regardless of the keyboard LED state without
+        changing navigation in any public mode.
+        """
+        self._last_input_time = self._time_in_state
+        if (
+            self._state == ManagerState.MODE_ACTIVE
+            and self._current_mode
+            and self._current_mode.name == "prize_drum"
+        ):
+            self._current_mode.handle_input(event)
 
     def _on_keypad_input(self, event: Event) -> None:
         """Handle keypad input."""

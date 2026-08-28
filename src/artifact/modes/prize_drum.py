@@ -65,6 +65,8 @@ BLACK = (12, 9, 10)
 MUTED_RED = (118, 18, 30)
 TICKER_GREEN = (0, 255, 48)
 AUTH_QR_MAX_SIZE = 128
+COUNTDOWN_STEP_MS = 900.0
+COUNTDOWN_TOTAL_MS = COUNTDOWN_STEP_MS * 3.0
 SPIN_DURATION_MS = 10800.0
 SPIN_CATALOG_PASSES = 11
 SHOWCASE_HOLD_MS = 300.0
@@ -520,6 +522,9 @@ class PrizeDrumMode(BaseMode):
         self._tick_count = 0
         self._pointer_kick_ms = 0.0
         self._reveal_elapsed_ms = 0.0
+        self._countdown_elapsed_ms = 0.0
+        self._countdown_active = False
+        self._countdown_last_value = 0
         self._nav_action: tuple[PrizeDrumFlow, float] | None = None
 
         self._catalog = list(self.CATALOG)
@@ -612,6 +617,9 @@ class PrizeDrumMode(BaseMode):
                 self._spawn("poll", self.client.get_session(self._session.id))
 
         elif self.screen == PrizeDrumScreen.SPINNING and self._motion:
+            if self._countdown_active:
+                self._advance_spin_countdown(delta_ms)
+                return
             previous_index = math.floor(self._reel_position / SECTOR_STEP)
             self._reel_position = self._motion.advance(delta_ms)
             current_index = math.floor(self._reel_position / SECTOR_STEP)
@@ -659,8 +667,11 @@ class PrizeDrumMode(BaseMode):
             return True
 
         if (
-            event.type == EventType.KEYPAD_INPUT
-            and str(event.data.get("key", "")) == "8"
+            event.type == EventType.ARCADE_UP
+            or (
+                event.type == EventType.KEYPAD_INPUT
+                and str(event.data.get("key", "")) == "8"
+            )
         ):
             # KP8 is the staff-only physical reprint action.  It deliberately
             # reuses the immutable award/coupon while assigning a fresh print
@@ -757,8 +768,32 @@ class PrizeDrumMode(BaseMode):
     def _select_flow(self, flow: PrizeDrumFlow) -> None:
         if self._pending_spin_request_id is not None:
             return
-        if self.preferred_flow == flow and self._session and self._session.auth_mode == flow.value:
-            return
+        current_screen = self.screen.name
+        current_preference = self.preferred_flow.value
+        session_auth_mode = self._session.auth_mode if self._session else ""
+        session_authenticated = bool(self._session and self._session.authenticated)
+        _audit_prize_drum_event(
+            "flow_selected",
+            requested_flow=flow.value,
+            current_screen=current_screen,
+            current_preference=current_preference,
+            session_auth_mode=session_auth_mode,
+            session_authenticated=session_authenticated,
+        )
+        same_session_flow = (
+            self.preferred_flow == flow
+            and self._session is not None
+            and self._session.auth_mode == flow.value
+        )
+        if same_session_flow:
+            if flow == PrizeDrumFlow.GUEST:
+                return
+            if self.screen in {PrizeDrumScreen.CONNECTING, PrizeDrumScreen.AUTH_QR}:
+                return
+            # KP4 is an explicit request for a fresh login QR, not merely a
+            # preference toggle.  An authenticated Telegram session used to
+            # satisfy this early-return and leave the guest looking at the
+            # reel, which made the QR appear "broken".
         self.preferred_flow = flow
         if self._task_kind == "finish":
             self._restart_after_finish = True
@@ -949,6 +984,14 @@ class PrizeDrumMode(BaseMode):
     def _accept_created_session(self, session: KioskSession) -> None:
         self._session = session
         self._identity_cleared = not session.authenticated
+        _audit_prize_drum_event(
+            "session_created",
+            session_auth_mode=session.auth_mode,
+            session_authenticated=bool(session.authenticated),
+            session_status=session.status,
+            preferred_flow=self.preferred_flow.value,
+            spins_left=session.allowance.left,
+        )
         if self.preferred_flow == PrizeDrumFlow.GUEST:
             if session.allowance.left <= 0:
                 self._show_no_spins(session)
@@ -977,6 +1020,13 @@ class PrizeDrumMode(BaseMode):
         self._auth_qr = qr
         self.screen = PrizeDrumScreen.AUTH_QR
         self._poll_elapsed_ms = 0.0
+        _audit_prize_drum_event(
+            "auth_qr_ready",
+            auth_url_length=len(auth.auth_url),
+            qr_height=int(qr.shape[0]),
+            qr_width=int(qr.shape[1]),
+            preferred_flow=self.preferred_flow.value,
+        )
 
     def _accept_session(self, session: KioskSession) -> None:
         self._session = session
@@ -1069,14 +1119,44 @@ class PrizeDrumMode(BaseMode):
         self._last_tick_index = 0
         self._tick_count = 0
         self._pointer_kick_ms = 150.0
+        self._countdown_elapsed_ms = 0.0
+        self._countdown_active = not self._reduced_motion
+        self._countdown_last_value = 3 if self._countdown_active else 0
+        if self._countdown_active:
+            self._emit_countdown_sound("countdown_tick", value=3)
+        else:
+            self._emit_countdown_sound("reel_start")
+        self.screen = PrizeDrumScreen.SPINNING
+
+    def _advance_spin_countdown(self, delta_ms: float) -> None:
+        """Run one deterministic 3-2-1 celebration before reel motion."""
+        self._countdown_elapsed_ms = min(
+            COUNTDOWN_TOTAL_MS,
+            self._countdown_elapsed_ms + max(0.0, delta_ms),
+        )
+        value = self._countdown_value()
+        if value != self._countdown_last_value and value > 0:
+            self._countdown_last_value = value
+            self._emit_countdown_sound("countdown_tick", value=value)
+        if self._countdown_elapsed_ms >= COUNTDOWN_TOTAL_MS:
+            self._countdown_active = False
+            self._countdown_last_value = 0
+            self._emit_countdown_sound("countdown_go")
+            self._emit_countdown_sound("reel_start")
+
+    def _emit_countdown_sound(self, sound: str, **data: Any) -> None:
         self.context.event_bus.emit(
             Event(
                 EventType.SOUND_PLAY,
-                data={"sound": "reel_start"},
+                data={"sound": sound, **data},
                 source="mode_prize_drum",
             )
         )
-        self.screen = PrizeDrumScreen.SPINNING
+
+    def _countdown_value(self) -> int:
+        if not self._countdown_active:
+            return 0
+        return max(1, 3 - int(self._countdown_elapsed_ms // COUNTDOWN_STEP_MS))
 
     def _emit_reel_ticks(self, previous: int, current: int) -> None:
         crossed = max(1, min(4, abs(current - previous)))
@@ -1185,6 +1265,13 @@ class PrizeDrumMode(BaseMode):
         self._auth_qr = None
 
     def _show_error(self, exc: KioskClientError) -> None:
+        _audit_prize_drum_event(
+            "client_error",
+            code=exc.code,
+            task_kind=self._task_kind or "",
+            screen=self.screen.name,
+            preferred_flow=self.preferred_flow.value,
+        )
         self._error_code = exc.code
         self._error_message = exc.message
         self.screen = PrizeDrumScreen.OFFLINE
@@ -1215,7 +1302,10 @@ class PrizeDrumMode(BaseMode):
         elif self.screen == PrizeDrumScreen.ISSUING:
             self._render_reel(buffer, self._reel_position)
         elif self.screen == PrizeDrumScreen.SPINNING:
-            self._render_reel(buffer, self._reel_position)
+            if self._countdown_active:
+                self._render_spin_countdown(buffer)
+            else:
+                self._render_reel(buffer, self._reel_position)
         elif self.screen == PrizeDrumScreen.REVEAL:
             self._render_reveal(buffer)
         elif self.screen == PrizeDrumScreen.RESULT:
@@ -1246,6 +1336,9 @@ class PrizeDrumMode(BaseMode):
         return self._status_text()
 
     def _status_text(self) -> str:
+        countdown = self._countdown_value()
+        if countdown:
+            return str(countdown)
         return SIDE_DISPLAY_STATUS.get(self.screen, "ПОДОЖДИ")
 
     def _render_safe_ticker_text(
@@ -1330,6 +1423,8 @@ class PrizeDrumMode(BaseMode):
             }
             and self._reel_items
         ):
+            if self.screen == PrizeDrumScreen.SPINNING and self._countdown_active:
+                return None
             index = int(round(self._reel_position / SECTOR_STEP))
             return self._reel_item_at(index)
         return None
@@ -1365,6 +1460,45 @@ class PrizeDrumMode(BaseMode):
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
         self._render_reel(buffer, self._reel_position)
+
+    def _render_spin_countdown(self, buffer: NDArray[np.uint8]) -> None:
+        """Full-screen red/white flash, huge numeral, and falling confetti."""
+        value = self._countdown_value()
+        step_elapsed = self._countdown_elapsed_ms % COUNTDOWN_STEP_MS
+        flash = step_elapsed < 105.0
+        background = WHITE if flash else (RED if value % 2 else OFF_WHITE)
+        foreground = RED if flash or value % 2 == 0 else WHITE
+        fill(buffer, background)
+
+        # Deterministic particles keep the frame stable at 60fps and avoid
+        # allocating/randomizing in the render loop. They travel behind the
+        # numeral so the one essential piece of information remains dominant.
+        progress = self._countdown_elapsed_ms / COUNTDOWN_TOTAL_MS
+        for index in range(26):
+            seed_x = (index * 37 + 11) % 124
+            speed = 1.35 + (index % 5) * 0.22
+            y = int(((progress * speed * 178.0) + index * 19) % 154) - 13
+            x = 2 + seed_x
+            color = WHITE if background == RED else RED
+            if index % 3 == 0:
+                draw_rect(buffer, x, y, 2, 5, color)
+            elif index % 3 == 1:
+                draw_rect(buffer, x, y, 4, 2, color)
+            else:
+                draw_circle(buffer, x, y, 2, color)
+
+        # A short overshoot settles immediately after each flash: strong
+        # feedback without making a frequently repeated sequence feel gummy.
+        scale = 11 if step_elapsed < 165.0 else 10
+        font = load_font("cyrillic")
+        base_width, base_height = font.measure_text(str(value))
+        glyph_width, glyph_height = base_width * scale, base_height * scale
+        x = (buffer.shape[1] - glyph_width) // 2
+        y = max(4, (128 - glyph_height) // 2)
+        for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2)):
+            draw_text_bitmap(buffer, str(value), x + dx, y + dy, BLACK, font, scale=scale)
+        draw_text_bitmap(buffer, str(value), x, y, foreground, font, scale=scale)
+        draw_rect(buffer, 2, 2, 124, 124, foreground, filled=False, thickness=3)
 
     def _render_reel(self, buffer: NDArray[np.uint8], position: float) -> None:
         fill(buffer, BLACK)
