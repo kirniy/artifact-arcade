@@ -1947,8 +1947,9 @@ CRITICAL LIKENESS:
 - Faces, skin, eyes, and recognizability stay photoreal and unmistakable
 
 VISUAL DIRECTION:
-- Pure black void only, no room interior, no floor, no reflections, no fake frame
-- Premium Octane-style editorial birthday spectacle: matte cream frosting, dark crimson satin, crystal champagne, gold lacquer, pearl accents, candlelight, anthracite luxury materials
+- Preserve the recognizable real room behind the people and transform it into a bright, high-key editorial birthday set; no black void and no replacement scenery
+- Premium illustrated birthday spectacle: matte cream frosting, coral/crimson satin, crystal champagne, pale gold lacquer, pearl accents, warm candlelight, chrome and ivory luxury materials
+- At least 70% of the environment is light or mid-tone, with lifted exposure and readable shadow detail; no crushed black, muddy maroon fog, or dark empty wall
 - Massive 3-tier ornate birthday cake is the main hero object near the people, with 9 lit candles and warm amber flame glow
 - Floating celebration props orbit around the people: crystal coupe, satin crimson balloon, wrapped anthracite gift box, confetti discs, berries, pearl beads, dried rose petals, ribbon curls
 - Controlled luxury only: expensive, sharp, material-rich, never childish, never cartoon, never plastic slop
@@ -1966,7 +1967,7 @@ TEXT AND BRANDING:
 
 OUTPUT:
 - one centered luxury birthday editorial poster
-- black void, floating premium props, cake hero, candlelight, exact likeness
+- bright source-faithful venue, floating premium props, cake hero, candlelight, exact likeness
 - vertical 9:16
 """,
     """ПОСТОЯННИК ВИНОВНИЦЫ — VIP LICENSE POSTER (VERTICAL 9:16)
@@ -1980,11 +1981,12 @@ CRITICAL LIKENESS:
 - Faces must remain photoreal and recognizable, not airbrushed, not doll-like
 
 VISUAL DIRECTION:
-- Build the image around one oversized realistic club-membership / driver's-license artifact floating on a pure black void
+- Build the image around one oversized realistic club-membership / driver's-license artifact inside a bright, recognizable continuation of the real source-photo venue
 - The central object is a tactile laminated VIP card with realistic transparent plastic wrap, scuffs, edge wear, holographic foil, embossed numerals, ink texture, barcode-style micro details, pressure marks, shrink-wrap ripples, and subtle fingerprints
 - The real person or real group appears as the official portrait printed inside the card, still clearly recognizable
 - Surround the card with premium VNVNC birthday props: crimson satin ribbon, chrome edge hardware, small cake crumb accents, confetti, pearls, rose petals, mini candle stubs, luxury gift-tag fragments
 - The mood is elite regular / permanent guest / club relic energy — textured, fetishistically realistic, expensive, archival, not parody comedy
+- Use lifted ivory, pearl, pale chrome, coral and lacquer-red light; at least 70% of the background is light or mid-tone, never a black void, muddy fog, or empty dark wall
 - Use the attached emblem references only as small badge / seal branding anchors on the card design; sometimes prefer the chrome oval emblem instead of the gift-box emblem for the seal treatment
 
 TEXT AND BRANDING:
@@ -2000,7 +2002,7 @@ TEXT AND BRANDING:
 
 OUTPUT:
 - one centered hyper-real laminated membership-card poster
-- black void, tactile plastic, chrome foil, premium wear, exact likeness
+- bright source-faithful venue, tactile plastic, chrome foil, premium wear, exact likeness
 - vertical 9:16
 """,
     """RAP GOD — HYPER-LUXURY HIP-HOP POSTER (VERTICAL 9:16)
@@ -2045,8 +2047,9 @@ VNVNC_BDAY_SQUARE_VARIATIONS = [
 One square single-image composition only. No grid, no strip, no four frames.
 Keep the exact real faces and full group from the source photo.
 
-Use a pure black void with premium birthday still-life objects: giant cream-and-crimson cake, 9 candles,
+Use a bright, recognizable continuation of the real source-photo venue with premium birthday still-life objects: giant cream-and-crimson cake, 9 candles,
 crystal champagne, satin balloon, anthracite gift box, confetti, pearls, berries, and rose petals.
+Keep at least 70% of the environment light or mid-tone with ivory, pearl, chrome, coral and lacquer-red accents; no black void or crushed shadows.
 The attached emblem references are only branding anchors; prefer the gift-box 9 emblem, but sometimes echo the chrome oval emblem.
 
 Huge title exactly "HAPPY B'DAY VNVNC".
@@ -2059,8 +2062,9 @@ Square 1:1 luxury birthday editorial poster.
     """ПОСТОЯННИК ВИНОВНИЦЫ — VIP LICENSE POSTER (SQUARE 1:1)
 
 One square single-image composition only.
-Keep the exact real faces and full group from the source photo, printed inside one oversized hyper-real laminated club card.
+Keep the exact real faces and full group from the source photo, printed inside one oversized hyper-real laminated club card set within the bright recognizable source-photo venue.
 The card should have tactile plastic-wrap texture, embossed foil, scratches, hologram details, barcode micro-elements, and premium wear.
+Use lifted ivory, pearl, pale chrome, coral and lacquer-red light; no black void, muddy maroon fog or dark empty wall.
 Use the attached emblem references as small seal/badge anchors on the card, with occasional chrome oval emphasis.
 
 Huge title exactly "ПОСТОЯННИК ВИНОВНИЦЫ".
@@ -4106,9 +4110,10 @@ ADDITIONAL REFERENCE IMAGES:
 - If multiple people are present, keep the full group together in one shared bathhouse ritual scene
 - Huge ornamental gold title lettering and elegant footer branding are required"""
             elif is_vnvnc_bday_style:
-                color_instruction = """- FULL COLOR — luxury birthday palette: matte cake cream, velvet black, lacquer crimson, chrome silver, pearl white, candle amber, champagne gold
+                color_instruction = """- FULL COLOR — bright luxury birthday palette: matte cake cream, warm ivory, lacquer crimson, coral, chrome silver, pearl white, candle amber, champagne gold
 - Strictly single-image composition (no grid, no strip, no four-frame photobooth layout)
-- Prefer pure black void or black editorial negative space with floating premium props
+- Preserve and brighten the recognizable source-photo venue; at least 70% of the background must be light or mid-tone with readable detail
+- Never use a black void, crushed shadows, muddy maroon fog, dark empty walls, or invented replacement scenery
 - Human faces must stay photoreal and exact; birthday objects may become hyper-polished luxury still life
 - If multiple people are present, keep the full group together in one shared hero composition
 - Huge title lettering, elegant footer branding, and emblem-driven VNVNC visual language are required"""

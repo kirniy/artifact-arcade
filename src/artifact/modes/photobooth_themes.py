@@ -387,12 +387,6 @@ VNVNC_BDAY_THEME = PhotoboothTheme(
             color=(214, 92, 106),
             prompt_variation_index=1,
         ),
-        PhotoboothMenuVariant(
-            display_name="RAP\nGOD",
-            description="HYPER-LUXURY HIP-HOP POSTER",
-            color=(255, 226, 150),
-            prompt_variation_index=2,
-        ),
     ),
     party_date_rollover_hour=12,
     footer_date_mode="weekday_ru",

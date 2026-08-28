@@ -16,10 +16,12 @@ import random
 import uuid
 from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import Path
 from typing import Any, Coroutine
 
 import numpy as np
 from numpy.typing import NDArray
+from PIL import Image, ImageOps
 
 from artifact.core.events import Event, EventType
 from artifact.graphics.fonts import PixelFont, draw_text_bitmap, load_font
@@ -67,14 +69,18 @@ TICKER_GREEN = (0, 255, 48)
 AUTH_QR_MAX_SIZE = 128
 COUNTDOWN_STEP_MS = 900.0
 COUNTDOWN_TOTAL_MS = COUNTDOWN_STEP_MS * 3.0
-SPIN_DURATION_MS = 10800.0
+SPIN_DURATION_MS = 14400.0
 SPIN_CATALOG_PASSES = 11
 SHOWCASE_HOLD_MS = 300.0
-SHOWCASE_TRAVEL_MS = 3600.0
+SHOWCASE_TRAVEL_MS = 4800.0
 SHOWCASE_SECTORS = 8
 VISUAL_DUPLICATES_PER_PRIZE = 3
 PRESENTATION_ONLY_PRIZE_IDS = frozenset({"DEP1K", "DEP2K"})
 TICKET_DISCOUNT_PRIZE_ID = "TIX50"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+CLASSIC_LOGO_PATH = (
+    PROJECT_ROOT / "assets" / "logos" / "vnvnc-logo-classic-border-letters-black.png"
+)
 
 SECTOR_HEIGHT = 68
 SECTOR_STEP = 72
@@ -136,9 +142,27 @@ class PrizeDrumScreen(Enum):
 SIDE_DISPLAY_STATUS: dict[PrizeDrumScreen, str] = {
     PrizeDrumScreen.CONNECTING: "ПОДОЖДИ",
     PrizeDrumScreen.AUTH_QR: "СКАНИРУЙ QR",
+    PrizeDrumScreen.READY: "КОЛЕСО ФОРТУНЫ",
+    PrizeDrumScreen.ISSUING: "ПОДОЖДИ",
     PrizeDrumScreen.NO_SPINS: "СПАСИБО",
     PrizeDrumScreen.OFFLINE: "НЕТ СВЯЗИ",
 }
+
+
+def _load_classic_logo(size: int = 46) -> NDArray[np.uint8] | None:
+    """Load the canonical Classic mark once at native LED-friendly size."""
+    try:
+        with Image.open(CLASSIC_LOGO_PATH) as source:
+            fitted = ImageOps.fit(
+                source.convert("RGB"),
+                (size, size),
+                method=Image.Resampling.LANCZOS,
+                centering=(0.5, 0.5),
+            )
+            return np.array(fitted, dtype=np.uint8)
+    except Exception:
+        logger.exception("Prize-drum Classic logo failed to load: %s", CLASSIC_LOGO_PATH)
+        return None
 
 
 class PrizeDrumFlow(Enum):
@@ -536,6 +560,7 @@ class PrizeDrumMode(BaseMode):
         self._sector_cache: dict[tuple[str, str, bool], NDArray[np.uint8]] = {}
         self._auth_qr: NDArray[np.uint8] | None = None
         self._redeem_qr: NDArray[np.uint8] | None = None
+        self._classic_logo = _load_classic_logo()
 
     @property
     def is_safe_to_exit(self) -> bool:
@@ -616,10 +641,13 @@ class PrizeDrumMode(BaseMode):
                 self._poll_elapsed_ms = 0.0
                 self._spawn("poll", self.client.get_session(self._session.id))
 
+        elif self.screen in {PrizeDrumScreen.ISSUING, PrizeDrumScreen.SPINNING} and self._countdown_active:
+            # Countdown starts at the physical button edge. Reel motion still
+            # waits for the immutable server award, preserving authoritative
+            # prize selection even when the network is briefly slow.
+            self._advance_spin_countdown(delta_ms)
+
         elif self.screen == PrizeDrumScreen.SPINNING and self._motion:
-            if self._countdown_active:
-                self._advance_spin_countdown(delta_ms)
-                return
             previous_index = math.floor(self._reel_position / SECTOR_STEP)
             self._reel_position = self._motion.advance(delta_ms)
             current_index = math.floor(self._reel_position / SECTOR_STEP)
@@ -743,22 +771,14 @@ class PrizeDrumMode(BaseMode):
         return True
 
     def _flow_for_event(self, event: Event) -> PrizeDrumFlow | None:
-        # The cabinet's legacy GPIO27 RIGHT line is physically stuck/noisy at
-        # the venue (active-low with short high release spikes).  It can emit a
-        # false GUEST selection every few seconds.  Prize-drum flow selection
-        # is intentionally keypad-only, so ignore those legacy GPIO edges while
-        # preserving numpad events with Num Lock either on or off.
-        if (
-            event.type in {EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT}
-            and event.source == "gpio"
-        ):
+        # Both detached GPIO direction switches and the USB numpad's mirrored
+        # arrow events have produced phantom flow changes on the real cabinet.
+        # Flow selection is therefore *digit-only*: KP4/KP6 with Num Lock on.
+        # Every ARCADE_LEFT/RIGHT event is ignored regardless of source.
+        if event.type in {EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT}:
             return None
         flow: PrizeDrumFlow | None = None
-        if event.type == EventType.ARCADE_LEFT:
-            flow = PrizeDrumFlow.AUTH
-        elif event.type == EventType.ARCADE_RIGHT:
-            flow = PrizeDrumFlow.GUEST
-        elif event.type == EventType.KEYPAD_INPUT:
+        if event.type == EventType.KEYPAD_INPUT:
             key = str(event.data.get("key", ""))
             if key == "4":
                 flow = PrizeDrumFlow.AUTH
@@ -767,16 +787,6 @@ class PrizeDrumMode(BaseMode):
         if flow is None:
             return None
 
-        # KP4/KP6 emit an arcade event followed by a mirrored digit event.  Treat
-        # that physical pair as one absolute selection, while still accepting a
-        # standalone keypad event from tests/alternate keypads.
-        if event.type == EventType.KEYPAD_INPUT and self._nav_action:
-            last_flow, at_ms = self._nav_action
-            if last_flow == flow and self._time_in_mode - at_ms <= 80.0:
-                self._nav_action = None
-                return None
-        if event.type in {EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT}:
-            self._nav_action = (flow, self._time_in_mode)
         return flow
 
     def _select_flow(
@@ -875,6 +885,11 @@ class PrizeDrumMode(BaseMode):
         if self._pending_spin_request_id is None:
             self._pending_spin_request_id = str(uuid.uuid4())
             self._pending_spin_session_id = self._session.id
+        self._countdown_elapsed_ms = 0.0
+        self._countdown_active = not self._reduced_motion
+        self._countdown_last_value = 3 if self._countdown_active else 0
+        if self._countdown_active:
+            self._emit_countdown_sound("countdown_tick", value=3)
         self.screen = PrizeDrumScreen.ISSUING
         self._spawn_pending_spin()
 
@@ -968,6 +983,16 @@ class PrizeDrumMode(BaseMode):
             return
         except KioskClientError as exc:
             if kind == "poll" and exc.code == "AUTH_PENDING":
+                return
+            if kind == "poll" and (exc.retryable or exc.code == "NETWORK_ERROR"):
+                # A single damaged office-network packet must not destroy a
+                # valid five-minute QR. Keep the pairing visible and retry.
+                self._poll_elapsed_ms = -1200.0
+                _audit_prize_drum_event(
+                    "poll_retry",
+                    code=exc.code,
+                    preferred_flow=self.preferred_flow.value,
+                )
                 return
             if kind == "finish":
                 self._handle_finish_failure(exc.code)
@@ -1141,12 +1166,10 @@ class PrizeDrumMode(BaseMode):
         self._last_tick_index = 0
         self._tick_count = 0
         self._pointer_kick_ms = 150.0
-        self._countdown_elapsed_ms = 0.0
-        self._countdown_active = not self._reduced_motion
-        self._countdown_last_value = 3 if self._countdown_active else 0
-        if self._countdown_active:
-            self._emit_countdown_sound("countdown_tick", value=3)
-        else:
+        # A normal spin has already begun its 3-2-1 at the physical button
+        # edge. If the server needed longer than the countdown, launch now;
+        # otherwise the existing countdown completes before motion begins.
+        if not self._countdown_active:
             self._emit_countdown_sound("reel_start")
         self.screen = PrizeDrumScreen.SPINNING
 
@@ -1164,7 +1187,8 @@ class PrizeDrumMode(BaseMode):
             self._countdown_active = False
             self._countdown_last_value = 0
             self._emit_countdown_sound("countdown_go")
-            self._emit_countdown_sound("reel_start")
+            if self._motion is not None:
+                self._emit_countdown_sound("reel_start")
 
     def _emit_countdown_sound(self, sound: str, **data: Any) -> None:
         self.context.event_bus.emit(
@@ -1297,6 +1321,9 @@ class PrizeDrumMode(BaseMode):
         self._error_code = exc.code
         self._error_message = exc.message
         self.screen = PrizeDrumScreen.OFFLINE
+        self._countdown_active = False
+        self._countdown_elapsed_ms = 0.0
+        self._countdown_last_value = 0
         self._motion = None
         self._reel_position = 0.0
 
@@ -1322,12 +1349,16 @@ class PrizeDrumMode(BaseMode):
         elif self.screen == PrizeDrumScreen.READY:
             self._render_ready(buffer)
         elif self.screen == PrizeDrumScreen.ISSUING:
-            self._render_reel(buffer, self._reel_position)
+            if self._countdown_active:
+                self._render_spin_countdown(buffer)
+            else:
+                self._render_connecting(buffer)
         elif self.screen == PrizeDrumScreen.SPINNING:
             if self._countdown_active:
                 self._render_spin_countdown(buffer)
             else:
                 self._render_reel(buffer, self._reel_position)
+                self._render_spin_sparks(buffer)
         elif self.screen == PrizeDrumScreen.REVEAL:
             self._render_reveal(buffer)
         elif self.screen == PrizeDrumScreen.RESULT:
@@ -1436,16 +1467,8 @@ class PrizeDrumMode(BaseMode):
     def _side_display_prize(self) -> tuple[str, str] | None:
         if self.screen in {PrizeDrumScreen.REVEAL, PrizeDrumScreen.RESULT} and self._award:
             return self._award.prize.id, self._award.prize.label
-        if (
-            self.screen
-            in {
-                PrizeDrumScreen.READY,
-                PrizeDrumScreen.ISSUING,
-                PrizeDrumScreen.SPINNING,
-            }
-            and self._reel_items
-        ):
-            if self.screen == PrizeDrumScreen.SPINNING and self._countdown_active:
+        if self.screen == PrizeDrumScreen.SPINNING and self._reel_items:
+            if self._countdown_active:
                 return None
             index = int(round(self._reel_position / SECTOR_STEP))
             return self._reel_item_at(index)
@@ -1481,7 +1504,32 @@ class PrizeDrumMode(BaseMode):
             )
 
     def _render_ready(self, buffer: NDArray[np.uint8]) -> None:
-        self._render_reel(buffer, self._reel_position)
+        """Large idle title over a slow, text-free looping ticket drum."""
+        fill(buffer, BLACK)
+        draw_rect(buffer, 2, 2, 124, 124, RED, filled=False, thickness=3)
+        draw_rect(buffer, 6, 6, 116, 116, OFF_WHITE, filled=True)
+
+        # Blank sectors move continuously behind the title. Their notches and
+        # perforation communicate a physical drum without suggesting a prize.
+        idle_offset = int((self._time_in_mode * 0.018) % 52.0)
+        for sector_index in range(-2, 4):
+            center_y = 9 + sector_index * 52 + idle_offset
+            top = center_y - 22
+            sector_color = RED if sector_index % 2 == 0 else OFF_WHITE
+            ink = WHITE if sector_color == RED else DEEP_RED
+            draw_rect(buffer, 9, top, 110, 44, sector_color, filled=True)
+            draw_rect(buffer, 9, top, 110, 44, ink, filled=False, thickness=2)
+            draw_circle(buffer, 9, center_y, 5, BLACK)
+            draw_circle(buffer, 118, center_y, 5, BLACK)
+            for x in range(19, 113, 12):
+                draw_rect(buffer, x, top + 6, 6, 2, ink)
+                draw_rect(buffer, x, top + 36, 6, 2, ink)
+
+        # Opaque title plate leaves the moving sector above and below visible.
+        draw_rect(buffer, 8, 34, 112, 58, BLACK, filled=True)
+        draw_rect(buffer, 8, 34, 112, 58, RED, filled=False, thickness=2)
+        draw_centered_text(buffer, "КОЛЕСО", 43, WHITE, scale=3)
+        draw_centered_text(buffer, "ФОРТУНЫ", 69, WHITE, scale=2)
 
     def _render_spin_countdown(self, buffer: NDArray[np.uint8]) -> None:
         """Full-screen red/white flash, huge numeral, and falling confetti."""
@@ -1560,6 +1608,44 @@ class PrizeDrumMode(BaseMode):
         )
         self._draw_left_chevron(buffer)
 
+    def _render_spin_sparks(self, buffer: NDArray[np.uint8]) -> None:
+        """Fast deterministic edge sparks reinforce motion without hiding prizes."""
+        if self._reduced_motion or self._motion is None:
+            return
+        elapsed = self._motion.elapsed_ms
+        for index in range(22):
+            lifetime = 420.0 + (index % 5) * 75.0
+            phase = ((elapsed + index * 97.0) % lifetime) / lifetime
+            direction = -1 if index % 2 else 1
+            y_origin = 8 + ((index * 31) % 111)
+            y = int(round(y_origin + direction * phase * (10 + index % 7)))
+            left = index % 4 < 2
+            x = int(round((5 + phase * 12) if left else (122 - phase * 12)))
+            color = WHITE if index % 3 else RED
+            length = 2 + (index % 4)
+            if 4 <= y <= 123:
+                draw_line(
+                    buffer,
+                    x,
+                    y,
+                    x + (length if left else -length),
+                    y - direction * length,
+                    color,
+                    thickness=1,
+                )
+
+        # The selector gets a short starburst on every mechanical tick and
+        # stronger false-near-hit locks. It is a payoff cue, never decoration
+        # over the prize name itself.
+        strength = max(
+            self._motion.near_hit_strength,
+            min(1.0, self._pointer_kick_ms / 75.0),
+        )
+        if strength > 0.05:
+            reach = 5 + int(round(8 * strength))
+            for dx, dy in ((1, 0), (1, 1), (1, -1)):
+                draw_line(buffer, 15, 64, 15 + dx * reach, 64 + dy * reach, WHITE)
+
     def _render_reveal(self, buffer: NDArray[np.uint8]) -> None:
         if self._motion:
             shake = 0.0
@@ -1594,23 +1680,26 @@ class PrizeDrumMode(BaseMode):
                     draw_rect(buffer, x - 1, y - 1, 3, 3, particle_color)
 
     def _render_result(self, buffer: NDArray[np.uint8]) -> None:
-        if self._award and self._award.prize.id == TICKET_DISCOUNT_PRIZE_ID:
-            self._render_ticket_discount_result(buffer)
-            self._render_result_status_badge(buffer)
-            return
-
         fill(buffer, OFF_WHITE)
-        draw_rect(buffer, 1, 1, 126, 126, RED, filled=False, thickness=2)
-        if self._redeem_qr is not None:
-            _blit_centered(buffer, self._redeem_qr, y=4)
+        draw_rect(buffer, 1, 1, 126, 126, RED, filled=False, thickness=3)
+        draw_rect(buffer, 5, 5, 118, 118, BLACK, filled=False, thickness=1)
+        if self._classic_logo is not None:
+            _blit_centered(buffer, self._classic_logo, y=5)
+        else:
+            draw_rect(buffer, 41, 5, 46, 46, RED, filled=False, thickness=2)
+            draw_centered_text(buffer[7:49], "VNVNC", 16, BLACK, scale=1)
+        draw_centered_text(buffer, "ВЫ ВЫИГРАЛИ:", 54, BLACK, scale=1)
+        draw_rect(buffer, 6, 68, 116, 54, RED, filled=True)
+        draw_circle(buffer, 6, 95, 5, OFF_WHITE)
+        draw_circle(buffer, 121, 95, 5, OFF_WHITE)
         if self._award:
-            title = buffer[86:124, 4:124]
+            title = buffer[70:120, 9:119]
             _draw_prize_headline(
                 title,
                 self._award.prize.id,
                 self._award.prize.label,
-                RED,
-                max_scale=2,
+                WHITE,
+                max_scale=3,
             )
         self._render_result_status_badge(buffer)
 

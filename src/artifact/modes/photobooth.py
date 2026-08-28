@@ -1081,6 +1081,19 @@ class PhotoboothMode(BaseMode):
                             "blank footer rectangle. Keep faces out of the lowest 13%; the app overlays one "
                             "compact floating information card there."
                         )
+                    elif ai_style_key == "vnvnc_bday":
+                        personality_context = (
+                            "Preserve the source photograph as two fixed underdrawings: first, rotoscope every "
+                            "face with exact individual geometry, hairline, expression, age cues and natural "
+                            "asymmetry; second, preserve the recognizable real venue behind the people, including "
+                            "its walls, ceiling, practical lights, furniture, plants, decor, objects and background "
+                            "people. Re-render that actual scene as a bright high-key luxury birthday illustration "
+                            "with lifted cream, pearl, chrome, papaya, coral and lacquer-red tones. At least 70% of "
+                            "the background must be light or mid-tone with readable shadow detail. Never use a black "
+                            "void, dark empty wall, crushed blacks, muddy burgundy fog or replacement scenery. Keep "
+                            "all people equally recognizable and do not average, beautify or invent faces. Use "
+                            "exactly the supplied Russian weekday and time in the elegant footer, with no numeric date."
+                        )
                     elif ai_style_key == "sunset_palms":
                         personality_context = (
                             "Image 2 is the canonical exact SUNSET PALMS emblem. Faithfully reproduce its "

@@ -296,7 +296,7 @@ async def test_allowance_flows_are_one_one_two_three(flow, boosts, expected) -> 
 
 
 @pytest.mark.asyncio
-async def test_kp4_kp6_mirror_pair_selects_flow_once_and_persists() -> None:
+async def test_kp4_kp6_ignore_mirrored_arrows_and_digit_selects_flow() -> None:
     stub = LocalKioskStub(auto_auth_after_polls=None)
     mode = PrizeDrumMode(_context(), client=stub)
     mode.enter()
@@ -304,9 +304,10 @@ async def test_kp4_kp6_mirror_pair_selects_flow_once_and_persists() -> None:
     assert mode.preferred_flow == PrizeDrumFlow.AUTH
 
     mode.handle_input(Event(EventType.ARCADE_RIGHT, source="numpad"))
-    finish_task = mode._task
+    assert mode._task is None
+    assert mode.preferred_flow == PrizeDrumFlow.AUTH
     mode.handle_input(Event(EventType.KEYPAD_INPUT, {"key": "6"}, source="keypad"))
-    assert mode._task is finish_task
+    assert mode._task is not None
     assert mode.preferred_flow == PrizeDrumFlow.GUEST
     await _settle(mode)
     await _settle(mode)
@@ -358,9 +359,13 @@ async def test_noisy_legacy_gpio_cannot_cancel_keypad_auth_flow() -> None:
     assert mode.preferred_flow == PrizeDrumFlow.GUEST
     assert mode._task is None
 
-    # Physical KP4 with Num Lock off arrives as an arcade event, but its
-    # keyboard source remains valid and must still open Telegram login.
+    # Every detached/mirrored direction event is ignored, regardless of source.
     mode.handle_input(Event(EventType.ARCADE_LEFT, source="arcade"))
+    assert mode.preferred_flow == PrizeDrumFlow.GUEST
+    assert mode.screen == PrizeDrumScreen.READY
+
+    # Only the explicit KP4 digit opens Telegram login.
+    mode.handle_input(Event(EventType.KEYPAD_INPUT, {"key": "4"}, source="keypad"))
     assert mode.preferred_flow == PrizeDrumFlow.AUTH
     assert mode.screen == PrizeDrumScreen.CONNECTING
     await _settle(mode, frames=36)
@@ -876,7 +881,7 @@ def test_reel_lands_exactly_on_server_selected_sector_for_varied_frame_delta(del
 
 def test_reel_motion_is_long_and_has_two_distinct_false_near_hit_locks() -> None:
     motion = ReelMotion(target_index=4, catalog_size=6)
-    assert motion.duration_ms == SPIN_DURATION_MS == 10800.0
+    assert motion.duration_ms == SPIN_DURATION_MS == 14400.0
     assert motion.catalog_passes == SPIN_CATALOG_PASSES == 11
 
     def sector_at(progress: float) -> float:
@@ -1035,22 +1040,24 @@ def test_reel_selector_is_a_left_chevron_pointing_right() -> None:
     assert not white[:, 20:].any()
 
 
-def test_ready_screen_is_only_the_unobstructed_reel() -> None:
+def test_ready_screen_is_animated_text_free_drum_behind_large_title() -> None:
     mode = PrizeDrumMode(_context(), client=LocalKioskStub())
     mode.preferred_flow = PrizeDrumFlow.AUTH
     mode.screen = PrizeDrumScreen.READY
     mode._session = SimpleNamespace(
         allowance=SimpleNamespace(left=1, active_boosts=0),
     )
-    reel = np.zeros((128, 128, 3), dtype=np.uint8)
-    ready = np.zeros_like(reel)
+    first = np.zeros((128, 128, 3), dtype=np.uint8)
+    later = np.zeros_like(first)
+    mode._time_in_mode = 0.0
+    mode.render_main(first)
+    mode._time_in_mode = 1_500.0
+    mode.render_main(later)
 
-    mode._render_reel(reel, 0.0)
-    mode.render_main(ready)
-
-    assert np.array_equal(ready, reel)
-    assert mode._ticker_text() == "КОКТЕЙЛЬ"
-    assert mode.get_lcd_text().strip() == "КОКТЕЙЛЬ"
+    assert not np.array_equal(first, later)
+    assert np.all(first[34, 8] == np.asarray(RED))
+    assert mode._ticker_text() == "КОЛЕСО ФОРТУНЫ"
+    assert mode.get_lcd_text().strip() == "КОЛЕСО ФОРТУНЫ"[:16]
 
 
 def test_every_prize_drum_side_display_state_is_guest_facing_and_safe() -> None:
@@ -1071,6 +1078,8 @@ def test_every_prize_drum_side_display_state_is_guest_facing_and_safe() -> None:
     expected_status = {
         PrizeDrumScreen.CONNECTING: "ПОДОЖДИ",
         PrizeDrumScreen.AUTH_QR: "СКАНИРУЙ QR",
+        PrizeDrumScreen.READY: "КОЛЕСО ФОРТУНЫ",
+        PrizeDrumScreen.ISSUING: "ПОДОЖДИ",
         PrizeDrumScreen.NO_SPINS: "СПАСИБО",
         PrizeDrumScreen.OFFLINE: "НЕТ СВЯЗИ",
     }
@@ -1174,13 +1183,11 @@ def test_ready_screen_never_exposes_auth_boost_or_key_hints(active_boosts) -> No
         allowance=SimpleNamespace(left=1 + min(active_boosts, 2), active_boosts=active_boosts)
     )
 
-    reel = np.zeros((128, 128, 3), dtype=np.uint8)
-    frame = np.zeros_like(reel)
-    mode._render_reel(reel, mode._reel_position)
+    frame = np.zeros((128, 128, 3), dtype=np.uint8)
     mode.render_main(frame)
-    assert np.array_equal(frame, reel)
-    assert mode._ticker_text() == "КОКТЕЙЛЬ"
-    assert mode.get_lcd_text().strip() == "КОКТЕЙЛЬ"
+    assert np.any(frame != np.asarray(BLACK))
+    assert mode._ticker_text() == "КОЛЕСО ФОРТУНЫ"
+    assert mode.get_lcd_text().strip() == "КОЛЕСО ФОРТУНЫ"[:16]
 
 
 def test_all_ticket_headlines_are_deliberate_large_and_service_copy_free() -> None:
@@ -1280,9 +1287,8 @@ def test_tix50_uses_text_code_ticket_result_without_creating_redeem_qr(monkeypat
     red = np.all(frame == np.asarray(RED), axis=2)
     white = np.all(frame == np.asarray(WHITE), axis=2)
     green = np.all(frame == np.asarray((0, 255, 0)), axis=2)
-    assert red.sum() > 5_000
-    assert white[20:60].sum() > 250  # prominent -50% offer
-    assert red[89:113, 14:114].sum() > 25  # readable text code in white stub
+    assert red.sum() > 4_000
+    assert white[68:122].sum() > 250  # large prize title in result ticket
     assert not green.any()  # even a stale QR buffer cannot leak into this result
     assert mode._ticker_text() == "-50%"
     assert mode.get_lcd_text().strip() == "СКИДКА 50%"
@@ -1295,8 +1301,8 @@ def test_tix50_uses_text_code_ticket_result_without_creating_redeem_qr(monkeypat
     mode._award = alternate
     alternate_frame = np.zeros_like(frame)
     mode.render_main(alternate_frame)
-    assert np.array_equal(frame[:89], alternate_frame[:89])
-    assert not np.array_equal(frame[89:113], alternate_frame[89:113])
+    # The LED never exposes the code; only the immutable printed receipt does.
+    assert np.array_equal(frame, alternate_frame)
 
     mode._award = award
     mode._emit_print_once(award)
@@ -1550,14 +1556,17 @@ def test_rendered_auth_and_redeem_qrs_decode_to_exact_payloads() -> None:
     mode.render_main(redeem_frame)
 
     detector = cv2.QRCodeDetector()
-    decoded = []
-    for frame in (auth_frame, redeem_frame):
-        # Nearest-neighbour enlargement models the physical 3 mm LED pixels.
-        physical = np.repeat(np.repeat(frame, 8, axis=0), 8, axis=1)
-        value, points, _ = detector.detectAndDecode(physical)
-        assert points is not None
-        decoded.append(value)
-    assert decoded == [auth_url, coupon]
+    # Nearest-neighbour enlargement models the physical 3 mm LED pixels.
+    physical_auth = np.repeat(np.repeat(auth_frame, 8, axis=0), 8, axis=1)
+    value, points, _ = detector.detectAndDecode(physical_auth)
+    assert points is not None
+    assert value == auth_url
+
+    # Prize/coupon QR is intentionally receipt-only; Classic result cannot decode.
+    physical_result = np.repeat(np.repeat(redeem_frame, 8, axis=0), 8, axis=1)
+    value, points, _ = detector.detectAndDecode(physical_result)
+    assert not value
+    assert points is None
 
 
 def test_canary_award_is_visibly_marked_on_displays_and_print_contract() -> None:
