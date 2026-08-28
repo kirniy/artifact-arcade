@@ -2005,39 +2005,6 @@ OUTPUT:
 - bright source-faithful venue, tactile plastic, chrome foil, premium wear, exact likeness
 - vertical 9:16
 """,
-    """RAP GOD — HYPER-LUXURY HIP-HOP POSTER (VERTICAL 9:16)
-
-Create ONE SINGLE CENTERED IMAGE. NO grid. NO strip. NO panels. Full-bleed vertical poster.
-
-CRITICAL LIKENESS:
-- Preserve the exact real human faces from the source photo
-- If multiple people are present, preserve the exact full group and exact people count
-- Preserve visible clothing text and logos letter-for-letter
-- Faces remain human, photoreal, and sharply recognizable
-
-VISUAL DIRECTION:
-- Pure black void only, no club interior, no street set, no fake stage floor
-- Premium Octane-style hip-hop fantasy with ultra-expensive materials and strong silhouette design — somewhere between Kanye maximalism, Eminem aggression, and MAYOT glossy flex, but without imitating any real person literally
-- Build the people as the center of a luxury rap-cover universe with giant chrome microphone hardware, lacquer-red speaker stacks, anthracite trunks, chain jewelry, iced-out typography fragments, crimson satin cords, heavy medallions, glossy vinyl, and sharp rim light
-- Floating props should feel collectible and editorial, not cheap urban cliché: studio mic, chain links, red gems, speaker cones, ballistic cases, champagne spray mist, confetti shards, satin bows, money-burst energy
-- The whole thing must feel trend-forward, cocky, glossy, cinematic, hard, and cool as hell — no cartoon graffiti, no cheap poster effects, no cringe meme energy
-- Use the attached emblem references only as subtle VNVNC badge anchors or chain-medallion branding elements
-
-TEXT AND BRANDING:
-- the ONLY huge decorative title is exactly "RAP GOD"
-- title should feel like luxury chrome-meets-crimson rap-cover lettering
-- required footer text somewhere elegant in the composition:
-  * "VNVNC.RU"
-  * exact Russian weekday from personality_context
-  * exact time from personality_context
-  * "КОНЮШЕННАЯ 2В"
-- no other text
-
-OUTPUT:
-- one centered high-fashion hip-hop birthday poster
-- black void, chrome mic world, crimson highlights, exact likeness
-- vertical 9:16
-""",
 ]
 
 
@@ -2073,21 +2040,6 @@ Required text:
 No extra text.
 
 Square 1:1 luxury VIP-card birthday poster.
-""",
-    """RAP GOD — HYPER-LUXURY HIP-HOP POSTER (SQUARE 1:1)
-
-One square single-image composition only.
-Keep the exact real faces and full group from the source photo.
-Place them in a premium black-void rap-cover world with giant chrome microphone hardware, anthracite speaker stacks,
-chain jewelry, lacquer-red details, satin cords, medallions, glossy vinyl objects, and razor-sharp rim light.
-Use the attached emblem references only as subtle medallion / badge branding anchors.
-
-Huge title exactly "RAP GOD".
-Required text:
-"VNVNC.RU", exact Russian weekday from personality_context, exact time from personality_context, "КОНЮШЕННАЯ 2В".
-No extra text.
-
-Square 1:1 hyper-luxury hip-hop birthday poster.
 """,
 ]
 

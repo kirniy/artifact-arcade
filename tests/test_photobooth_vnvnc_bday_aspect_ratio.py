@@ -5,7 +5,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from artifact.ai.caricature import CaricatureService, CaricatureStyle
+from artifact.ai.caricature import (
+    CaricatureService,
+    CaricatureStyle,
+    VNVNC_BDAY_SQUARE_VARIATIONS,
+    VNVNC_BDAY_VARIATIONS,
+)
 
 
 PNG_1X1 = base64.b64decode(
@@ -53,3 +58,11 @@ def test_vnvnc_bday_display_style_requests_square_1_1(monkeypatch) -> None:
     )
 
     assert fake_client.calls[0]["aspect_ratio"] == "1:1"
+
+
+def test_vnvnc_bday_has_only_the_two_approved_light_variations() -> None:
+    assert len(VNVNC_BDAY_VARIATIONS) == 2
+    assert len(VNVNC_BDAY_SQUARE_VARIATIONS) == 2
+    prompts = "\n".join(VNVNC_BDAY_VARIATIONS + VNVNC_BDAY_SQUARE_VARIATIONS)
+    assert "RAP GOD" not in prompts
+    assert "Pure black void only" not in prompts
