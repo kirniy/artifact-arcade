@@ -345,6 +345,36 @@ async def test_kp4_forces_fresh_login_qr_from_authenticated_ready_session() -> N
 
 
 @pytest.mark.asyncio
+async def test_noisy_legacy_gpio_cannot_cancel_keypad_auth_flow() -> None:
+    stub = LocalKioskStub(auto_auth_after_polls=None)
+    mode = PrizeDrumMode(_context(), client=stub)
+    mode.preferred_flow = PrizeDrumFlow.GUEST
+    mode.enter()
+    await _settle(mode)
+    assert mode.screen == PrizeDrumScreen.READY
+
+    # A false active-low edge from the broken RIGHT wire must do nothing.
+    mode.handle_input(Event(EventType.ARCADE_RIGHT, source="gpio"))
+    assert mode.preferred_flow == PrizeDrumFlow.GUEST
+    assert mode._task is None
+
+    # Physical KP4 with Num Lock off arrives as an arcade event, but its
+    # keyboard source remains valid and must still open Telegram login.
+    mode.handle_input(Event(EventType.ARCADE_LEFT, source="arcade"))
+    assert mode.preferred_flow == PrizeDrumFlow.AUTH
+    assert mode.screen == PrizeDrumScreen.CONNECTING
+    await _settle(mode, frames=36)
+    assert mode.screen == PrizeDrumScreen.AUTH_QR
+    assert mode._auth_qr is not None
+
+    # Even sustained GPIO chatter cannot dismiss an already-visible QR.
+    for _ in range(10):
+        mode.handle_input(Event(EventType.ARCADE_RIGHT, source="gpio"))
+    assert mode.screen == PrizeDrumScreen.AUTH_QR
+    assert mode.preferred_flow == PrizeDrumFlow.AUTH
+
+
+@pytest.mark.asyncio
 async def test_manager_forwards_numlock_off_kp8_and_mirror_pair_reprints_once(
     monkeypatch,
 ) -> None:

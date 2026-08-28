@@ -697,7 +697,11 @@ class PrizeDrumMode(BaseMode):
                 )
             ):
                 return True
-            self._select_flow(flow)
+            self._select_flow(
+                flow,
+                input_source=event.source,
+                input_event=event.type.name if isinstance(event.type, EventType) else str(event.type),
+            )
             return True
 
         if event.type != EventType.BUTTON_PRESS:
@@ -739,6 +743,16 @@ class PrizeDrumMode(BaseMode):
         return True
 
     def _flow_for_event(self, event: Event) -> PrizeDrumFlow | None:
+        # The cabinet's legacy GPIO27 RIGHT line is physically stuck/noisy at
+        # the venue (active-low with short high release spikes).  It can emit a
+        # false GUEST selection every few seconds.  Prize-drum flow selection
+        # is intentionally keypad-only, so ignore those legacy GPIO edges while
+        # preserving numpad events with Num Lock either on or off.
+        if (
+            event.type in {EventType.ARCADE_LEFT, EventType.ARCADE_RIGHT}
+            and event.source == "gpio"
+        ):
+            return None
         flow: PrizeDrumFlow | None = None
         if event.type == EventType.ARCADE_LEFT:
             flow = PrizeDrumFlow.AUTH
@@ -765,7 +779,13 @@ class PrizeDrumMode(BaseMode):
             self._nav_action = (flow, self._time_in_mode)
         return flow
 
-    def _select_flow(self, flow: PrizeDrumFlow) -> None:
+    def _select_flow(
+        self,
+        flow: PrizeDrumFlow,
+        *,
+        input_source: str = "system",
+        input_event: str = "",
+    ) -> None:
         if self._pending_spin_request_id is not None:
             return
         current_screen = self.screen.name
@@ -779,6 +799,8 @@ class PrizeDrumMode(BaseMode):
             current_preference=current_preference,
             session_auth_mode=session_auth_mode,
             session_authenticated=session_authenticated,
+            input_source=input_source,
+            input_event=input_event,
         )
         same_session_flow = (
             self.preferred_flow == flow
