@@ -591,7 +591,7 @@ async def test_failed_final_logout_is_retried_before_next_guest_and_keeps_prize_
 
 
 @pytest.mark.asyncio
-async def test_print_failure_keeps_redeem_qr_visible_and_never_respins() -> None:
+async def test_print_failure_keeps_redeem_qr_visible_and_kp8_reprints_same_issue() -> None:
     stub = LocalKioskStub(auto_auth_after_polls=1)
     context = _context()
     mode = PrizeDrumMode(context, client=stub)
@@ -620,6 +620,11 @@ async def test_print_failure_keeps_redeem_qr_visible_and_never_respins() -> None
     assert mode._pending_print_issue_id == issue_id
     assert len(context.event_bus.get_history(EventType.PRINT_START)) == 1
 
+    # KP8 cannot duplicate a job that is still physically pending.
+    mode.handle_input(Event(EventType.KEYPAD_INPUT, {"key": "8"}, source="keypad"))
+    assert mode._pending_print_issue_id == issue_id
+    assert len(context.event_bus.get_history(EventType.PRINT_START)) == 1
+
     mode.handle_input(
         Event(
             EventType.PRINT_ERROR,
@@ -636,11 +641,17 @@ async def test_print_failure_keeps_redeem_qr_visible_and_never_respins() -> None
     mode.render_main(buffer)
     assert buffer.any()
 
-    # Main button retries the exact same immutable issue; it never re-spins.
-    mode.handle_input(Event(EventType.BUTTON_PRESS, source="center"))
+    # KP8 prints another physical copy of the exact same immutable issue.  A
+    # fresh print key deliberately bypasses the physical-job dedupe ledger;
+    # the prize/coupon itself is unchanged and no backend spin is performed.
+    mode.handle_input(Event(EventType.KEYPAD_INPUT, {"key": "8"}, source="keypad"))
     retry_events = context.event_bus.get_history(EventType.PRINT_START)
     assert len(retry_events) == 2
     assert retry_events[-1].data["issue_id"] == issue_id
+    assert retry_events[-1].data["coupon_code"] == retry_events[0].data["coupon_code"]
+    assert retry_events[-1].data["manual_reprint"] is True
+    assert retry_events[-1].data["reprint_number"] == 1
+    assert retry_events[-1].data["print_job_key"] == f"{issue_id}:manual-reprint:1"
     assert mode._pending_print_issue_id == issue_id
     assert np.array_equal(mode._redeem_qr, qr_before)
     mode.handle_input(
@@ -652,6 +663,35 @@ async def test_print_failure_keeps_redeem_qr_visible_and_never_respins() -> None
     )
     assert mode._pending_print_issue_id is None
     assert not mode._print_failed
+
+
+def test_big_button_advances_after_print_failure_and_never_reprints() -> None:
+    context = _context()
+    mode = PrizeDrumMode(context, client=LocalKioskStub())
+    mode._active = True
+    mode.screen = PrizeDrumScreen.RESULT
+    mode._print_failed = True
+    mode._last_print_data = {
+        "type": "prize_drum",
+        "mode": "prize_drum",
+        "issue_id": "immutable-issue",
+        "coupon_code": "VNVNC-KSK-TEST",
+    }
+    mode._session = KioskSession(
+        id="next-spin-session",
+        status="READY",
+        auth_mode="telegram",
+        club_night="2026-08-28",
+        authenticated=True,
+        user=KioskUser(42, "ГОСТЬ"),
+        allowance=SpinAllowance(base=1, total=2, used=1, left=1),
+    )
+
+    mode.handle_input(Event(EventType.BUTTON_PRESS, source="center"))
+
+    assert mode.screen == PrizeDrumScreen.READY
+    assert mode._award is None
+    assert not context.event_bus.get_history(EventType.PRINT_START)
 
 
 @pytest.mark.asyncio

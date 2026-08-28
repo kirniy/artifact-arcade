@@ -499,6 +499,7 @@ class PrizeDrumMode(BaseMode):
         self._pending_print_issue_id: str | None = None
         self._last_print_data: dict[str, Any] | None = None
         self._print_failed = False
+        self._manual_reprint_count = 0
         self._identity_cleared = True
         self._pending_spin_request_id: str | None = None
         self._pending_spin_session_id: str | None = None
@@ -657,6 +658,18 @@ class PrizeDrumMode(BaseMode):
             )
             return True
 
+        if (
+            event.type == EventType.KEYPAD_INPUT
+            and str(event.data.get("key", "")) == "8"
+        ):
+            # KP8 is the staff-only physical reprint action.  It deliberately
+            # reuses the immutable award/coupon while assigning a fresh print
+            # job key, so PrintManager prints another physical copy without
+            # issuing a second prize.  The big red button remains progression.
+            if self.screen == PrizeDrumScreen.RESULT:
+                self._request_manual_reprint()
+            return True
+
         flow = self._flow_for_event(event)
         if flow is not None:
             if (
@@ -702,9 +715,6 @@ class PrizeDrumMode(BaseMode):
             return True
         if self.screen == PrizeDrumScreen.RESULT:
             if self._pending_print_issue_id is not None:
-                return True
-            if self._print_failed:
-                self._retry_print()
                 return True
             if self._session and self._session.allowance.left > 0:
                 self._award = None
@@ -784,6 +794,7 @@ class PrizeDrumMode(BaseMode):
         self._pending_print_issue_id = None
         self._last_print_data = None
         self._print_failed = False
+        self._manual_reprint_count = 0
         self._clear_identity()
         self._error_code = ""
         self._error_message = ""
@@ -1143,9 +1154,30 @@ class PrizeDrumMode(BaseMode):
             )
         )
 
-    def _retry_print(self) -> None:
-        if self._last_print_data and self._pending_print_issue_id is None:
-            self._emit_print(dict(self._last_print_data))
+    def _request_manual_reprint(self) -> None:
+        """Print another copy of the current immutable award via staff KP8."""
+        if not self._last_print_data or self._pending_print_issue_id is not None:
+            return
+        self._manual_reprint_count += 1
+        print_data = dict(self._last_print_data)
+        issue_id = str(print_data["issue_id"])
+        print_data.update(
+            {
+                "manual_reprint": True,
+                "reprint_number": self._manual_reprint_count,
+                "print_job_key": (
+                    f"{issue_id}:manual-reprint:{self._manual_reprint_count}"
+                ),
+            }
+        )
+        _audit_prize_drum_event(
+            "manual_reprint_requested",
+            issue_id=issue_id,
+            prize_id=self._award.prize.id if self._award else "",
+            reprint_number=self._manual_reprint_count,
+            test_mode=bool(self._award and self._award.test_mode),
+        )
+        self._emit_print(print_data)
 
     def _clear_identity(self) -> None:
         self._identity_cleared = True

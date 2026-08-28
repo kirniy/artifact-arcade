@@ -648,6 +648,42 @@ def test_print_manager_routes_prize_to_rp80_once_for_duplicate_issue() -> None:
     asyncio.run(scenario())
 
 
+def test_print_manager_allows_explicit_kp8_reprint_with_same_prize_issue() -> None:
+    async def scenario() -> None:
+        bus = EventBus()
+        printer = _CountingRP80()
+        manager = PrintManager(bus, printer=printer, mock=True)
+        manager._broadcast_to_telegram = _silence_broadcast
+        initial = _sample_job()
+        reprint = _sample_job(
+            manual_reprint=True,
+            reprint_number=1,
+            print_job_key=f"{initial['issue_id']}:manual-reprint:1",
+        )
+        await manager.start()
+        try:
+            await manager.queue_print(initial)
+            await manager._queue.join()
+            await manager.queue_print(reprint)
+            await manager._queue.join()
+        finally:
+            await manager.stop()
+
+        assert printer.print_count == 2
+        completed = bus.get_history(EventType.PRINT_COMPLETE)
+        assert [event.data["issue_id"] for event in completed] == [
+            initial["issue_id"],
+            initial["issue_id"],
+        ]
+        assert [event.data["print_job_key"] for event in completed] == [
+            initial["print_job_key"],
+            reprint["print_job_key"],
+        ]
+        assert not bus.get_history(EventType.PRINT_ERROR)
+
+    asyncio.run(scenario())
+
+
 def test_print_manager_emits_error_when_rp80_rejects_job() -> None:
     async def scenario() -> None:
         bus = EventBus()
