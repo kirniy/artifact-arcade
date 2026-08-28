@@ -326,6 +326,26 @@ class HardwareRunner:
         Buttons are wired active LOW: GPIO to button to GND.
         Internal pull-up resistors are enabled.
         """
+        import os
+
+        if os.getenv("ARTIFACT_DISABLE_GPIO_BUTTONS", "").strip().lower() in {
+            "1", "true", "yes", "on"
+        }:
+            # The cabinet's legacy LEFT/RIGHT wiring can be physically
+            # disconnected without affecting the USB numpad or main button.
+            # Fail closed when disabled so a floating/shorted wire can never
+            # synthesize navigation events.
+            self._gpio_initialized = False
+            self._gpio_left_button = None
+            self._gpio_right_button = None
+            self._left_button_was_pressed = False
+            self._right_button_was_pressed = False
+            logger.info(
+                "GPIO LEFT/RIGHT buttons disabled via "
+                "ARTIFACT_DISABLE_GPIO_BUTTONS"
+            )
+            return False
+
         try:
             from gpiozero import Button
 

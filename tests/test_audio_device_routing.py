@@ -57,3 +57,17 @@ def test_hardware_audio_respects_explicit_service_route(monkeypatch) -> None:
     runner = runner_module.HardwareRunner(event_bus=EventBus())
     assert runner._init_audio() is True
     assert os.environ["AUDIODEV"] == "custom-stable-route"
+
+
+def test_hardware_audio_can_be_disabled_without_initializing_mixer(monkeypatch) -> None:
+    monkeypatch.setenv("ARTIFACT_DISABLE_AUDIO", "true")
+    monkeypatch.setattr(
+        runner_module,
+        "_get_pygame",
+        lambda: (_ for _ in ()).throw(AssertionError("pygame mixer must not load")),
+    )
+
+    runner = runner_module.HardwareRunner(event_bus=EventBus())
+    assert runner._init_audio() is False
+    assert runner._audio_enabled is False
+    assert runner._audio_engine is None
