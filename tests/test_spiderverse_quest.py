@@ -124,6 +124,30 @@ def test_quest_ready_frame_ticker_and_lcd_are_not_blank() -> None:
     assert "НАЖМИ" in mode.get_lcd_text()
 
 
+def test_story_scenes_fit_and_button_interrupts_every_scene(monkeypatch) -> None:
+    import artifact.modes.spiderverse_quest as quest_module
+    from artifact.graphics.text_utils import measure_text
+
+    original = quest_module.draw_centered_text
+    seen = []
+    def checked(buffer, text, y, color, scale=1):
+        width, height = measure_text(text, scale)
+        assert width <= 120
+        assert y >= 0 and y + height <= 128
+        seen.append(text)
+        return original(buffer, text, y, color, scale=scale)
+    monkeypatch.setattr(quest_module, "draw_centered_text", checked)
+    for scene, lines in enumerate(quest_module.QUEST_STORY):
+        mode = SpiderverseQuestMode(_context())
+        mode.enter()
+        for phase in (0, 120, 400, 4199):
+            mode._time_in_mode = scene * quest_module.QUEST_SCENE_MS + phase
+            mode.render_main(np.zeros((128, 128, 3), dtype=np.uint8))
+        assert all(line in seen for line in lines)
+        assert mode.handle_input(Event(EventType.BUTTON_PRESS, source="test"))
+        assert mode._quest_screen == QuestScreen.PHOTO
+
+
 def test_successful_photo_print_contains_quest_without_second_job(monkeypatch) -> None:
     import artifact.modes.photobooth as photobooth_module
 

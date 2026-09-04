@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 
 from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import draw_circle, draw_line, draw_rect, fill
-from artifact.graphics.text_utils import draw_centered_text, render_idle_style_ticker_text
+from artifact.graphics.text_utils import draw_centered_text, render_idle_style_ticker_text, measure_text
 from artifact.modes.base import ModeContext, ModePhase
 from artifact.modes.photobooth import PhotoboothMode, PhotoboothState
 logger = logging.getLogger(__name__)
@@ -22,6 +22,15 @@ CREAM = (245, 235, 213)
 BLUE = (32, 72, 150)
 TICKER_GREEN = (0, 255, 48)
 QUEST_START_URL = "https://t.me/vnvncbattlebot?start=spiderquest"
+QUEST_STORY = (
+    ("ПОМОЖЕШЬ", "ПИТЕРУ", "ПАРКЕРУ?"),
+    ("СДЕЛАЙ", "ФОТО", "В БУДКЕ"),
+    ("ЗАБЕРИ", "ЧЕК", "С ФОТО"),
+    ("СКАНИРУЙ", "QR С ЧЕКА", "В TELEGRAM"),
+    ("ПРОЙДИ", "5 ФОТО", "ЗАДАНИЙ"),
+    ("КОКТЕЙЛЬ", "+ ШОТ", "ЗА КВЕСТ"),
+)
+QUEST_SCENE_MS = 4200
 
 
 class QuestScreen(Enum):
@@ -145,6 +154,7 @@ class SpiderverseQuestMode(PhotoboothMode):
             self._reset_to_quest_ready()
 
     def _reset_to_quest_ready(self) -> None:
+        self._quest_ready_started_ms = self._time_in_mode
         self._state = PhotoboothState()
         self._state.awaiting_camera_selection = False
         self._working = False
@@ -160,6 +170,49 @@ class SpiderverseQuestMode(PhotoboothMode):
         self._render_quest_attract(buffer)
 
     def _render_quest_attract(self, buffer: NDArray[np.uint8]) -> None:
+        """Interruptible comic onboarding; button starts immediately in every scene."""
+        story_ms = self._time_in_mode - getattr(self, "_quest_ready_started_ms", 0)
+        scene = int(story_ms // QUEST_SCENE_MS) % len(QUEST_STORY)
+        local_ms = story_ms % QUEST_SCENE_MS
+        # Fast ease-out entry; most of the scene is motionless readable copy.
+        progress = min(1.0, local_ms / 240.0)
+        offset = round(5 * (1 - progress) ** 3)
+        fill(buffer, INK)
+        draw_rect(buffer, 2, 2, 124, 124, RED, filled=False, thickness=2)
+        if scene == 0:
+            mask = np.zeros_like(buffer)
+            self._render_quest_mask(mask)
+            buffer[6:42, 8:120] = mask[7:79:2, 8:120]
+        else:
+            # Small animated illustrations explain the physical sequence.
+            bob = round(math.sin(self._time_in_mode / 600) * 1.5)
+            y = 10 + bob
+            if scene == 1:
+                draw_rect(buffer, 41, y + 6, 46, 26, RED, filled=True)
+                draw_rect(buffer, 48, y + 1, 16, 7, RED, filled=True)
+                draw_circle(buffer, 64, y + 19, 10, CREAM, filled=True)
+                draw_circle(buffer, 64, y + 19, 6, INK, filled=True)
+            elif scene in (2, 3, 4):
+                draw_rect(buffer, 49, y, 30, 33, CREAM, filled=True)
+                for line in range(3):
+                    draw_line(buffer, 54, y + 6 + line * 6, 73, y + 6 + line * 6, INK, thickness=2)
+                draw_line(buffer, 59, y + 27, 64, y + 30, RED, thickness=2)
+                draw_line(buffer, 64, y + 30, 72, y + 22, RED, thickness=2)
+            else:
+                draw_line(buffer, 43, y + 4, 67, y + 4, CREAM, thickness=2)
+                draw_line(buffer, 43, y + 4, 55, y + 20, RED, thickness=2)
+                draw_line(buffer, 67, y + 4, 55, y + 20, RED, thickness=2)
+                draw_line(buffer, 55, y + 20, 55, y + 31, CREAM, thickness=2)
+                draw_line(buffer, 48, y + 31, 62, y + 31, CREAM, thickness=2)
+                draw_rect(buffer, 75, y + 16, 12, 15, CREAM, filled=False, thickness=2)
+        for index, line in enumerate(QUEST_STORY[scene]):
+            scale = 2 if measure_text(line, scale=2)[0] <= 112 else 1
+            draw_centered_text(buffer, line, 49 + index * 19 + offset, CREAM if index != 1 else RED, scale=scale)
+        for index in range(len(QUEST_STORY)):
+            draw_rect(buffer, 25 + index * 13, 108, 9, 2, RED if index == scene else BLUE, filled=True)
+        draw_centered_text(buffer, "НАЖМИ КНОПКУ", 116, CREAM, scale=1)
+
+    def _render_quest_mask(self, buffer: NDArray[np.uint8]) -> None:
         fill(buffer, INK)
         t = self._time_in_mode / 1000.0
 
