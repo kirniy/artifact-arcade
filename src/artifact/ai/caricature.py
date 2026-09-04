@@ -140,6 +140,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_SUNSET_PALMS_SQUARE = (
         "photobooth_sunset_palms_square"  # 1:1 square - identity-locked 2D sunset festival mode
     )
+    PHOTOBOOTH_SPIDERVERSE = "photobooth_spiderverse"
+    PHOTOBOOTH_SPIDERVERSE_SQUARE = "photobooth_spiderverse_square"
     PHOTOBOOTH_WORLD_CUP_FINAL = (
         "photobooth_world_cup_final"  # 9:16 vertical - Spain vs Argentina 2D football final
     )
@@ -3412,6 +3414,16 @@ Rotoscope faces with exact real geometry, asymmetry and hairline irregularities;
 Keep the recognizable guests large and central. Full bleed, no blank bars or UI panels. Adult festive party energy—not a calm retreat, neon-strobe club, cyberpunk scene, children's party, Mad Max desert, generic fantasy, cluttered AI slop, dark canopy, storm sky, heavy brown cast, wall-to-wall props, warped instruments, melted anatomy, or fog over faces. Square 1:1.""",
 ]
 
+SPIDERVERSE_VARIATIONS = [
+    """DIMENSIONAL GRAPHIC-NOVEL MULTIVERSE — VERTICAL 9:16
+Edit the attached photograph in place as premium stylized 3D animation with tactile comic-print finishing. Preserve every real face, body proportion, pose, group relationship, and the recognizable real room behind them. Replace each guest's clothes from the neck down with a fitted athletic red-and-deep-blue suit made from textured technical fabric: black raised web lattice over the red torso and sleeves, deep-blue side panels and legs, subtle dark piping, integrated gloves, and no letters or chest emblem. Every face, hairline, hairstyle, ears and expression must remain fully visible and uncovered; no mask, hood, helmet, eyewear or face paint. Build faces, bodies and environment as genuinely dimensional CGI with modeled volume, perspective depth, cinematic lensing, soft global illumination, volumetric rim light, believable material response and subtle depth of field; this must read as a frame from a high-budget 3D animated feature, not a flat drawing. Over that dimensional render add confident ink contours, halftone shadow fields, offset cyan/red print registration, stepped-motion echoes, paper grain, and sharp graphic light shapes. Use a bright scarlet, cobalt, warm ivory and limited black palette with readable midtones. Image 2 is the exact mandatory SPIDERVERSE event emblem: reproduce its complete curved badge, web texture, extruded letter geometry and exact word as one integrated top lockup. Do not invent franchise characters, studio names, other logos, or any extra readable text. Keep faces out of the lowest 13% for the app footer."""
+]
+
+SPIDERVERSE_SQUARE_VARIATIONS = [
+    """DIMENSIONAL GRAPHIC-NOVEL MULTIVERSE — SQUARE 1:1
+Rebuild the exact source guests and actual venue as a genuinely dimensional high-budget 3D animated still with modeled facial volume, natural adult anatomy, cinematic perspective, global illumination, volumetric rim light, material depth and subtle depth of field, while preserving precise identity. Replace clothes from the neck down with fitted red-and-deep-blue technical-fabric athletic suits carrying a raised black web lattice, blue side panels, dark piping and integrated gloves, but no letters or chest emblem. Keep every real face, hairstyle and ear completely uncovered: no masks, hoods, helmets, eyewear or face paint. Finish the 3D frame with graphic ink contours, halftone texture, chromatic print separation and layered parallax. Bright scarlet, cobalt and warm ivory dominate; keep shadows readable. Integrate Image 2 as the exact SPIDERVERSE event emblem near the top without covering a face. No franchise character, studio mark, replacement location, fake lettering or additional text."""
+]
+
 
 WORLD_CUP_FINAL_VARIATIONS = [
     """ЧЕМПИОНАТ МИРА 2026 — IDENTITY-LOCKED 2D FOOTBALL FINAL POSTER (VERTICAL 9:16)
@@ -3669,6 +3681,8 @@ STYLE_PROMPTS = {
     CaricatureStyle.PHOTOBOOTH_JARA_SQUARE: "JARA_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS: "SUNSET_PALMS_VARIATION",
     CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE: "SUNSET_PALMS_SQUARE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_SPIDERVERSE: "SPIDERVERSE_VARIATION",
+    CaricatureStyle.PHOTOBOOTH_SPIDERVERSE_SQUARE: "SPIDERVERSE_SQUARE_VARIATION",
     CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL: "WORLD_CUP_FINAL_VARIATION",
     CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE: "WORLD_CUP_FINAL_SQUARE_VARIATION",
     # =========================================================================
@@ -3792,6 +3806,8 @@ class CaricatureService:
                 "JARA_SQUARE_VARIATION": JARA_SQUARE_VARIATIONS,
                 "SUNSET_PALMS_VARIATION": SUNSET_PALMS_VARIATIONS,
                 "SUNSET_PALMS_SQUARE_VARIATION": SUNSET_PALMS_SQUARE_VARIATIONS,
+                "SPIDERVERSE_VARIATION": SPIDERVERSE_VARIATIONS,
+                "SPIDERVERSE_SQUARE_VARIATION": SPIDERVERSE_SQUARE_VARIATIONS,
                 "WORLD_CUP_FINAL_VARIATION": WORLD_CUP_FINAL_VARIATIONS,
                 "WORLD_CUP_FINAL_SQUARE_VARIATION": WORLD_CUP_FINAL_SQUARE_VARIATIONS,
                 "GUESS_VARIATION": GUESS_VARIATIONS,
@@ -3848,6 +3864,17 @@ ADDITIONAL REFERENCE IMAGES — ROLE-LOCKED:
 - Images 3 and later, when present, are tight identity crops of the SAME real guests already visible in Image 1, ordered left-to-right. They are not extra people and must never create duplicates.
 - Use those crops only to preserve each guest's exact facial geometry, skin texture, hairline, ears and asymmetry. Image 1 remains authoritative for person count, group order, pose, hands, clothing and composition.
 - Never borrow a face from one crop for another guest, average their features, or turn the closeups into floating portraits.
+"""
+                elif style in (
+                    CaricatureStyle.PHOTOBOOTH_SPIDERVERSE,
+                    CaricatureStyle.PHOTOBOOTH_SPIDERVERSE_SQUARE,
+                ):
+                    reference_asset_hint = """
+ADDITIONAL REFERENCE IMAGES — ROLE-LOCKED:
+- Image 2 is the SHA-256-verified canonical SPIDERVERSE event emblem and must appear as one complete integrated lockup.
+- Images 3 and later are identity crops of the SAME guests in Image 1, ordered left-to-right; they are not extra people.
+- Image 1 is authoritative for person count, pose, clothing, composition and the real venue background.
+- Never borrow or average faces, duplicate guests, or turn identity crops into floating portraits.
 """
                 else:
                     reference_asset_hint = """
@@ -3911,6 +3938,8 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SPIDERVERSE,
+                CaricatureStyle.PHOTOBOOTH_SPIDERVERSE_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_VSE_SVOI,
@@ -4013,6 +4042,10 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
             )
+            is_spiderverse_style = style in (
+                CaricatureStyle.PHOTOBOOTH_SPIDERVERSE,
+                CaricatureStyle.PHOTOBOOTH_SPIDERVERSE_SQUARE,
+            )
             is_world_cup_final_style = style in (
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
@@ -4022,7 +4055,19 @@ ADDITIONAL REFERENCE IMAGES:
                 CaricatureStyle.PHOTOBOOTH_VSE_SVOI_SQUARE,
             )
 
-            if is_brainrot_style:
+            if is_spiderverse_style:
+                color_instruction = """- FULL COLOR, PREMIUM DIMENSIONAL CGI — scarlet red, deep cobalt, warm ivory, true skin tones and limited ink black
+- Preserve Image 1 as a fixed underdrawing: exact distinct faces, hair, expressions, body proportions, poses, group order and overlaps
+- WARDROBE OVERRIDE: replace every guest's original clothes from the neck down with a fitted red-and-deep-blue technical-fabric athletic suit. Use a raised black web lattice over red torso/sleeves, deep-blue side panels and legs, subtle dark piping and integrated gloves. No letters, chest emblem or copied logo
+- Faces are never part of the wardrobe transformation: keep every face, hairline, hairstyle, ear, glasses and expression completely visible and exact. No mask, hood, helmet, face covering, colored contact lenses or face paint
+- Preserve the recognizable actual venue as a second fixed underdrawing: walls, ceiling, practical lights, furniture, plants, decor, objects and background people remain identifiable
+- Render the people and real room as genuinely dimensional high-budget CGI with modeled facial volume, cinematic perspective, soft global illumination, volumetric rim light, believable materials and subtle depth of field; it must not read as flat illustration. Then finish with bold ink contours, halftone shadows, chromatic print misregistration, paper grain, layered parallax and restrained stepped-motion echoes
+- Identity accuracy outranks stylization. No face averaging, beautifying, generic models, plastic doll faces, altered ages or covered faces
+- Image 2 is the exact canonical SPIDERVERSE event emblem; integrate one complete dimensional version near the top without hiding anyone
+- Keep the scene bright and legible with at least 65% light or mid-tone area; no black void, crushed club darkness, invented replacement set or muddy red fog
+- No franchise character, studio mark, copied chest emblem, web-shooting pose, extra logo, fake words, pseudo-text or generated UI
+- Continue the artwork full bleed and keep faces out of the lowest 13% for one app-rendered footer"""
+            elif is_brainrot_style:
                 color_instruction = """- FULL COLOR — cursed meme palette: toxic lime, oversaturated cyan, tomato red, fake gold, candy magenta, JPEG-white glow
 - Single centered poster composition only, no grid and no separate frames
 - Exact human faces are mandatory; do not replace faces with animal heads
@@ -4261,7 +4306,13 @@ ADDITIONAL REFERENCE IMAGES:
 - NO colors, NO grayscale shading - just black and white like a thermal print
 - High quality artistic illustration, NOT pixel art, NOT photorealistic"""
 
-            if is_vse_svoi_style:
+            if is_spiderverse_style:
+                task_opening = (
+                    "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat both its real guests and visible venue "
+                    "as fixed underdrawings, translating the entire photograph into dimensional graphic-novel "
+                    "animation without replacing, beautifying, or re-staging anyone."
+                )
+            elif is_vse_svoi_style:
                 task_opening = (
                     "EDIT THE ATTACHED SOURCE PHOTO IN PLACE. Treat its people as a fixed underdrawing and "
                     "perform an identity-preserving high-fidelity 2D rotoscope; preserve the recognizable "
@@ -4290,7 +4341,14 @@ ADDITIONAL REFERENCE IMAGES:
                     "Create an artistic portrait OF THIS EXACT PERSON OR EXACT GROUP from the reference photo."
                 )
 
-            if is_vse_svoi_style:
+            if is_spiderverse_style:
+                text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
+  * Image 2 is mandatory exact event-brand geometry, not loose inspiration
+  * Render exactly one complete SPIDERVERSE emblem, preserving its curved badge, web texture, extrusion, colors and exact word
+  * SPIDERVERSE inside that supplied emblem is the only readable text allowed in the AI artwork
+  * The theme-specific fitted red-and-blue web-patterned athletic suit replaces source clothing from the neck down, while every real face and hairstyle stays fully uncovered
+  * Do not add captions, dates, weekdays, time, address, slogans, signs, garment lettering, studio names, franchise names, extra logos or pseudo-text"""
+            elif is_vse_svoi_style:
                 text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
   * Image 2 is the mandatory canonical silver VNVNC chain pendant, not loose inspiration
   * Exactly one pendant is allowed in the final result: the deterministic hero pendant added by the app at the top
@@ -4366,6 +4424,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
                 CaricatureStyle.PHOTOBOOTH_ALYE_PARUSA,
                 CaricatureStyle.PHOTOBOOTH_JARA,
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
+                CaricatureStyle.PHOTOBOOTH_SPIDERVERSE,
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL,
                 CaricatureStyle.PHOTOBOOTH_VSE_SVOI,
             ):
@@ -4375,7 +4434,9 @@ UNIQUENESS TOKEN: {uniqueness_token}
 
             # Send photo directly to Gemini 3 Pro Image Preview
             # The model understands to use the photo as reference
-            if is_brainrot_style:
+            if is_spiderverse_style:
+                image_style = "High-budget genuinely dimensional 3D animated-feature frame edited directly from the source photo; modeled facial volume, cinematic perspective and lensing, soft global illumination, volumetric rim light, believable materials and subtle depth of field; exact real uncovered faces and group preserved; every guest wears a fitted red-and-deep-blue technical-fabric athletic suit with raised black web lattice, blue side panels, dark piping and integrated gloves from the neck down; no masks, hoods, helmets, face paint, letters or chest emblems; recognizable real venue preserved; dimensional CGI under bold ink contours, offset cyan-red print registration, halftone fields, stepped-motion echoes, paper grain and layered parallax; exact supplied SPIDERVERSE event emblem integrated once; never a flat drawing; no franchise character, studio mark, extra text, dark void or generic replacement scene"
+            elif is_brainrot_style:
                 image_style = "Full-bleed Italian brainrot meme poster, surreal semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost JPEG artifacts, ugly outer glow, width-squeezed WordArt, dumb sparkles, exact human faces preserved"
             elif is_wedding_style:
                 image_style = "Cheesy Russian countryside wedding postcard portrait, tacky glossy studio montage, satin drapes, fake gold, roses, doves, bad Photoshop glow, sentimental print texture"

@@ -509,6 +509,7 @@ class ModeManager:
         *,
         enable_prize_drum: bool | None = None,
         prize_drum_client: Any = None,
+        enable_spiderverse_quest: bool | None = None,
     ):
         self.state_machine = state_machine
         self.event_bus = event_bus
@@ -539,6 +540,19 @@ class ModeManager:
         self._prize_drum_restore_index = 0
         self._pending_prize_drum_exit = False
         self._prize_drum_hold = HoldKeyDetector("9", threshold_ms=2000.0)
+
+        if enable_spiderverse_quest is None:
+            env = os.getenv("ARTIFACT_ENV", "simulator").strip().lower()
+            configured = os.getenv("ARTIFACT_SPIDERVERSE_QUEST_ENABLED", "").strip().lower()
+            enable_spiderverse_quest = configured in {"1", "true", "yes", "on"} or (
+                env != "hardware" and configured == ""
+            )
+        self._spiderverse_quest_enabled = bool(enable_spiderverse_quest)
+        self._spiderverse_quest_active = False
+        self._spiderverse_quest_restore_state = ManagerState.MODE_SELECT
+        self._spiderverse_quest_restore_index = 0
+        self._pending_spiderverse_quest_exit = False
+        self._spiderverse_quest_hold = HoldKeyDetector("7", threshold_ms=2000.0)
 
         # Idle animation - uses the new rotating scene system
         self._idle_animation = RotatingIdleAnimation()
@@ -849,6 +863,10 @@ class ModeManager:
         self.event_bus.subscribe(EventType.KEYPAD_PRESS, self._on_keypad_press)
         self.event_bus.subscribe(EventType.KEYPAD_RELEASE, self._on_keypad_release)
         self.event_bus.subscribe(EventType.PRIZE_DRUM_TOGGLE, self._on_prize_drum_toggle)
+        self.event_bus.subscribe(
+            EventType.SPIDERVERSE_QUEST_TOGGLE,
+            self._on_spiderverse_quest_toggle,
+        )
         self.event_bus.subscribe(EventType.PRINT_COMPLETE, self._on_prize_drum_print_status)
         self.event_bus.subscribe(EventType.PRINT_ERROR, self._on_prize_drum_print_status)
         self.event_bus.subscribe(EventType.BACK, self._on_back)
@@ -1265,29 +1283,49 @@ class ModeManager:
             self._current_mode.handle_input(event)
 
     def _on_keypad_press(self, event: Event) -> None:
-        """Arm the hidden KP9 hold without forwarding a capture digit."""
-        self._prize_drum_hold.press(str(event.data.get("key", "")))
+        """Arm hidden KP7/KP9 holds without forwarding capture digits."""
+        key = str(event.data.get("key", ""))
+        self._prize_drum_hold.press(key)
+        self._spiderverse_quest_hold.press(key)
 
     def _on_keypad_release(self, event: Event) -> None:
-        """Rearm KP9 and preserve one short-press digit outside hidden mode."""
+        """Rearm hidden holds and preserve short-press digits."""
         key = str(event.data.get("key", ""))
-        short_press = (
-            key == "9"
-            and self._prize_drum_hold.held
-            and not self._prize_drum_hold.fired
-            and not self._prize_drum_active
-        )
+        detector = self._prize_drum_hold if key == "9" else self._spiderverse_quest_hold
+        hidden_active = self._prize_drum_active if key == "9" else self._spiderverse_quest_active
+        short_press = key in {"7", "9"} and detector.held and not detector.fired and not hidden_active
         self._prize_drum_hold.release(key)
+        self._spiderverse_quest_hold.release(key)
         if short_press:
             self.event_bus.emit(Event(
                 EventType.KEYPAD_INPUT,
-                data={"key": "9"},
-                source="mode_manager_kp9_short_press",
+                data={"key": key},
+                source=f"mode_manager_kp{key}_short_press",
             ))
+
+    def _on_spiderverse_quest_toggle(self, event: Event) -> None:
+        if not self._spiderverse_quest_enabled:
+            logger.info("SPIDERVERSE quest KP7 gesture ignored: feature disabled")
+            return
+        if self._spiderverse_quest_active:
+            mode = self._current_mode
+            if mode is not None and getattr(mode, "is_safe_to_exit", False):
+                self._exit_spiderverse_quest()
+            else:
+                self._pending_spiderverse_quest_exit = True
+                logger.info("SPIDERVERSE quest exit deferred until photo flow is safe")
+            return
+        if self._can_enter_hidden_mode():
+            self._enter_spiderverse_quest()
+        else:
+            logger.info("SPIDERVERSE quest entry ignored outside safe idle/menu state")
 
     def _on_prize_drum_toggle(self, event: Event) -> None:
         if not self._prize_drum_enabled:
             logger.info("Prize drum KP9 gesture ignored: feature disabled")
+            return
+        if self._spiderverse_quest_active:
+            logger.info("Prize drum KP9 gesture ignored while SPIDERVERSE quest is active")
             return
         if self._prize_drum_active:
             mode = self._current_mode
@@ -1314,8 +1352,8 @@ class ModeManager:
         self._last_input_time = self._time_in_state
         self._audio.play_ui_back()
 
-        if self._prize_drum_active:
-            # The hidden profile has one deliberate exit gesture (hold KP9).
+        if self._prize_drum_active or self._spiderverse_quest_active:
+            # Hidden profiles have one deliberate exit gesture (KP9 / KP7).
             # A stray/back key must not interrupt a committed award.
             return
 
@@ -1479,6 +1517,9 @@ class ModeManager:
             logger.info("Admin menu activated")
 
     def _can_enter_prize_drum(self) -> bool:
+        return self._can_enter_hidden_mode()
+
+    def _can_enter_hidden_mode(self) -> bool:
         return self._current_mode is None and self._state in {
             ManagerState.IDLE,
             ManagerState.MODE_SELECT,
@@ -1528,6 +1569,47 @@ class ModeManager:
             self._selected_index = restore_index % len(self._mode_order)
         logger.info("Hidden ФОТОБУДКА ВИНОВНИЦЫ prize drum deactivated")
 
+    def _enter_spiderverse_quest(self) -> None:
+        if self._spiderverse_quest_active or not self._can_enter_hidden_mode():
+            return
+        from artifact.modes.spiderverse_quest import SpiderverseQuestMode
+
+        self._spiderverse_quest_restore_state = self._state
+        self._spiderverse_quest_restore_index = self._selected_index
+        self._close_selector_camera()
+        context = ModeContext(
+            state_machine=self.state_machine,
+            event_bus=self.event_bus,
+            renderer=self.renderer,
+            animation_engine=self.animation_engine,
+            theme="spiderverse",
+        )
+        self._current_mode = SpiderverseQuestMode(context)
+        self._spiderverse_quest_active = True
+        self._pending_spiderverse_quest_exit = False
+        self._audio.stop_music(fade_out_ms=120)
+        self._display_coordinator.clear_effect()
+        self._change_state(ManagerState.MODE_ACTIVE)
+        self._current_mode.enter()
+        logger.info("Hidden SPIDERVERSE quest activated")
+
+    def _exit_spiderverse_quest(self) -> None:
+        if not self._spiderverse_quest_active:
+            return
+        restore_state = self._spiderverse_quest_restore_state
+        restore_index = self._spiderverse_quest_restore_index
+        self._pending_spiderverse_quest_exit = False
+        if self._current_mode:
+            self._current_mode.exit()
+        self._current_mode = None
+        self._spiderverse_quest_active = False
+        self._change_state(ManagerState.IDLE)
+        self._idle_animation.reset()
+        if restore_state == ManagerState.MODE_SELECT and self._mode_order:
+            self._enter_mode_select()
+            self._selected_index = restore_index % len(self._mode_order)
+        logger.info("Hidden SPIDERVERSE quest deactivated")
+
     # Update loop
     def update(self, delta_ms: float) -> None:
         """Update manager state."""
@@ -1537,6 +1619,12 @@ class ModeManager:
             self.event_bus.emit(Event(
                 EventType.PRIZE_DRUM_TOGGLE,
                 data={"key": "9", "held_ms": 2000.0},
+                source="mode_manager",
+            ))
+        if self._spiderverse_quest_hold.update(delta_ms):
+            self.event_bus.emit(Event(
+                EventType.SPIDERVERSE_QUEST_TOGGLE,
+                data={"key": "7", "held_ms": 2000.0},
                 source="mode_manager",
             ))
 
@@ -1612,6 +1700,12 @@ class ModeManager:
                 and getattr(self._current_mode, "is_safe_to_exit", False)
             ):
                 self._exit_prize_drum()
+        if self._pending_spiderverse_quest_exit and self._spiderverse_quest_active:
+            if (
+                self._current_mode is not None
+                and getattr(self._current_mode, "is_safe_to_exit", False)
+            ):
+                self._exit_spiderverse_quest()
 
     # Rendering
     def render_main(self, buffer) -> None:

@@ -458,6 +458,8 @@ class RotatingIdleAnimation:
             return "jara"
         if theme_id == "sunset-palms":
             return "sunset_palms"
+        if theme_id == "spiderverse":
+            return "spiderverse"
         if theme_id == "world-cup-final":
             return "world_cup_final"
         if theme_id == "vse-svoi":
@@ -540,6 +542,8 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "SUNSET PALMS",
             }
+        if self.idle_variant == "spiderverse":
+            return {IdleScene.CRINGE_CIRCLE_VIDEO: "SPIDERVERSE"}
         if self.idle_variant == "world_cup_final":
             return {
                 IdleScene.CRINGE_HERO: "ЧЕМПИОНАТ МИРА 2026",
@@ -585,6 +589,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "jara":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "sunset_palms":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "spiderverse":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "world_cup_final":
             return [IdleScene.CRINGE_HERO]
@@ -799,6 +805,7 @@ class RotatingIdleAnimation:
                     "alye_parusa",
                     "jara",
                     "sunset_palms",
+                    "spiderverse",
                     "world_cup_final",
                     "vse_svoi",
                 }
@@ -880,6 +887,7 @@ class RotatingIdleAnimation:
             "alye_parusa",
             "jara",
             "sunset_palms",
+            "spiderverse",
             "world_cup_final",
             "vse_svoi",
         }:
@@ -1189,6 +1197,21 @@ class RotatingIdleAnimation:
                     "activation must remain gated",
                     video_path,
                 )
+            return
+        if self.idle_variant == "spiderverse":
+            filename = self._theme.idle_video_filename
+            if not filename:
+                logger.error("SPIDERVERSE idle-video slot is not configured")
+                return
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets" / "idle" / "spiderverse" / "video" / filename
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info("Loaded SPIDERVERSE idle video: %s", video_path.name)
+            else:
+                logger.error("Required SPIDERVERSE idle video is missing: %s", video_path)
             return
         if self.idle_variant == "mtv_night":
             video_path = (
@@ -1736,6 +1759,8 @@ class RotatingIdleAnimation:
             names = {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "SUNSET PALMS",
             }
+        elif self.idle_variant == "spiderverse":
+            names = {IdleScene.CRINGE_CIRCLE_VIDEO: "SPIDERVERSE"}
         elif self.idle_variant == "world_cup_final":
             names = {
                 IdleScene.CRINGE_HERO: "ЧЕМПИОНАТ МИРА 2026",
@@ -5373,6 +5398,7 @@ class RotatingIdleAnimation:
             "alye_parusa",
             "jara",
             "sunset_palms",
+            "spiderverse",
             "world_cup_final",
             "vse_svoi",
         }:

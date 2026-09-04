@@ -132,6 +132,7 @@ class HardwareRunner:
         # KP9 is a deliberate two-second hidden-mode gesture.  It has its own
         # edge state so SDL key repeat can never leak a digit/camera trigger.
         self._kp9_down = False
+        self._kp7_down = False
 
         # Use mock displays if hardware unavailable
         self._use_mocks = os.getenv("ARTIFACT_MOCK_HARDWARE", "false").lower() == "true"
@@ -856,11 +857,13 @@ class HardwareRunner:
                 source="keypad"
             ))
         elif key == pygame.K_KP7:
-            self.event_bus.emit(Event(
-                EventType.KEYPAD_INPUT,
-                data={"key": "7"},
-                source="keypad"
-            ))
+            if not self._kp7_down:
+                self._kp7_down = True
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_PRESS,
+                    data={"key": "7", "physical": "numpad"},
+                    source="keypad"
+                ))
         elif key == pygame.K_KP9:
             if not self._kp9_down:
                 self._kp9_down = True
@@ -910,6 +913,14 @@ class HardwareRunner:
                 self.event_bus.emit(Event(
                     EventType.KEYPAD_RELEASE,
                     data={"key": "9", "physical": "numpad"},
+                    source="keypad"
+                ))
+        elif key == pygame.K_KP7:
+            if self._kp7_down:
+                self._kp7_down = False
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_RELEASE,
+                    data={"key": "7", "physical": "numpad"},
                     source="keypad"
                 ))
 

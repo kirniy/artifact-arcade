@@ -29,6 +29,11 @@ from artifact.printing.wheel_prize_roll import (
     WheelPrizeRollReceipt,
     WheelPrizeRollReceiptGenerator,
 )
+from artifact.printing.spiderverse_quest_roll import (
+    SPIDERVERSE_QUEST_MODE_NAME,
+    SpiderverseQuestRollReceipt,
+    SpiderverseQuestRollReceiptGenerator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +58,7 @@ MODE_NAMES_RU = {
     "brick_breaker": "🧱 Кирпичи",
     "video": "🎬 Видео",
     WHEEL_PRIZE_MODE_NAME: "🎁 Барабан призов",
+    SPIDERVERSE_QUEST_MODE_NAME: "🕸 ПАУЧЬЕ ЧУТЬЁ",
 }
 
 
@@ -143,7 +149,11 @@ class PrintManager:
 
     async def _maybe_select_rp80_for_job(self, mode_name: str) -> None:
         """Hot-plug RP80 for the two modes that own 80mm roll layouts."""
-        if mode_name not in {"photobooth", WHEEL_PRIZE_MODE_NAME} or self._use_rp80:
+        if mode_name not in {
+            "photobooth",
+            WHEEL_PRIZE_MODE_NAME,
+            SPIDERVERSE_QUEST_MODE_NAME,
+        } or self._use_rp80:
             return
         if self._mock_requested:
             await self._select_rp80_printer(mock=True)
@@ -348,7 +358,7 @@ class PrintManager:
 
     def _prize_print_job_key(self, data: Dict[str, Any]) -> Optional[str]:
         mode_name = data.get("type") or data.get("mode") or data.get("mode_name")
-        if mode_name != WHEEL_PRIZE_MODE_NAME:
+        if mode_name not in {WHEEL_PRIZE_MODE_NAME, SPIDERVERSE_QUEST_MODE_NAME}:
             return None
         value = str(data.get("print_job_key") or data.get("issue_id") or "").strip()
         return value or None
@@ -401,8 +411,8 @@ class PrintManager:
                 )
                 await self._maybe_select_rp80_for_job(mode_name)
 
-                if mode_name == WHEEL_PRIZE_MODE_NAME and not self._use_rp80:
-                    raise RuntimeError("RP80 receipt printer is required for prize_drum")
+                if mode_name in {WHEEL_PRIZE_MODE_NAME, SPIDERVERSE_QUEST_MODE_NAME} and not self._use_rp80:
+                    raise RuntimeError(f"RP80 receipt printer is required for {mode_name}")
 
                 if not await self._ensure_connected():
                     if mode_name == "photobooth":
@@ -415,6 +425,8 @@ class PrintManager:
                 # generic receipt renderer if they reach this printer.
                 if mode_name == WHEEL_PRIZE_MODE_NAME:
                     receipt = WheelPrizeRollReceiptGenerator().generate_receipt(mode_name, data)
+                elif mode_name == SPIDERVERSE_QUEST_MODE_NAME:
+                    receipt = SpiderverseQuestRollReceiptGenerator().generate_receipt(mode_name, data)
                 elif self._use_rp80 and mode_name != "photobooth":
                     receipt = ReceiptGenerator().generate_receipt(mode_name, data)
                 else:
@@ -463,7 +475,13 @@ class PrintManager:
 
     async def _print_receipt(
         self,
-        receipt: Union[LabelReceipt, Receipt, PhotoboothRollReceipt, WheelPrizeRollReceipt],
+        receipt: Union[
+            LabelReceipt,
+            Receipt,
+            PhotoboothRollReceipt,
+            WheelPrizeRollReceipt,
+            SpiderverseQuestRollReceipt,
+        ],
     ) -> bool:
         """Print a receipt/label.
 
@@ -472,6 +490,12 @@ class PrintManager:
         if isinstance(receipt, WheelPrizeRollReceipt):
             if not isinstance(self._printer, RP80ReceiptPrinter):
                 logger.error("Refusing to route a redeemable prize receipt outside RP80")
+                return False
+            return await self._printer.print_raw(receipt.raw_commands)
+
+        if isinstance(receipt, SpiderverseQuestRollReceipt):
+            if not isinstance(self._printer, RP80ReceiptPrinter):
+                logger.error("Refusing to route a quest receipt outside RP80")
                 return False
             return await self._printer.print_raw(receipt.raw_commands)
 

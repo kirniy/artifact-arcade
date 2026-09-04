@@ -90,6 +90,7 @@ class SimulatorWindow:
         self.right_button = SimulatedArcade("right")
         self.keypad = SimulatedKeypad()
         self._kp9_down = False
+        self._kp7_down = False
 
         # UI elements positions (calculated on init)
         self._layout: dict[str, pygame.Rect] = {}
@@ -323,6 +324,15 @@ class SimulatorWindow:
                     data={"key": "9", "physical": "numpad"},
                     source="keypad"
                 ))
+        elif key in (pygame.K_7, pygame.K_KP7):
+            if not self._kp7_down:
+                self._kp7_down = True
+                self.keypad._press("7")
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_PRESS,
+                    data={"key": "7", "physical": "numpad"},
+                    source="keypad"
+                ))
         elif key in range(pygame.K_0, pygame.K_8 + 1):
             char = chr(key)
             self.keypad._press(char)
@@ -405,6 +415,15 @@ class SimulatorWindow:
                 self.event_bus.emit(Event(
                     EventType.KEYPAD_RELEASE,
                     data={"key": "9", "physical": "numpad"},
+                    source="keypad"
+                ))
+        elif key in (pygame.K_7, pygame.K_KP7):
+            if self._kp7_down:
+                self._kp7_down = False
+                self.keypad._release()
+                self.event_bus.emit(Event(
+                    EventType.KEYPAD_RELEASE,
+                    data={"key": "7", "physical": "numpad"},
                     source="keypad"
                 ))
         else:

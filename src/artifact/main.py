@@ -119,8 +119,12 @@ async def run_hardware() -> None:
         animation_engine=animation_engine,
         theme="mystical",
         enable_prize_drum=prize_drum_enabled,
+        enable_spiderverse_quest=os.getenv(
+            "ARTIFACT_SPIDERVERSE_QUEST_ENABLED", "true"
+        ).lower() in {"1", "true", "yes", "on"},
     )
     logger.info("Hidden prize drum enabled=%s (hold numpad 9 for 2.0s)", prize_drum_enabled)
+    logger.info("Hidden SPIDERVERSE quest uses hold numpad 7 for 2.0s")
 
     # Check for API key
     has_api_key = bool(os.environ.get("GEMINI_API_KEY"))

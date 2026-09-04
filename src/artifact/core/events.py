@@ -31,6 +31,7 @@ class EventType(Enum):
     KEYPAD_PRESS = auto()  # Physical key edge; used for deliberate hold gestures
     KEYPAD_RELEASE = auto()
     PRIZE_DRUM_TOGGLE = auto()  # Emitted once after an exact 2s KP9 hold
+    SPIDERVERSE_QUEST_TOGGLE = auto()  # Emitted once after an exact 2s KP7 hold
     ARCADE_LEFT = auto()
     ARCADE_RIGHT = auto()
     ARCADE_UP = auto()

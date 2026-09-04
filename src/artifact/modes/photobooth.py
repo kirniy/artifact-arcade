@@ -823,6 +823,11 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS,
             )
+        elif ai_style_key == "spiderverse":
+            return (
+                CaricatureStyle.PHOTOBOOTH_SPIDERVERSE_SQUARE,
+                CaricatureStyle.PHOTOBOOTH_SPIDERVERSE,
+            )
         elif ai_style_key == "world_cup_final":
             return (
                 CaricatureStyle.PHOTOBOOTH_WORLD_CUP_FINAL_SQUARE,
@@ -1023,6 +1028,7 @@ class PhotoboothMode(BaseMode):
                 "alye_parusa",
                 "jara",
                 "sunset_palms",
+                "spiderverse",
                 "world_cup_final",
                 "vse_svoi",
             }
@@ -1108,6 +1114,20 @@ class PhotoboothMode(BaseMode):
                             "No dark canopy, storm sky, brown cast, object pile or empty bar. Keep faces out of the lowest "
                             "13%, where the app adds one compact information card."
                         )
+                    elif ai_style_key == "spiderverse":
+                        personality_context = (
+                            "Image 2 is the canonical exact SPIDERVERSE event emblem. Integrate its complete "
+                            "curved badge, web texture, dimensional letters and exact word once near the top. "
+                            "Treat every face and the visible real venue as fixed underdrawings. Preserve exact "
+                            "identity, group layout and recognizable background while translating the "
+                            "whole source into bright dimensional graphic-novel animation with scarlet, cobalt, "
+                            "warm ivory, ink contours, halftone texture, print separation and layered parallax. "
+                            "Replace clothing from the neck down with fitted red-and-deep-blue technical-fabric "
+                            "athletic suits with raised black web lattice, blue side panels and integrated gloves. "
+                            "Keep every exact face and hairstyle fully uncovered: no masks, hoods, helmets, face "
+                            "paint, copied chest emblems, franchise references or extra text. "
+                            "Keep faces out of the lowest 13%, where the app adds a verified footer."
+                        )
                     elif ai_style_key == "world_cup_final":
                         personality_context = (
                             "Image 2 is the official original event emblem. Integrate that emblem into the "
@@ -1156,7 +1176,7 @@ class PhotoboothMode(BaseMode):
                     f"{self._theme.event_name} generation refused: canonical emblem reference is missing or invalid"
                 )
             generation_reference_images = list(self._theme_reference_images)
-            if ai_style_key in {"boilingroom", "sunset_palms", "vse_svoi"}:
+            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi"}:
                 generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
@@ -1210,6 +1230,11 @@ class PhotoboothMode(BaseMode):
                     label_bytes = self._stamp_sunset_palms_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
+                elif ai_style_key == "spiderverse":
+                    footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
+                    label_bytes = self._stamp_spiderverse_footer(
+                        label_bytes, footer_date_str, moscow_time
+                    )
                 logger.info(f"Label image generated: {len(label_bytes)} bytes")
 
                 # Create center-cropped 1:1 version for LED display
@@ -1239,6 +1264,7 @@ class PhotoboothMode(BaseMode):
                 if getattr(self._theme, "ai_style_key", None) in {
                     "world_cup_final",
                     "sunset_palms",
+                    "spiderverse",
                     "vse_svoi",
                 }:
                     offset = int((h - w) * 0.06)
@@ -2088,6 +2114,114 @@ class PhotoboothMode(BaseMode):
             logger.warning(f"Failed to stamp Sunset Palms footer: {e}")
             return image_bytes
 
+    def _stamp_spiderverse_footer(
+        self, image_bytes: bytes, footer_date: str, moscow_time: str
+    ) -> bytes:
+        """Overlay a compact scarlet suit-and-web information card."""
+        try:
+            from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            w, h = img.size
+            margin_x = max(22, int(w * 0.035))
+            margin_bottom = max(22, int(h * 0.022))
+            card_h = max(140, int(h * 0.112))
+            x0, x1 = margin_x, w - margin_x
+            y0, y1 = h - margin_bottom - card_h, h - margin_bottom
+            radius = max(20, int(card_h * 0.18))
+            navy = (8, 22, 58, 255)
+            scarlet = (190, 18, 36, 242)
+            bright_red = (238, 34, 51, 255)
+            ivory = (255, 244, 220, 255)
+            cyan = (35, 194, 214, 255)
+
+            shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(shadow).rounded_rectangle(
+                (x0, y0 + 10, x1, y1 + 10), radius=radius, fill=(2, 5, 18, 190)
+            )
+            shadow = shadow.filter(ImageFilter.GaussianBlur(max(7, int(w * 0.012))))
+            img = Image.alpha_composite(img, shadow)
+
+            panel = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            pd = ImageDraw.Draw(panel)
+            pd.rounded_rectangle(
+                (x0, y0, x1, y1), radius=radius, fill=scarlet,
+                outline=navy, width=max(9, int(w * 0.012)),
+            )
+            inset = max(8, int(w * 0.011))
+            pd.rounded_rectangle(
+                (x0 + inset, y0 + inset, x1 - inset, y1 - inset),
+                radius=max(10, radius - inset), outline=ivory, width=max(2, w // 320),
+            )
+
+            # Suit-web geometry grows from both upper corners but stays behind text.
+            web_width = max(2, w // 380)
+            for anchor_x, direction in ((x0 + inset, 1), (x1 - inset, -1)):
+                anchor_y = y0 + inset
+                reach_x = int((x1 - x0) * 0.34)
+                for fraction in (0.34, 0.67, 1.0):
+                    pd.line(
+                        (anchor_x, anchor_y, anchor_x + direction * int(reach_x * fraction), y1 - inset),
+                        fill=(8, 22, 58, 150), width=web_width,
+                    )
+                for ring in (0.35, 0.62, 0.9):
+                    rw = int(reach_x * ring)
+                    rh = int(card_h * ring)
+                    box = (anchor_x - rw, anchor_y - rh, anchor_x + rw, anchor_y + rh)
+                    if direction > 0:
+                        pd.arc(box, 0, 90, fill=(8, 22, 58, 150), width=web_width)
+                    else:
+                        pd.arc(box, 90, 180, fill=(8, 22, 58, 150), width=web_width)
+
+            rail_y = y0 + max(7, int(card_h * 0.055))
+            pd.line((x0 + radius, rail_y, x1 - radius, rail_y), fill=bright_red, width=max(5, int(card_h * 0.035)))
+            pd.line((x0 + radius, rail_y + max(5, int(card_h * 0.04)), x1 - radius, rail_y + max(5, int(card_h * 0.04))), fill=cyan, width=max(2, int(card_h * 0.014)))
+            img = Image.alpha_composite(img, panel)
+            draw = ImageDraw.Draw(img)
+
+            def load_font(size: int):
+                for font_path in (
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                ):
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                return ImageFont.load_default()
+
+            main_font = load_font(max(28, int(w * 0.044)))
+            time_font = load_font(max(27, int(w * 0.041)))
+            sub_font = load_font(max(19, int(w * 0.028)))
+            text_width = lambda font, text: draw.textbbox((0, 0), text, font=font)[2]
+            pad_x = max(28, int(w * 0.045))
+            row1_y = y0 + max(28, int(card_h * 0.22))
+            row2_y = y0 + max(88, int(card_h * 0.66))
+            venue = "КОНЮШЕННАЯ 2В"
+
+            draw.text((x0 + pad_x, row1_y), "VNVNC.RU", font=main_font, fill=ivory)
+            time_box = draw.textbbox((0, 0), moscow_time, font=time_font)
+            time_w, time_h = time_box[2] - time_box[0], time_box[3] - time_box[1]
+            pill_pad_x, pill_pad_y = max(17, int(w * 0.023)), max(8, int(card_h * 0.07))
+            pill_w, pill_h = time_w + pill_pad_x * 2, time_h + pill_pad_y * 2
+            pill_x, pill_y = x1 - pad_x - pill_w, row1_y - max(4, int(card_h * 0.025))
+            draw.rounded_rectangle(
+                (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h),
+                radius=pill_h // 2, fill=navy, outline=ivory, width=max(2, w // 350),
+            )
+            draw.text(
+                (pill_x + pill_pad_x - time_box[0], pill_y + pill_pad_y - time_box[1]),
+                moscow_time, font=time_font, fill=ivory,
+            )
+            draw.text((x0 + pad_x, row2_y), footer_date.upper(), font=sub_font, fill=ivory)
+            draw.text((x1 - pad_x - text_width(sub_font, venue), row2_y), venue, font=sub_font, fill=ivory)
+
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to stamp SPIDERVERSE footer: {e}")
+            return image_bytes
+
     def _stamp_2k17_footer(self, image_bytes: bytes, footer_date: str, moscow_time: str) -> bytes:
         """Paint deterministic 2K17 black-label footer text over the AI image."""
         try:
@@ -2818,6 +2952,7 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("world-cup-final", "world-cup-final"),
         ("sunset_palms", "sunset-palms"),
         ("sunset-palms", "sunset-palms"),
+        ("spiderverse", "spiderverse"),
         ("vse_svoi", "vse-svoi"),
         ("vse-svoi", "vse-svoi"),
     ]

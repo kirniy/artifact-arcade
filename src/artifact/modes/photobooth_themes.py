@@ -721,6 +721,41 @@ SUNSET_PALMS_THEME = PhotoboothTheme(
 
 
 # =============================================================================
+# THEME: SPIDERVERSE — dimensional graphic-novel multiverse
+# =============================================================================
+SPIDERVERSE_THEME = PhotoboothTheme(
+    id="spiderverse",
+    event_name="SPIDERVERSE",
+    event_date="",
+    logo_filename="spiderverse-emblem.png",
+    theme_chrome=(245, 235, 213),
+    theme_red=(235, 28, 48),
+    theme_black=(12, 18, 38),
+    ticker_idle="SPIDER",
+    lcd_prefix="VERSE",
+    description="3D COMIC MULTIVERSE",
+    menu_display_name="SPIDER\nVERSE",
+    menu_description="3D COMIC MULTIVERSE",
+    menu_color=(235, 28, 48),
+    # This cabinet's red ticker channel is electrically unreliable. Keep the
+    # proven green baseline while the main display retains the event palette.
+    ticker_color=(0, 255, 48),
+    ticker_compact_static=True,
+    ticker_safe_left=8,
+    ticker_idle_cycle=("SPIDER", "VERSE", "ФОТОБУДКА"),
+    party_date_rollover_hour=12,
+    footer_date_mode="weekday_ru",
+    ai_style_key="spiderverse",
+    reference_image_filenames=("spiderverse-emblem.png",),
+    required_reference_sha256=(
+        "cc4cf327bd55891117a394eec9f380c1b3a7daf12caf02b5f9861b20d7f3c4d8"
+    ),
+    idle_video_filename="spiderverse-emo-dance.mp4",
+    idle_video_required=True,
+)
+
+
+# =============================================================================
 # THEME: ВСЕ СВОИ — Boiling Room visual language with exact VNVNC pendants
 # =============================================================================
 VSE_SVOI_THEME = PhotoboothTheme(
@@ -783,6 +818,7 @@ THEMES = {
     "jara": JARA_THEME,
     "world-cup-final": WORLD_CUP_FINAL_THEME,
     "sunset-palms": SUNSET_PALMS_THEME,
+    "spiderverse": SPIDERVERSE_THEME,
     "vse-svoi": VSE_SVOI_THEME,
 }
 
