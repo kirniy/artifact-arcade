@@ -47,7 +47,9 @@ class SpiderverseQuestRollReceiptGenerator:
 
     def render_image(self, data: dict[str, Any]) -> tuple[Image.Image, tuple[int, int, int, int]]:
         start_url = self._required(data, "quest_start_url")
-        canvas = Image.new("L", (PAPER_WIDTH_PX, 1170), 255)
+        # Keep a little white stock below the variable-height copy. Cropping a
+        # PIL canvas beyond its allocation introduces a black band on paper.
+        canvas = Image.new("L", (PAPER_WIDTH_PX, 1240), 255)
         draw = ImageDraw.Draw(canvas)
         left, right = MARGIN, PAPER_WIDTH_PX - MARGIN
 
@@ -69,9 +71,10 @@ class SpiderverseQuestRollReceiptGenerator:
         y = 294
         y = self._center(draw, "ПАУЧЬЕ ЧУТЬЁ", y, self._font(50, bold=True), gap=8)
         y = self._center(draw, "КВЕСТ", y, self._font(31, bold=True), gap=16)
-        draw.rounded_rectangle((left, y, right, y + 76), radius=15, fill=0)
-        self._center_box(draw, "КОКТЕЙЛЬ + ШОТ", (left, y, right, y + 76), self._font(35, bold=True), fill=255)
-        y += 95
+        draw.rounded_rectangle((left, y, right, y + 108), radius=15, fill=0)
+        self._center_box(draw, "ЗАБЕРИ БЕСПЛАТНО", (left, y + 5, right, y + 51), self._font(25, bold=True), fill=255)
+        self._center_box(draw, "КОКТЕЙЛЬ + ШОТ", (left, y + 43, right, y + 103), self._font(35, bold=True), fill=255)
+        y += 126
 
         qr = render_wheel_receipt_qr(
             start_url,
@@ -86,8 +89,9 @@ class SpiderverseQuestRollReceiptGenerator:
 
         for line, size in (
             ("СКАНИРУЙ QR", 34),
-            ("ОТКРОЙ КВЕСТ В TELEGRAM", 25),
-            ("ВЫПОЛНИ ЗАДАНИЕ", 25),
+            ("5 ФОТО-ЗАДАНИЙ", 30),
+            ("ПРИЗЫ — НА ВХОДЕ", 25),
+            ("НАПРОТИВ ГАРДЕРОБА · ДО 07:00", 21),
         ):
             y = self._center(draw, line, y, self._fit_font(draw, line, right - left, size), gap=7)
 

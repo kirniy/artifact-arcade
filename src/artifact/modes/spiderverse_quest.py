@@ -59,6 +59,16 @@ class SpiderverseQuestMode(PhotoboothMode):
         super().on_exit()
 
     def on_input(self, event: Event) -> bool:
+        if event.type in {EventType.PRINT_COMPLETE, EventType.PRINT_ERROR}:
+            event_mode = str(event.data.get("type") or event.data.get("mode") or "")
+            if event_mode != "photobooth" or not self._quest_receipt_queued:
+                return False
+            self._quest_receipt_queued = False
+            if event.type == EventType.PRINT_ERROR:
+                logger.error("SPIDERVERSE quest photo receipt failed; companion receipt suppressed")
+                return True
+            self._emit_quest_receipt()
+            return True
         if self._quest_screen == QuestScreen.READY:
             if event.type == EventType.BUTTON_PRESS:
                 self._start_quest_photo()
@@ -83,9 +93,11 @@ class SpiderverseQuestMode(PhotoboothMode):
     def _start_printing_now(self) -> None:
         was_printing = self._state.is_printing
         super()._start_printing_now()
-        if was_printing or self._quest_receipt_queued:
+        if was_printing or self._quest_receipt_queued or not self._state.is_printing:
             return
         self._quest_receipt_queued = True
+
+    def _emit_quest_receipt(self) -> None:
         self.context.event_bus.emit(
             Event(
                 EventType.PRINT_START,

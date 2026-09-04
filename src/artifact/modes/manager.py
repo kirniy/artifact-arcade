@@ -1344,7 +1344,7 @@ class ModeManager:
             logger.info("Prize drum entry ignored outside safe idle/menu state")
 
     def _on_prize_drum_print_status(self, event: Event) -> None:
-        if self._prize_drum_active and self._current_mode:
+        if (self._prize_drum_active or self._spiderverse_quest_active) and self._current_mode:
             self._current_mode.handle_input(event)
 
     def _on_back(self, event: Event) -> None:

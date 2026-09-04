@@ -124,7 +124,7 @@ def test_quest_ready_frame_ticker_and_lcd_are_not_blank() -> None:
     assert "ПАУЧЬЕ" in mode.get_lcd_text()
 
 
-def test_photo_print_is_followed_by_static_quest_receipt(monkeypatch) -> None:
+def test_successful_photo_print_is_followed_by_static_quest_receipt(monkeypatch) -> None:
     import artifact.modes.photobooth as photobooth_module
 
     monkeypatch.setattr(photobooth_module, "PRINTING_ENABLED", True)
@@ -139,9 +139,30 @@ def test_photo_print_is_followed_by_static_quest_receipt(monkeypatch) -> None:
     mode._start_printing_now()
 
     jobs = bus.get_history(EventType.PRINT_START)
+    assert [job.data["type"] for job in jobs] == ["photobooth"]
+    assert mode.handle_input(Event(EventType.PRINT_COMPLETE, {"type": "photobooth"}, source="test"))
+    jobs = bus.get_history(EventType.PRINT_START)
     assert [job.data["type"] for job in jobs] == ["photobooth", SPIDERVERSE_QUEST_MODE_NAME]
     assert jobs[1].data["quest_start_url"] == QUEST_START_URL
     assert "quest_session_id" not in jobs[1].data
+
+
+def test_failed_or_missing_photo_print_never_queues_quest_receipt(monkeypatch) -> None:
+    import artifact.modes.photobooth as photobooth_module
+
+    monkeypatch.setattr(photobooth_module, "PRINTING_ENABLED", True)
+    bus = EventBus()
+    mode = SpiderverseQuestMode(_context(bus))
+    mode.enter()
+    mode._start_quest_photo()
+    mode._start_printing_now()
+    assert bus.get_history(EventType.PRINT_START) == []
+
+    mode._state.photo_bytes = b"photo"
+    mode._start_printing_now()
+    assert [job.data["type"] for job in bus.get_history(EventType.PRINT_START)] == ["photobooth"]
+    assert mode.handle_input(Event(EventType.PRINT_ERROR, {"type": "photobooth"}, source="test"))
+    assert [job.data["type"] for job in bus.get_history(EventType.PRINT_START)] == ["photobooth"]
 
 
 def test_quest_receipt_uses_one_large_static_scannable_qr() -> None:
@@ -154,6 +175,7 @@ def test_quest_receipt_uses_one_large_static_scannable_qr() -> None:
     image = Image.open(BytesIO(receipt.preview_image)).convert("RGB")
     assert image.width == 576
     assert image.height < 1200
+    assert image.getpixel((0, image.height - 1)) == (255, 255, 255)
     x0, y0, x1, y1 = receipt.qr_region
     assert x1 - x0 >= 300
     decoded, _points, _straight = cv2.QRCodeDetector().detectAndDecode(
