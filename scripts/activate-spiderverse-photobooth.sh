@@ -42,6 +42,22 @@ p.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
 PY
 }
 
+delete_env() {
+    local key="$1"
+    ENV_FILE="${ENV_FILE}" ENV_KEY="${key}" python3 - <<'PY'
+import os
+from pathlib import Path
+p = Path(os.environ["ENV_FILE"])
+k = os.environ["ENV_KEY"]
+if p.exists():
+    lines = p.read_text(encoding="utf-8").splitlines()
+    p.write_text(
+        "\n".join(line for line in lines if not line.startswith(f"{k}=" )).rstrip() + "\n",
+        encoding="utf-8",
+    )
+PY
+}
+
 set_env PHOTOBOOTH_THEME spiderverse
 set_env PHOTOBOOTH_MENU_MODES spiderverse
 set_env PHOTOBOOTH_AI_ENABLED true
@@ -54,6 +70,7 @@ set_env GOOGLE_GENAI_USE_VERTEXAI true
 set_env GOOGLE_CLOUD_PROJECT project-b3b2422d-d764-493a-95d
 set_env GOOGLE_CLOUD_LOCATION global
 set_env GEMINI_IMAGE_MODEL gemini-3.1-flash-lite-image
+delete_env GEMINI_PROXY
 set_env VNVNC_INPROCESS_TV_WALL_ENABLED false
 set_env ARTIFACT_SPIDERVERSE_QUEST_ENABLED true
 
