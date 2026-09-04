@@ -72,9 +72,8 @@ class SpiderverseQuestMode(PhotoboothMode):
                 return False
             self._quest_receipt_queued = False
             if event.type == EventType.PRINT_ERROR:
-                logger.error("SPIDERVERSE quest photo receipt failed; companion receipt suppressed")
+                logger.error("SPIDERVERSE combined photo/quest receipt failed")
                 return True
-            self._emit_quest_receipt()
             return True
         if self._quest_screen == QuestScreen.READY:
             if event.type == EventType.BUTTON_PRESS:
@@ -121,22 +120,10 @@ class SpiderverseQuestMode(PhotoboothMode):
                     "short_url": self._state.qr_url,
                     "qr_image": self._state.qr_image,
                     "issue_id": self._quest_print_id,
-                    # Unlike the public photo mode, this two-receipt sequence
+                    "quest_start_url": QUEST_START_URL,
+                    # Unlike the public photo mode, this combined receipt
                     # must receive an explicit error if no printer is present.
                     "print_required": True,
-                },
-                source="spiderverse_quest",
-            )
-        )
-
-    def _emit_quest_receipt(self) -> None:
-        self.context.event_bus.emit(
-            Event(
-                EventType.PRINT_START,
-                data={
-                    "type": "spiderverse_quest",
-                    "quest_start_url": QUEST_START_URL,
-                    "print_job_key": f"quest:{self._quest_print_id}",
                 },
                 source="spiderverse_quest",
             )
@@ -145,7 +132,7 @@ class SpiderverseQuestMode(PhotoboothMode):
     def _complete_session(self) -> None:
         """Stay in the hidden profile and prepare a fresh run."""
         if self._quest_receipt_queued:
-            # Do not discard the companion receipt while the first physical
+            # Do not discard the combined receipt while the physical
             # print is still in flight. PRINT_COMPLETE/PRINT_ERROR releases it.
             self._state.countdown_timer = 1.0
             return

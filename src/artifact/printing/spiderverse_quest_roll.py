@@ -30,6 +30,27 @@ class SpiderverseQuestRollReceipt:
 class SpiderverseQuestRollReceiptGenerator:
     """Large-type, one-action quest handoff calibrated for the 576px RP80."""
 
+    def combine_with_photo(self, photo: Image.Image, data: dict[str, Any]) -> Image.Image:
+        """One continuous raster: canonical emblem, photo, quest; cut only at end."""
+        if self._required(data, "quest_start_url") != "https://t.me/vnvncbattlebot?start=spiderquest":
+            raise ValueError("quest receipt requires canonical Telegram HTTPS deep link")
+        if photo.width != PAPER_WIDTH_PX:
+            raise ValueError("combined quest receipt requires 576px RP80 paper")
+        with Image.open(PROJECT_ROOT / "assets/images/spiderverse-emblem.png") as source:
+            emblem = source.convert("RGBA")
+        bounds = emblem.getbbox()
+        if bounds:
+            emblem = emblem.crop(bounds)
+        emblem.thumbnail((PAPER_WIDTH_PX - 48, 260), Image.Resampling.LANCZOS)
+        header = Image.new("RGBA", (PAPER_WIDTH_PX, emblem.height + 40), "white")
+        header.alpha_composite(emblem, ((PAPER_WIDTH_PX - emblem.width) // 2, 20))
+        quest, _ = self.render_image(data)
+        combined = Image.new("L", (PAPER_WIDTH_PX, header.height + photo.height + 24 + quest.height), 255)
+        combined.paste(header.convert("L"), (0, 0))
+        combined.paste(photo.convert("L"), (0, header.height))
+        combined.paste(quest, (0, header.height + photo.height + 24))
+        return combined
+
     def generate_receipt(
         self, mode_name: str, data: dict[str, Any]
     ) -> SpiderverseQuestRollReceipt:

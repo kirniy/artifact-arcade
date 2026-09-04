@@ -124,7 +124,7 @@ def test_quest_ready_frame_ticker_and_lcd_are_not_blank() -> None:
     assert "НАЖМИ" in mode.get_lcd_text()
 
 
-def test_successful_photo_print_is_followed_by_static_quest_receipt(monkeypatch) -> None:
+def test_successful_photo_print_contains_quest_without_second_job(monkeypatch) -> None:
     import artifact.modes.photobooth as photobooth_module
 
     monkeypatch.setattr(photobooth_module, "PRINTING_ENABLED", True)
@@ -146,9 +146,31 @@ def test_successful_photo_print_is_followed_by_static_quest_receipt(monkeypatch)
     assert not mode.is_safe_to_exit
     assert mode.handle_input(Event(EventType.PRINT_COMPLETE, {"type": "photobooth", "issue_id": mode._quest_print_id}, source="test"))
     jobs = bus.get_history(EventType.PRINT_START)
-    assert [job.data["type"] for job in jobs] == ["photobooth", SPIDERVERSE_QUEST_MODE_NAME]
-    assert jobs[1].data["quest_start_url"] == QUEST_START_URL
-    assert "quest_session_id" not in jobs[1].data
+    assert [job.data["type"] for job in jobs] == ["photobooth"]
+    assert jobs[0].data["quest_start_url"] == QUEST_START_URL
+    assert "quest_session_id" not in jobs[0].data
+
+
+def test_combined_receipt_has_emblem_photo_quest_and_single_cut() -> None:
+    from artifact.printing.photobooth_roll import PhotoboothRollReceiptGenerator
+
+    image = BytesIO()
+    Image.new("RGB", (576, 900), "gray").save(image, format="PNG")
+    generator = PhotoboothRollReceiptGenerator()
+    data = {"caricature": image.getvalue(), "quest_start_url": QUEST_START_URL}
+    receipt = generator.generate_receipt("photobooth", data)
+    preview = Image.open(BytesIO(receipt.preview_image))
+    assert preview.width == 576
+    assert preview.height > 2200
+    assert np.min(np.asarray(preview.crop((0, 0, 576, 260)))) < 128
+    assert receipt.raw_commands.endswith(b"\x1dV\x01")
+    # A single raster payload of the combined height, with only one trailing cut.
+    raw = receipt.raw_commands
+    height = raw[11] | raw[12] << 8
+    assert height == preview.height
+    assert len(raw) == 13 + 72 * height + 5
+    with pytest.raises(ValueError):
+        generator.generate_receipt("photobooth", {**data, "quest_start_url": "https://example.com"})
 
 
 def test_failed_or_missing_photo_print_never_queues_quest_receipt(monkeypatch) -> None:

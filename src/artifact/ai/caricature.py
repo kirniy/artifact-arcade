@@ -4063,7 +4063,7 @@ ADDITIONAL REFERENCE IMAGES:
 - Preserve the recognizable actual venue as a second fixed underdrawing: walls, ceiling, practical lights, furniture, plants, decor, objects and background people remain identifiable
 - Render the people and real room as genuinely dimensional high-budget CGI with modeled facial volume, cinematic perspective, soft global illumination, volumetric rim light, believable materials and subtle depth of field; it must not read as flat illustration. Then finish with bold ink contours, halftone shadows, chromatic print misregistration, paper grain, layered parallax and restrained stepped-motion echoes
 - Identity accuracy outranks stylization. No face averaging, beautifying, generic models, plastic doll faces, altered ages or covered faces
-- Image 2 is the exact canonical SPIDERVERSE event emblem; integrate one complete dimensional version near the top without hiding anyone
+- Image 2 is the exact canonical SPIDERVERSE event emblem; place one COMPLETE, unobstructed hero badge across the upper composition, about 55-70% of the image width, without hiding any face. Preserve the entire badge outline and every letter. A partial physical sign already visible in the venue does NOT fulfill this requirement: preserve that real background, but also add the separate complete hero emblem
 - Keep the scene bright and legible with at least 65% light or mid-tone area; no black void, crushed club darkness, invented replacement set or muddy red fog
 - No franchise character, studio mark, copied chest emblem, web-shooting pose, extra logo, fake words, pseudo-text or generated UI
 - Continue the artwork full bleed and keep faces out of the lowest 13% for one app-rendered footer"""
@@ -4345,6 +4345,7 @@ ADDITIONAL REFERENCE IMAGES:
                 text_language_rules = """- TEXT AND EMBLEM RULES (CRITICAL):
   * Image 2 is mandatory exact event-brand geometry, not loose inspiration
   * Render exactly one complete SPIDERVERSE emblem, preserving its curved badge, web texture, extrusion, colors and exact word
+  * The full emblem is a foreground poster lockup, never a cropped background shop sign, tiny lettering, or partially hidden behind a guest. Leave enough space above the guests for it; do not crop the badge or cover faces
   * SPIDERVERSE inside that supplied emblem is the only readable text allowed in the AI artwork
   * The theme-specific fitted red-and-blue web-patterned athletic suit replaces source clothing from the neck down, while every real face and hairstyle stays fully uncovered
   * Do not add captions, dates, weekdays, time, address, slogans, signs, garment lettering, studio names, franchise names, extra logos or pseudo-text"""

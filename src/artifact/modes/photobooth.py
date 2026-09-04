@@ -320,6 +320,18 @@ class PhotoboothMode(BaseMode):
                         mime_type = (
                             "image/png" if reference_path.lower().endswith(".png") else "image/jpeg"
                         )
+                        if self._theme.id == "spiderverse":
+                            original_size = len(reference_bytes)
+                            with PILImage.open(io.BytesIO(reference_bytes)) as source:
+                                emblem = source.convert("RGBA")
+                            emblem.thumbnail((1024, 1024), PILImage.Resampling.LANCZOS)
+                            background = PILImage.new("RGBA", emblem.size, "white")
+                            background.alpha_composite(emblem)
+                            compressed = io.BytesIO()
+                            background.convert("RGB").save(compressed, "JPEG", quality=88, optimize=True)
+                            reference_bytes = compressed.getvalue()
+                            mime_type = "image/jpeg"
+                            logger.info("SPIDERVERSE reference compressed: %d -> %d bytes", original_size, len(reference_bytes))
                         self._theme_reference_images.append((reference_bytes, mime_type))
                 logger.info(
                     "Loaded %d theme reference asset(s) for %s: %s",

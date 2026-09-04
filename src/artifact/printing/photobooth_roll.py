@@ -66,6 +66,10 @@ class PhotoboothRollReceiptGenerator:
             quote = str(data.get("fortune_quote") or pick_fortune_quote())
         image = self._coerce_photo(data)
         receipt_image = self.render_image(image, timestamp=timestamp, quote=quote)
+        if data.get("quest_start_url"):
+            from artifact.printing.spiderverse_quest_roll import SpiderverseQuestRollReceiptGenerator
+
+            receipt_image = SpiderverseQuestRollReceiptGenerator().combine_with_photo(receipt_image, data)
         raw = self.image_to_escpos(receipt_image)
 
         buf = BytesIO()

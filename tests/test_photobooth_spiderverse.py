@@ -48,6 +48,10 @@ def test_spiderverse_mode_selects_dedicated_styles(monkeypatch):
         CaricatureStyle.PHOTOBOOTH_SPIDERVERSE,
     )
     assert mode._theme_reference_images
+    compressed, mime = mode._theme_reference_images[0]
+    assert mime == "image/jpeg"
+    assert len(compressed) < 300_000
+    assert max(Image.open(io.BytesIO(compressed)).size) <= 1024
 
 
 def test_spiderverse_prompt_is_identity_locked_and_brand_safe(monkeypatch):
@@ -82,6 +86,8 @@ def test_spiderverse_prompt_is_identity_locked_and_brand_safe(monkeypatch):
     assert "raised black web lattice" in lowered
     assert "no mask, hood, helmet" in lowered
     assert "from the neck down" in lowered
+    assert "partial physical sign" in lowered
+    assert "separate complete hero emblem" in lowered
     assert "spider-man" not in lowered
     assert "marvel" not in lowered
     assert "into the spider-verse" not in lowered
