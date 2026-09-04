@@ -151,7 +151,7 @@ def test_successful_photo_print_contains_quest_without_second_job(monkeypatch) -
     assert "quest_session_id" not in jobs[0].data
 
 
-def test_combined_receipt_has_emblem_photo_quest_and_single_cut() -> None:
+def test_combined_receipt_has_photo_quest_and_single_cut_without_extra_emblem() -> None:
     from artifact.printing.photobooth_roll import PhotoboothRollReceiptGenerator
 
     image = BytesIO()
@@ -162,7 +162,12 @@ def test_combined_receipt_has_emblem_photo_quest_and_single_cut() -> None:
     preview = Image.open(BytesIO(receipt.preview_image))
     assert preview.width == 576
     assert preview.height > 2200
-    assert np.min(np.asarray(preview.crop((0, 0, 576, 260)))) < 128
+    photo = Image.new("L", (576, 900), 128)
+    quest_generator = SpiderverseQuestRollReceiptGenerator()
+    combined = quest_generator.combine_with_photo(photo, data)
+    quest, _ = quest_generator.render_image(data)
+    assert combined.height == photo.height + 24 + quest.height
+    assert np.array_equal(np.asarray(combined.crop((0, 0, 576, 900))), np.asarray(photo))
     assert receipt.raw_commands.endswith(b"\x1dV\x01")
     # A single raster payload of the combined height, with only one trailing cut.
     raw = receipt.raw_commands
