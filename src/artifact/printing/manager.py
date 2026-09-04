@@ -451,7 +451,11 @@ class PrintManager:
                     await self._broadcast_to_telegram(mode_name, data)
                     logger.info(f"Printed {mode_name} successfully")
                 else:
-                    if self._use_rp80 and mode_name == "photobooth":
+                    if (
+                        self._use_rp80
+                        and mode_name == "photobooth"
+                        and not data.get("print_required")
+                    ):
                         logger.warning("Photobooth print skipped because RP80 did not accept the job")
                         continue
                     raise RuntimeError("Printer rejected receipt")

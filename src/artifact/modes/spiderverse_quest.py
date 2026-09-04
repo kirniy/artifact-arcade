@@ -63,7 +63,12 @@ class SpiderverseQuestMode(PhotoboothMode):
     def on_input(self, event: Event) -> bool:
         if event.type in {EventType.PRINT_COMPLETE, EventType.PRINT_ERROR}:
             event_mode = str(event.data.get("type") or event.data.get("mode") or "")
-            if event_mode != "photobooth" or not self._quest_receipt_queued:
+            issue_id = str(event.data.get("issue_id") or "")
+            if (
+                event_mode != "photobooth"
+                or not self._quest_receipt_queued
+                or issue_id != self._quest_print_id
+            ):
                 return False
             self._quest_receipt_queued = False
             if event.type == EventType.PRINT_ERROR:
@@ -115,6 +120,7 @@ class SpiderverseQuestMode(PhotoboothMode):
                     "qr_url": self._state.qr_url,
                     "short_url": self._state.qr_url,
                     "qr_image": self._state.qr_image,
+                    "issue_id": self._quest_print_id,
                     # Unlike the public photo mode, this two-receipt sequence
                     # must receive an explicit error if no printer is present.
                     "print_required": True,
@@ -170,48 +176,72 @@ class SpiderverseQuestMode(PhotoboothMode):
         fill(buffer, INK)
         t = self._time_in_mode / 1000.0
 
-        # Breathing suit panels and animated perspective web.
-        pulse = int(18 + 12 * (0.5 + 0.5 * math.sin(t * 2.2)))
+        # A large breathing red mask owns the frame; the web moves behind it.
+        pulse = int(34 + 22 * (0.5 + 0.5 * math.sin(t * 2.2)))
         draw_rect(buffer, 2, 2, 124, 124, RED, filled=False, thickness=2)
-        draw_rect(buffer, 5, 5, 118, 118, (pulse, 25, 55), filled=False, thickness=1)
-        cx, cy = 64, 31
-        for radius in (10, 18, 27, 36):
-            shade = (100 + radius * 2, 18, 38)
+        draw_rect(buffer, 7, 7, 114, 70, (145 + pulse, 12, 35), filled=True)
+        cx, cy = 64, 38
+        for radius in (12, 23, 35, 47):
+            shade = (55 + radius * 2, 8, 27)
             draw_circle(buffer, cx, cy, radius, shade, filled=False)
         phase = t * 0.45
-        for index in range(10):
-            angle = phase + index * math.tau / 10
-            x = int(cx + math.cos(angle) * 48)
-            y = int(cy + math.sin(angle) * 40)
-            draw_line(buffer, cx, cy, x, y, RED, thickness=1)
+        for index in range(12):
+            angle = phase + index * math.tau / 12
+            x = int(cx + math.cos(angle) * 58)
+            y = int(cy + math.sin(angle) * 38)
+            draw_line(buffer, cx, cy, x, y, (104, 9, 29), thickness=1)
 
-        # Original angular mask/suit emblem.
-        bob = int(2 * math.sin(t * 2.8))
-        for y in range(14 + bob, 39 + bob):
-            inset = abs(27 + bob - y) // 2
-            draw_line(buffer, 42 + inset, y, 59, y, CREAM, thickness=1)
-            draw_line(buffer, 69, y, 86 - inset, y, CREAM, thickness=1)
-        draw_line(buffer, 47, 47 + bob, 64, 56 + bob, BLUE, thickness=2)
-        draw_line(buffer, 81, 47 + bob, 64, 56 + bob, BLUE, thickness=2)
+        # Swept temple lenses, heavy ink rims and asymmetrical expression.
+        bob = int(2 * math.sin(t * 2.1))
+        blink_phase = t % 4.8
+        openness = 2 if blink_phase < 0.13 or 0.22 < blink_phase < 0.34 else 10
+        left_open = max(2, openness + int(2 * math.sin(t * 1.15)))
+        right_open = max(2, openness - int(2 * math.sin(t * 1.15)))
+        eye_mid_y = 39 + bob
+        for is_left, eye_open in ((True, left_open), (False, right_open)):
+            half = max(1, eye_open)
+            for offset in range(-half - 2, half + 3):
+                taper = int(abs(offset) * 0.8)
+                if is_left:
+                    x0, x1 = 13 + taper, 55 - taper // 3
+                else:
+                    x0, x1 = 73 + taper // 3, 115 - taper
+                draw_line(buffer, x0, eye_mid_y + offset, x1, eye_mid_y + offset, INK, thickness=1)
+            for offset in range(-half, half + 1):
+                taper = int(abs(offset) * 0.9)
+                if is_left:
+                    x0, x1 = 16 + taper, 52 - taper // 3
+                else:
+                    x0, x1 = 76 + taper // 3, 112 - taper
+                draw_line(buffer, x0, eye_mid_y + offset, x1, eye_mid_y + offset, CREAM, thickness=1)
+        draw_line(buffer, 18, 24 + bob, 55, 31 + bob, INK, thickness=3)
+        draw_line(buffer, 73, 31 + bob, 110, 24 + bob, INK, thickness=3)
+
+        # Comic sparks orbit outside the quiet type panel.
+        for index in range(8):
+            spark_t = t * (0.8 + index * 0.035) + index * 1.7
+            sx = int(64 + math.cos(spark_t) * (43 + index % 3 * 3))
+            sy = int(32 + math.sin(spark_t * 1.31) * 25)
+            draw_circle(buffer, sx, sy, 1, CREAM if index % 2 else RED, filled=True)
 
         # The typography owns a quiet field; no animated line may reduce legibility.
-        draw_rect(buffer, 8, 62, 112, 62, INK, filled=True)
-        draw_rect(buffer, 8, 62, 112, 62, RED, filled=False, thickness=1)
+        draw_rect(buffer, 8, 80, 112, 44, INK, filled=True)
+        draw_rect(buffer, 8, 80, 112, 44, RED, filled=False, thickness=1)
 
-        draw_centered_text(buffer, "ПАУЧЬЕ", 66, CREAM, scale=2)
-        draw_centered_text(buffer, "ЧУТЬЁ", 83, CREAM, scale=2)
-        draw_centered_text(buffer, "КВЕСТ", 103, RED, scale=1)
-        draw_centered_text(buffer, "КОКТЕЙЛЬ + ШОТ", 115, CREAM, scale=1)
+        draw_centered_text(buffer, "ПАУЧЬЕ ЧУТЬЁ", 84, CREAM, scale=1)
+        draw_centered_text(buffer, "5 ФОТО-ЗАДАНИЙ", 97, RED, scale=1)
+        cta = "НАЖМИ КНОПКУ" if int(t / 3.0) % 2 == 0 else "КОКТЕЙЛЬ + ШОТ"
+        draw_centered_text(buffer, cta, 111, CREAM, scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         if self._quest_screen == QuestScreen.PHOTO:
             super().render_ticker(buffer)
             return
         fill(buffer, (0, 0, 0))
-        text = "ПАУЧЬЕ ЧУТЬЁ"
+        text = "КОКТЕЙЛЬ + ШОТ" if int(self._time_in_mode / 1800) % 2 else "5 ФОТО-ЗАДАНИЙ"
         render_idle_style_ticker_text(buffer, text, TICKER_GREEN, self._time_in_mode, safe_left=8)
 
     def get_lcd_text(self) -> str:
         if self._quest_screen == QuestScreen.PHOTO:
             return super().get_lcd_text()
-        return " ПАУЧЬЕ ЧУТЬЁ   "[:16]
+        return " НАЖМИ КНОПКУ   "[:16]

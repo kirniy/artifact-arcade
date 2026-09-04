@@ -31,7 +31,7 @@ def _font(size: int) -> ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
-def render(output_dir: Path) -> tuple[Path, Path]:
+def render(output_dir: Path) -> tuple[Path, Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     context = ModeContext(StateMachine(), EventBus(), Renderer(), AnimationEngine())
     mode = SpiderverseQuestMode(context)
@@ -54,12 +54,24 @@ def render(output_dir: Path) -> tuple[Path, Path]:
     screen_path = output_dir / "spiderverse-quest-ready.png"
     board.save(screen_path)
 
+    phases: list[Image.Image] = []
+    for _index in range(4):
+        frame = np.zeros((128, 128, 3), dtype=np.uint8)
+        mode.render_main(frame)
+        phases.append(Image.fromarray(frame).resize((384, 384), Image.Resampling.NEAREST))
+        mode.update(720.0)
+    contact = Image.new("RGB", (768, 768), (8, 10, 16))
+    for index, frame in enumerate(phases):
+        contact.paste(frame, ((index % 2) * 384, (index // 2) * 384))
+    contact_path = output_dir / "spiderverse-quest-idle-contact-sheet.png"
+    contact.save(contact_path)
+
     receipt, _qr_region = SpiderverseQuestRollReceiptGenerator().render_image(
         {"quest_start_url": QUEST_START_URL}
     )
     receipt_path = output_dir / "spiderverse-quest-receipt.png"
     receipt.save(receipt_path)
-    return screen_path, receipt_path
+    return screen_path, contact_path, receipt_path
 
 
 def main() -> None:

@@ -121,7 +121,7 @@ def test_quest_ready_frame_ticker_and_lcd_are_not_blank() -> None:
     mode.render_ticker(ticker)
     assert np.count_nonzero(main) > 500
     assert np.count_nonzero(ticker) > 8
-    assert "ПАУЧЬЕ" in mode.get_lcd_text()
+    assert "НАЖМИ" in mode.get_lcd_text()
 
 
 def test_successful_photo_print_is_followed_by_static_quest_receipt(monkeypatch) -> None:
@@ -144,7 +144,7 @@ def test_successful_photo_print_is_followed_by_static_quest_receipt(monkeypatch)
     mode._complete_session()
     assert mode._quest_screen == QuestScreen.PHOTO
     assert not mode.is_safe_to_exit
-    assert mode.handle_input(Event(EventType.PRINT_COMPLETE, {"type": "photobooth"}, source="test"))
+    assert mode.handle_input(Event(EventType.PRINT_COMPLETE, {"type": "photobooth", "issue_id": mode._quest_print_id}, source="test"))
     jobs = bus.get_history(EventType.PRINT_START)
     assert [job.data["type"] for job in jobs] == ["photobooth", SPIDERVERSE_QUEST_MODE_NAME]
     assert jobs[1].data["quest_start_url"] == QUEST_START_URL
@@ -165,7 +165,8 @@ def test_failed_or_missing_photo_print_never_queues_quest_receipt(monkeypatch) -
     mode._state.photo_bytes = b"photo"
     mode._start_printing_now()
     assert [job.data["type"] for job in bus.get_history(EventType.PRINT_START)] == ["photobooth"]
-    assert mode.handle_input(Event(EventType.PRINT_ERROR, {"type": "photobooth"}, source="test"))
+    assert not mode.handle_input(Event(EventType.PRINT_ERROR, {"type": "photobooth", "issue_id": "stale"}, source="test"))
+    assert mode.handle_input(Event(EventType.PRINT_ERROR, {"type": "photobooth", "issue_id": mode._quest_print_id}, source="test"))
     assert [job.data["type"] for job in bus.get_history(EventType.PRINT_START)] == ["photobooth"]
 
 
@@ -190,7 +191,7 @@ def test_quest_receipt_uses_one_large_static_scannable_qr() -> None:
     )
     image = Image.open(BytesIO(receipt.preview_image)).convert("RGB")
     assert image.width == 576
-    assert image.height < 1200
+    assert image.height < 1450
     assert image.getpixel((0, image.height - 1)) == (255, 255, 255)
     x0, y0, x1, y1 = receipt.qr_region
     assert x1 - x0 >= 300

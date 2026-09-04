@@ -304,14 +304,14 @@ class ArtifactSimulator:
         # Also print to real printer if enabled
         if self._real_printer and is_real_printer_enabled():
             asyncio.create_task(self._print_to_real_printer(print_data))
-        elif print_data.get("type") == "prize_drum":
+        else:
             # Preview-only simulator printing is an immediate successful sink.
             self.event_bus.emit(Event(
                 EventType.PRINT_COMPLETE,
                 data={
-                    "type": "prize_drum",
+                    "type": print_data.get("type"),
                     "issue_id": print_data.get("issue_id"),
-                    "print_job_key": print_data.get("issue_id"),
+                    "print_job_key": print_data.get("print_job_key"),
                 },
                 source="simulator_printer_preview",
             ))
@@ -341,30 +341,28 @@ class ArtifactSimulator:
             # Send to printer
             await self._real_printer.print_raw(tspl_commands)
             logger.info(f"Real printer: sent {len(tspl_commands)} bytes")
-            if mode_type == "prize_drum":
-                self.event_bus.emit(Event(
-                    EventType.PRINT_COMPLETE,
-                    data={
-                        "type": mode_type,
-                        "issue_id": print_data.get("issue_id"),
-                        "print_job_key": print_data.get("issue_id"),
-                    },
-                    source="simulator_real_printer",
-                ))
+            self.event_bus.emit(Event(
+                EventType.PRINT_COMPLETE,
+                data={
+                    "type": mode_type,
+                    "issue_id": print_data.get("issue_id"),
+                    "print_job_key": print_data.get("print_job_key"),
+                },
+                source="simulator_real_printer",
+            ))
 
         except Exception as e:
             logger.error(f"Real printer error: {e}")
-            if mode_type == "prize_drum":
-                self.event_bus.emit(Event(
-                    EventType.PRINT_ERROR,
-                    data={
-                        "type": mode_type,
-                        "issue_id": print_data.get("issue_id"),
-                        "print_job_key": print_data.get("issue_id"),
-                        "error": str(e),
-                    },
-                    source="simulator_real_printer",
-                ))
+            self.event_bus.emit(Event(
+                EventType.PRINT_ERROR,
+                data={
+                    "type": mode_type,
+                    "issue_id": print_data.get("issue_id"),
+                    "print_job_key": print_data.get("print_job_key"),
+                    "error": str(e),
+                },
+                source="simulator_real_printer",
+            ))
 
     def _on_tick(self, event: Event) -> None:
         """Handle frame tick - update and render."""
