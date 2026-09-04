@@ -229,9 +229,8 @@ class SpiderverseQuestMode(PhotoboothMode):
         draw_rect(buffer, 8, 80, 112, 44, RED, filled=False, thickness=1)
 
         draw_centered_text(buffer, "ПАУЧЬЕ ЧУТЬЁ", 84, CREAM, scale=1)
-        draw_centered_text(buffer, "5 ФОТО-ЗАДАНИЙ", 97, RED, scale=1)
-        cta = "НАЖМИ КНОПКУ" if int(t / 3.0) % 2 == 0 else "КОКТЕЙЛЬ + ШОТ"
-        draw_centered_text(buffer, cta, 111, CREAM, scale=1)
+        draw_centered_text(buffer, "КОКТЕЙЛЬ + ШОТ", 97, RED, scale=1)
+        draw_centered_text(buffer, "НАЖМИ КНОПКУ", 111, CREAM, scale=1)
 
     def render_ticker(self, buffer: NDArray[np.uint8]) -> None:
         if self._quest_screen == QuestScreen.PHOTO:
