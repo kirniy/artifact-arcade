@@ -415,7 +415,7 @@ class PrintManager:
                     raise RuntimeError(f"RP80 receipt printer is required for {mode_name}")
 
                 if not await self._ensure_connected():
-                    if mode_name == "photobooth":
+                    if mode_name == "photobooth" and not data.get("print_required"):
                         logger.warning("Photobooth print skipped because optional printer is not connected")
                         continue
                     raise RuntimeError("Printer not connected")

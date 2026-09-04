@@ -140,6 +140,10 @@ def test_successful_photo_print_is_followed_by_static_quest_receipt(monkeypatch)
 
     jobs = bus.get_history(EventType.PRINT_START)
     assert [job.data["type"] for job in jobs] == ["photobooth"]
+    assert jobs[0].data["print_required"] is True
+    mode._complete_session()
+    assert mode._quest_screen == QuestScreen.PHOTO
+    assert not mode.is_safe_to_exit
     assert mode.handle_input(Event(EventType.PRINT_COMPLETE, {"type": "photobooth"}, source="test"))
     jobs = bus.get_history(EventType.PRINT_START)
     assert [job.data["type"] for job in jobs] == ["photobooth", SPIDERVERSE_QUEST_MODE_NAME]
@@ -163,6 +167,18 @@ def test_failed_or_missing_photo_print_never_queues_quest_receipt(monkeypatch) -
     assert [job.data["type"] for job in bus.get_history(EventType.PRINT_START)] == ["photobooth"]
     assert mode.handle_input(Event(EventType.PRINT_ERROR, {"type": "photobooth"}, source="test"))
     assert [job.data["type"] for job in bus.get_history(EventType.PRINT_START)] == ["photobooth"]
+
+
+def test_capture_failure_returns_to_attract_screen(monkeypatch) -> None:
+    import artifact.modes.photobooth as photobooth_module
+
+    mode = SpiderverseQuestMode(_context())
+    mode.enter()
+    mode._start_quest_photo()
+    monkeypatch.setattr(photobooth_module.camera_service, "capture_jpeg", lambda quality=90: None)
+    mode._do_flash_and_capture()
+    assert mode._quest_screen == QuestScreen.READY
+    assert mode.is_safe_to_exit
 
 
 def test_quest_receipt_uses_one_large_static_scannable_qr() -> None:

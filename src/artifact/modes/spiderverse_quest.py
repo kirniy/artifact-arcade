@@ -47,8 +47,10 @@ class SpiderverseQuestMode(PhotoboothMode):
 
     @property
     def is_safe_to_exit(self) -> bool:
-        return self._quest_screen == QuestScreen.READY or (
+        return not self._quest_receipt_queued and (
+            self._quest_screen == QuestScreen.READY or (
             self._quest_screen == QuestScreen.PHOTO and self._state.show_result
+            )
         )
 
     def on_enter(self) -> None:
@@ -91,11 +93,35 @@ class SpiderverseQuestMode(PhotoboothMode):
         logger.info("SPIDERVERSE quest photo started")
 
     def _start_printing_now(self) -> None:
-        was_printing = self._state.is_printing
-        super()._start_printing_now()
-        if was_printing or self._quest_receipt_queued or not self._state.is_printing:
+        if self._state.is_printing or self._quest_receipt_queued:
             return
+        image_for_print = (
+            self._state.ai_label_bytes
+            or self._state.ai_display_bytes
+            or self._state.photo_bytes
+        )
+        if not image_for_print:
+            logger.warning("SPIDERVERSE quest has no image available for printing")
+            return
+        self._state.is_printing = True
         self._quest_receipt_queued = True
+        self.context.event_bus.emit(
+            Event(
+                EventType.PRINT_START,
+                data={
+                    "type": "photobooth",
+                    "caricature": image_for_print,
+                    "photo": self._state.photo_bytes,
+                    "qr_url": self._state.qr_url,
+                    "short_url": self._state.qr_url,
+                    "qr_image": self._state.qr_image,
+                    # Unlike the public photo mode, this two-receipt sequence
+                    # must receive an explicit error if no printer is present.
+                    "print_required": True,
+                },
+                source="spiderverse_quest",
+            )
+        )
 
     def _emit_quest_receipt(self) -> None:
         self.context.event_bus.emit(
@@ -112,7 +138,18 @@ class SpiderverseQuestMode(PhotoboothMode):
 
     def _complete_session(self) -> None:
         """Stay in the hidden profile and prepare a fresh run."""
+        if self._quest_receipt_queued:
+            # Do not discard the companion receipt while the first physical
+            # print is still in flight. PRINT_COMPLETE/PRINT_ERROR releases it.
+            self._state.countdown_timer = 1.0
+            return
         self._reset_to_quest_ready()
+
+    def _do_flash_and_capture(self) -> None:
+        super()._do_flash_and_capture()
+        if not self._state.photo_bytes and not self._working:
+            logger.error("SPIDERVERSE quest capture failed; returning to attract screen")
+            self._reset_to_quest_ready()
 
     def _reset_to_quest_ready(self) -> None:
         self._state = PhotoboothState()
