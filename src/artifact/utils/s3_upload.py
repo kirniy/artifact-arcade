@@ -304,15 +304,15 @@ def _signed_s3_get(params: dict[str, str], timeout: int) -> subprocess.Completed
         return subprocess.CompletedProcess([], 1, b"", str(e).encode("utf-8", errors="replace"))
 
 
-def _list_s3_objects_direct(prefix: str, max_items: int) -> subprocess.CompletedProcess[bytes]:
+def _list_s3_objects_direct(prefix: str, max_items: Optional[int] = None) -> subprocess.CompletedProcess[bytes]:
     """List S3 objects with direct SigV4 HTTPS requests and return AWS-CLI-like JSON."""
     contents: list[dict[str, Any]] = []
     continuation_token: Optional[str] = None
 
-    while len(contents) < max_items:
+    while max_items is None or len(contents) < max_items:
         params = {
             "list-type": "2",
-            "max-keys": str(min(1000, max_items - len(contents))),
+            "max-keys": str(min(1000, max_items - len(contents)) if max_items is not None else 1000),
             "prefix": prefix,
         }
         if continuation_token:
@@ -338,7 +338,7 @@ def _list_s3_objects_direct(prefix: str, max_items: int) -> subprocess.Completed
                     "Size": int(size_text),
                 }
             )
-            if len(contents) >= max_items:
+            if max_items is not None and len(contents) >= max_items:
                 break
 
         is_truncated = (root.findtext(f"{namespace}IsTruncated") or "").lower() == "true"
@@ -785,8 +785,6 @@ def refresh_public_photo_manifest(prefix: str = "photobooth", max_items: int = 5
                     list_prefix,
                     "--page-size",
                     "1000",
-                    "--max-items",
-                    str(max_items),
                     "--output",
                     "json",
                 ],
@@ -794,7 +792,9 @@ def refresh_public_photo_manifest(prefix: str = "photobooth", max_items: int = 5
                 retries=2,
             )
         else:
-            result = _list_s3_objects_direct(list_prefix, max_items)
+            # S3 lists oldest timestamped keys first. Apply the display limit
+            # only AFTER scanning every page and sorting newest-first.
+            result = _list_s3_objects_direct(list_prefix)
 
         if result.returncode != 0:
             stderr = result.stderr.decode() if result.stderr else ""
