@@ -4056,15 +4056,17 @@ ADDITIONAL REFERENCE IMAGES:
             )
 
             if is_spiderverse_style:
-                color_instruction = """- FULL COLOR, PREMIUM DIMENSIONAL CGI — scarlet red, deep cobalt, warm ivory, true skin tones and limited ink black
+                color_instruction = """- FULL COLOR, HIGH-KEY PREMIUM DIMENSIONAL CGI — luminous scarlet red, clear bright blue, warm ivory and natural skin tones. This is a COLOR artwork, never monochrome, grayscale or sepia
 - Preserve Image 1 as a fixed underdrawing: exact distinct faces, hair, expressions, body proportions, poses, group order and overlaps
 - WARDROBE OVERRIDE: replace every guest's original clothes from the neck down with a fitted red-and-deep-blue technical-fabric athletic suit. Use a raised black web lattice over red torso/sleeves, deep-blue side panels and legs, subtle dark piping and integrated gloves. No letters, chest emblem or copied logo
 - Faces are never part of the wardrobe transformation: keep every face, hairline, hairstyle, ear, glasses and expression completely visible and exact. No mask, hood, helmet, face covering, colored contact lenses or face paint
 - Preserve the recognizable actual venue as a second fixed underdrawing: walls, ceiling, practical lights, furniture, plants, decor, objects and background people remain identifiable
+- LIGHTING OVERRIDE: preserve the room geometry and objects, NOT its original dark exposure. Relight the real venue with broad soft daylight and strong bounced fill. Background surfaces must be predominantly near-white, pale cream, light peach or pale blue, with sparse colored contours showing the real room. No dark nightclub backdrop
 - Render the people and real room as genuinely dimensional high-budget CGI with modeled facial volume, cinematic perspective, soft global illumination, volumetric rim light, believable materials and subtle depth of field; it must not read as flat illustration. Then finish with bold ink contours, halftone shadows, chromatic print misregistration, paper grain, layered parallax and restrained stepped-motion echoes
 - Identity accuracy outranks stylization. No face averaging, beautifying, generic models, plastic doll faces, altered ages or covered faces
 - Image 2 is the exact canonical SPIDERVERSE event emblem; place one COMPLETE, unobstructed hero badge across the upper composition, about 55-70% of the image width, without hiding any face. Preserve the entire badge outline and every letter. A partial physical sign already visible in the venue does NOT fulfill this requirement: preserve that real background, but also add the separate complete hero emblem
-- Keep the scene bright and legible with at least 65% light or mid-tone area; no black void, crushed club darkness, invented replacement set or muddy red fog
+- THERMAL RECEIPT FRIENDLY COLOR: at least 75% of the background should be genuinely LIGHT, not medium gray. Keep faces and suit panels brightly lit; render blue panels as luminous blue rather than almost-black navy. Retain saturated red/blue accents, clean separated shapes and thin dark web lines, but no large solid dark fills
+- Use only sparse halftone dots in small shadow regions. No all-over grain, dense crosshatching, vignette, heavy ambient occlusion, black void, crushed shadows or muddy red fog. Preserve facial detail through clear contours and light shading, not low-contrast dark texture. The image should remain legible when a thermal printer dithers it, while the digital original stays unmistakably full color
 - No franchise character, studio mark, copied chest emblem, web-shooting pose, extra logo, fake words, pseudo-text or generated UI
 - Continue the artwork full bleed and keep faces out of the lowest 13% for one app-rendered footer"""
             elif is_brainrot_style:
@@ -4437,6 +4439,7 @@ UNIQUENESS TOKEN: {uniqueness_token}
             # The model understands to use the photo as reference
             if is_spiderverse_style:
                 image_style = "High-budget genuinely dimensional 3D animated-feature frame edited directly from the source photo; modeled facial volume, cinematic perspective and lensing, soft global illumination, volumetric rim light, believable materials and subtle depth of field; exact real uncovered faces and group preserved; every guest wears a fitted red-and-deep-blue technical-fabric athletic suit with raised black web lattice, blue side panels, dark piping and integrated gloves from the neck down; no masks, hoods, helmets, face paint, letters or chest emblems; recognizable real venue preserved; dimensional CGI under bold ink contours, offset cyan-red print registration, halftone fields, stepped-motion echoes, paper grain and layered parallax; exact supplied SPIDERVERSE event emblem integrated once; never a flat drawing; no franchise character, studio mark, extra text, dark void or generic replacement scene"
+                image_style += "; HIGH-KEY COLOR PRINT OVERRIDE: pale cream/light-blue recognizable room, soft daylight fill, at least 75% genuinely light background, luminous suit panels, sparse halftone only, no all-over paper grain or dark masses; never grayscale"
             elif is_brainrot_style:
                 image_style = "Full-bleed Italian brainrot meme poster, surreal semi-realistic cursed 3D render, glossy materials, bad Photoshop cutout energy, repost JPEG artifacts, ugly outer glow, width-squeezed WordArt, dumb sparkles, exact human faces preserved"
             elif is_wedding_style:

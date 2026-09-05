@@ -88,6 +88,11 @@ def test_spiderverse_prompt_is_identity_locked_and_brand_safe(monkeypatch):
     assert "from the neck down" in lowered
     assert "partial physical sign" in lowered
     assert "separate complete hero emblem" in lowered
+    assert "lighting override" in lowered
+    assert "thermal receipt friendly color" in lowered
+    assert "75%" in lowered
+    assert "never monochrome, grayscale or sepia" in lowered
+    assert "not its original dark exposure" in lowered
     assert "spider-man" not in lowered
     assert "marvel" not in lowered
     assert "into the spider-verse" not in lowered
