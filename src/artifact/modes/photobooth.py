@@ -1128,9 +1128,12 @@ class PhotoboothMode(BaseMode):
                         )
                     elif ai_style_key == "spiderverse":
                         personality_context = (
-                            "Image 2 is the canonical exact SPIDERVERSE event emblem. The app adds the original "
-                            "above your artwork: do not generate an extra badge. Preserve any physical emblem "
+                            "Image 2 is the canonical exact SPIDERVERSE event emblem. Render it completely "
+                            "within the upper scene, integrated with lighting, never a separate header. Preserve any physical emblem "
                             "already visible on the real venue wall; that background sign is allowed. "
+                            "Reframe as a close waist-up group portrait: remove surplus ceiling, enlarge the "
+                            "actual guests to fill the frame, no duplicate people from face crops. Heads in "
+                            "the upper 25%, no empty wall occupying half the picture. "
                             "Treat every face and the visible real venue as fixed underdrawings. Preserve exact "
                             "identity, group layout and recognizable background while translating the "
                             "whole source into bright dimensional graphic-novel animation with scarlet, cobalt, "
@@ -1253,7 +1256,6 @@ class PhotoboothMode(BaseMode):
                     )
                 elif ai_style_key == "spiderverse":
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
-                    label_bytes = self._stamp_spiderverse_emblem(label_bytes)
                     label_bytes = self._stamp_spiderverse_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
@@ -2135,22 +2137,6 @@ class PhotoboothMode(BaseMode):
         except Exception as e:
             logger.warning(f"Failed to stamp Sunset Palms footer: {e}")
             return image_bytes
-
-    def _stamp_spiderverse_emblem(self, image_bytes: bytes) -> bytes:
-        """Extend the color artwork above the photo; never cover or crop a face."""
-        image = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
-        path = Path(__file__).resolve().parents[3] / "assets/images/spiderverse-emblem.png"
-        with PILImage.open(path) as source:
-            emblem = source.convert("RGBA")
-        emblem.thumbnail((round(image.width * 0.8), round(image.width * 0.35)), PILImage.Resampling.LANCZOS)
-        pad = max(12, image.width // 40)
-        header_height = emblem.height + 2 * pad
-        canvas = PILImage.new("RGB", (image.width, image.height + header_height), (255, 250, 240))
-        canvas.paste(emblem, ((image.width - emblem.width) // 2, pad), emblem)
-        canvas.paste(image, (0, header_height))
-        result = io.BytesIO()
-        canvas.save(result, format="PNG")
-        return result.getvalue()
 
     def _stamp_spiderverse_footer(
         self, image_bytes: bytes, footer_date: str, moscow_time: str
