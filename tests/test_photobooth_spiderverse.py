@@ -86,8 +86,10 @@ def test_spiderverse_prompt_is_identity_locked_and_brand_safe(monkeypatch):
     assert "raised black web lattice" in lowered
     assert "no mask, hood, helmet" in lowered
     assert "from the neck down" in lowered
-    assert "partial physical sign" in lowered
-    assert "separate complete hero emblem" in lowered
+    assert "app adds" in lowered
+    assert "physical emblem/sign" in lowered
+    assert "dark spider silhouette" in lowered
+    assert "light coral-red-and-sky-blue" in lowered
     assert "lighting override" in lowered
     assert "thermal receipt friendly color" in lowered
     assert "75%" in lowered
@@ -108,3 +110,16 @@ def test_spiderverse_footer_has_scarlet_suit_web_panel():
     # Center of the compact card is unmistakably scarlet; its edge is navy.
     assert result.getpixel((384, 1225))[0] > result.getpixel((384, 1225))[2] * 2
     assert result.getpixel((28, 1225))[2] > result.getpixel((28, 1225))[0]
+
+
+def test_spiderverse_emblem_is_added_without_covering_source():
+    source = Image.new("RGB", (768, 1365), (230, 220, 200))
+    buf = io.BytesIO()
+    source.save(buf, format="PNG")
+    mode = PhotoboothMode.__new__(PhotoboothMode)
+    result = Image.open(io.BytesIO(mode._stamp_spiderverse_emblem(buf.getvalue()))).convert("RGB")
+    assert result.width == source.width
+    top = result.height - source.height
+    assert top > 100
+    assert result.crop((0, top, result.width, result.height)).tobytes() == source.tobytes()
+    assert len(set(result.crop((0, 0, result.width, top)).getdata())) > 100
