@@ -35,24 +35,33 @@ transport failure and backlog remain unverified pending SSH access.
   missing-payload handling, notification state, successful retry, manifest
   pagination, face gating, and ticker behavior.
 
-## Live recovery still required
+## Live recovery completed
 
-Tailscale is running and the existing node identity was preserved. SSH to the
-machine requires an interactive identity check. The existing Frankfurt recovery
-tunnel on port 22091 is not listening. No machine restart, queue modification,
-or photo recovery has been performed in this session.
+SSH access was restored. The machine clock was three days behind, while
+systemd-timesyncd timed out against every configured UDP NTP server. Both AWS
+CLI and direct S3 requests failed with `RequestTimeTooSkewed`. Correcting the
+clock immediately allowed the running spool daemon to upload all three pending
+photos (a third photo had joined the queue during diagnosis):
 
-After access is restored:
+- `photobooth_20260907_104420_87acf73d.png` — 1,288,040 bytes
+- `photobooth_20260907_111108_3f937355.png` — 1,088,596 bytes
+- `photobooth_20260907_112710_eb27f38f.png`
 
-1. Inspect live revision, `artifact-upload-spool` status and logs, pending jobs,
-   free disk space, and the original September 7 upload errors. Preserve photos.
-2. Deploy the tested source through the normal idle-gated update path. Verify
-   all affected services loaded it, without changing themes or Vertex settings.
-3. Retry existing jobs under their original object keys, beginning with the
-   reported photo. Confirm S3 object content type and byte length, rather than
-   trusting a public website HTTP 200.
-4. Refresh the manifest and compare all upload event keys after the last known
-   good photo against a complete S3 listing. Recover missing payloads from the
-   machine's generated-image logs only if a spool payload is absent.
-5. Verify the target short URL and gallery in the browser before reporting the
-   incident resolved.
+The queue is empty. A complete signed S3 listing contains all 436 distinct photo
+keys recorded in machine events since August 27; missing count is zero. The
+reported short link was verified in a browser and opens the 768×1376 PNG.
+
+The uploader/status fix and clock safeguard were merged into the runtime branch.
+The machine-local AI client patch was preserved (its diff hash is unchanged).
+All three application services were restarted while idle and are active.
+
+`artifact-clock-sync.timer` is enabled and active, checking at boot and every
+five minutes. It requires two independently hosted TLS-verified HTTP Date
+headers to agree before correcting drift over 30 seconds; NTP remains enabled.
+The live service completed successfully with a 1.1-second offset. Its script is
+installed root-owned at `/usr/local/libexec/artifact-clock-sync.py`, with source
+in `scripts/sync-clock-https.py`. For future updates, install that source to the
+system path as well as updating the unit files.
+
+Clock corrections preserve existing photo filenames and short links; timestamps
+embedded in photos taken while the clock was wrong are not rewritten.
