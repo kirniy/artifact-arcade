@@ -5,11 +5,11 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 -I /home/kirniy/modular-arcade/scripts/sync-clock-https.py
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/artifact-clock-sync.py
 TimeoutStartSec=40
 User=root
 NoNewPrivileges=true
 CapabilityBoundingSet=CAP_SYS_TIME
 ProtectSystem=strict
-ProtectHome=read-only
+ProtectHome=true
 PrivateTmp=true
