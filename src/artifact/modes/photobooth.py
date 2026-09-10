@@ -2439,15 +2439,20 @@ class PhotoboothMode(BaseMode):
             "source_photo_bytes": len(self._state.photo_bytes or b""),
             "source_photo_path": self._state.bot_source_photo_path,
         }
-        if result.success:
+        if result.success or result.queued:
             self._state.qr_url = result.short_url or result.url  # Prefer short URL for QR/printing
             self._state.qr_image = result.qr_image
-            logger.info(f"Photo uploaded successfully: {self._state.qr_url}")
+            logger.info(
+                "Photo %s: %s",
+                "queued for upload" if result.queued else "uploaded successfully",
+                self._state.qr_url,
+            )
             append_bot_event(
                 "photobooth_photo",
                 {
                     **photo_event,
-                    "success": True,
+                    "success": result.success,
+                    "queued": result.queued,
                     "url": result.url,
                     "short_url": result.short_url,
                     "short_id": result.short_id,

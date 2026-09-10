@@ -374,6 +374,7 @@ class UploadResult:
     short_id: Optional[str] = None   # Just the short ID part
     qr_image: Optional[np.ndarray] = None
     error: Optional[str] = None
+    queued: bool = False  # Durable local copy exists, but S3 has not accepted it.
 
 
 def generate_filename(prefix: str, extension: str = "jpg") -> str:
@@ -690,7 +691,13 @@ def _upload_local_path_to_s3(
     if cache_control:
         args.extend(["--cache-control", cache_control])
 
-    result = _run_aws_command(args, timeout=timeout, retries=S3_UPLOAD_RETRIES)
+    try:
+        result = _run_aws_command(args, timeout=timeout, retries=S3_UPLOAD_RETRIES)
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        logger.warning("AWS CLI unavailable for %s; trying direct HTTPS fallback: %s", s3_key, exc)
+        return _upload_local_path_to_s3_direct(
+            local_path, s3_key, content_type, cache_control=cache_control,
+        )
     if result.returncode == 0:
         return result
 
@@ -970,7 +977,11 @@ def _queued_upload_result(s3_key: str, short_id: str) -> UploadResult:
     url = f"{SELECTEL_PUBLIC_URL}/{s3_key}"
     short_url = f"https://vnvnc.ru/p/{short_id}"
     qr_image = generate_qr_image(short_url)
-    return UploadResult(success=True, url=url, short_url=short_url, short_id=short_id, qr_image=qr_image)
+    return UploadResult(
+        success=False, queued=True, url=url, short_url=short_url,
+        short_id=short_id, qr_image=qr_image,
+        error="Photo saved locally; upload is queued for retry",
+    )
 
 
 def upload_bytes_to_s3(
@@ -1060,7 +1071,7 @@ def upload_bytes_to_s3(
             else:
                 error = stderr or "Unknown error"
             logger.error(f"S3 upload failed: {error}")
-            if pre_info is not None or (Path(pending.file_path).exists() and Path(pending.meta_path).exists()):
+            if Path(pending.file_path).exists() and Path(pending.meta_path).exists():
                 logger.warning(
                     "Initial S3 upload failed for %s, but durable spool owns this upload; "
                     "returning reserved URL while upload_spool_daemon retries: %s",
@@ -1072,16 +1083,18 @@ def upload_bytes_to_s3(
 
     except subprocess.TimeoutExpired:
         logger.error("Upload timed out after %s seconds after %s attempts - check network connection", S3_MAIN_UPLOAD_TIMEOUT, S3_UPLOAD_RETRIES)
+        if "pending" in locals() and Path(pending.file_path).exists() and Path(pending.meta_path).exists():
+            return _queued_upload_result(s3_key, short_id)
         return UploadResult(success=False, error="Upload timeout - check network")
     except FileNotFoundError:
-        if "s3_key" in locals() and "short_id" in locals() and pre_info is not None:
+        if "pending" in locals() and Path(pending.file_path).exists() and Path(pending.meta_path).exists():
             logger.warning(
                 "Initial S3 upload helper could not access the pending file for %s; "
                 "returning reserved URL because the durable spool will retry",
                 s3_key,
             )
             return _queued_upload_result(s3_key, short_id)
-        error = "AWS CLI not found. Run: sudo apt install awscli"
+        error = "Upload file unavailable; no durable payload confirmed for retry"
         logger.error(error)
         return UploadResult(success=False, error=error)
     except Exception as e:

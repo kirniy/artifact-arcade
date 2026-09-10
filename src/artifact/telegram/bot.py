@@ -317,7 +317,8 @@ class StatsReader:
         failed = [
             event
             for event in final_photos
-            if not event.get("success") and not event.get("skipped") and not self._is_retryable_upload_failure(event)
+            if not event.get("success") and not event.get("skipped")
+            and not event.get("queued") and not self._is_retryable_upload_failure(event)
         ]
         image_calls, text_calls = self._count_ai_logs(start, end)
         spent = image_calls * IMAGE_CALL_COST_USD + text_calls * TEXT_CALL_COST_USD
@@ -927,6 +928,13 @@ class ArcadeBot:
 
     @staticmethod
     def _photo_caption(event: dict[str, Any]) -> str:
+        if event.get("queued"):
+            return (
+                "Фото сохранено, загрузка ожидает повтора\n"
+                f"Время: {_format_dt(event.get('timestamp'))}\n"
+                f"Тема: {event.get('theme_name') or event.get('theme_id') or 'unknown'}\n"
+                "В галерее фото появится после успешной загрузки."
+            )
         if event.get("skipped"):
             return (
                 "Фото не опубликовано в галерею\n"
