@@ -1495,6 +1495,10 @@ class PhotoboothMode(BaseMode):
             ink = (16, 22, 32)
             accent = tuple(self._theme.theme_chrome) if self._theme.theme_chrome else (25, 83, 205)
             secondary = tuple(self._theme.theme_red) if self._theme.theme_red else (210, 34, 34)
+            if self._theme.id == "tropical-thai":
+                # Pale aqua belongs to the scene/chrome, not small text on white.
+                accent = (28, 51, 92)
+                secondary = (169, 62, 53)
 
             brand = "VNVNC.RU"
             time_text = moscow_time
