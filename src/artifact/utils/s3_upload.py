@@ -10,6 +10,8 @@ Public URL: https://e6aaa51f-863a-439e-9b6e-69991ff0ad6e.selstorage.ru/artifact/
 """
 
 import json
+import fcntl
+from contextlib import contextmanager
 import logging
 import subprocess
 import uuid
@@ -430,6 +432,34 @@ def _ensure_spool_dir(prefix: str) -> Path:
         except OSError:
             logger.debug("Could not chmod spool dir %s", target, exc_info=True)
     return path
+
+
+@contextmanager
+def _upload_job_lock(prefix: str, filename: str, *, blocking: bool = True):
+    """Coordinate foreground and daemon ownership across processes.
+
+    Stable striped lock files are never unlinked: unlinking a locked inode can
+    let another process create a different lock for the same job.
+    """
+    lock_dir = _ensure_spool_dir(".locks")
+    stripe = int(hashlib.sha256(f"{prefix}/{filename}".encode()).hexdigest(), 16) % 64
+    descriptor = os.open(lock_dir / f"{stripe:02d}.lock", os.O_RDONLY | os.O_CREAT, 0o666)
+    try:
+        try:
+            os.fchmod(descriptor, 0o666)
+        except PermissionError:
+            pass  # Existing root-created lock remains readable by the daemon.
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        except BlockingIOError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(descriptor)
 
 
 def _pending_paths(prefix: str, filename: str) -> tuple[Path, Path]:
@@ -883,55 +913,59 @@ def retry_pending_uploads(prefix: Optional[str] = None, limit: int = 50) -> dict
     manifest_prefixes: set[str] = set()
 
     for meta_path in meta_files[:limit]:
-        pending = _load_pending_upload(meta_path)
-        if pending is None:
-            failed += 1
-            continue
-
-        retried += 1
-        try:
-            result = _upload_local_path_to_s3(pending.file_path, pending.s3_key, pending.content_type)
-            if result.returncode != 0:
+        filename = meta_path.name.removesuffix(".json")
+        with _upload_job_lock(meta_path.parent.name, filename, blocking=False) as acquired:
+            if not acquired or not meta_path.exists():
+                continue
+            pending = _load_pending_upload(meta_path)
+            if pending is None:
                 failed += 1
-                stderr = result.stderr.decode() if result.stderr else ""
-                logger.warning("Pending upload failed for %s: %s", pending.filename, stderr)
                 continue
 
-            url = f"{SELECTEL_PUBLIC_URL}/{pending.s3_key}"
-            short_url = f"https://vnvnc.ru/p/{pending.short_id}" if pending.short_id else None
-            if pending.short_id:
-                _upload_redirect_html(pending.short_id, url)
-            if pending.prefix == "photobooth":
-                manifest_prefixes.add(pending.prefix)
-                try:
-                    from artifact.telegram.events import append_bot_event
+            retried += 1
+            try:
+                result = _upload_local_path_to_s3(pending.file_path, pending.s3_key, pending.content_type)
+                if result.returncode != 0:
+                    failed += 1
+                    stderr = result.stderr.decode() if result.stderr else ""
+                    logger.warning("Pending upload failed for %s: %s", pending.filename, stderr)
+                    continue
 
-                    append_bot_event(
-                        "photobooth_photo",
-                        {
-                            "success": True,
-                            "mode": "photobooth",
-                            "theme_id": "",
-                            "theme_name": "Photobooth",
-                            "url": url,
-                            "short_url": short_url,
-                            "short_id": pending.short_id,
-                            "filename": pending.filename,
-                            "result_bytes": Path(pending.file_path).stat().st_size,
-                            "source_photo_bytes": 0,
-                            "uploaded_by": "upload_spool_daemon",
-                            **(pending.metadata or {}),
-                        },
-                    )
-                except Exception:
-                    logger.debug("Could not append Telegram success event for pending upload", exc_info=True)
+                url = f"{SELECTEL_PUBLIC_URL}/{pending.s3_key}"
+                short_url = f"https://vnvnc.ru/p/{pending.short_id}" if pending.short_id else None
+                if pending.short_id:
+                    _upload_redirect_html(pending.short_id, url)
+                if pending.prefix == "photobooth":
+                    manifest_prefixes.add(pending.prefix)
+                    try:
+                        from artifact.telegram.events import append_bot_event
 
-            _delete_pending_upload(pending)
-            succeeded += 1
-            logger.info("Retried pending upload successfully: %s", pending.filename)
-        except Exception as e:
-            failed += 1
-            logger.warning("Pending upload retry failed for %s: %s", pending.filename, e)
+                        append_bot_event(
+                            "photobooth_photo",
+                            {
+                                "success": True,
+                                "mode": "photobooth",
+                                "theme_id": "",
+                                "theme_name": "Photobooth",
+                                "url": url,
+                                "short_url": short_url,
+                                "short_id": pending.short_id,
+                                "filename": pending.filename,
+                                "result_bytes": Path(pending.file_path).stat().st_size,
+                                "source_photo_bytes": 0,
+                                "uploaded_by": "upload_spool_daemon",
+                                **(pending.metadata or {}),
+                            },
+                        )
+                    except Exception:
+                        logger.debug("Could not append Telegram success event for pending upload", exc_info=True)
+
+                _delete_pending_upload(pending)
+                succeeded += 1
+                logger.info("Retried pending upload successfully: %s", pending.filename)
+            except Exception as e:
+                failed += 1
+                logger.warning("Pending upload retry failed for %s: %s", pending.filename, e)
 
     for manifest_prefix in manifest_prefixes:
         refresh_public_photo_manifest(prefix=manifest_prefix)
@@ -985,6 +1019,22 @@ def _queued_upload_result(s3_key: str, short_id: str) -> UploadResult:
 
 
 def upload_bytes_to_s3(
+    data: bytes,
+    prefix: str,
+    extension: str = "jpg",
+    content_type: str = "image/jpeg",
+    pre_info: Optional[PreUploadInfo] = None,
+    metadata: Optional[dict[str, Any]] = None,
+) -> UploadResult:
+    """Own the durable job until foreground upload and cleanup finish."""
+    info = pre_info or pre_generate_upload_info(prefix, extension)
+    with _upload_job_lock(prefix, info.filename):
+        return _upload_bytes_to_s3_locked(
+            data, prefix, extension, content_type, info, metadata,
+        )
+
+
+def _upload_bytes_to_s3_locked(
     data: bytes,
     prefix: str,
     extension: str = "jpg",

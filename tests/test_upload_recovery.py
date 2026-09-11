@@ -114,3 +114,40 @@ def test_pending_photo_is_not_counted_as_failed(monkeypatch):
     assert stats["photos"] == 1
     assert stats["successful_photos"] == stats["failed_photos"] == 0
     assert stats["pending_uploads"] == 1
+
+
+def test_daemon_cannot_delete_foreground_payload(monkeypatch, spool):
+    """Reproduce the live race: retry starts while foreground is uploading."""
+    calls = []
+    def foreground(path, *args, **kwargs):
+        calls.append(path)
+        assert upload.retry_pending_uploads() == {"retried": 0, "succeeded": 0, "failed": 0}
+        assert Path(path).read_bytes() == b"photo in flight"
+        return subprocess.CompletedProcess([], 1, b"", b"connection closed")
+    monkeypatch.setattr(upload, "_upload_local_path_to_s3", foreground)
+    result = upload.upload_bytes_to_s3(b"photo in flight", "photobooth")
+    assert result.queued and not result.success
+    assert len(calls) == 1
+    assert len(list((spool / "photobooth").glob("*.json"))) == 1
+
+
+def test_job_lock_coordinates_separate_processes_and_releases_after_crash(spool):
+    import os
+    import sys
+    code = '''
+import os, sys
+from pathlib import Path
+from artifact.utils import s3_upload as upload
+upload.UPLOAD_SPOOL_DIR = Path(sys.argv[1])
+with upload._upload_job_lock("photobooth", "same.png", blocking=False) as acquired:
+    print(acquired, flush=True)
+    if acquired:
+        os._exit(0)
+'''
+    with upload._upload_job_lock("photobooth", "same.png"):
+        child = subprocess.run([sys.executable, "-c", code, str(spool)], capture_output=True, text=True, check=True)
+        assert child.stdout.strip().endswith("False")
+    child = subprocess.run([sys.executable, "-c", code, str(spool)], capture_output=True, text=True, check=True)
+    assert child.stdout.strip().endswith("True")
+    with upload._upload_job_lock("photobooth", "same.png", blocking=False) as acquired:
+        assert acquired
