@@ -134,6 +134,8 @@ class CaricatureStyle(Enum):
     )
     PHOTOBOOTH_JARA = "photobooth_jara"  # 9:16 vertical - ЖАРА 2D foam pool-party mode
     PHOTOBOOTH_JARA_SQUARE = "photobooth_jara_square"  # 1:1 square - ЖАРА 2D foam pool-party mode
+    PHOTOBOOTH_TROPICAL_THAI = "photobooth_tropical_thai"
+    PHOTOBOOTH_TROPICAL_THAI_SQUARE = "photobooth_tropical_thai_square"
     PHOTOBOOTH_SUNSET_PALMS = (
         "photobooth_sunset_palms"  # 9:16 vertical - identity-locked 2D sunset festival mode
     )
@@ -3744,6 +3746,22 @@ class CaricatureService:
         try:
             import hashlib
             import random
+
+            if style in {CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI, CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI_SQUARE}:
+                from artifact.ai.tropical_thai import generate_tropical_thai
+                image_data = await generate_tropical_thai(
+                    self._client, reference_photo, extra_reference_images,
+                    square=style == CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI_SQUARE,
+                    variation_index=prompt_variation_index,
+                )
+                if not image_data:
+                    return None
+                import io
+                from PIL import Image
+                img = Image.open(io.BytesIO(image_data)).convert("RGB")
+                output = io.BytesIO()
+                img.save(output, format="PNG")
+                return Caricature(output.getvalue(), style, img.width, img.height, "png")
 
             # Add a small uniqueness token to vary outputs run-to-run
             uniqueness_token = hashlib.md5(str(random.random()).encode()).hexdigest()[:8].upper()

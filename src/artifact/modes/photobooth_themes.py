@@ -791,7 +791,26 @@ VSE_SVOI_THEME = PhotoboothTheme(
 # =============================================================================
 # THEME REGISTRY
 # =============================================================================
+TROPICAL_THAI_THEME = PhotoboothTheme(
+    id="tropical-thai", event_name="TROPICAL THAI", event_date="",
+    logo_filename="tropical-thai-emblem.png",
+    theme_chrome=(166, 235, 222), theme_red=(249, 130, 111), theme_black=(28, 51, 92),
+    ticker_idle="THAI", lcd_prefix="TROPICAL THAI",
+    description="ТРОПИЧЕСКИЙ РАЙ", menu_display_name="TROPICAL\nTHAI",
+    menu_description="ТРОПИЧЕСКИЙ РАЙ", menu_color=(166, 235, 222),
+    ticker_color=(0, 255, 48), ticker_compact_static=True,
+    ticker_x_offset=2, ticker_safe_left=8,
+    ticker_idle_cycle=("THAI", "TROPIC", "ФОТОБУДКА"),
+    party_date_rollover_hour=12, footer_date_mode="weekday_ru",
+    ai_style_key="tropical_thai",
+    reference_image_filenames=("tropical-thai-emblem.png",),
+    required_reference_sha256="bc74dd8d9341e07463cf714c40b4daa6d4776d51c5641048a0d5e4c83ed9d6f9",
+    idle_video_filename="tropical-thai-fans-10x.mp4", idle_video_required=True,
+)
+
+
 THEMES = {
+    "tropical-thai": TROPICAL_THAI_THEME,
     "boilingroom": BOILINGROOM_THEME,
     "tripvenice": TRIPVENICE_THEME,
     "loveintheair": LOVEINTHEAIR_THEME,

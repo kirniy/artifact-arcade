@@ -456,6 +456,8 @@ class RotatingIdleAnimation:
             return "2k17"
         if theme_id == "jara":
             return "jara"
+        if theme_id == "tropical-thai":
+            return "tropical_thai"
         if theme_id == "sunset-palms":
             return "sunset_palms"
         if theme_id == "spiderverse":
@@ -538,6 +540,10 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
+        if self.idle_variant == "tropical_thai":
+            return {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "TROPICAL THAI",
+            }
         if self.idle_variant == "sunset_palms":
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "SUNSET PALMS",
@@ -587,6 +593,8 @@ class RotatingIdleAnimation:
         if self.idle_variant == "2k17":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "jara":
+            return [IdleScene.CRINGE_CIRCLE_VIDEO]
+        if self.idle_variant == "tropical_thai":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "sunset_palms":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -805,6 +813,7 @@ class RotatingIdleAnimation:
                     "alye_parusa",
                     "jara",
                     "sunset_palms",
+                    "tropical_thai",
                     "spiderverse",
                     "world_cup_final",
                     "vse_svoi",
@@ -887,6 +896,7 @@ class RotatingIdleAnimation:
             "alye_parusa",
             "jara",
             "sunset_palms",
+            "tropical_thai",
             "spiderverse",
             "world_cup_final",
             "vse_svoi",
@@ -1175,6 +1185,29 @@ class RotatingIdleAnimation:
 
         if self.idle_variant == "vnvnc_bday":
             return
+        if self.idle_variant == "tropical_thai":
+            filename = self._theme.idle_video_filename
+            if not filename:
+                logger.error("Tropical Thai idle-video slot is not configured")
+                return
+            video_path = (
+                Path(__file__).parent.parent.parent.parent
+                / "assets"
+                / "idle"
+                / "tropical_thai"
+                / "video"
+                / filename
+            )
+            if video_path.exists():
+                self.cringe_circle_video_path = video_path
+                logger.info(f"Loaded accepted Tropical Thai idle video: {video_path.name}")
+            else:
+                logger.error(
+                    "Required accepted Tropical Thai idle video is not installed: %s; "
+                    "activation must remain gated",
+                    video_path,
+                )
+            return
         if self.idle_variant == "sunset_palms":
             filename = self._theme.idle_video_filename
             if not filename:
@@ -1450,6 +1483,10 @@ class RotatingIdleAnimation:
         if self.cringe_circle_video_capture:
             self.cringe_circle_video_capture.release()
         self.cringe_circle_video_capture = cv2.VideoCapture(str(self.cringe_circle_video_path))
+        if self.idle_variant == "tropical_thai":
+            self._tropical_video_start_ms = self.state.time
+            self._tropical_video_frame_index = -1
+            self._tropical_video_frame = None
 
     def _stop_cringe_circle_video(self) -> None:
         """Stop the silent Cringe Party circle video."""
@@ -1754,6 +1791,10 @@ class RotatingIdleAnimation:
         elif self.idle_variant == "jara":
             names = {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
+            }
+        elif self.idle_variant == "tropical_thai":
+            names = {
+                IdleScene.CRINGE_CIRCLE_VIDEO: "TROPICAL THAI",
             }
         elif self.idle_variant == "sunset_palms":
             names = {
@@ -4941,6 +4982,22 @@ class RotatingIdleAnimation:
             self._render_cringe_party_scene(buffer, IdleScene.CRINGE_HERO)
             return
 
+        # The screen refresh can exceed 24 fps. Preserve the approved fan's real
+        # speed instead of consuming one video frame on every screen refresh.
+        if self.idle_variant == "tropical_thai":
+            capture = self.cringe_circle_video_capture
+            fps = capture.get(cv2.CAP_PROP_FPS) or 24.0
+            count = max(1, int(capture.get(cv2.CAP_PROP_FRAME_COUNT)))
+            elapsed = max(0.0, self.state.time - self._tropical_video_start_ms)
+            target = int(elapsed * fps / 1000.0) % count
+            if target == self._tropical_video_frame_index and self._tropical_video_frame is not None:
+                buffer[:] = self._tropical_video_frame
+                self._draw_cringe_overlay(buffer, IdleScene.CRINGE_CIRCLE_VIDEO)
+                return
+            if target != self._tropical_video_frame_index + 1:
+                capture.set(cv2.CAP_PROP_POS_FRAMES, target)
+            self._tropical_video_frame_index = target
+
         ret, frame = self.cringe_circle_video_capture.read()
         if not ret:
             self.cringe_circle_video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
@@ -4953,6 +5010,8 @@ class RotatingIdleAnimation:
         if frame.shape[0] != 128 or frame.shape[1] != 128:
             frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_AREA)
 
+        if self.idle_variant == "tropical_thai":
+            self._tropical_video_frame = frame
         buffer[:] = frame
         self._draw_cringe_overlay(buffer, IdleScene.CRINGE_CIRCLE_VIDEO)
 
@@ -5398,6 +5457,7 @@ class RotatingIdleAnimation:
             "alye_parusa",
             "jara",
             "sunset_palms",
+            "tropical_thai",
             "spiderverse",
             "world_cup_final",
             "vse_svoi",

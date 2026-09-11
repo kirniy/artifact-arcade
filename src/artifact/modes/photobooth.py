@@ -830,6 +830,8 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
             )
+        elif ai_style_key == "tropical_thai":
+            return (CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI_SQUARE, CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI)
         elif ai_style_key == "sunset_palms":
             return (
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
@@ -1200,7 +1202,7 @@ class PhotoboothMode(BaseMode):
                     f"{self._theme.event_name} generation refused: canonical emblem reference is missing or invalid"
                 )
             generation_reference_images = list(self._theme_reference_images)
-            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi"}:
+            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai"}:
                 generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
@@ -1230,7 +1232,7 @@ class PhotoboothMode(BaseMode):
                     label_bytes = self._stamp_boilingroom_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
-                elif ai_style_key in {"office_core", "summer_camp"}:
+                elif ai_style_key in {"office_core", "summer_camp", "tropical_thai"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(
                         label_bytes, footer_date_str, moscow_time
@@ -1288,6 +1290,7 @@ class PhotoboothMode(BaseMode):
                 if getattr(self._theme, "ai_style_key", None) in {
                     "world_cup_final",
                     "sunset_palms",
+                    "tropical_thai",
                     "spiderverse",
                     "vse_svoi",
                 }:
@@ -2980,6 +2983,8 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("world_cup_final", "world-cup-final"),
         ("world-cup-final", "world-cup-final"),
         ("sunset_palms", "sunset-palms"),
+        ("tropical_thai", "tropical-thai"),
+        ("tropical-thai", "tropical-thai"),
         ("sunset-palms", "sunset-palms"),
         ("spiderverse", "spiderverse"),
         ("vse_svoi", "vse-svoi"),
