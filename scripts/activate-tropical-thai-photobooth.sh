@@ -19,8 +19,11 @@ theme=THEMES['tropical-thai']
 assert hashlib.sha256((root/'assets/images'/theme.logo_filename).read_bytes()).hexdigest()==theme.required_reference_sha256
 assert CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI.value == 'photobooth_tropical_thai'
 assert 'tropical_thai' in PHOTOBOOTH_MENU_REGISTRY
-for name in ['ai/caricature.py','ai/tropical_thai.py','modes/photobooth.py','modes/photobooth_themes.py','animation/idle_scenes.py']:
- py_compile.compile(str(root/'src/artifact'/name),doraise=True)
+# The running hardware service owns its existing pycache as root. Preflight must
+# not write there when an operator activates the theme as kirniy.
+with tempfile.TemporaryDirectory(prefix='tropical-thai-compile-') as cache:
+ for index,name in enumerate(['ai/caricature.py','ai/tropical_thai.py','modes/photobooth.py','modes/photobooth_themes.py','animation/idle_scenes.py']):
+  py_compile.compile(str(root/'src/artifact'/name),cfile=str(pathlib.Path(cache)/f'{index}.pyc'),doraise=True)
 p=pathlib.Path(sys.argv[1])
 updates={
  'PHOTOBOOTH_THEME':'tropical-thai','PHOTOBOOTH_MENU_MODES':'tropical-thai',
