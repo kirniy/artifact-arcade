@@ -28,5 +28,7 @@ quest-off activation, existing menus, face gate and weekly schedule. Separately,
 existing Sunset Palms / birthday regression tests passed in the original checkout.
 A synthetic two-adult image is used for provider QA, never private guest captures.
 
-Deployment evidence and final hashes are recorded alongside this document once
-activation is verified. Keep the machine-local AI client patch intact.
+Deployed and verified on 2026-09-11 at 22:21 MSK. Production evidence and hashes:
+`docs/qa/tropical-thai-production-20260911.json`. The machine-local AI client patch
+was preserved byte-for-byte. Synthetic provider sample and footer/square previews:
+`output/tropical-thai/`. No physical camera capture or print was triggered.

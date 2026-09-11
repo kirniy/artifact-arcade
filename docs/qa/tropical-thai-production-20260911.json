@@ -1,0 +1,39 @@
+{
+  "verified_at_utc": "2026-09-11T19:22:07Z",
+  "host": "artifact",
+  "commit": "9284ec1f56ae482db7049c3d6a5efa99df02f777",
+  "service": "active",
+  "service_start": "Fri 2026-09-11 22:20:59 MSK",
+  "status": {
+    "mode": "idle",
+    "state": "idle",
+    "scene": 0,
+    "volume": 1.0,
+    "muted": false,
+    "running": true,
+    "frame": 2467,
+    "timestamp": 1789154526.3253293
+  },
+  "config": {
+    "PHOTOBOOTH_THEME": "tropical-thai",
+    "PHOTOBOOTH_MENU_MODES": "tropical-thai",
+    "ARTIFACT_SPIDERVERSE_QUEST_ENABLED": "false",
+    "ARTIFACT_WEEKLY_THEME_SCHEDULE_ENABLED": "0"
+  },
+  "tests": "24 passed on Pi",
+  "provider_qa": "synthetic two-adult input; 768x1376 generated; clothing and emblem visually checked",
+  "private_guest_photos_used": false,
+  "physical_print_test": false,
+  "backup": ".deploy/tropical-thai-before-20260912",
+  "hashes": {
+    "src/artifact/ai/caricature.py": "725865ff5561ad89e7676969c95ebb0b454c67967a3133b21ff25850e04f6359",
+    "src/artifact/ai/tropical_thai.py": "d8142715cf28833a77d08e2d135b0db6b608560aafd699e67035e5982792ac96",
+    "src/artifact/animation/idle_scenes.py": "d21cefb73c65220f3b1c80d7ff6d01dc0c1959f7333c3e6bcfb2a11ed2b0f671",
+    "src/artifact/modes/photobooth.py": "c4b153b5a89232c9ba7e8cba584b7c9faee0a4005d94981d9dc97f62bb822789",
+    "src/artifact/modes/photobooth_themes.py": "d2c49fbf2057946696463cb12d95e2ba51e8187f35ceaa6fe9de7fcd1aa9adc5",
+    "scripts/activate-tropical-thai-photobooth.sh": "cd49ce56c330f8b1b4b604ad68f4516d1b3d815af3493c4115ad76c3442c3fdb",
+    "scripts/prepare-tropical-thai-idle-video.sh": "e52eeced62def71d216dff51bcd03e60091758d662553c30de2de76328095d2a",
+    "assets/images/tropical-thai-emblem.png": "bc74dd8d9341e07463cf714c40b4daa6d4776d51c5641048a0d5e4c83ed9d6f9",
+    "assets/idle/tropical_thai/video/tropical-thai-fans-10x.mp4": "dc98d44ef9bd0157c2687f26a26a16c09f97f8e0bfda62817f26000b02ddd1a2"
+  }
+}
