@@ -1584,7 +1584,12 @@ class ModeManager:
             animation_engine=self.animation_engine,
             theme="spiderverse",
         )
-        self._current_mode = SpiderverseQuestMode(context)
+        import os
+        if os.getenv("ARTIFACT_QUEST_PROFILE", "spiderverse").lower() == "party_exam":
+            from artifact.modes.party_exam import PartyExamMode
+            self._current_mode = PartyExamMode(context)
+        else:
+            self._current_mode = SpiderverseQuestMode(context)
         self._spiderverse_quest_active = True
         self._pending_spiderverse_quest_exit = False
         self._audio.stop_music(fade_out_ms=120)
@@ -1611,8 +1616,31 @@ class ModeManager:
         logger.info("Hidden SPIDERVERSE quest deactivated")
 
     # Update loop
+    def _sync_club_theme_schedule(self) -> None:
+        from artifact.modes.club_theme_schedule import scheduled_theme
+        target = scheduled_theme()
+        if not target or self.state not in {ManagerState.IDLE, ManagerState.MODE_SELECT}:
+            return
+        if self._current_mode is not None or self._prize_drum_active or self._spiderverse_quest_active:
+            return
+        from artifact.modes.photobooth import PhotoboothMode, get_configured_photobooth_modes
+        current = [info for info in self._registered_modes.values()
+                   if issubclass(info.cls, PhotoboothMode)]
+        if len(current) == 1 and getattr(current[0].cls, "theme_id_override", None) == target:
+            return
+        for info in current:
+            self.unregister_mode(info.name)
+        for mode_cls in get_configured_photobooth_modes():
+            self.register_mode(mode_cls)
+        self._selected_index = 0
+        self._idle_animation.reset()
+        if self._use_pygame_menu:
+            self._menu = None
+        logger.info("Club clock selected photobooth theme: %s", target)
+
     def update(self, delta_ms: float) -> None:
         """Update manager state."""
+        self._sync_club_theme_schedule()
         self._time_in_state += delta_ms
 
         if self._prize_drum_hold.update(delta_ms):

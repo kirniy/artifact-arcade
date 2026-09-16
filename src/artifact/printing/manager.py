@@ -270,6 +270,8 @@ class PrintManager:
 
     async def _broadcast_to_telegram(self, mode_name: str, data: Dict[str, Any]) -> None:
         """Broadcast image and session info to Telegram subscribers."""
+        if data.get("party_exam"):
+            return  # Private student portrait; admin delivery belongs to registration.
         bot = self._get_telegram_bot()
         if not bot:
             return
@@ -358,7 +360,7 @@ class PrintManager:
 
     def _prize_print_job_key(self, data: Dict[str, Any]) -> Optional[str]:
         mode_name = data.get("type") or data.get("mode") or data.get("mode_name")
-        if mode_name not in {WHEEL_PRIZE_MODE_NAME, SPIDERVERSE_QUEST_MODE_NAME}:
+        if mode_name not in {WHEEL_PRIZE_MODE_NAME, SPIDERVERSE_QUEST_MODE_NAME} and not data.get("party_exam"):
             return None
         value = str(data.get("print_job_key") or data.get("issue_id") or "").strip()
         return value or None
@@ -411,7 +413,7 @@ class PrintManager:
                 )
                 await self._maybe_select_rp80_for_job(mode_name)
 
-                if mode_name in {WHEEL_PRIZE_MODE_NAME, SPIDERVERSE_QUEST_MODE_NAME} and not self._use_rp80:
+                if (mode_name in {WHEEL_PRIZE_MODE_NAME, SPIDERVERSE_QUEST_MODE_NAME} or data.get("party_exam")) and not self._use_rp80:
                     raise RuntimeError(f"RP80 receipt printer is required for {mode_name}")
 
                 if not await self._ensure_connected():

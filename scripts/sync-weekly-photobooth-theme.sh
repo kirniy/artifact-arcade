@@ -41,6 +41,13 @@ read_env_value() {
     sed -n "s/^${key}=//p" "${ENV_FILE}" | tail -1
 }
 
+# The date-aware in-process schedule owns this event, including power-on selection.
+if [ "${ARTIFACT_CLUB_THEME_SCHEDULE:-$(read_env_value ARTIFACT_CLUB_THEME_SCHEDULE)}" = "project-x-2026" ]; then
+    echo "THEME_CHANGED=0"
+    echo "THEME_SCHEDULE=runtime-project-x-2026"
+    exit 0
+fi
+
 enabled="${ARTIFACT_WEEKLY_THEME_SCHEDULE_ENABLED:-}"
 if [ -z "${enabled}" ]; then
     enabled="$(read_env_value ARTIFACT_WEEKLY_THEME_SCHEDULE_ENABLED)"

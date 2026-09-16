@@ -204,6 +204,8 @@ class PhotoboothMode(BaseMode):
     def __init__(self, context: ModeContext):
         super().__init__(context)
         self._state = PhotoboothState()
+        self._countdown_capture = None
+        self._capture_pending = False
         self._working = False
         self._uploader = AsyncUploader()
         self._caricature_service = CaricatureService()
@@ -367,6 +369,8 @@ class PhotoboothMode(BaseMode):
     def on_enter(self) -> None:
         """Initialize mode."""
         self._state = PhotoboothState()
+        self._countdown_capture = None
+        self._capture_pending = False
         self._working = False
         self._ai_task = None
         self._progress_tracker.reset()
@@ -376,6 +380,9 @@ class PhotoboothMode(BaseMode):
 
     def on_exit(self) -> None:
         """Cleanup."""
+        capture = getattr(self, "_countdown_capture", None)
+        if capture is not None:
+            capture.stop.set()
         self._working = False
         if self._ai_task and not self._ai_task.done():
             self._ai_task.cancel()
@@ -498,6 +505,10 @@ class PhotoboothMode(BaseMode):
                     # Next countdown number
                     self._state.countdown -= 1
                     self._state.countdown_timer = 1.0
+                    if self._state.countdown == 1 and self._state.selected_camera_id == "primary":
+                        from artifact.utils.countdown_capture import CountdownCapture
+                        self._countdown_capture = CountdownCapture(camera_service.capture_best_jpeg)
+                        self._countdown_capture.start()
                 else:
                     # Countdown finished - start pre-flash to light up subjects!
                     self._state.countdown = 0
@@ -510,6 +521,9 @@ class PhotoboothMode(BaseMode):
             if self._state.pre_flash_timer <= 0:
                 # Now capture with lit-up subjects!
                 self._do_flash_and_capture()
+
+        if getattr(self, "_capture_pending", False):
+            self._do_flash_and_capture()
 
         # Handle AI generation progress
         if self._state.is_generating:
@@ -566,7 +580,17 @@ class PhotoboothMode(BaseMode):
         self._state.flash_timer = self.FLASH_DURATION
         self._state.countdown = 0
 
-        jpeg_bytes = self._capture_selected_camera_jpeg(quality=90)
+        capture = getattr(self, "_countdown_capture", None)
+        if capture is not None:
+            jpeg_bytes = capture.snapshot()
+            capture.stop.set()
+            if jpeg_bytes is None and not capture.finished.is_set():
+                self._capture_pending = True
+                return
+            self._capture_pending = False
+            self._countdown_capture = None
+        else:
+            jpeg_bytes = self._capture_selected_camera_jpeg(quality=90)
         if jpeg_bytes:
             self._state.photo_bytes = jpeg_bytes
             self._state.photo_frame = self._decode_photo_frame(jpeg_bytes)
@@ -614,7 +638,7 @@ class PhotoboothMode(BaseMode):
     def _capture_selected_camera_jpeg(self, quality: int = 90) -> Optional[bytes]:
         if self._state.selected_camera_id == "hdmi":
             return hdmi_capture_service.capture_jpeg(quality=quality)
-        return camera_service.capture_jpeg(quality=quality)
+        return camera_service.capture_best_jpeg(quality=max(quality, 95))
 
     def _finish_raw_capture_result(self) -> None:
         """Finish a no-AI photobooth session for any selected camera."""
@@ -830,6 +854,10 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
             )
+        elif ai_style_key == "project_x":
+            return (CaricatureStyle.PHOTOBOOTH_PROJECT_X_SQUARE, CaricatureStyle.PHOTOBOOTH_PROJECT_X)
+        elif ai_style_key == "tropical_thai":
+            return (CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI_SQUARE, CaricatureStyle.PHOTOBOOTH_TROPICAL_THAI)
         elif ai_style_key == "sunset_palms":
             return (
                 CaricatureStyle.PHOTOBOOTH_SUNSET_PALMS_SQUARE,
@@ -1200,7 +1228,7 @@ class PhotoboothMode(BaseMode):
                     f"{self._theme.event_name} generation refused: canonical emblem reference is missing or invalid"
                 )
             generation_reference_images = list(self._theme_reference_images)
-            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi"}:
+            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai", "project_x"}:
                 generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
@@ -1230,7 +1258,7 @@ class PhotoboothMode(BaseMode):
                     label_bytes = self._stamp_boilingroom_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
-                elif ai_style_key in {"office_core", "summer_camp"}:
+                elif ai_style_key in {"office_core", "summer_camp", "tropical_thai", "project_x"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(
                         label_bytes, footer_date_str, moscow_time
@@ -1288,6 +1316,8 @@ class PhotoboothMode(BaseMode):
                 if getattr(self._theme, "ai_style_key", None) in {
                     "world_cup_final",
                     "sunset_palms",
+                    "tropical_thai",
+                    "project_x",
                     "spiderverse",
                     "vse_svoi",
                 }:
@@ -1492,6 +1522,10 @@ class PhotoboothMode(BaseMode):
             ink = (16, 22, 32)
             accent = tuple(self._theme.theme_chrome) if self._theme.theme_chrome else (25, 83, 205)
             secondary = tuple(self._theme.theme_red) if self._theme.theme_red else (210, 34, 34)
+            if self._theme.id == "tropical-thai":
+                # Pale aqua belongs to the scene/chrome, not small text on white.
+                accent = (28, 51, 92)
+                secondary = (169, 62, 53)
 
             brand = "VNVNC.RU"
             time_text = moscow_time
@@ -2980,6 +3014,10 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("world_cup_final", "world-cup-final"),
         ("world-cup-final", "world-cup-final"),
         ("sunset_palms", "sunset-palms"),
+        ("project_x", "project-x"),
+        ("project-x", "project-x"),
+        ("tropical_thai", "tropical-thai"),
+        ("tropical-thai", "tropical-thai"),
         ("sunset-palms", "sunset-palms"),
         ("spiderverse", "spiderverse"),
         ("vse_svoi", "vse-svoi"),
@@ -3066,6 +3104,10 @@ def get_configured_photobooth_modes() -> list[Type[PhotoboothMode]]:
         PHOTOBOOTH_MENU_MODES=slavic_soul,slavic_tales,banya_chic
         PHOTOBOOTH_MENU_MODES=classic,slavic_soul
     """
+    from artifact.modes.club_theme_schedule import scheduled_theme
+    active_schedule = scheduled_theme()
+    if active_schedule:
+        return [_build_theme_photobooth_mode(1, active_schedule)]
     raw = os.environ.get("PHOTOBOOTH_MENU_MODES", ",".join(DEFAULT_PHOTOBOOTH_MENU_MODES))
     requested = [item.strip().lower() for item in raw.split(",") if item.strip()]
     if not requested:

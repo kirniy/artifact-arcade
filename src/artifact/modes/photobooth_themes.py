@@ -392,6 +392,8 @@ VNVNC_BDAY_THEME = PhotoboothTheme(
     footer_date_mode="weekday_ru",
     ai_style_key="vnvnc_bday",
     reference_image_filenames=("emblem-v1-chrome-oval.png",),
+    idle_video_filename="vnvnc-bday-fans.mp4",
+    idle_video_required=True,
 )
 
 
@@ -791,7 +793,40 @@ VSE_SVOI_THEME = PhotoboothTheme(
 # =============================================================================
 # THEME REGISTRY
 # =============================================================================
+TROPICAL_THAI_THEME = PhotoboothTheme(
+    id="tropical-thai", event_name="TROPICAL THAI", event_date="",
+    logo_filename="tropical-thai-emblem.png",
+    theme_chrome=(166, 235, 222), theme_red=(249, 130, 111), theme_black=(28, 51, 92),
+    ticker_idle="THAI", lcd_prefix="TROPICAL THAI",
+    description="ТРОПИЧЕСКИЙ РАЙ", menu_display_name="TROPICAL\nTHAI",
+    menu_description="ТРОПИЧЕСКИЙ РАЙ", menu_color=(166, 235, 222),
+    ticker_color=(0, 255, 48), ticker_compact_static=True,
+    ticker_x_offset=2, ticker_safe_left=8,
+    ticker_idle_cycle=("THAI", "TROPIC", "ФОТОБУДКА"),
+    party_date_rollover_hour=12, footer_date_mode="weekday_ru",
+    ai_style_key="tropical_thai",
+    reference_image_filenames=("tropical-thai-emblem.png",),
+    required_reference_sha256="bc74dd8d9341e07463cf714c40b4daa6d4776d51c5641048a0d5e4c83ed9d6f9",
+    idle_video_filename="tropical-thai-fans-10x.mp4", idle_video_required=True,
+)
+
+
+PROJECT_X_THEME = PhotoboothTheme(
+    id="project-x", event_name="PROJECT X", event_date="",
+    idle_video_filename="project-x-fan-10x.mp4", idle_video_required=True,
+    logo_filename="project-x-emblem.png",
+    theme_chrome=(65, 145, 255), theme_red=(220, 55, 65), theme_black=(10, 24, 55),
+    ticker_idle="PROJECT X", lcd_prefix="PROJECT X", description="КОЛЛЕДЖ БЕЗ ПРАВИЛ",
+    menu_display_name="PROJECT X", menu_description="КОЛЛЕДЖ БЕЗ ПРАВИЛ",
+    ticker_color=(0, 160, 255), party_date_rollover_hour=7,
+    footer_date_mode="weekday_ru", ai_style_key="project_x",
+    reference_image_filenames=("project-x-emblem.png",),
+    required_reference_sha256="ddb2a31ce16f68116b152c682607c17617f08fe3e09c3cd9e4bf59edb9c13cae",
+)
+
 THEMES = {
+    "project-x": PROJECT_X_THEME,
+    "tropical-thai": TROPICAL_THAI_THEME,
     "boilingroom": BOILINGROOM_THEME,
     "tripvenice": TRIPVENICE_THEME,
     "loveintheair": LOVEINTHEAIR_THEME,
@@ -840,7 +875,8 @@ def get_current_theme() -> PhotoboothTheme:
     Returns:
         PhotoboothTheme instance for the active theme
     """
-    theme_id = os.environ.get("PHOTOBOOTH_THEME", DEFAULT_THEME).lower()
+    from artifact.modes.club_theme_schedule import scheduled_theme
+    theme_id = scheduled_theme() or os.environ.get("PHOTOBOOTH_THEME", DEFAULT_THEME).lower()
 
     if theme_id not in THEMES:
         # Fallback to default if invalid theme specified

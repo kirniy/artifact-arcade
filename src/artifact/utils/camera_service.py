@@ -164,7 +164,7 @@ class CameraService:
             if IS_HARDWARE:
                 from artifact.hardware.camera import create_camera, is_pi_camera_available
                 if is_pi_camera_available():
-                    self._camera = create_camera(preview_resolution=self._preview_resolution)
+                    self._camera = create_camera(resolution=self._full_resolution, preview_resolution=self._preview_resolution)
                 else:
                     logger.warning("Pi camera not available")
                     return False
@@ -345,6 +345,60 @@ class CameraService:
         except Exception as e:
             logger.debug(f"Full frame capture error: {e}")
             return None
+
+    def capture_best_jpeg(self, quality: int = 95, *, on_candidate=None, stop_event=None) -> Optional[bytes]:
+        """Fast default capture; optional bounded burst without extra AI calls."""
+        if not self._camera or not self._camera.is_open:
+            return None
+        from artifact.utils.capture_quality import evaluate
+        best_frame = None
+        best_key = None
+        report = []
+        best_index = 0
+        started = time.monotonic()
+        with self._camera_lock:
+            for index in range(3):
+                if stop_event is not None and stop_event.is_set():
+                    break
+                try:
+                    if hasattr(self._camera, "capture_full_with_metadata"):
+                        frame, metadata = self._camera.capture_full_with_metadata()
+                    else:
+                        frame = self._camera.capture_full()
+                        metadata = {}
+                    if frame is None:
+                        continue
+                    try:
+                        metrics = evaluate(frame)
+                    except Exception as exc:
+                        logger.warning("Capture scoring unavailable: %s", exc)
+                        metrics = {"faces": 0, "score": 0.0, "clipped": None}
+                    report.append({"index": index, **metrics, "camera": metadata})
+                    key = (metrics["faces"], metrics["score"])
+                    if best_key is None or key > best_key:
+                        best_key = key
+                        best_frame = frame.copy()
+                        best_index = index
+                        if on_candidate is not None:
+                            from PIL import Image
+                            import io
+                            encoded = io.BytesIO()
+                            Image.fromarray(best_frame).save(encoded, format="JPEG", quality=quality, subsampling=0)
+                            on_candidate(encoded.getvalue())
+                except Exception as exc:
+                    logger.warning("Burst frame failed: %s", exc)
+                # Budget bounds additional requests; a sensor request itself can block.
+                if time.monotonic() - started >= 0.8:
+                    break
+        if best_frame is None:
+            return None
+        self.last_capture_quality = {"selected": best_index, "frames": report}
+        logger.info("Capture quality: %s", self.last_capture_quality)
+        from PIL import Image
+        import io
+        output = io.BytesIO()
+        Image.fromarray(best_frame).save(output, format="JPEG", quality=quality, subsampling=0)
+        return output.getvalue()
 
     def capture_jpeg(self, quality: int = 85) -> Optional[bytes]:
         """Capture full-res frame as JPEG.

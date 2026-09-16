@@ -60,6 +60,9 @@ class PhotoboothRollReceiptGenerator:
 
     def generate_receipt(self, mode_name: str, data: dict[str, Any]) -> PhotoboothRollReceipt:
         """Generate a receipt for a photobooth print job."""
+        if data.get("party_exam"):
+            from artifact.printing.party_exam_roll import PartyExamRollReceiptGenerator
+            return PartyExamRollReceiptGenerator().generate_receipt(mode_name, data)
         timestamp = self._parse_timestamp(data)
         quote = ""
         if _print_fortunes_enabled():

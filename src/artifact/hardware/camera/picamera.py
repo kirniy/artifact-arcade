@@ -5,6 +5,7 @@ Provides real-time camera capture for the ARTIFACT arcade machine.
 """
 
 import logging
+import os
 from typing import Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
@@ -17,7 +18,7 @@ _PICAMERA2_AVAILABLE = False
 
 try:
     from picamera2 import Picamera2
-    from libcamera import Transform
+    from libcamera import Transform, controls
     _picamera2 = Picamera2
     _Transform = Transform
     _PICAMERA2_AVAILABLE = True
@@ -48,7 +49,7 @@ class PiCamera:
 
     def __init__(
         self,
-        resolution: Tuple[int, int] = (640, 480),
+        resolution: Tuple[int, int] = (2048, 1536),
         preview_resolution: Tuple[int, int] = (128, 128)
     ):
         """Initialize camera.
@@ -94,16 +95,32 @@ class PiCamera:
             self._camera = _picamera2()
 
             # Configure camera
-            # Use main stream for full resolution capture (RGB888)
+            # Picamera2 BGR888 yields an RGB numpy array (names describe packed byte order).
             # Use lores stream for preview (must be YUV420, we convert to RGB later)
             # Apply 180 degree rotation (camera is mounted upside down)
             config = self._camera.create_still_configuration(
-                main={"size": (self._width, self._height), "format": "RGB888"},
+                main={"size": (self._width, self._height), "format": "BGR888"},
                 lores={"size": (self._preview_width, self._preview_height), "format": "YUV420"},
                 display="lores",
+                queue=False,
                 transform=_Transform(hflip=True, vflip=True) if _Transform else None
             )
             self._camera.configure(config)
+
+            # Only request controls advertised by this sensor/libcamera build.
+            supported = self._camera.camera_controls
+            capture_controls = {}
+            if "AfMode" in supported:
+                capture_controls["AfMode"] = controls.AfModeEnum.Continuous
+            # Optional on-device tuning; do not guess exposure before a club-light canary.
+            exposure_ev = os.getenv("ARTIFACT_CAMERA_EXPOSURE_EV")
+            if exposure_ev is not None and "ExposureValue" in supported:
+                capture_controls["ExposureValue"] = max(-2.0, min(2.0, float(exposure_ev)))
+            # Prefer short automatic exposures for moving guests; gain remains automatic.
+            if "AeExposureMode" in supported:
+                capture_controls["AeExposureMode"] = controls.AeExposureModeEnum.Short
+            if capture_controls:
+                self._camera.set_controls(capture_controls)
 
             # Start camera
             self._camera.start()
@@ -169,6 +186,20 @@ class PiCamera:
         # Return placeholder
         return self._generate_placeholder(self._preview_width, self._preview_height)
 
+    def capture_full_with_metadata(self):
+        """Obtain pixels and metadata from the same request; always release buffers."""
+        if not (self._camera is not None and self._is_streaming):
+            return None, {}
+        request = self._camera.capture_request()
+        try:
+            frame = request.make_array("main").copy()
+            metadata = request.get_metadata()
+            keys = ("ExposureTime", "AnalogueGain", "DigitalGain", "AfState",
+                    "LensPosition", "SensorTimestamp", "ColourTemperature")
+            return frame, {key: metadata[key] for key in keys if key in metadata}
+        finally:
+            request.release()
+
     def capture_full(self) -> Optional[NDArray[np.uint8]]:
         """Capture a full resolution frame.
 
@@ -183,8 +214,7 @@ class PiCamera:
             try:
                 # Get the main (full resolution) array
                 frame = self._camera.capture_array("main")
-                # Apply NoIR color correction (reduce purple tint from IR sensitivity)
-                frame = self._correct_noir_color(frame)
+                # Preserve captured information; fixed channel multipliers clip skin detail.
                 return frame
             except Exception as e:
                 logger.error(f"Failed to capture full frame: {e}")
@@ -292,7 +322,7 @@ class PiCamera:
 
 
 def create_camera(
-    resolution: Tuple[int, int] = (640, 480),
+    resolution: Tuple[int, int] = (2048, 1536),
     preview_resolution: Tuple[int, int] = (128, 128)
 ) -> PiCamera:
     """Create a Pi camera instance.
