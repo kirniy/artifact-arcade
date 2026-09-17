@@ -429,7 +429,13 @@ class RotatingIdleAnimation:
             for item in os.environ.get("PHOTOBOOTH_MENU_MODES", "").split(",")
             if item.strip()
         }
-        theme_id = os.environ.get("PHOTOBOOTH_THEME", "").strip().lower() or self._theme.id
+        from artifact.modes.club_theme_schedule import scheduled_theme
+
+        theme_id = (
+            scheduled_theme()
+            or os.environ.get("PHOTOBOOTH_THEME", "").strip().lower()
+            or self._theme.id
+        )
         if theme_id == "boilingroom":
             return "boilingroom"
         if theme_id == "candy-shop":
