@@ -1,5 +1,4 @@
-"""Private student portrait + server-issued document; KP7 quest profile."""
-import base64
+"""Private student portrait + durable offline-issued document; KP7 quest profile."""
 import json
 import logging
 import os
@@ -9,7 +8,7 @@ from artifact.core.events import Event, EventType
 from artifact.graphics.primitives import fill, draw_rect, draw_line
 from artifact.graphics.text_utils import draw_centered_text
 from artifact.ai.client import get_gemini_client
-from artifact.services.vnvnc_kiosk import VNVNCKioskClient
+from artifact.utils.party_exam_offline import OfflineCards, local_portrait
 
 logger = logging.getLogger(__name__)
 PORTRAIT_PROMPT = '''Make a clean student ID portrait of the single real person in the reference photo.
@@ -53,6 +52,11 @@ class PartyExamMode(SpiderverseQuestMode):
         with os.fdopen(fd, 'wb') as stream:
             stream.write(data); stream.flush(); os.fsync(stream.fileno())
         os.replace(temp, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
     def on_enter(self):
         super().on_enter()
@@ -80,6 +84,11 @@ class PartyExamMode(SpiderverseQuestMode):
                     self._state.ai_display_frame = self._decode_photo_frame(self._crop_to_square(self._state.ai_label_bytes))
                 if (folder/'student.json').exists():
                     self._student = json.loads((folder/'student.json').read_text())
+                    if self._student.get('offline') and (folder/'portrait.png').exists():
+                        store = OfflineCards(root)
+                        store.restore(folder.name, self._student)
+                        self._save_private(folder/'receipt-ready', b'final')
+                        store.ready(folder.name, folder/'portrait.png')
                 self._print_error = True
                 self._state.show_result = True
                 from artifact.modes.base import ModePhase
@@ -100,24 +109,50 @@ class PartyExamMode(SpiderverseQuestMode):
         self.change_phase(ModePhase.PROCESSING)
 
     async def _generate_photobooth_grid(self):
-        # Use the same configured photo-generation provider, with an isolated ID prompt.
+        import asyncio
+        from io import BytesIO
+        from PIL import Image
+
         root = self._private_root()
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
         issue = root/self._quest_print_id
         issue.mkdir(exist_ok=True, mode=0o700)
-        if self._state.photo_bytes:
-            if not (issue/'source.jpg').exists():
-                self._save_private(issue/'source.jpg', self._state.photo_bytes)
+        source_path = issue/'source.jpg'
+        if not source_path.exists():
+            if not self._state.photo_bytes:
+                return None
+            self._save_private(source_path, self._state.photo_bytes)
+        source = source_path.read_bytes()
+
+        # Reserve the number and signed claim link locally before any network
+        # call. Recovery and every reprint use these exact same identifiers.
+        store = OfflineCards(root)
+        saved_card = issue/'student.json'
+        if saved_card.exists():
+            self._student = json.loads(saved_card.read_text())
+            if self._student.get('offline'):
+                store.restore(self._quest_print_id, self._student)
+        else:
+            self._student = store.reserve(self._quest_print_id, issued_at=source_path.stat().st_mtime)
+            self._save_private(saved_card, json.dumps(self._student, ensure_ascii=False).encode())
+
         if (issue/'portrait.png').exists():
             picture = (issue/'portrait.png').read_bytes()
         else:
-            import asyncio
-            picture = await asyncio.wait_for(get_gemini_client().generate_image(
-                prompt=PORTRAIT_PROMPT, reference_photo=self._state.photo_bytes, aspect_ratio='3:4'), timeout=150)
-        if not picture:
-            return None
-        from io import BytesIO
-        from PIL import Image
+            picture = await asyncio.to_thread(local_portrait, source)
+            # A power loss during AI still leaves a printable real portrait.
+            self._save_private(issue/'portrait.png', picture)
+            try:
+                budget = max(1.0, min(20.0, float(os.getenv('PARTY_EXAM_AI_TIMEOUT_SECONDS', '12'))))
+                generated = await asyncio.wait_for(get_gemini_client().generate_image(
+                    prompt=PORTRAIT_PROMPT, reference_photo=source, aspect_ratio='3:4'), timeout=budget)
+                if generated:
+                    with Image.open(BytesIO(generated)) as image:
+                        image.verify()
+                    picture = generated
+            except Exception as exc:
+                # A failed AI request must never prevent the personalized QR.
+                logger.warning('PARTY EXAM uses local portrait (%s)', type(exc).__name__)
         # Bound the private API payload and thermal raster, independently of model output size.
         with Image.open(BytesIO(picture)) as portrait:
             portrait = portrait.convert('L')
@@ -125,23 +160,11 @@ class PartyExamMode(SpiderverseQuestMode):
             encoded = BytesIO(); portrait.save(encoded, 'PNG', optimize=True)
             picture = encoded.getvalue()
         self._save_private(issue/'portrait.png', picture)
-        client = VNVNCKioskClient(
-            base_url=os.getenv('VNVNC_KIOSK_API_BASE_URL','https://api.vnvnc.ru'),
-            device_id=os.getenv('ARTIFACT_KIOSK_DEVICE_ID',''),
-            device_secret=os.getenv('ARTIFACT_KIOSK_DEVICE_SECRET',''), timeout_seconds=20)
-        # Registration must succeed before printing; retries use the same issue ID.
-        import asyncio
-        for attempt in range(3):
-            try:
-                self._student = dict(await client._request('POST','/api/party-exam/issue',{
-                    'issue_id': self._quest_print_id,
-                    'portrait': base64.b64encode(picture).decode('ascii')}))
-                break
-            except Exception:
-                if attempt == 2:
-                    raise
-                await asyncio.sleep(1 + attempt)
-        self._save_private(issue/'student.json', json.dumps(self._student,ensure_ascii=False).encode())
+        if self._student.get('offline'):
+            self._save_private(issue/'receipt-ready', b'final')
+            store.ready(self._quest_print_id, issue/'portrait.png')
+        # A separate systemd worker uploads later. No registration/network
+        # request lies between this return and PRINT_START.
         return self._crop_to_square(picture), picture
 
     # All public-gallery paths are deliberately disabled for this profile.
@@ -184,7 +207,7 @@ class PartyExamMode(SpiderverseQuestMode):
                 self._reset_to_quest_ready()
                 return True
             if event.type == EventType.BUTTON_PRESS:
-                if not self._student:
+                if not self._student or not self._state.ai_label_bytes:
                     self._retry_saved_job()
                 elif self._print_error:
                     self._print_error = False

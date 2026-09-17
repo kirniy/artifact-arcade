@@ -93,21 +93,14 @@ def test_restart_recovers_identity_and_print_ack_prevents_recovery(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_issue_network_retry_reuses_portrait_and_id(monkeypatch):
-    import asyncio
+async def test_legacy_saved_card_reprints_without_network_or_regeneration(monkeypatch):
+    import json
     mode=PartyExamMode(_context());mode.enter();mode._start_quest_photo()
     mode._state.photo_bytes=picture();issue=mode._quest_print_id
     mode._save_private(mode._private_root()/issue/'portrait.png',picture())
     monkeypatch.setattr('artifact.modes.party_exam.get_gemini_client',lambda:pytest.fail('portrait regenerated'))
-    monkeypatch.setenv('ARTIFACT_KIOSK_DEVICE_ID','test-device')
-    monkeypatch.setenv('ARTIFACT_KIOSK_DEVICE_SECRET','test-secret')
-    calls=[]
-    async def request(self,method,path,payload):
-        calls.append(payload)
-        if len(calls)==1:raise TimeoutError('response lost')
-        return {'student_number':26091841,'night':'2026-09-18','claim_url':'https://t.me/vnvncbattlebot?start=exam_'+'c'*32}
-    async def no_wait(seconds):pass
-    monkeypatch.setattr('artifact.modes.party_exam.VNVNCKioskClient._request',request)
-    monkeypatch.setattr(asyncio,'sleep',no_wait)
+    card={'student_number':26091841,'night':'2026-09-18','claim_url':'https://t.me/vnvncbattlebot?start=exam_'+'c'*32}
+    mode._save_private(mode._private_root()/issue/'student.json',json.dumps(card).encode())
+    monkeypatch.setattr('artifact.services.vnvnc_kiosk.VNVNCKioskClient._request',lambda *a,**k:pytest.fail('server needed for reprint'))
     result=await mode._generate_photobooth_grid()
-    assert result and len(calls)==2 and calls[0]==calls[1] and calls[0]['issue_id']==issue
+    assert result and mode._student==card and mode._quest_print_id==issue

@@ -1,0 +1,17 @@
+[Unit]
+Description=PARTY EXAM durable offline portrait synchronization
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/kirniy/modular-arcade
+Environment=PYTHONPATH=/home/kirniy/modular-arcade/src
+UMask=0077
+ExecStart=/home/kirniy/modular-arcade/.venv/bin/python -m artifact.utils.party_exam_offline sync
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
