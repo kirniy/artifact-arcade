@@ -793,6 +793,23 @@ VSE_SVOI_THEME = PhotoboothTheme(
 # =============================================================================
 # THEME REGISTRY
 # =============================================================================
+BANNAYA_THEME = PhotoboothTheme(
+    id="bannaya", event_name="БАННАЯ", event_date="",
+    logo_filename="bannaya-emblem.png",
+    theme_chrome=(231, 184, 112), theme_red=(169, 57, 48),
+    theme_black=(35, 19, 15),
+    ticker_idle="БАННАЯ", lcd_prefix="БАННАЯ",
+    description="С ЛЁГКИМ ПАРОМ", menu_display_name="БАННАЯ",
+    menu_description="С ЛЁГКИМ ПАРОМ", menu_color=(231, 184, 112),
+    ticker_color=(255, 137, 65), ticker_compact_static=True,
+    ticker_idle_cycle=("БАННАЯ", "С ПАРОМ"),
+    party_date_rollover_hour=12, footer_date_mode="weekday_ru",
+    ai_style_key="bannaya",
+    reference_image_filenames=("bannaya-emblem.png",),
+    required_reference_sha256="72486f9f407bd33e66bfb027e86ebd26b023012437c3a106b05fb25c52a30684",
+    idle_video_filename="bannaya-fans.mp4", idle_video_required=True,
+)
+
 TROPICAL_THAI_THEME = PhotoboothTheme(
     id="tropical-thai", event_name="TROPICAL THAI", event_date="",
     logo_filename="tropical-thai-emblem.png",
@@ -825,6 +842,7 @@ PROJECT_X_THEME = PhotoboothTheme(
 )
 
 THEMES = {
+    "bannaya": BANNAYA_THEME,
     "project-x": PROJECT_X_THEME,
     "tropical-thai": TROPICAL_THAI_THEME,
     "boilingroom": BOILINGROOM_THEME,

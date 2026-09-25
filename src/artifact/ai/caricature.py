@@ -138,6 +138,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_PROJECT_X_SQUARE = "photobooth_project_x_square"
     PHOTOBOOTH_TROPICAL_THAI = "photobooth_tropical_thai"
     PHOTOBOOTH_TROPICAL_THAI_SQUARE = "photobooth_tropical_thai_square"
+    PHOTOBOOTH_BANNAYA = "photobooth_bannaya"
+    PHOTOBOOTH_BANNAYA_SQUARE = "photobooth_bannaya_square"
     PHOTOBOOTH_SUNSET_PALMS = (
         "photobooth_sunset_palms"  # 9:16 vertical - identity-locked 2D sunset festival mode
     )
@@ -3748,6 +3750,22 @@ class CaricatureService:
         try:
             import hashlib
             import random
+
+            if style in {CaricatureStyle.PHOTOBOOTH_BANNAYA, CaricatureStyle.PHOTOBOOTH_BANNAYA_SQUARE}:
+                from artifact.ai.bannaya import generate_bannaya
+                image_data = await generate_bannaya(
+                    self._client, reference_photo, extra_reference_images,
+                    square=style == CaricatureStyle.PHOTOBOOTH_BANNAYA_SQUARE,
+                    variation_index=prompt_variation_index,
+                )
+                if not image_data:
+                    return None
+                import io
+                from PIL import Image
+                img = Image.open(io.BytesIO(image_data)).convert("RGB")
+                output = io.BytesIO()
+                img.save(output, format="PNG")
+                return Caricature(output.getvalue(), style, img.width, img.height, "png")
 
             if style in {CaricatureStyle.PHOTOBOOTH_PROJECT_X, CaricatureStyle.PHOTOBOOTH_PROJECT_X_SQUARE}:
                 from artifact.ai.project_x import generate_project_x

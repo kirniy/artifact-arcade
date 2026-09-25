@@ -462,6 +462,8 @@ class RotatingIdleAnimation:
             return "2k17"
         if theme_id == "jara":
             return "jara"
+        if theme_id == "bannaya":
+            return "bannaya"
         if theme_id == "project-x":
             return "project_x"
         if theme_id == "tropical-thai":
@@ -548,9 +550,9 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
-        if self.idle_variant in {"tropical_thai", "project_x"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya"}:
             return {
-                IdleScene.CRINGE_CIRCLE_VIDEO: "PROJECT X" if self.idle_variant == "project_x" else "TROPICAL THAI",
+                IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.event_name,
             }
         if self.idle_variant == "sunset_palms":
             return {
@@ -602,7 +604,7 @@ class RotatingIdleAnimation:
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "jara":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
-        if self.idle_variant in {"tropical_thai", "project_x"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya"}:
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "sunset_palms":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -823,6 +825,7 @@ class RotatingIdleAnimation:
                     "sunset_palms",
                     "tropical_thai",
                     "project_x",
+                    "bannaya",
                     "spiderverse",
                     "world_cup_final",
                     "vse_svoi",
@@ -907,6 +910,7 @@ class RotatingIdleAnimation:
             "sunset_palms",
             "tropical_thai",
             "project_x",
+            "bannaya",
             "spiderverse",
             "vnvnc_bday",
             "world_cup_final",
@@ -1213,10 +1217,10 @@ class RotatingIdleAnimation:
             else:
                 logger.error("Required VNVNC B'DAY idle video is missing: %s", video_path)
             return
-        if self.idle_variant in {"tropical_thai", "project_x"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya"}:
             filename = self._theme.idle_video_filename
             if not filename:
-                logger.error("Tropical Thai idle-video slot is not configured")
+                logger.error("%s idle-video slot is not configured", self._theme.event_name)
                 return
             video_path = (
                 Path(__file__).parent.parent.parent.parent
@@ -1228,10 +1232,10 @@ class RotatingIdleAnimation:
             )
             if video_path.exists():
                 self.cringe_circle_video_path = video_path
-                logger.info(f"Loaded accepted Tropical Thai idle video: {video_path.name}")
+                logger.info("Loaded %s idle video: %s", self._theme.event_name, video_path.name)
             else:
                 logger.error(
-                    "Required accepted Tropical Thai idle video is not installed: %s; "
+                    "Required themed idle video is not installed: %s; "
                     "activation must remain gated",
                     video_path,
                 )
@@ -1511,7 +1515,7 @@ class RotatingIdleAnimation:
         if self.cringe_circle_video_capture:
             self.cringe_circle_video_capture.release()
         self.cringe_circle_video_capture = cv2.VideoCapture(str(self.cringe_circle_video_path))
-        if self.idle_variant in {"tropical_thai", "project_x"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya"}:
             self._tropical_video_start_ms = self.state.time
             self._tropical_video_frame_index = -1
             self._tropical_video_frame = None
@@ -1820,9 +1824,9 @@ class RotatingIdleAnimation:
             names = {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
-        elif self.idle_variant in {"tropical_thai", "project_x"}:
+        elif self.idle_variant in {"tropical_thai", "project_x", "bannaya"}:
             names = {
-                IdleScene.CRINGE_CIRCLE_VIDEO: "PROJECT X" if self.idle_variant == "project_x" else "TROPICAL THAI",
+                IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.event_name,
             }
         elif self.idle_variant == "sunset_palms":
             names = {
@@ -5012,7 +5016,7 @@ class RotatingIdleAnimation:
 
         # The screen refresh can exceed 24 fps. Preserve the approved fan's real
         # speed instead of consuming one video frame on every screen refresh.
-        if self.idle_variant in {"tropical_thai", "project_x"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya"}:
             capture = self.cringe_circle_video_capture
             fps = capture.get(cv2.CAP_PROP_FPS) or 24.0
             count = max(1, int(capture.get(cv2.CAP_PROP_FRAME_COUNT)))
@@ -5038,7 +5042,7 @@ class RotatingIdleAnimation:
         if frame.shape[0] != 128 or frame.shape[1] != 128:
             frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_AREA)
 
-        if self.idle_variant in {"tropical_thai", "project_x"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya"}:
             self._tropical_video_frame = frame
         buffer[:] = frame
         self._draw_cringe_overlay(buffer, IdleScene.CRINGE_CIRCLE_VIDEO)
@@ -5485,6 +5489,7 @@ class RotatingIdleAnimation:
             "sunset_palms",
             "tropical_thai",
             "project_x",
+            "bannaya",
             "spiderverse",
             "vnvnc_bday",
             "world_cup_final",
