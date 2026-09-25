@@ -4,10 +4,10 @@ import random
 
 
 SCENES = (
-    "Pale cedar wall behind the unchanged guest group, with birch veniki, a copper samovar and neat folded linen placed only around the frame edges.",
-    "Light wooden furako tub behind the unchanged guest group, a small decorative water splash, birch leaves and soft steam away from faces.",
-    "Airy sauna wall and bench behind the unchanged guest group, a polished brass ladle and felt hats as edge props, with pearly steam behind them.",
-    "Open cedar doorway behind the unchanged guest group, a distant pale-blue lake, white towels and a few floating birch leaves at the edges.",
+    "Pale cedar steam-room wall and two clearly visible tiers of wooden sauna benches behind the unchanged guest group; birch veniki hang at the side, with folded linen and a copper samovar at the frame edges.",
+    "Two tiers of light wooden sauna benches behind the unchanged guest group, with a glimpse of a furako tub to one side; birch leaves and soft steam stay away from faces.",
+    "Airy Russian bathhouse interior with unmistakable upper and lower cedar sauna benches behind the unchanged guest group, a polished brass ladle and felt hats as edge props, and pearly steam behind them.",
+    "Open cedar steam-room doorway with two visible tiers of wooden sauna benches immediately behind the unchanged guest group; a distant pale-blue lake is glimpsed only through a small side window, with white towels at the edges.",
 )
 
 
@@ -31,7 +31,13 @@ raised arms, props in hands or different expressions to fit a scene variation.
 
 SCENE (BACKGROUND AND EDGE PROPS ONLY; NEVER REPOSE THE GUESTS): {SCENES[index]}
 Build a playful contemporary Russian bathhouse party, inspired by the actual event's
-cedar photo zone, felt VNVNC sauna hat, birch venik, stove and furako. Dress EVERY guest
+cedar photo zone, felt VNVNC sauna hat, birch venik, stove and furako.
+Keep the upper and lower wooden sauna benches visibly running across the BACKGROUND
+behind the guests in every variation; their horizontal tiers should read instantly
+as real банные полки, never as a plain wall, outdoor scene, or furniture in front
+of the people. Add a small bath stove and bucket at a side edge where space allows.
+Do not let benches, steam or props cover heads, faces or the approved wooden sign.
+Dress EVERY guest
 in a modest, fully closed, belted bathrobe (халат) with sleeves and tasteful red woven
 trim, fitted to the ORIGINAL body pose and silhouette. Robes can be cream or pale
 linen; retain distinctive hair, jewelry and glasses. Optional felt sauna hats may
