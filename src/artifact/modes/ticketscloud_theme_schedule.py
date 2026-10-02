@@ -20,6 +20,13 @@ SPB_ORG = "63206ee78749097c592a6697"
 VNVNC_GATEWAY = "https://d5d621jmge79dusl8rkh.kf69zffa.apigw.yandexcloud.net/tc/v1/resources/events"
 
 
+def open_event_feed(request):
+    # The Pi's AI proxy is scoped to AI traffic. Do not inherit its http_proxy
+    # variables for ordinary Tickets Cloud/gateway HTTPS requests.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    return opener.open(request, timeout=10)
+
+
 def normalize_events(payload):
     """Keep only published SPb event dates/titles; no descriptions or credentials."""
     if not isinstance(payload, list):
@@ -109,7 +116,7 @@ class EventFeed:
             )
             for index, request in enumerate(requests):
                 try:
-                    with urllib.request.urlopen(request, timeout=10) as response:
+                    with open_event_feed(request) as response:
                         events = normalize_events(json.loads(response.read(4 * 1024 * 1024)))
                     break
                 except Exception:

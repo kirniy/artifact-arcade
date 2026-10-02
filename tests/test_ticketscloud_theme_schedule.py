@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from artifact.modes.ticketscloud_theme_schedule import EventFeed, normalize_events, select_theme, SPB_VENUE, SPB_ORG
+from artifact.modes.ticketscloud_theme_schedule import EventFeed, normalize_events, select_theme, SPB_VENUE, SPB_ORG, open_event_feed
 
 
 def event(title="ВСЕ СВОИ | VNVNC", date="20261004T200000Z", **changes):
@@ -46,7 +46,7 @@ def test_cache_survives_cold_boot_and_network_failure(tmp_path, monkeypatch):
     cache.write_text(json.dumps({"version": 1, "events": events}))
     feed = EventFeed(cache)
     monkeypatch.setenv("ARTIFACT_TICKETSCLOUD_API_KEY", "test-key")
-    with patch("urllib.request.urlopen", side_effect=TimeoutError):
+    with patch("artifact.modes.ticketscloud_theme_schedule.open_event_feed", side_effect=TimeoutError):
         feed.refresh()
     assert feed.snapshot() == events
     rebooted = EventFeed(cache)
@@ -85,7 +85,7 @@ def test_successful_refresh_updates_atomic_cache_and_removes_cancelled_event(tmp
         def __enter__(self): return self
         def __exit__(self, *args): pass
         def read(self, limit): return json.dumps([event(status="cancelled")]).encode()
-    with patch("urllib.request.urlopen", return_value=Response()):
+    with patch("artifact.modes.ticketscloud_theme_schedule.open_event_feed", return_value=Response()):
         feed.refresh()
     assert feed.snapshot() == []
     assert EventFeed(cache).snapshot() == []
@@ -105,9 +105,17 @@ def test_direct_route_failure_uses_existing_gateway_without_losing_events(tmp_pa
         def __enter__(self): return self
         def __exit__(self, *args): pass
         def read(self, limit): return json.dumps([event()]).encode()
-    with patch("urllib.request.urlopen", side_effect=[ConnectionError(), Response()]) as request:
+    with patch("artifact.modes.ticketscloud_theme_schedule.open_event_feed", side_effect=[ConnectionError(), Response()]) as request:
         assert feed.refresh() is True
     assert request.call_count == 2
     assert "apigw.yandexcloud.net/tc/v1/resources/events" in request.call_args.args[0].full_url
     assert feed.snapshot() == normalize_events([event()])
     assert "secret-test-key" not in feed.cache_path.read_text()
+
+
+def test_event_http_does_not_use_global_ai_proxy(monkeypatch):
+    monkeypatch.setenv("https_proxy", "http://ai-only-proxy.invalid:8080")
+    with patch("urllib.request.build_opener") as build:
+        open_event_feed("request")
+    assert build.call_args.args[0].proxies == {}
+    build.return_value.open.assert_called_once_with("request", timeout=10)
