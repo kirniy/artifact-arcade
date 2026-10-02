@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter, ImageChops
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from artifact.printing.fortune_quotes import pick_fortune_quote
 
@@ -89,24 +89,17 @@ class PhotoboothRollReceiptGenerator:
     def _prepare_night_riders_photo(self, photo: Image.Image) -> Image.Image:
         """Lift night artwork for paper without changing the digital original.
 
-        Work at print resolution. Retain dark detail edges on a lifted tonal base,
-        avoiding a solid black sky/jacket while keeping face/chrome contours.
-        The stamped bottom footer remains untouched.
+        A monotonic shadow-lifting curve preserves facial shading and pixel texture.
+        Work at print resolution and keep the stamped bottom footer untouched.
         """
         photo = self._fit_photo(ImageOps.exif_transpose(photo).convert("RGB"),
                                 width=self.paper_width_px - PRINT_MARGIN_PX * 2)
         mono = photo.convert("L")
         artwork_height = max(1, round(mono.height * 0.87))
         artwork = mono.crop((0, 0, mono.width, artwork_height))
-        tones = ImageOps.autocontrast(artwork, cutoff=1)
-        lifted = tones.point([round(170 + 85 * (value / 255) ** 0.55)
-                              for value in range(256)])
-        edges = tones.filter(ImageFilter.GaussianBlur(0.6)).filter(ImageFilter.FIND_EDGES)
-        # FIND_EDGES treats the outermost pixels as image data, so clear that rim.
-        ImageDraw.Draw(edges).rectangle((0, 0, edges.width - 1, edges.height - 1),
-                                       outline=0, width=1)
-        edges = edges.point([min(155, round(value * 1.35)) for value in range(256)])
-        mono.paste(ImageChops.subtract(lifted, edges), (0, 0))
+        lifted = artwork.point([round(100 + 155 * (value / 255) ** 0.45)
+                                for value in range(256)])
+        mono.paste(lifted, (0, 0))
         return mono
 
     def render_image(self, photo: Image.Image, *, timestamp: datetime, quote: str) -> Image.Image:
