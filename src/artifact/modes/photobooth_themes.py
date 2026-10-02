@@ -780,7 +780,7 @@ VSE_SVOI_THEME = PhotoboothTheme(
     ticker_compact_static=True,
     ticker_safe_left=8,
     ticker_idle_cycle=("ВСЕ", "СВОИ", "ФОТОБУДКА"),
-    party_date_rollover_hour=12,
+    party_date_rollover_hour=7,
     footer_date_mode="weekday_ru",
     ai_style_key="vse_svoi",
     reference_image_filenames=("vnvnc-pendant.png",),
@@ -793,6 +793,24 @@ VSE_SVOI_THEME = PhotoboothTheme(
 # =============================================================================
 # THEME REGISTRY
 # =============================================================================
+NIGHT_RIDERS_THEME = PhotoboothTheme(
+    id="night-riders", event_name="NIGHT RIDERS", event_date="",
+    logo_filename="night-riders-emblem.png",
+    theme_chrome=(210, 216, 224), theme_red=(164, 49, 39),
+    theme_black=(17, 20, 25),
+    ticker_idle="NIGHT", lcd_prefix="NIGHT RIDERS",
+    description="РОК И МОТОРЫ", menu_display_name="NIGHT\nRIDERS",
+    menu_description="РОК И МОТОРЫ", menu_color=(210, 216, 224),
+    ticker_color=(0, 255, 48), ticker_compact_static=True,
+    ticker_idle_cycle=("NIGHT", "RIDERS", "ФОТОБУДКА"),
+    party_date_rollover_hour=7, footer_date_mode="weekday_ru",
+    ai_style_key="night_riders",
+    reference_image_filenames=("night-riders-emblem.png",),
+    required_reference_sha256="3bd3bc9eb3a1c0b29abadb13425b0a7d6a805a3b4024beeb7d84484d1d314811",
+    idle_video_filename="night-riders-fans.mp4", idle_video_required=True,
+)
+
+
 BANNAYA_THEME = PhotoboothTheme(
     id="bannaya", event_name="БАННАЯ", event_date="",
     logo_filename="bannaya-emblem.png",
@@ -842,6 +860,7 @@ PROJECT_X_THEME = PhotoboothTheme(
 )
 
 THEMES = {
+    "night-riders": NIGHT_RIDERS_THEME,
     "bannaya": BANNAYA_THEME,
     "project-x": PROJECT_X_THEME,
     "tropical-thai": TROPICAL_THAI_THEME,

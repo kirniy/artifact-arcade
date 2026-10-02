@@ -17,7 +17,7 @@ cd /home/kirniy/modular-arcade
 VNVNC_PYTHON=.venv/bin/python bash scripts/activate-bannaya-photobooth.sh --restart
 ```
 
-Activation validates the emblem hash, new enum/menu wiring, full video decode and Python syntax before changing `.env`. It saves the original `.env.before-bannaya` once and writes atomically. It selects only `bannaya`, enables AI and camera selection, turns off the expired dated Project X schedule and weekly theme switching, and does **not** disable the independent PARTY EXAM keypad gate. `--restart` delegates to the existing restart-if-idle script. Provider credentials and unrelated settings are preserved.
+Activation validates the emblem hash, new enum/menu wiring, full video decode and Python syntax before changing `.env`. It saves the original `.env.before-bannaya` once and writes atomically. It selects `bannaya` as the default, enables AI and camera selection, and now uses the Tickets Cloud club-night schedule so published «ВСЕ СВОИ» nights take priority through 07:00. Provision the private Tickets Cloud API key and bootstrap the event cache as described in `night-riders-photobooth.md`. It does **not** disable the independent PARTY EXAM keypad gate. `--restart` delegates to the existing restart-if-idle script. Provider credentials and unrelated settings are preserved.
 
 Verify the live logo, 132-second loop, first generated portrait, grayscale receipt and printer paper in person. A local AI mock and `ffmpeg` decode do not prove image quality, camera exposure or paper appearance. If the printer remains disconnected, record that separately rather than calling printing verified.
 

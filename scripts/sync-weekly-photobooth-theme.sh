@@ -38,10 +38,19 @@ done
 read_env_value() {
     local key="$1"
     [ -f "${ENV_FILE}" ] || return 0
-    sed -n "s/^${key}=//p" "${ENV_FILE}" | tail -1
+    if [ -r "${ENV_FILE}" ]; then
+        sed -n "s/^${key}=//p" "${ENV_FILE}" | tail -1
+    else
+        sudo -n sed -n "s/^${key}=//p" "${ENV_FILE}" | tail -1
+    fi
 }
 
 # The date-aware in-process schedule owns this event, including power-on selection.
+if [ "${ARTIFACT_CLUB_THEME_SCHEDULE:-$(read_env_value ARTIFACT_CLUB_THEME_SCHEDULE)}" = "ticketscloud" ]; then
+    echo "THEME_CHANGED=0"
+    echo "THEME_SCHEDULE=runtime-ticketscloud"
+    exit 0
+fi
 if [ "${ARTIFACT_CLUB_THEME_SCHEDULE:-$(read_env_value ARTIFACT_CLUB_THEME_SCHEDULE)}" = "project-x-2026" ]; then
     echo "THEME_CHANGED=0"
     echo "THEME_SCHEDULE=runtime-project-x-2026"

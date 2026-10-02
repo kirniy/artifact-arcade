@@ -177,6 +177,9 @@ ensure_event_activation() {
     if grep -q '^THEME_CHANGED=1$' <<<"$weekly_output"; then
         return 0
     fi
+    if grep -q '^THEME_SCHEDULE=runtime-ticketscloud$' <<<"$weekly_output"; then
+        return 1
+    fi
     if grep -q '^THEME_SCHEDULE=disabled$' <<<"$weekly_output"; then
         # A deliberate manual override owns theme selection while disabled.
         return 1

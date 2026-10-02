@@ -138,6 +138,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_PROJECT_X_SQUARE = "photobooth_project_x_square"
     PHOTOBOOTH_TROPICAL_THAI = "photobooth_tropical_thai"
     PHOTOBOOTH_TROPICAL_THAI_SQUARE = "photobooth_tropical_thai_square"
+    PHOTOBOOTH_NIGHT_RIDERS = "photobooth_night_riders"
+    PHOTOBOOTH_NIGHT_RIDERS_SQUARE = "photobooth_night_riders_square"
     PHOTOBOOTH_BANNAYA = "photobooth_bannaya"
     PHOTOBOOTH_BANNAYA_SQUARE = "photobooth_bannaya_square"
     PHOTOBOOTH_SUNSET_PALMS = (
@@ -3750,6 +3752,22 @@ class CaricatureService:
         try:
             import hashlib
             import random
+
+            if style in {CaricatureStyle.PHOTOBOOTH_NIGHT_RIDERS, CaricatureStyle.PHOTOBOOTH_NIGHT_RIDERS_SQUARE}:
+                from artifact.ai.night_riders import generate_night_riders
+                image_data = await generate_night_riders(
+                    self._client, reference_photo, extra_reference_images,
+                    square=style == CaricatureStyle.PHOTOBOOTH_NIGHT_RIDERS_SQUARE,
+                    variation_index=prompt_variation_index,
+                )
+                if not image_data:
+                    return None
+                import io
+                from PIL import Image
+                img = Image.open(io.BytesIO(image_data)).convert("RGB")
+                output = io.BytesIO()
+                img.save(output, format="PNG")
+                return Caricature(output.getvalue(), style, img.width, img.height, "png")
 
             if style in {CaricatureStyle.PHOTOBOOTH_BANNAYA, CaricatureStyle.PHOTOBOOTH_BANNAYA_SQUARE}:
                 from artifact.ai.bannaya import generate_bannaya

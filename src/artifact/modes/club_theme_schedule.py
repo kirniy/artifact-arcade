@@ -9,6 +9,9 @@ END = datetime(2026, 9, 20, 7, tzinfo=MOSCOW)
 
 
 def scheduled_theme(now=None):
+    if os.getenv('ARTIFACT_CLUB_THEME_SCHEDULE', '').lower() == 'ticketscloud':
+        from artifact.modes.ticketscloud_theme_schedule import scheduled_theme as event_theme
+        return event_theme(now)
     if os.getenv('ARTIFACT_CLUB_THEME_SCHEDULE', '').lower() != 'project-x-2026':
         return None
     now = datetime.now(MOSCOW) if now is None else now
