@@ -96,3 +96,18 @@ def test_successful_refresh_updates_atomic_cache_and_removes_cancelled_event(tmp
 def test_naive_clock_rejected():
     with pytest.raises(ValueError):
         select_theme(datetime(2026, 10, 4, 23), [], "night-riders")
+
+
+def test_direct_route_failure_uses_existing_gateway_without_losing_events(tmp_path, monkeypatch):
+    monkeypatch.setenv("ARTIFACT_TICKETSCLOUD_API_KEY", "secret-test-key")
+    feed = EventFeed(tmp_path / "cache.json")
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self, limit): return json.dumps([event()]).encode()
+    with patch("urllib.request.urlopen", side_effect=[ConnectionError(), Response()]) as request:
+        assert feed.refresh() is True
+    assert request.call_count == 2
+    assert "apigw.yandexcloud.net/tc/v1/resources/events" in request.call_args.args[0].full_url
+    assert feed.snapshot() == normalize_events([event()])
+    assert "secret-test-key" not in feed.cache_path.read_text()

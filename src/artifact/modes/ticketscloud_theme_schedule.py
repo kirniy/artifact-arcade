@@ -8,6 +8,7 @@ import threading
 import time
 import unicodedata
 import urllib.request
+from urllib.parse import quote
 from datetime import datetime, time as clock_time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 MOSCOW = ZoneInfo("Europe/Moscow")
 SPB_VENUE = "632a5e73c04811e5fd44bbde"
 SPB_ORG = "63206ee78749097c592a6697"
+VNVNC_GATEWAY = "https://d5d621jmge79dusl8rkh.kf69zffa.apigw.yandexcloud.net/tc/v1/resources/events"
 
 
 def normalize_events(payload):
@@ -98,10 +100,22 @@ class EventFeed:
             key = os.getenv("ARTIFACT_TICKETSCLOUD_API_KEY", "").strip()
             if not key:
                 raise ValueError("ARTIFACT_TICKETSCLOUD_API_KEY is missing")
-            request = urllib.request.Request("https://ticketscloud.com/v1/resources/events",
-                                            headers={"Authorization": "key " + key})
-            with urllib.request.urlopen(request, timeout=10) as response:
-                events = normalize_events(json.loads(response.read(4 * 1024 * 1024)))
+            requests = (
+                urllib.request.Request("https://ticketscloud.com/v1/resources/events",
+                                       headers={"Authorization": "key " + key}),
+                # Existing VNVNC website gateway uses this query-key contract.
+                # The URL is never logged or persisted in the event cache.
+                urllib.request.Request(VNVNC_GATEWAY + "?key=" + quote(key, safe="")),
+            )
+            for index, request in enumerate(requests):
+                try:
+                    with urllib.request.urlopen(request, timeout=10) as response:
+                        events = normalize_events(json.loads(response.read(4 * 1024 * 1024)))
+                    break
+                except Exception:
+                    if index == len(requests) - 1:
+                        raise
+                    logger.info("Direct Tickets Cloud request unavailable; trying VNVNC gateway")
             payload = {"version": 1, "fetched_at": datetime.now(timezone.utc).isoformat(),
                        "events": events}
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)

@@ -2,7 +2,7 @@
 import random
 
 SCENES = (
-    "A polished Harley-Davidson-style V-twin cruiser parked beside the unchanged guests; silver engine fins, warm copper pipes, a pale garage backdrop and small flame ribbons at the outer edges.",
+    "A polished Harley-Davidson-style V-twin cruiser parked beside the unchanged guests; silver engine fins, warm copper pipes, an electric guitar leaning at a side edge, a pale garage backdrop and small flame ribbons at the outer edges.",
     "A heavy-metal backstage with a chrome motorcycle at one side, electric guitars and amplifier outlines at the edges; pale lightning arcs behind the guests, sparse checkerboard accents.",
     "An airy biker clubhouse with two compact chrome cruisers behind the unchanged guest group, denim, leather patches, silver chains and a few copper sparks at the sides.",
     "A stylized pale highway pit stop, one large chrome V-twin motorcycle beside the unchanged guests, small guitar and checkered-flag props, crisp lightning and controlled flames around the frame edges.",
@@ -33,7 +33,8 @@ patches; black leather is a restrained trim only, not a giant black area. Keep h
 and eyes visible. Realistic anatomy, hands, joints and plausible motorcycle parts.
 
 ART: Premium fully illustrated 2D romance visual-novel character art, expressive
-painted faces evocative of «Клуб Романтики», refined clean contours, subtle painterly
+painted faces evocative of «Клуб Романтики», natural adult facial proportions (not
+caricature, chibi or cartoons with big eyes), refined clean contours, subtle painterly
 shading, tactile chrome and leather details. Every face, hand, costume, bike and
 background must share the drawn style. No photoreal faces, photographs, Octane 3D,
 plastic dolls or oversized anime eyes. Recognizable real guests come first.
@@ -41,6 +42,7 @@ plastic dolls or oversized anime eyes. Recognizable real guests come first.
 BRANDING: Recreate the exact supplied compact winged NIGHT RIDERS shield naturally
 above the guests. Preserve its two-line lettering, chrome wings, oxblood backing
 and copper trim. Keep the complete wings and shield inside the image, not cropped.
+Emblem height at most 18% of the image; the people, not the logo, are the main subject.
 No substitute emblem or extra Harley-Davidson text/logos, dates or invented text.
 
 PRINT FIRST: The receipt is BLACK AND WHITE thermal paper. At least 75% of the
