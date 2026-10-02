@@ -19,6 +19,12 @@ facial geometry, eye shape and spacing, nose, lips, jaw, ethnicity, skin tone, a
 hair, facial hair, glasses, expressions and natural asymmetry. Never replace them
 with generic handsome bikers, models, strangers or an added crowd. No ethnicity
 shift, face averaging or beauty template. Draw their actual faces, not anime faces.
+HAIR AND BODY LOCK: Trace the source hairline, exact haircut and hair length for
+each person, including buzz cuts and bald areas. No invented mohawks, long hair,
+beards, tattoos, muscles, broadened shoulders or thinner bodies to make them bikers.
+Keep their real body build. Preserve each eye opening, mouth shape and expression:
+no invented angry biker grimaces, smiles, exposed teeth or widened eyes. If someone
+looks down or has closed eyes, keep that exact expression and head pitch.
 POSE LOCK: Keep each guest's original head angle, gaze, body posture, hand gestures,
 relative scale, spacing and overlap. Do not seat standing guests on bikes or invent
 raised arms, instruments in their hands or different expressions. Bikes and stage
@@ -28,7 +34,8 @@ SCENE: {SCENES[index]}
 Heavy metal, rock clubs, motorcycle brotherhood, chrome wings, red leather and
 electricity. Dress guests in tasteful biker jackets/vests over fully covering tops,
 pale denim, bandanas and small silver studs/chains, fitted to their original poses.
-Use light stonewashed denim, ivory shirts, pale gray leather with small oxblood
+Costumes and props supply ALL the biker styling; the people do not become different
+characters. Use light stonewashed denim, ivory shirts, pale gray leather with small oxblood
 patches; black leather is a restrained trim only, not a giant black area. Keep hair
 and eyes visible. Realistic anatomy, hands, joints and plausible motorcycle parts.
 
