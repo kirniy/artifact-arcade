@@ -2670,6 +2670,7 @@ class PhotoboothMode(BaseMode):
         # Emit print event directly
         print_data = {
             "type": "photobooth",
+            "theme_id": self._theme.id,
             "caricature": image_for_print,
             "photo": self._state.photo_bytes,
             "qr_url": self._state.qr_url,
