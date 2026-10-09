@@ -308,7 +308,8 @@ class PhotoboothMode(BaseMode):
                         continue
                     with open(reference_path, "rb") as reference_file:
                         reference_bytes = reference_file.read()
-                        expected_sha256 = self._theme.required_reference_sha256
+                        pins = self._theme.reference_sha256_by_filename
+                        expected_sha256 = pins.get(reference_filename) if pins else self._theme.required_reference_sha256
                         if expected_sha256:
                             actual_sha256 = hashlib.sha256(reference_bytes).hexdigest()
                             if actual_sha256 != expected_sha256:
@@ -854,6 +855,8 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
             )
+        elif ai_style_key == "twilight":
+            return (CaricatureStyle.PHOTOBOOTH_TWILIGHT_SQUARE, CaricatureStyle.PHOTOBOOTH_TWILIGHT)
         elif ai_style_key == "night_riders":
             return (CaricatureStyle.PHOTOBOOTH_NIGHT_RIDERS_SQUARE, CaricatureStyle.PHOTOBOOTH_NIGHT_RIDERS)
         elif ai_style_key == "bannaya":
@@ -1231,8 +1234,10 @@ class PhotoboothMode(BaseMode):
                 raise RuntimeError(
                     f"{self._theme.event_name} generation refused: canonical emblem reference is missing or invalid"
                 )
+            if ai_style_key == "twilight" and len(self._theme_reference_images) != 2:
+                raise RuntimeError("TWILIGHT requires both canonical emblem and forest references")
             generation_reference_images = list(self._theme_reference_images)
-            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai", "project_x", "bannaya", "night_riders"}:
+            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
                 generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
@@ -1262,7 +1267,7 @@ class PhotoboothMode(BaseMode):
                     label_bytes = self._stamp_boilingroom_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
-                elif ai_style_key in {"office_core", "summer_camp", "tropical_thai", "project_x", "bannaya", "night_riders"}:
+                elif ai_style_key in {"office_core", "summer_camp", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(
                         label_bytes, footer_date_str, moscow_time
@@ -1324,6 +1329,7 @@ class PhotoboothMode(BaseMode):
                     "project_x",
                     "bannaya",
                     "night_riders",
+                    "twilight",
                     "spiderverse",
                     "vse_svoi",
                 }:
@@ -1532,6 +1538,9 @@ class PhotoboothMode(BaseMode):
                 # Pale aqua belongs to the scene/chrome, not small text on white.
                 accent = (28, 51, 92)
                 secondary = (169, 62, 53)
+            elif self._theme.id == "twilight":
+                accent = (25, 66, 68)
+                secondary = (45, 79, 80)
             elif self._theme.id in {"bannaya", "night-riders"}:
                 # Keep tiny footer type dark enough on the light thermal artwork.
                 accent = (76, 43, 30)
@@ -3025,6 +3034,7 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("world_cup_final", "world-cup-final"),
         ("world-cup-final", "world-cup-final"),
         ("sunset_palms", "sunset-palms"),
+        ("twilight", "twilight"),
         ("night_riders", "night-riders"),
         ("night-riders", "night-riders"),
         ("bannaya", "bannaya"),

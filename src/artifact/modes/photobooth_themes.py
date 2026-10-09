@@ -61,6 +61,7 @@ class PhotoboothTheme:
     footer_date_mode: str = "date"  # "date" or "weekday_ru"
     reference_image_filenames: Tuple[str, ...] = ()
     required_reference_sha256: Optional[str] = None  # Exact canonical reference integrity pin
+    reference_sha256_by_filename: Optional[dict[str, str]] = None
     menu_display_name: Optional[str] = None  # Optional selector label override
     menu_description: Optional[str] = None  # Optional selector ticker description
     menu_color: Optional[Tuple[int, int, int]] = None  # Optional selector accent color
@@ -793,6 +794,27 @@ VSE_SVOI_THEME = PhotoboothTheme(
 # =============================================================================
 # THEME REGISTRY
 # =============================================================================
+TWILIGHT_THEME = PhotoboothTheme(
+    id="twilight", event_name="TWILIGHT", event_date="",
+    logo_filename="twilight-emblem.png",
+    theme_chrome=(171, 203, 205), theme_red=(52, 91, 90),
+    theme_black=(10, 28, 31),
+    ticker_idle="TWILIGHT", lcd_prefix="TWILIGHT",
+    description="ТУМАН И РОМАНТИКА", menu_display_name="TWILIGHT",
+    menu_description="ТУМАН И РОМАНТИКА", menu_color=(171, 203, 205),
+    ticker_color=(0, 255, 48), ticker_compact_static=True,
+    ticker_idle_cycle=("TWILIGHT", "ФОТОБУДКА"),
+    party_date_rollover_hour=7, footer_date_mode="weekday_ru",
+    ai_style_key="twilight",
+    reference_image_filenames=("twilight-emblem.png", "twilight-forest-reference.png"),
+    required_reference_sha256="11f6129bc86587c7744691db21ad1ea728e59c4f5d8846b346f3ed5aa7be2d06",
+    reference_sha256_by_filename={
+        "twilight-emblem.png": "11f6129bc86587c7744691db21ad1ea728e59c4f5d8846b346f3ed5aa7be2d06",
+        "twilight-forest-reference.png": "9e508b08e1f4152ef2ba4eb9e1a5ba8024d08dc559ca02a6a420fde4b92dc351",
+    },
+    idle_video_filename="twilight-fans.mp4", idle_video_required=True,
+)
+
 NIGHT_RIDERS_THEME = PhotoboothTheme(
     id="night-riders", event_name="NIGHT RIDERS", event_date="",
     logo_filename="night-riders-emblem.png",
@@ -861,6 +883,7 @@ PROJECT_X_THEME = PhotoboothTheme(
 
 THEMES = {
     "night-riders": NIGHT_RIDERS_THEME,
+    "twilight": TWILIGHT_THEME,
     "bannaya": BANNAYA_THEME,
     "project-x": PROJECT_X_THEME,
     "tropical-thai": TROPICAL_THAI_THEME,
