@@ -11,19 +11,19 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
 ROOT = Path(__file__).resolve().parents[3]
-MODEL_SHA256 = "552d8a984054e59b5d773d24b9b12022b22046ceb2bbc4c9aaeaceb36a9ddf24"
+MODEL_SHA256 = "2355474400c5e219eb9d19f4f2f34923a2421bd61141adc446cddb6db8cc43ce"
 _lock = threading.Lock()
 _net = None
 logger = logging.getLogger(__name__)
 
 
 def foreground_mask(photo: Image.Image) -> Image.Image:
-    """Use the bundled PPHumanSeg model; never download anything during a session."""
+    """Use the bundled portrait-matting model; never download anything during a session."""
     import cv2
     global _net
     with _lock:
         if _net is None:
-            path = ROOT / "assets/models/pphumanseg.onnx"
+            path = ROOT / "assets/models/modnet-portrait.onnx"
             if hashlib.sha256(path.read_bytes()).hexdigest() != MODEL_SHA256:
                 raise RuntimeError("Foreground model integrity check failed")
             _net = cv2.dnn.readNetFromONNX(str(path))
@@ -32,38 +32,28 @@ def foreground_mask(photo: Image.Image) -> Image.Image:
             # Oversubscribed OpenCV workers make a tiny CPU model much slower.
             if cv2.getNumThreads() > 4:
                 cv2.setNumThreads(2)
-        pixels = np.asarray(photo.resize((192, 192)), dtype=np.float32) / 127.5 - 1.0
+        # Neutral luminance input prevents blue/magenta club light from changing
+        # the segmentation class. Only the mask is inferred, never facial pixels.
+        neutral = ImageOps.autocontrast(ImageOps.grayscale(photo)).convert("RGB")
+        pixels = np.asarray(neutral.resize((512, 384)), dtype=np.float32) / 127.5 - 1.0
         _net.setInput(pixels.transpose(2, 0, 1)[None])
-        mask = _net.forward()[0, 1]
-        # Club color washes can hide a person from the RGB detector. A second
-        # luminance pass recovers those bodies; the original photo stays untouched.
-        gray_pixels = np.asarray(ImageOps.grayscale(photo).convert("RGB").resize((192, 192)), dtype=np.float32) / 127.5 - 1.0
-        _net.setInput(gray_pixels.transpose(2, 0, 1)[None])
-        mask = np.maximum(mask, _net.forward()[0, 1])
-    lo, hi = float(mask.min()), float(mask.max())
-    if hi - lo < 1e-5:
-        raise RuntimeError("Foreground detector returned an empty mask")
-    mask = np.clip((mask - lo) / (hi - lo), 0, 1)
-    # Keep solid people rather than washing faces out with an uncertain soft mask.
-    mask = cv2.dilate((mask > .35).astype(np.uint8) * 255, np.ones((3, 3), np.uint8))
-    mask = cv2.GaussianBlur(mask, (3, 3), .6)
-    alpha = Image.fromarray(mask).resize(photo.size, Image.Resampling.LANCZOS)
-    # Protect detected facial pixels even under saturated magenta club lighting.
-    detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    gray = cv2.equalizeHist(cv2.cvtColor(np.asarray(photo), cv2.COLOR_RGB2GRAY))
-    faces = detector.detectMultiScale(gray, 1.05, 2, minSize=(15, 15))
-    draw = ImageDraw.Draw(alpha)
-    for x, y, w, h in faces:
-        draw.ellipse((int(x-w*.12), int(y-h*.15), int(x+w*1.12), int(y+h*1.15)), fill=255)
-        # Clipped/flashed shirts are often classified as background. Preserve
-        # the torso beneath each visible face so nobody becomes a floating head.
-        center = x + w / 2
-        bottom = min(photo.height, y + h * 4.5)
-        draw.polygon([(int(center-w*.55), int(y+h*.8)),
-                      (int(center+w*.55), int(y+h*.8)),
-                      (int(center+w*1.35), int(bottom)),
-                      (int(center-w*1.35), int(bottom))], fill=255)
-    return alpha
+        mask = _net.forward()[0, 0]
+    # Keep actual predicted silhouettes only. Never paint face circles or torso
+    # polygons: Haar false positives on club lights created geometric cutouts.
+    binary = (mask > .5).astype(np.uint8)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, 8)
+    if count <= 1:
+        raise RuntimeError("No person silhouette detected")
+    largest = int(stats[1:, cv2.CC_STAT_AREA].max())
+    if largest < binary.size * .01:
+        raise RuntimeError("Person silhouette is too small to trust")
+    keep = np.zeros(binary.shape, np.uint8)
+    for label in range(1, count):
+        if stats[label, cv2.CC_STAT_AREA] >= largest * .2:
+            keep[labels == label] = 255
+    keep = cv2.GaussianBlur(keep, (3, 3), .55)
+    return Image.fromarray(keep).resize(photo.size, Image.Resampling.LANCZOS)
+
 
 
 def render_guest_portrait(photo_bytes: bytes, *, theme_id: str = "twilight") -> bytes:
@@ -84,32 +74,28 @@ def render_guest_portrait(photo_bytes: bytes, *, theme_id: str = "twilight") -> 
         pad = max(8, photo.width // 50)
         subject = subject.crop((max(0, x0-pad), max(0, y0-pad), min(photo.width, x1+pad), min(photo.height, y1+pad)))
 
-    canvas = Image.new("RGB", (720, 1280), (249, 250, 247))
+    # A neutral photographic print avoids the saturated blue/magenta lighting
+    # becoming a dark mass on thermal paper. Geometry and expressions stay real.
+    gray = ImageOps.autocontrast(ImageOps.grayscale(subject.convert("RGB")), cutoff=.5)
+    gray = gray.point([round(255 * (x / 255) ** .58) for x in range(256)])
+    subject = Image.merge("RGBA", (gray, gray, gray, subject.getchannel("A")))
+    canvas = Image.new("RGB", (720, 1280), "white")
     draw = ImageDraw.Draw(canvas)
-    green, silver = (47, 76, 66), (166, 184, 174)
-    # Fine double rails and four engraved botanical corners, mostly white for paper.
-    draw.rectangle((14, 14, 705, 1110), outline=green, width=3)
-    draw.rectangle((23, 23, 696, 1101), outline=silver, width=1)
-    for x, dx in ((32, 1), (687, -1)):
-        for y, dy in ((34, 1), (1090, -1)):
-            draw.line((x, y, x+dx*66, y), fill=green, width=2)
-            draw.line((x, y, x, y+dy*66), fill=green, width=2)
-            for offset in (16, 32, 48):
-                draw.ellipse((min(x+dx*4, x+dx*13), min(y+dy*offset, y+dy*(offset+19)), max(x+dx*4, x+dx*13), max(y+dy*offset, y+dy*(offset+19))), outline=silver, width=2)
+    # Pearl/silver photographic frame with narrow beveled rails.
+    for inset, color in enumerate([(58, 79, 73), (125, 143, 135), (220, 227, 223),
+                                   (250, 252, 250), (233, 237, 234), (205, 216, 210),
+                                   (169, 188, 179), (231, 238, 234)], start=12):
+        draw.rectangle((inset, inset, 719-inset, 1110-inset+12), outline=color, width=1)
     if theme_id == "twilight":
         emblem = Image.open(ROOT / "assets/images/twilight-emblem.png").convert("RGB")
-        # The canonical white-backed original is kept intact, never redrawn.
-        emblem.thumbnail((300, 110), Image.Resampling.LANCZOS)
-        canvas.paste(emblem, ((720-emblem.width)//2, 45))
-    draw.line((100, 174, 620, 174), fill=silver, width=1)
-    # A generous photo window, with no crop that could cut out another guest.
-    window = Image.new("RGB", (640, 850), "white")
-    scale = min(620 / subject.width, 830 / subject.height)
-    subject = subject.resize((round(subject.width * scale), round(subject.height * scale)), Image.Resampling.LANCZOS)
-    window.paste(subject, ((640-subject.width)//2, (850-subject.height)//2), subject)
-    canvas.paste(window, (40, 200))
-    draw.rectangle((38, 198, 681, 1051), outline=silver, width=2)
-    draw.line((170, 1080, 550, 1080), fill=silver, width=1)
+        emblem.thumbnail((250, 90), Image.Resampling.LANCZOS)
+        canvas.paste(emblem, ((720-emblem.width)//2, 26))
+    # Crop only empty extracted background. Large guests and a compact mount.
+    window = Image.new("RGB", (664, 944), "white")
+    scale = min(656 / subject.width, 936 / subject.height)
+    subject = subject.resize((max(1, round(subject.width * scale)), max(1, round(subject.height * scale))), Image.Resampling.LANCZOS)
+    window.paste(subject, ((664-subject.width)//2, (944-subject.height)//2), subject)
+    canvas.paste(window, (28, 138))
     output = io.BytesIO()
     canvas.save(output, format="PNG")
     return output.getvalue()

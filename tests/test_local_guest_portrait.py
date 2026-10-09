@@ -13,8 +13,11 @@ from artifact.modes.photobooth_themes import THEMES
 
 def test_real_model_loads_on_cpu_and_framed_portrait_has_exact_ratio():
     photo = Image.new('RGB', (400, 300), (120, 70, 80))
-    mask = foreground_mask(photo)
-    assert mask.size == photo.size
+    import cv2
+    from artifact.utils.local_guest_portrait import ROOT
+    net = cv2.dnn.readNetFromONNX(str(ROOT / 'assets/models/modnet-portrait.onnx'))
+    net.setInput(np.zeros((1, 3, 384, 512), dtype=np.float32))
+    assert net.forward().shape == (1, 1, 384, 512)
     raw = io.BytesIO()
     photo.save(raw, format='JPEG')
     result = Image.open(io.BytesIO(render_guest_portrait(raw.getvalue())))
@@ -29,7 +32,8 @@ def test_compositor_preserves_foreground_pixels_and_original_bytes(monkeypatch):
     original = raw.getvalue()
     monkeypatch.setattr(module, 'foreground_mask', lambda p: Image.new('L', p.size, 255))
     result = Image.open(io.BytesIO(render_guest_portrait(original)))
-    assert result.getpixel((360, 625)) == (184, 51, 27)
+    pixel = result.getpixel((360, 625))
+    assert pixel[0] == pixel[1] == pixel[2] and pixel[0] > 0
     assert raw.getvalue() == original
 
 
@@ -64,3 +68,24 @@ def test_capture_routes_directly_to_local_task_without_cloud(monkeypatch):
         assert await mode._ai_task == (b'display', b'label')
         assert mode._state.photo_bytes == raw.getvalue()
     asyncio.run(check())
+
+
+def test_mask_never_paints_false_face_shapes_and_discards_detached_noise(monkeypatch):
+    import cv2
+    import artifact.utils.local_guest_portrait as module
+    prediction = np.zeros((1, 1, 384, 512), dtype=np.float32)
+    prediction[0, 0, 90:370, 140:380] = 1
+    prediction[0, 0, 10:15, 10:15] = 1
+    class Net:
+        def setInput(self, pixels):
+            assert pixels.shape == (1, 3, 384, 512)
+        def forward(self):
+            return prediction
+    monkeypatch.setattr(module, '_net', Net())
+    def forbidden(*args):
+        raise AssertionError('Face detection must not create geometry in the mask')
+    monkeypatch.setattr(cv2, 'CascadeClassifier', forbidden)
+    mask = module.foreground_mask(Image.new('RGB', (512, 384), 'blue'))
+    assert mask.getpixel((250, 200)) == 255
+    assert mask.getpixel((12, 12)) == 0
+    assert mask.getpixel((100, 200)) == 0
