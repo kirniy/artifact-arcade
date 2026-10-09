@@ -597,6 +597,12 @@ class PhotoboothMode(BaseMode):
             self._state.photo_frame = self._decode_photo_frame(jpeg_bytes)
 
             if not self._ai_enabled:
+                if os.getenv("PHOTOBOOTH_LOCAL_PORTRAIT_ENABLED", "false").lower() in {"1", "true", "yes"}:
+                    self._state.is_generating = True
+                    self._progress_tracker.start()
+                    self._ai_task = asyncio.create_task(self._generate_local_guest_portrait())
+                    self.change_phase(ModePhase.PROCESSING)
+                    return
                 logger.info(
                     "Photobooth raw mode active; skipping AI and using captured photo directly"
                 )
@@ -640,6 +646,20 @@ class PhotoboothMode(BaseMode):
         if self._state.selected_camera_id == "hdmi":
             return hdmi_capture_service.capture_jpeg(quality=quality)
         return camera_service.capture_best_jpeg(quality=max(quality, 95))
+
+    async def _generate_local_guest_portrait(self) -> Optional[tuple]:
+        from artifact.utils.local_guest_portrait import render_guest_portrait
+        try:
+            label = await asyncio.to_thread(
+                render_guest_portrait, self._state.photo_bytes,
+                theme_id=self._theme.ai_style_key,
+            )
+            date, clock = get_moscow_party_stamp(self._theme)
+            label = self._stamp_white_theme_footer(label, date, clock)
+            return self._crop_to_square(label), label
+        except Exception:
+            logger.exception("Local guest portrait failed; retaining original camera image")
+            return self._state.photo_bytes, self._state.photo_bytes
 
     def _finish_raw_capture_result(self) -> None:
         """Finish a no-AI photobooth session for any selected camera."""
