@@ -93,3 +93,24 @@ def test_video_full_decode_and_small_loop_reuses_frames():
         assert np.array_equal(first, buffer)
     finally:
         idle.cringe_circle_video_capture.release()
+
+
+def test_twilight_footer_and_thermal_receipt_are_readable_and_qr_decodes():
+    from artifact.printing.photobooth_roll import PhotoboothRollReceiptGenerator
+    import cv2
+    mode = PhotoboothMode.__new__(PhotoboothMode)
+    mode._theme = THEMES['twilight']
+    buf = io.BytesIO()
+    Image.new('RGB', (768, 1376), (180, 209, 205)).save(buf, format='PNG')
+    stamped = mode._stamp_white_theme_footer(buf.getvalue(), 'ПЯТНИЦА', '23:05')
+    image = Image.open(io.BytesIO(stamped))
+    assert image.getpixel((0, 0)) == (180, 209, 205)
+    footer = np.array(image)[1200:]
+    assert np.count_nonzero(footer.min(axis=2) < 100) > 100
+    receipt = PhotoboothRollReceiptGenerator().generate_receipt('photobooth', {
+        'caricature': stamped, 'theme_id': 'twilight', 'timestamp': '2026-10-09T23:05:00+03:00'})
+    preview = Image.open(io.BytesIO(receipt.preview_image))
+    assert preview.width == 576 and preview.mode == 'L'
+    decoded, _, _ = cv2.QRCodeDetector().detectAndDecode(np.array(preview))
+    assert decoded == 'https://vnvnc.ru/gallery/photobooth'
+    assert receipt.raw_commands
