@@ -1,5 +1,5 @@
 #!/bin/bash
-# Preserve camera/provider settings; switch branding and retire the hidden quest.
+# Preserve camera/provider/quest-entry settings; switch branding and disable quest QR printing.
 set -euo pipefail
 REPO_DIR="${ARTIFACT_REMOTE_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 ENV_FILE="${ARTIFACT_ENV_FILE:-${REPO_DIR}/.env}"
@@ -38,7 +38,6 @@ updates={
     'PHOTOBOOTH_MENU_MODES':'mean_girls',
     'PHOTOBOOTH_DEFAULT_THEME':'mean-girls',
     'PHOTOBOOTH_PRINT_FORTUNES':'false',
-    'ARTIFACT_SPIDERVERSE_QUEST_ENABLED':'false',
     'ARTIFACT_LEGACY_QUEST_PRINT_ENABLED':'false',
     'ARTIFACT_CLUB_THEME_SCHEDULE':'ticketscloud',
     'ARTIFACT_WEEKLY_THEME_SCHEDULE_ENABLED':'1',

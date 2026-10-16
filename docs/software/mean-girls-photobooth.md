@@ -41,14 +41,15 @@ Legacy URLs:
   `https://t.me/vnvncbattlebot?start=exam_<32-character claim_token>`.
   No single static EXAM URL exists; do not discard or rewrite existing tokens.
 
-Activation sets `ARTIFACT_SPIDERVERSE_QUEST_ENABLED=false` and
-`ARTIFACT_LEGACY_QUEST_PRINT_ENABLED=false`. Hidden quest code and data remain.
+Activation preserves `ARTIFACT_SPIDERVERSE_QUEST_ENABLED` and
+`ARTIFACT_QUEST_PROFILE` exactly. It sets only the independent
+`ARTIFACT_LEGACY_QUEST_PRINT_ENABLED=false` print flag. Hidden quest code and data remain.
 With printing disabled, even a stale Spider print payload produces only its
 normal photo receipt, without its appended quest invitation/QR. A stale PARTY
 EXAM print payload raises an explicit error before producing printable bytes.
-Normal photo/gallery QR remains unchanged and decodes in tests. Restore flags
-and the former profile from the private environment backup to re-enable the
-old quest. The new contest/bot backend is owned by the VNVNC Bot thread.
+Normal photo/gallery QR remains unchanged and decodes in tests. Restore the print flag from the private environment backup to re-enable
+old quest printing. Entry and profile are independent and must not be changed
+by event-theme activation. The new contest/bot backend is owned by the VNVNC Bot thread.
 
 ## Activation and rollback
 
@@ -56,7 +57,7 @@ Prepared entry point: `scripts/activate-mean-girls-photobooth.sh [--restart]`.
 It validates asset hashes, full video decode, format/duration/FPS, menu wiring,
 and both fonts before touching the environment. Environment writes are atomic,
 private backups are uniquely timestamped, and a second activation is a no-op.
-Only theme/menu/default, fortunes-off, legacy-quest-off and the established
+Only theme/menu/default, fortunes-off, legacy-quest-print-off and the established
 Tickets Cloud schedule settings are set. Actual «ВСЕ СВОИ» events still override
 MEAN GIRLS from 23:00 through 07:00 Moscow.
 
@@ -119,3 +120,14 @@ PROJECT X behavior. The deployment must not claim an entirely green global suite
 - Actual Pi previews copied to Mac:
   `output/mean-girls/pi-live-preview.png` and `pi-live-receipt.png`.
 - Local verification: 80 passed, one pre-existing PROJECT X width test deselected.
+
+## Correction: preserve the independent hidden quest entry
+
+The owner requested restoring exactly the pre-MEAN-GIRLS hidden-entry setting.
+`ARTIFACT_SPIDERVERSE_QUEST_ENABLED` must be `true`; the existing profile remains
+`party_exam`. The original installation's `false` entry setting recorded above
+was corrected separately. The activation script no longer writes this key at
+all; tests cover enabled, disabled and absent values. The independent print
+flag remains `false`, so restoring entry does not resume quest QR printing.
+No SpiderQuest URL, bot routing, old quest data, theme, idle, camera or AI
+settings are changed by this correction.

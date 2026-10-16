@@ -136,11 +136,14 @@ def test_offline_real_guest_path_has_emblem_fonts_and_preserves_entire_photo():
     assert all(ord(c) in cmap for c in 'ПЯТНИЦА КОНЮШЕННАЯ 2В')
 
 
-def test_activation_preserves_runtime_and_disables_only_legacy_entry(tmp_path):
+@pytest.mark.parametrize("entry_flag", [None, "true", "false"])
+def test_activation_preserves_runtime_and_quest_entry_disables_only_print(tmp_path, entry_flag):
     import os
     import sys
     env = tmp_path / '.env'
     original = 'PHOTOBOOTH_AI_ENABLED=false\nPHOTOBOOTH_LOCAL_PORTRAIT_ENABLED=true\nGEMINI_MODEL=existing-model\nPHOTOBOOTH_HDMI_CAPTURE_AI_ENABLED=false\nARTIFACT_QUEST_PROFILE=party_exam\n'
+    if entry_flag is not None:
+        original += f'ARTIFACT_SPIDERVERSE_QUEST_ENABLED={entry_flag}\n'
     env.write_text(original); env.chmod(0o600)
     variables=dict(os.environ, VNVNC_PYTHON=sys.executable, ARTIFACT_ENV_FILE=str(env))
     subprocess.run(['bash', str(ROOT/'scripts/activate-mean-girls-photobooth.sh')], env=variables, check=True)
@@ -148,7 +151,11 @@ def test_activation_preserves_runtime_and_disables_only_legacy_entry(tmp_path):
     for line in original.splitlines(): assert line in text
     assert 'PHOTOBOOTH_THEME=mean-girls' in text
     assert 'PHOTOBOOTH_MENU_MODES=mean_girls' in text
-    assert 'ARTIFACT_SPIDERVERSE_QUEST_ENABLED=false' in text
+    if entry_flag is None:
+        assert 'ARTIFACT_SPIDERVERSE_QUEST_ENABLED=' not in text
+    else:
+        assert f'ARTIFACT_SPIDERVERSE_QUEST_ENABLED={entry_flag}' in text
+    assert 'ARTIFACT_LEGACY_QUEST_PRINT_ENABLED=false' in text
     backups=list(tmp_path.glob('.env.before-mean-girls-*'))
     assert len(backups)==1 and backups[0].read_text()==original
     assert backups[0].stat().st_mode & 0o777 == 0o600
