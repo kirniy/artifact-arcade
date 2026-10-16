@@ -60,6 +60,9 @@ class PhotoboothRollReceiptGenerator:
 
     def generate_receipt(self, mode_name: str, data: dict[str, Any]) -> PhotoboothRollReceipt:
         """Generate a receipt for a photobooth print job."""
+        legacy_quest_print = os.getenv("ARTIFACT_LEGACY_QUEST_PRINT_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        if data.get("party_exam") and not legacy_quest_print:
+            raise ValueError("Legacy PARTY EXAM receipt printing is disabled")
         if data.get("party_exam"):
             from artifact.printing.party_exam_roll import PartyExamRollReceiptGenerator
             return PartyExamRollReceiptGenerator().generate_receipt(mode_name, data)
@@ -71,7 +74,7 @@ class PhotoboothRollReceiptGenerator:
         if data.get("theme_id") == "night-riders":
             image = self._prepare_night_riders_photo(image)
         receipt_image = self.render_image(image, timestamp=timestamp, quote=quote)
-        if data.get("quest_start_url"):
+        if data.get("quest_start_url") and legacy_quest_print:
             from artifact.printing.spiderverse_quest_roll import SpiderverseQuestRollReceiptGenerator
 
             receipt_image = SpiderverseQuestRollReceiptGenerator().combine_with_photo(receipt_image, data)

@@ -138,6 +138,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_PROJECT_X_SQUARE = "photobooth_project_x_square"
     PHOTOBOOTH_TROPICAL_THAI = "photobooth_tropical_thai"
     PHOTOBOOTH_TROPICAL_THAI_SQUARE = "photobooth_tropical_thai_square"
+    PHOTOBOOTH_MEAN_GIRLS = "photobooth_mean_girls"
+    PHOTOBOOTH_MEAN_GIRLS_SQUARE = "photobooth_mean_girls_square"
     PHOTOBOOTH_TWILIGHT = "photobooth_twilight"
     PHOTOBOOTH_TWILIGHT_SQUARE = "photobooth_twilight_square"
     PHOTOBOOTH_NIGHT_RIDERS = "photobooth_night_riders"
@@ -3754,6 +3756,22 @@ class CaricatureService:
         try:
             import hashlib
             import random
+
+            if style in {CaricatureStyle.PHOTOBOOTH_MEAN_GIRLS, CaricatureStyle.PHOTOBOOTH_MEAN_GIRLS_SQUARE}:
+                from artifact.ai.mean_girls import generate_mean_girls
+                image_data = await generate_mean_girls(
+                    self._client, reference_photo, extra_reference_images,
+                    square=style == CaricatureStyle.PHOTOBOOTH_MEAN_GIRLS_SQUARE,
+                    variation_index=prompt_variation_index,
+                )
+                if not image_data:
+                    return None
+                import io
+                from PIL import Image
+                img = Image.open(io.BytesIO(image_data)).convert("RGB")
+                output = io.BytesIO()
+                img.save(output, format="PNG")
+                return Caricature(output.getvalue(), style, img.width, img.height, "png")
 
             if style in {CaricatureStyle.PHOTOBOOTH_TWILIGHT, CaricatureStyle.PHOTOBOOTH_TWILIGHT_SQUARE}:
                 from artifact.ai.twilight import generate_twilight

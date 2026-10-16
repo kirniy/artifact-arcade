@@ -1,0 +1,16 @@
+{
+  "theme": "mean-girls",
+  "source_video": "/Users/kirniy/dev/VIDEOS/Mean Girls 2/delivery/APPROVED-VIDEOS/03-SPB-LED-FAN.mp4",
+  "source_emblem": "/Users/kirniy/dev/VIDEOS/Mean Girls 2/delivery/MATCHED-VENUE-FINAL/MEAN-GIRLS-emblem-transparent.png",
+  "source_video_sha256": "0aaf996e1450aee389555eb6ff940413a8cb8a2476c5fa21502d8fe5c3a0d365",
+  "source_emblem_sha256": "b45824298de91f8414fe2c6b951175fcca835af1a6b0507b4f424865bcb57f8d",
+  "files": {
+    "assets/images/mean-girls-emblem.png": "e70d92da81432e3b957b1b6db30896d64d6a3e9a37a249c12bbb4bf5cea7497f",
+    "assets/idle/mean_girls/video/mean-girls-fans.mp4": "60939d8ab08e376aa7fb9a3b5a3c63dd6af528ce533f0906a5efd5601d43384d",
+    "assets/fonts/mean-girls/Anton.ttf": "ce413e032c79a0f3a8654ce96fd21c09160c8dab53bfdbe9406dff941afaad74",
+    "assets/fonts/mean-girls/README.md": "c190328a8c492a8d380d0f9e7b71ef939e21bb88630fa999542fac51b52c1adf",
+    "assets/fonts/mean-girls/Anton-OFL.txt": "ee67e6ee22790b7929f1a3769ca2801d565c64b5a9096942c1adf5596de9c9e4",
+    "assets/fonts/mean-girls/Unbounded-OFL.txt": "31e5d4e83955e7103c34570dd49b0570ef490800bd65b42923c0dd02445263b3",
+    "assets/fonts/mean-girls/Unbounded.ttf": "323b511be380c8d474ef030686b71aedde501f8d9cd46da558b7c40454372c3f"
+  }
+}

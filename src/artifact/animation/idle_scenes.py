@@ -462,6 +462,8 @@ class RotatingIdleAnimation:
             return "2k17"
         if theme_id == "jara":
             return "jara"
+        if theme_id == "mean-girls":
+            return "mean_girls"
         if theme_id == "twilight":
             return "twilight"
         if theme_id == "night-riders":
@@ -554,7 +556,7 @@ class RotatingIdleAnimation:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
-        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
             return {
                 IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.event_name,
             }
@@ -608,7 +610,7 @@ class RotatingIdleAnimation:
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "jara":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
-        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
         if self.idle_variant == "sunset_palms":
             return [IdleScene.CRINGE_CIRCLE_VIDEO]
@@ -832,6 +834,7 @@ class RotatingIdleAnimation:
                     "bannaya",
                     "night_riders",
                     "twilight",
+                    "mean_girls",
                     "spiderverse",
                     "world_cup_final",
                     "vse_svoi",
@@ -919,6 +922,7 @@ class RotatingIdleAnimation:
             "bannaya",
             "night_riders",
             "twilight",
+            "mean_girls",
             "spiderverse",
             "vnvnc_bday",
             "world_cup_final",
@@ -1225,7 +1229,7 @@ class RotatingIdleAnimation:
             else:
                 logger.error("Required VNVNC B'DAY idle video is missing: %s", video_path)
             return
-        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
             filename = self._theme.idle_video_filename
             if not filename:
                 logger.error("%s idle-video slot is not configured", self._theme.event_name)
@@ -1523,7 +1527,7 @@ class RotatingIdleAnimation:
         if self.cringe_circle_video_capture:
             self.cringe_circle_video_capture.release()
         self.cringe_circle_video_capture = cv2.VideoCapture(str(self.cringe_circle_video_path))
-        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
             self._tropical_video_start_ms = self.state.time
             self._tropical_video_frame_index = -1
             self._tropical_video_frame = None
@@ -1832,7 +1836,7 @@ class RotatingIdleAnimation:
             names = {
                 IdleScene.CRINGE_CIRCLE_VIDEO: "ЖАРА",
             }
-        elif self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+        elif self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
             names = {
                 IdleScene.CRINGE_CIRCLE_VIDEO: self._theme.event_name,
             }
@@ -5024,7 +5028,7 @@ class RotatingIdleAnimation:
 
         # The screen refresh can exceed 24 fps. Preserve the approved fan's real
         # speed instead of consuming one video frame on every screen refresh.
-        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
             capture = self.cringe_circle_video_capture
             fps = capture.get(cv2.CAP_PROP_FPS) or 24.0
             count = max(1, int(capture.get(cv2.CAP_PROP_FRAME_COUNT)))
@@ -5050,7 +5054,7 @@ class RotatingIdleAnimation:
         if frame.shape[0] != 128 or frame.shape[1] != 128:
             frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_AREA)
 
-        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+        if self.idle_variant in {"tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
             self._tropical_video_frame = frame
         buffer[:] = frame
         self._draw_cringe_overlay(buffer, IdleScene.CRINGE_CIRCLE_VIDEO)
@@ -5500,6 +5504,7 @@ class RotatingIdleAnimation:
             "bannaya",
             "night_riders",
             "twilight",
+            "mean_girls",
             "spiderverse",
             "vnvnc_bday",
             "world_cup_final",

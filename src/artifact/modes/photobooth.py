@@ -875,6 +875,8 @@ class PhotoboothMode(BaseMode):
                 CaricatureStyle.PHOTOBOOTH_JARA_SQUARE,
                 CaricatureStyle.PHOTOBOOTH_JARA,
             )
+        elif ai_style_key == "mean_girls":
+            return (CaricatureStyle.PHOTOBOOTH_MEAN_GIRLS_SQUARE, CaricatureStyle.PHOTOBOOTH_MEAN_GIRLS)
         elif ai_style_key == "twilight":
             return (CaricatureStyle.PHOTOBOOTH_TWILIGHT_SQUARE, CaricatureStyle.PHOTOBOOTH_TWILIGHT)
         elif ai_style_key == "night_riders":
@@ -1257,7 +1259,7 @@ class PhotoboothMode(BaseMode):
             if ai_style_key == "twilight" and len(self._theme_reference_images) != 2:
                 raise RuntimeError("TWILIGHT requires both canonical emblem and forest references")
             generation_reference_images = list(self._theme_reference_images)
-            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
                 generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
@@ -1287,7 +1289,7 @@ class PhotoboothMode(BaseMode):
                     label_bytes = self._stamp_boilingroom_footer(
                         label_bytes, footer_date_str, moscow_time
                     )
-                elif ai_style_key in {"office_core", "summer_camp", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight"}:
+                elif ai_style_key in {"office_core", "summer_camp", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
                     footer_date_str, moscow_time = get_moscow_party_stamp(self._theme)
                     label_bytes = self._stamp_white_theme_footer(
                         label_bytes, footer_date_str, moscow_time
@@ -1350,6 +1352,7 @@ class PhotoboothMode(BaseMode):
                     "bannaya",
                     "night_riders",
                     "twilight",
+                    "mean_girls",
                     "spiderverse",
                     "vse_svoi",
                 }:
@@ -1544,6 +1547,11 @@ class PhotoboothMode(BaseMode):
 
             main_font = load_font(max(28, int(w * 0.047)))
             sub_font = load_font(max(22, int(w * 0.034)))
+            if self._theme.id == "mean-girls":
+                font_root = Path(__file__).resolve().parents[3] / "assets/fonts/mean-girls"
+                main_font = ImageFont.truetype(str(font_root / "Anton.ttf"), max(28, int(w * .047)))
+                sub_font = ImageFont.truetype(str(font_root / "Unbounded.ttf"), max(18, int(w * .027)))
+
 
             def text_bbox(font, text: str):
                 return draw.textbbox((0, 0), text, font=font)
@@ -1558,6 +1566,9 @@ class PhotoboothMode(BaseMode):
                 # Pale aqua belongs to the scene/chrome, not small text on white.
                 accent = (28, 51, 92)
                 secondary = (169, 62, 53)
+            elif self._theme.id == "mean-girls":
+                accent = (134, 23, 65)
+                secondary = (99, 21, 51)
             elif self._theme.id == "twilight":
                 accent = (25, 66, 68)
                 secondary = (45, 79, 80)
@@ -3054,6 +3065,8 @@ PHOTOBOOTH_MENU_REGISTRY: "OrderedDict[str, Optional[str]]" = OrderedDict(
         ("world_cup_final", "world-cup-final"),
         ("world-cup-final", "world-cup-final"),
         ("sunset_palms", "sunset-palms"),
+        ("mean_girls", "mean-girls"),
+        ("mean-girls", "mean-girls"),
         ("twilight", "twilight"),
         ("night_riders", "night-riders"),
         ("night-riders", "night-riders"),

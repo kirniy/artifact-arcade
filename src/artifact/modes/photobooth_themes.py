@@ -794,6 +794,24 @@ VSE_SVOI_THEME = PhotoboothTheme(
 # =============================================================================
 # THEME REGISTRY
 # =============================================================================
+MEAN_GIRLS_THEME = PhotoboothTheme(
+    id="mean-girls", event_name="MEAN GIRLS", event_date="",
+    logo_filename="mean-girls-emblem.png",
+    theme_chrome=(245, 5, 246), theme_red=(185, 190, 200),
+    theme_black=(12, 4, 9),
+    ticker_idle="MEAN", lcd_prefix="MEAN",
+    description="ДРЯННЫЕ ДЕВЧОНКИ", menu_display_name="MEAN GIRLS",
+    menu_description="ФОТОБУДКА", menu_color=(245, 5, 246),
+    ticker_color=(245, 5, 246), ticker_compact_static=True,
+    ticker_idle_cycle=("MEAN", "GIRLS", "ФОТО"),
+    party_date_rollover_hour=7, footer_date_mode="weekday_ru",
+    ai_style_key="mean_girls",
+    reference_image_filenames=("mean-girls-emblem.png",),
+    required_reference_sha256="e70d92da81432e3b957b1b6db30896d64d6a3e9a37a249c12bbb4bf5cea7497f",
+    reference_sha256_by_filename={"mean-girls-emblem.png": "e70d92da81432e3b957b1b6db30896d64d6a3e9a37a249c12bbb4bf5cea7497f"},
+    idle_video_filename="mean-girls-fans.mp4", idle_video_required=True,
+)
+
 TWILIGHT_THEME = PhotoboothTheme(
     id="twilight", event_name="TWILIGHT", event_date="",
     logo_filename="twilight-emblem.png",
@@ -883,6 +901,7 @@ PROJECT_X_THEME = PhotoboothTheme(
 
 THEMES = {
     "night-riders": NIGHT_RIDERS_THEME,
+    "mean-girls": MEAN_GIRLS_THEME,
     "twilight": TWILIGHT_THEME,
     "bannaya": BANNAYA_THEME,
     "project-x": PROJECT_X_THEME,
