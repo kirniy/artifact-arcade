@@ -2,11 +2,11 @@
 
 ## Scope and status
 
-Prepared locally, **not installed on the live Pi**. `tailscale status --json`
-reports `artifact` (100.115.122.91) offline, last seen 2026-10-16T03:25:35Z;
-SSH to that IP timed out, `artifact.local` did not resolve. No live runtime,
-current dirty files, current environment, physical ticker, camera or paper check
-can be claimed. No guest messages, backend changes or live registrations made.
+**Installed on the live Pi** at 21:07 Moscow, 16 October (client date 17 October).
+Source commit `677dd9d` was cherry-picked onto the clean `artifact-runtime` as
+`17fb002`. Pi initially was offline; it came online during final verification,
+Tailscale SSH authentication completed, and fresh idle was verified before
+installation and restart. No guest messages or backend changes were made.
 
 Theme `mean-girls`, menu key `mean_girls`, idle variant `mean_girls`.
 Electric magenta #F505F6, black/white/chrome UI; dark rose footer ink for paper.
@@ -97,3 +97,25 @@ One pre-existing broad test is excluded explicitly:
 `PROJECT X` label (53px versus 48px); `git show` confirms it predates this release.
 MEAN/GIRLS/ФОТО labels are each tested to fit 48px. This release does not alter
 PROJECT X behavior. The deployment must not claim an entirely green global suite.
+
+## Live verification receipt
+
+- Both `artifact` and `arcade-autopull.timer` active; tracked runtime clean.
+- Startup log: loaded MEAN GIRLS idle video, registered exactly one photobooth
+  mode, and registered the IMX708 camera. No camera-source/settings changes.
+- Live selector/menu and both retired-quest flags verified. AI=false,
+  local-photo=true, HDMI-AI=false retained from the pre-install runtime.
+- All 361 idle frames decoded on Pi. Real saved source rendered through the
+  actual local photo method in 1.2 seconds, returning a 720×1022 print image.
+- Normal gallery QR decoded; stale Spider appendix suppressed; PARTY EXAM
+  printing rejected while disabled. Thermal payload: 68,850 ESC/POS bytes.
+- USB RP80 absent, `/dev/usb/lp0` absent: no physical paper test sent or claimed.
+  No live AI API generation requested. Physical ticker stability is not observed.
+- Backup branch: `backup/before-mean-girls-20261016T210645`.
+- Exact private activation backup on Pi:
+  `/home/kirniy/modular-arcade/.env.before-mean-girls-20261016T180650223907Z`.
+- Additional private runtime backup:
+  `data/deploy_backups/mean-girls-20261016T210645/runtime.env`.
+- Actual Pi previews copied to Mac:
+  `output/mean-girls/pi-live-preview.png` and `pi-live-receipt.png`.
+- Local verification: 80 passed, one pre-existing PROJECT X width test deselected.
