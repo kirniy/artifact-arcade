@@ -5,7 +5,7 @@ import logging
 import os
 
 import aiohttp
-from PIL import Image
+from PIL import Image, ImageOps
 
 logger=logging.getLogger(__name__)
 MODEL='dola-seedream-5-0-flash-260915'
@@ -33,7 +33,16 @@ async def generate_image(prompt, reference_photo=None, photo_mime_type='image/jp
     payload={'model':MODEL,'prompt':prompt,'size':sizes[aspect_ratio],
              'output_format':'png','response_format':'b64_json','watermark':False}
     if refs:
-        payload['image']=['data:'+mime+';base64,'+base64.b64encode(raw).decode('ascii') for raw,mime in refs]
+        payload['image']=[]
+        for index,(raw,mime) in enumerate(refs):
+            # Match the successful trials: bounded references avoid multi-MB PNG
+            # uploads stalling the club uplink. No cropping or face alteration.
+            with Image.open(io.BytesIO(raw)) as source:
+                image=ImageOps.exif_transpose(source).convert('RGB')
+                limit=1536 if index==0 else 1024
+                image.thumbnail((limit,limit),Image.Resampling.LANCZOS)
+                encoded=io.BytesIO();image.save(encoded,format='JPEG',quality=92)
+            payload['image'].append('data:image/jpeg;base64,'+base64.b64encode(encoded.getvalue()).decode('ascii'))
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=75)) as session:
             async with session.post(ENDPOINT,headers={'Authorization':'Bearer '+key},json=payload) as response:

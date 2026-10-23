@@ -41,7 +41,7 @@ def test_byteplus_only_route_no_google_or_paid_retry(monkeypatch,status):
     monkeypatch.setenv('BYTEPLUS_MODELARK_API_KEY','test-only')
     client=object.__new__(GeminiClient);client._image_generation_provider='byteplus'
     assert client.is_available
-    result=asyncio.run(client.generate_image('cinematic',reference_photo=b'guest',extra_reference_images=[(b'emblem','image/png')],aspect_ratio='9:16'))
+    result=asyncio.run(client.generate_image('cinematic',reference_photo=png,extra_reference_images=[(png,'image/png')],aspect_ratio='9:16'))
     assert result==(png if status==200 else None)
     assert len(calls)==1
     assert calls[0][0]=='https://ark.ap-southeast.bytepluses.com/api/v3/images/generations'
