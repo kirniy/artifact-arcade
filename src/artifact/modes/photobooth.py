@@ -1261,7 +1261,7 @@ class PhotoboothMode(BaseMode):
             if ai_style_key == "twilight" and len(self._theme_reference_images) != 2:
                 raise RuntimeError("TWILIGHT requires both canonical emblem and forest references")
             generation_reference_images = list(self._theme_reference_images)
-            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls", "step_up"}:
+            if ai_style_key in {"boilingroom", "sunset_palms", "spiderverse", "vse_svoi", "tropical_thai", "project_x", "bannaya", "night_riders", "twilight", "mean_girls"}:
                 generation_reference_images.extend(self._build_identity_face_references())
             label_result = await self._caricature_service.generate_caricature(
                 reference_photo=self._state.photo_bytes,
