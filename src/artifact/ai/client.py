@@ -694,6 +694,10 @@ class GeminiClient:
         Returns:
             Image bytes (PNG) or None on error
         """
+        if self._image_generation_provider == "byteplus":
+            from artifact.ai.byteplus_image import generate_image
+            return await generate_image(prompt, reference_photo, photo_mime_type,
+                                        aspect_ratio, image_size, style, extra_reference_images)
         if (
             not self.config.api_key
             and self._image_generation_provider not in {"openrouter", "vertex"}
@@ -995,13 +999,18 @@ class GeminiClient:
     @property
     def is_available(self) -> bool:
         """Check if AI features are available."""
+        if getattr(self, "_image_generation_provider", None) == "byteplus":
+            return bool(os.getenv("BYTEPLUS_MODELARK_API_KEY", "").strip())
         if self.config.provider == "vertex":
             return bool(self.config.project)
         return bool(self.config.api_key)
 
     @property
     def image_generation_model(self) -> str:
-        """Return the active Gemini image generation model."""
+        """Return the active image generation model."""
+        if self._image_generation_provider == "byteplus":
+            from artifact.ai.byteplus_image import MODEL
+            return MODEL
         return self._image_generation_model
 
 

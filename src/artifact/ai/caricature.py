@@ -138,6 +138,8 @@ class CaricatureStyle(Enum):
     PHOTOBOOTH_PROJECT_X_SQUARE = "photobooth_project_x_square"
     PHOTOBOOTH_TROPICAL_THAI = "photobooth_tropical_thai"
     PHOTOBOOTH_TROPICAL_THAI_SQUARE = "photobooth_tropical_thai_square"
+    PHOTOBOOTH_STEP_UP = "photobooth_step_up"
+    PHOTOBOOTH_STEP_UP_SQUARE = "photobooth_step_up_square"
     PHOTOBOOTH_MEAN_GIRLS = "photobooth_mean_girls"
     PHOTOBOOTH_MEAN_GIRLS_SQUARE = "photobooth_mean_girls_square"
     PHOTOBOOTH_TWILIGHT = "photobooth_twilight"
@@ -3756,6 +3758,22 @@ class CaricatureService:
         try:
             import hashlib
             import random
+
+            if style in {CaricatureStyle.PHOTOBOOTH_STEP_UP, CaricatureStyle.PHOTOBOOTH_STEP_UP_SQUARE}:
+                from artifact.ai.step_up import generate_step_up
+                image_data = await generate_step_up(
+                    self._client, reference_photo, extra_reference_images,
+                    square=style == CaricatureStyle.PHOTOBOOTH_STEP_UP_SQUARE,
+                    variation_index=prompt_variation_index,
+                )
+                if not image_data:
+                    return None
+                import io
+                from PIL import Image
+                img = Image.open(io.BytesIO(image_data)).convert("RGB")
+                output = io.BytesIO()
+                img.save(output, format="PNG")
+                return Caricature(output.getvalue(), style, img.width, img.height, "png")
 
             if style in {CaricatureStyle.PHOTOBOOTH_MEAN_GIRLS, CaricatureStyle.PHOTOBOOTH_MEAN_GIRLS_SQUARE}:
                 from artifact.ai.mean_girls import generate_mean_girls

@@ -794,6 +794,24 @@ VSE_SVOI_THEME = PhotoboothTheme(
 # =============================================================================
 # THEME REGISTRY
 # =============================================================================
+STEP_UP_THEME = PhotoboothTheme(
+    id="step-up", event_name="STEP UP", event_date="",
+    logo_filename="step-up-emblem.png",
+    theme_chrome=(243, 38, 45), theme_red=(185, 190, 200),
+    theme_black=(12, 4, 9),
+    ticker_idle="STEP", lcd_prefix="STEP",
+    description="ШАГ ВПЕРЁД", menu_display_name="STEP UP",
+    menu_description="ФОТОБУДКА", menu_color=(243, 38, 45),
+    ticker_color=(243, 38, 45), ticker_compact_static=True,
+    ticker_idle_cycle=("STEP", "UP", "ФОТО"),
+    party_date_rollover_hour=7, footer_date_mode="weekday_ru",
+    ai_style_key="step_up",
+    reference_image_filenames=('step-up-emblem.png', 'step-up-style.png'),
+    required_reference_sha256='34157673d9a50acdb48b51e04376afa6b0041edc12ac78dedccf8998a32ef574',
+    reference_sha256_by_filename={'step-up-emblem.png': '34157673d9a50acdb48b51e04376afa6b0041edc12ac78dedccf8998a32ef574', 'step-up-style.png': '170b49562b6c56e8ffba82302c5ca87dbc62819ea1354807818952d86e020c66'},
+    idle_video_filename="step-up-fans.mp4", idle_video_required=True,
+)
+
 MEAN_GIRLS_THEME = PhotoboothTheme(
     id="mean-girls", event_name="MEAN GIRLS", event_date="",
     logo_filename="mean-girls-emblem.png",
@@ -901,6 +919,7 @@ PROJECT_X_THEME = PhotoboothTheme(
 
 THEMES = {
     "night-riders": NIGHT_RIDERS_THEME,
+    "step-up": STEP_UP_THEME,
     "mean-girls": MEAN_GIRLS_THEME,
     "twilight": TWILIGHT_THEME,
     "bannaya": BANNAYA_THEME,

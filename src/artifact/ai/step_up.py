@@ -1,0 +1,12 @@
+"""STEP UP: approved cinematic Seedream trial B."""
+PROMPT = "Make one STEP UP / «Шаг Вперёд» photobooth portrait. Image1 is the real camera photo, image2 is the EXACT event emblem, image3 is background graphic art direction ONLY: never copy its faceless characters. Preserve the actual foreground guests: same face geometry, ethnicity, gender, adult age, hairstyle, expressions, gestures and arrangement. Do not replace them with movie cast or generic models. Do not add people from posters or background decor. Their likeness outranks style. Keep hair, eyes, nose and mouth distinct despite the reference's blue club light; do not turn blue lighting into blue skin. Bright faces. Waist-up group, large and unobscured, no repeated collage. Street-dance / hip-hop film energy, real fabric, sneakers and casual streetwear adapted to their actual bodies, no sexualized outfits. Integrate the supplied large exact red/white Cyrillic emblem above the guests, original lettering/proportions, in the upper square-safe region. Do not invent English STEP UP typography or redraw its words. Most backdrop must be light ivory/pale mint/slate with limited charcoal lines and red accents, readable after grayscale thermal printing. No black rectangle background, no large empty fields, no floating heads, no face masks, no harsh raster dots over faces. One vertical9:16 artwork; preserve faces and emblem inside upper75%, bottom13% blank for application footer. Generate no dates, website, venue, QR, extra captions or watermarks.\nSTYLE: cinematic dance-film editorial photograph. Faithfully recognizable actual faces, ivory studio key light, warm amber rim, pale teal warehouse windows, subtle rainy glass behind the group, original gestures. Realistic cream/denim streetwear with restrained red details. A sophisticated photographic dance-poster composition with the emblem above, sparse graphic registration/arrows at edges. No flat silhouettes, illustration or generic beauty retouching."
+
+def build_prompt(variation_index=None):
+    return PROMPT
+
+async def generate_step_up(client, reference_photo, extra_reference_images, *, square=False, variation_index=None):
+    if not extra_reference_images or len(extra_reference_images)<2:
+        raise ValueError('STEP UP needs the exact emblem and campaign style reference')
+    return await client.generate_image(prompt=PROMPT,reference_photo=reference_photo,
+        photo_mime_type='image/jpeg',aspect_ratio='1:1' if square else '9:16',
+        image_size='1K',extra_reference_images=extra_reference_images)
