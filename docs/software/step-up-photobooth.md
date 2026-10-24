@@ -2,7 +2,7 @@
 
 Theme `step-up`, menu/idle key `step_up`. Exact emblem from
 `~/Downloads/STEP-UP-emblem.png`; campaign reference from STEP UP video project.
-Cinematic trial B prompt retained. Native video source:
+Screenprint trial A selected by the user; exact tested prompt retained. Native video source:
 `/Users/kirniy/dev/VIDEOS/step-up/delivery/02-LED-FAN.mp4`.
 Prepared silent H264/yuv420p128², full23.732042s at24000/1001fps; native looping.
 Hashes pinned in theme and `assets/idle/step_up/manifest.json`.

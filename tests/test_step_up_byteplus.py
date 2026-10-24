@@ -63,7 +63,7 @@ def test_activation_preserves_quest_camera_and_private_rollback(tmp_path):
     assert env.read_text()==text and len(list(tmp_path.glob('.env.before-step-up-*')))==1
 
 
-def test_prompt_service_uses_tested_cinematic_direction():
+def test_prompt_service_uses_tested_screenprint_direction():
     out=io.BytesIO();Image.new('RGB',(10,20),'white').save(out,'PNG')
     class Client:
         is_available=True
@@ -72,5 +72,7 @@ def test_prompt_service_uses_tested_cinematic_direction():
     refs=[(b'emblem','image/png'),(b'style','image/png')]
     result=asyncio.run(service.generate_caricature(b'guest',style=CaricatureStyle.PHOTOBOOTH_STEP_UP,extra_reference_images=refs))
     assert result and c.kw['aspect_ratio']=='9:16'
-    assert 'cinematic dance-film editorial photograph' in c.kw['prompt']
+    assert 'premium illustrated screenprint dance poster' in c.kw['prompt']
+    assert 'Preserve the exact upper-body poses' in c.kw['prompt']
+    assert 'cinematic dance-film editorial photograph' not in c.kw['prompt']
     assert c.kw['extra_reference_images']==refs
