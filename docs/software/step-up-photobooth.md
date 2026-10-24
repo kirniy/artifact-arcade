@@ -63,3 +63,14 @@ RP80 absent at `/dev/usb/lp0`; no physical paper test sent or appearance claimed
 Mac copies: `output/step-up/pi-live-preview.png` and `pi-live-receipt.png`.
 73 targeted tests passed after the final code changes. Quest entry remains true,
 profile party_exam unchanged; legacy quest printing remains false.
+
+## Screenprint A switch — 24 October 2026
+
+User selected A instead of B. Source 8ef36ed installed as runtime f2d8277,
+using the exact tested common + 01-screenprint prompt. Seven targeted tests
+passed. GitHub fetch on Pi failed; transferred a Git bundle over Tailscale,
+cherry-picked only the style commit with a clean runtime and fresh idle.
+Checkpoint `backup/before-step-up-a-20261024T043612`; provider/environment, idle assets and quest settings unchanged.
+Idle-gated restart succeeded; artifact and arcade-autopull.timer active.
+Complete production generation on Pi returned a valid portrait in21.31seconds:
+`output/step-up/pi-screenprint-a.png`. Physical paper appearance not verified.
